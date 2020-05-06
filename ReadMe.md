@@ -8,9 +8,9 @@ In this project, we analyzed of 5 projects in [JIRA](https://issues.apache.org/j
 
 ### Dataset
 ***
-[SHIRO](https://anonymous.4open.science/r/6a49abe2-a644-412d-997a-7585c8755279/dataset/shiro.xlsx) [PDFBOX](https://anonymous.4open.science/r/6a49abe2-a644-412d-997a-7585c8755279/dataset/pdfbox.xlsx) [LUCENE](https://anonymous.4open.science/r/6a49abe2-a644-412d-997a-7585c8755279/dataset/lucene.xlsx) [HBASE](https://anonymous.4open.science/r/6a49abe2-a644-412d-997a-7585c8755279/dataset/hbase.xlsx) [CASSANDRA](https://anonymous.4open.science/r/6a49abe2-a644-412d-997a-7585c8755279/dataset/cassandra.xlsx)
+[SHIRO](./dataset/shiro.txt) [PDFBOX](./dataset/pdfbox.txt) [LUCENE](./dataset/lucene.txt) [HBASE](./dataset/hbase.txt) [CASSANDRA](./dataset/cassandra.txt)
 
-[List of related papers](https://anonymous.4open.science/r/6a49abe2-a644-412d-997a-7585c8755279/researchPapers/paperList.xlsx)
+[List of related papers](./researchPapers/paperList.xlsx)
 
 ### Tools
 ***
