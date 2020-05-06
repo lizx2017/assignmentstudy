@@ -10,7 +10,7 @@ In this project, we analyzed of 5 projects in [JIRA](https://issues.apache.org/j
 ***
 [SHIRO](./dataset/shiro.txt) [PDFBOX](./dataset/pdfbox.txt) [LUCENE](./dataset/lucene.txt) [HBASE](./dataset/hbase.txt) [CASSANDRA](./dataset/cassandra.txt)
 
-[List of related papers](./researchPapers/paperList.xlsx)
+List of related papers:[bug triage](./researchPapers/KeyWord=bug\ triage.txt)[bug assignment](./researchPapers/KeyWord=bug\ Assignment.txt)
 
 ### Tools
 ***
