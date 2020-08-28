@@ -1,4 +1,4 @@
-# The Myth of NLP and What Matters in Bug Triage
+# The Myth of Text and What Matters in Bug Triage
 ***
 ### Project summary
 ***
