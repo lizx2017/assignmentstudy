@@ -1,0 +1,41 @@
+Summary:
+RowCache misses Updates
+Description:
+While performing stress tests to find any race problems for CASSANDRA-2864 I guess I (re-)found one for the standard on-heap row cache.
+During my stress test I hava lots of threads running with some of them only reading other writing and re-reading the value.
+This seems to happen:
+Reader tries to read row A for the first time doing a getTopLevelColumns
+Row A which is not in the cache yet is updated by Writer. The row is not eagerly read during write (because we want fast writes) so the writer cannot perform a cache update
+Reader puts the row in the cache which is now missing the update
+I already asked this some time ago on the mailing list but unfortunately didn't dig after I got no answer since I assumed that I just missed something. In a way I still do but haven't found any locking mechanism that makes sure that this should not happen.
+The problem can be reproduced with every run of my stress test. When I restart the server the expected column is there. It's just missing from the cache.
+To test I have created a patch that merges memtables with the row cache. With the patch the problem is gone.
+I can also reproduce in 0.8. Haven't checked 1.1 but I haven't found any relevant change their either so I assume the same aplies there.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Daniel Doubleday
+Create date:
+06/Feb/12 17:17
+Update date:
+16/Apr/19 09:32
+Resolved date:
+28/Feb/12 18:03

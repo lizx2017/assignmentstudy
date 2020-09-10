@@ -1,0 +1,40 @@
+Summary:
+Splits can create temporary holes in .META. that confuse clients and regionservers
+Description:
+When a SplitTransaction is performed, three updates are done to .META.:
+1. The parent region is marked as splitting (and hence offline)
+2. The first daughter region is added (same start key as parent)
+3. The second daughter region is added (split key is start key)
+(later, the original parent region is deleted, but that's not important to this discussion)
+Steps 2 and 3 are actually done concurrently by SplitTransaction.DaughterOpener threads. While the master is notified when a split is complete, the only visibility that clients have is whether the daughter regions have appeared in .META.
+If the second daughter is added to .META. first, then .META. will contain the (offline) parent region followed by the second daughter region. If the client looks up a key that is greater than (or equal to) the split, the client will find the second daughter region and use it. If the key is less than the split key, the client will find the parent region and see that it is offline, triggering a retry.
+If the first daughter is added to .META. before the second daughter, there is a window during which .META. has a hole: the first daughter effectively hides the parent region (same start key), but there is no entry for the second daughter. A region lookup will find the first daughter for all keys in the parent's range, but the first daughter does not include keys at or beyond the split key.
+See HBASE-4333 and HBASE-4334 for details on how this causes problems and suggestions for mitigating this in the client and regionserver.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.92.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Joe Pallas
+Create date:
+06/Sep/11 21:47
+Update date:
+20/Nov/15 11:53
+Resolved date:
+11/Oct/11 21:21

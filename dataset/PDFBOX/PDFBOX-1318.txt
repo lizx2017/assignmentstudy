@@ -1,0 +1,102 @@
+Summary:
+Stops when writing images to a large file
+Description:
+When writing images to a large pdf, it stops after some amount of images (the size depends on the machine) when creating a PDJpeg object.
+public void processFiles(File parent){
+int fileIndex = 1;
+for(ImageGroup g:allImages){
+int i = 0;
+int fileCount = 0;
+int imgCount = 0;
+PDDocument acrobat = null;
+String groupPath = parent.getAbsolutePath()+"/"+g.getName();
+File groupFolder = new File(groupPath);
+try
+{ acrobat = new PDDocument(); groupFolder.mkdir(); }
+catch(Exception e)
+{ continue; }
+for(File f:g.getImages()){
+//set progress bar and text
+bar.setValue(fileIndex);
+currentStatus.setText("Currently processing "fileIndex" of "+totalFiles);
+System.out.println("Currently processing "f.getName()" "fileIndex" of "+totalFiles);
+this.pack();
+this.setVisible(true);
+this.repaint();
+PDPageContentStream contentStream = null;
+try{
+//pull image
+BufferedImage bigImage = ImageIO.read(f);
+int w = bigImage.getWidth();
+int h = bigImage.getHeight();
+//create page of image size
+PDRectangle rect = new PDRectangle(w, h);
+PDPage page = new PDPage(rect);
+acrobat.addPage(page);
+//draw image
+//THE PROGRAM STOPS HERE
+PDJpeg img = new PDJpeg(acrobat, bigImage);
+//the rest of drawing the image
+contentStream = new PDPageContentStream(acrobat,page);
+contentStream.drawImage(img, 0, 0);
+contentStream.close();
+//acrobat.save(groupPath+".pdf");
+//acrobat.close();
+//File result = new File(groupPath+".pdf");
+//acrobat = PDDocument.load(result);
+//copy image in case the user needs it.
+imgCount++;
+if(imgCount > Constants.MAX_FILE){
+acrobat.save(groupPath+".pdf");
+groupPath += "_"+fileCount;
+File excessFolder = new File(groupPath);
+fileCount++;
+imgCount = 0;
+try
+{ acrobat = new PDDocument(); excessFolder.mkdir(); }
+catch(Exception e){
+}
+}
+}catch(Exception e)
+{ e.printStackTrace(); }
+this.copyFile(f, groupPath+"/"g.getName()"_"i".jpg");
+i++;
+fileIndex++;
+}
+try
+{ acrobat.save(groupPath+".pdf"); acrobat.close(); }
+catch (Exception e)
+{ // TODO Auto-generated catch block e.printStackTrace(); }
+}
+currentStatus.setText("Your images have been copied successfully");
+this.pack();
+this.repaint();
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+1.6.0
+Fix_version:
+None
+Component:
+Writing
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+DWiebe
+Create date:
+19/May/12 20:00
+Update date:
+06/Nov/14 06:11
+Resolved date:
+06/Nov/14 06:11

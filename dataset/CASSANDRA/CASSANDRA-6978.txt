@@ -1,0 +1,98 @@
+Summary:
+Table creation does not add all the columns until schema is updated again
+Description:
+Table creation does not show the columns just created:
+cqlsh> CREATE KEYSPACE ks WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+cqlsh> 
+cqlsh> // Create a table with multiple columns:
+cqlsh> CREATE TABLE ks.cf (
+   ...     key int PRIMARY KEY,
+   ...     val blob,
+   ...     val2 text,
+   ...     ryan text
+   ... );
+cqlsh> 
+cqlsh> //List the table, but notice that none of the columns exist except for the primary key:
+cqlsh> DESCRIBE TABLE ks.cf;
+
+CREATE TABLE ks.cf (
+    key int PRIMARY KEY
+) WITH bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'min_threshold': '4', 'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND populate_io_cache_on_flush = false
+    AND read_repair_chance = 0.1
+    AND speculative_retry = '99.0PERCENTILE';
+
+cqlsh> 
+cqlsh> //Create a 2nd table
+cqlsh> CREATE TABLE ks.cf2 (
+   ...     key int PRIMARY KEY,
+   ...     val blob,
+   ...     val2 text,
+   ...     ryan text
+   ... );
+cqlsh> 
+cqlsh> //List the first table again, and notice the columns are there now!
+cqlsh> DESCRIBE TABLE ks.cf;
+
+CREATE TABLE ks.cf (
+    key int PRIMARY KEY,
+    ryan text,
+    val blob,
+    val2 text
+) WITH bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'min_threshold': '4', 'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND populate_io_cache_on_flush = false
+    AND read_repair_chance = 0.1
+    AND speculative_retry = '99.0PERCENTILE';
+
+cqlsh> 
+cqlsh> //I can't insert anything into it though:
+cqlsh> INSERT INTO ks.cf (key, val2) VALUES (1, 'test');
+code=2200 [Invalid query] message="Unknown identifier val2"
+cqlsh> 
+I bisected this behavior to a merge commit in 2.1: e34d1af963b85c46afc973221a296498eaba8264 - I'm always dubious when I bisect to a merge commit, but I tried it twice (:/) - This fails in trunk as well, but not in 2.0.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 beta2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Ryan McGuire
+Create date:
+02/Apr/14 23:08
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Apr/14 21:15

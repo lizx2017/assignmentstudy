@@ -1,0 +1,60 @@
+Summary:
+StandardTokenizer performance bug: buffer is unnecessarily copied when maxTokenLength doesn't change
+Description:
+From Piotr Idzikowski on java-user mailing list http://markmail.org/message/af26kr7fermt2tfh:
+I am developing own analyzer based on StandardAnalyzer.
+I realized that tokenizer.setMaxTokenLength is called many times.
+protected TokenStreamComponents createComponents(final String fieldName,
+final Reader reader) {
+    final StandardTokenizer src = new StandardTokenizer(getVersion(),
+reader);
+    src.setMaxTokenLength(maxTokenLength);
+    TokenStream tok = new StandardFilter(getVersion(), src);
+    tok = new LowerCaseFilter(getVersion(), tok);
+    tok = new StopFilter(getVersion(), tok, stopwords);
+    return new TokenStreamComponents(src, tok) {
+      @Override
+      protected void setReader(final Reader reader) throws IOException {
+        src.setMaxTokenLength(StandardAnalyzer.this.maxTokenLength);
+        super.setReader(reader);
+      }
+    };
+  }
+Does it make sense if length stays the same? I see it finally calls this
+one( in StandardTokenizerImpl ):
+public final void setBufferSize(int numChars) {
+     ZZ_BUFFERSIZE = numChars;
+     char[] newZzBuffer = new char[ZZ_BUFFERSIZE];
+     System.arraycopy(zzBuffer, 0, newZzBuffer, 0,
+Math.min(zzBuffer.length, ZZ_BUFFERSIZE));
+     zzBuffer = newZzBuffer;
+   }
+So it just copies old array content into the new one.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.3, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Steve Rowe
+Reporter:
+Steve Rowe
+Create date:
+17/Jul/15 14:27
+Update date:
+09/May/16 18:31
+Resolved date:
+17/Jul/15 16:21

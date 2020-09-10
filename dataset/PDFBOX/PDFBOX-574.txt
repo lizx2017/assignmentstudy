@@ -1,0 +1,73 @@
+Summary:
+PDFBox image extraction fails with an ArrayOutOfBoundsException in PDPixelMap.getRGBImage()
+Description:
+The project that I'm working on has been using PDFBox for both text extraction and image extraction from PDF documents. We wrote a class, PDFImageStripper, which extends PDFStreamEngine:
+public class PDFImageStripper extends PDFStreamEngine
+public List<ExtractedImage> getImages(PDDocument document, String documentFilename, File targetDirectory) throws IOException
+{ resetEngine(); this.document = document; this.documentFilename = documentFilename; this.targetDirectory = targetDirectory; currentImageNumber = 1; images.clear(); writeImages(); return images; }
+private void writeImages() throws IOException {
+List<PDPage> pages = (List<PDPage>) document.getDocumentCatalog().getAllPages();
+for (PDPage page : pages) {
+if (page != null)
+{ processStream(page, page.findResources(), page.getContents().getStream()); }
+}
+}
+The call chain is shown below:
+None.decode(byte[], byte[]) line: 57
+PDPixelMap.getRGBImage() line: 182
+PDPixelMap.write2OutputStream(OutputStream) line: 209
+PDPixelMap(PDXObjectImage).write2file(File) line: 142
+PDFImageStripper.saveImage(PDXObjectImage, String, File) line: 208
+PDFImageStripper.processOperator(PDFOperator, List) line: 155
+PDFImageStripper(PDFStreamEngine).processSubStream(PDPage, PDResources, COSStream) line: 229
+PDFImageStripper(PDFStreamEngine).processStream(PDPage, PDResources, COSStream) line: 188
+PDFImageStripper.writeImages() line: 113
+There is an ArrayOutOfBoundsException in the decode method. The decode method is nothing more than a wrapper for a call to System.arraycopy():
+public void decode(byte[] src, byte[] dest)
+{ System.arraycopy(src,0,dest,0,src.length); }
+The problem is, the source array is larger than the destination array. This is show (from the Eclipse debugger) below:
+src byte[455112] (id=171)
+dest byte[435456] (id=175)
+The code that seems to be causing the problem is shown below. The branch that this bug shows up on is the LZW_DECODE branch. Note that in the other code branch, the code makes sure that there is no size problem.
+if( predictor < 10 ||
+filters == null || !(filters.contains( COSName.LZW_DECODE.getName()) ||
+filters.contains( COSName.FLATE_DECODE.getName()) ) )
+{ PredictorAlgorithm filter = PredictorAlgorithm.getFilter(predictor); filter.setWidth(width); filter.setHeight(height); filter.setBpp((bpc * 3) / 8); filter.decode(array, bufferData); }
+else
+{ System.arraycopy( array, 0,bufferData, 0, (array.length<bufferData.length?array.length: bufferData.length) ); }
+One fix may be to simply change the code as follows (again, recall that the "decode" method is nothing but a wrapper for System.arraycopy()):
+if( predictor < 10 ||
+filters == null || !(filters.contains( COSName.LZW_DECODE.getName()) ||
+filters.contains( COSName.FLATE_DECODE.getName()) ) )
+{ PredictorAlgorithm filter = PredictorAlgorithm.getFilter(predictor); filter.setWidth(width); filter.setHeight(height); filter.setBpp((bpc * 3) / 8); }
+System.arraycopy( array, 0,bufferData, 0,
+(array.length<bufferData.length?array.length: bufferData.length) );
+If Jira allows me to attach a file that causes this problem I will do so.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.8.0-incubator
+Fix_version:
+1.2.0
+Component:
+Utilities
+Label:
+None
+Environment:
+java
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Ian Kaplan
+Create date:
+02/Dec/09 23:22
+Update date:
+01/Jul/10 07:26
+Resolved date:
+28/Mar/10 14:19

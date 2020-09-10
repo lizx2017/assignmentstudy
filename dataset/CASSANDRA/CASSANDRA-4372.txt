@@ -1,0 +1,76 @@
+Summary:
+CQL3 Range Query contains unwanted results with composite columns
+Description:
+Here is a CQL3 range query sample where I get wrong results (tested using cqlsh --cql3) from my perspective:
+CREATE KEYSPACE testing WITH strategy_class = 'SimpleStrategy' AND strategy_options:replication_factor = 1;
+USE testing;
+CREATE TABLE bug_test (a int, b int, c int, d int, e int, f text, PRIMARY KEY (a, b, c, d, e) );
+INSERT INTO bug_test (a, b, c, d, e, f) VALUES (1, 1, 1, 1, 2, '2');
+INSERT INTO bug_test (a, b, c, d, e, f) VALUES (1, 1, 1, 1, 1, '1');
+INSERT INTO bug_test (a, b, c, d, e, f) VALUES (1, 1, 1, 2, 1, '1');
+INSERT INTO bug_test (a, b, c, d, e, f) VALUES (1, 1, 1, 1, 3, '3');
+INSERT INTO bug_test (a, b, c, d, e, f) VALUES (1, 1, 1, 1, 5, '5');
+----------
+Normal select everything query:
+SELECT * FROM bug_test;
+Results:
+a | b | c | d | e | f
+------+--
+1 | 1 | 1 | 1 | 1 | 1
+1 | 1 | 1 | 1 | 2 | 2
+1 | 1 | 1 | 1 | 3 | 3
+1 | 1 | 1 | 1 | 5 | 5
+1 | 1 | 1 | 2 | 1 | 1
+Everything fine so far.
+----------
+Select with greater equal comparison for last column of composite key:
+SELECT a, b, c, d, e, f FROM bug_test WHERE a = 1 AND b = 1 AND c = 1 AND d = 1 AND e >= 2;
+Results:
+a | b | c | d | e | f
+------+--
+1 | 1 | 1 | 1 | 2 | 2
+1 | 1 | 1 | 1 | 3 | 3
+1 | 1 | 1 | 1 | 5 | 5
+1 | 1 | 1 | 2 | 1 | 1
+Bug:
+Why was the last row returned? It shouldn't be there, right?
+----------
+Select with greater comparison for last column of composite key:
+SELECT a, b, c, d, e, f FROM bug_test WHERE a = 1 AND b = 1 AND c = 1 AND d = 1 AND e > 2;
+Results:
+a | b | c | d | e | f
+------+--
+1 | 1 | 1 | 1 | 3 | 3
+1 | 1 | 1 | 1 | 5 | 5
+1 | 1 | 1 | 2 | 1 | 1
+Bug:
+Why was the last row returned? It shouldn't be there, right?
+The same issue is also present with between ranges (e >= 1 AND e <= 2)...
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.2
+Component:
+Legacy/CQL
+Label:
+bug composite compos
+Environment:
+mac os
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Reinhard Buchinger
+Create date:
+25/Jun/12 16:33
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Jun/12 07:53

@@ -1,0 +1,61 @@
+Summary:
+NPE during range slices with rowrepairs
+Description:
+Doing some heavy testing of relatively fast feeding (5000+ mutations/sec) + repair on all node + range slices.
+Then occasionally killing a node here and there and restarting it.
+Triggers the following NPE
+ERROR [pool-2-thread-3] 2011-06-24 20:56:27,289 Cassandra.java (line 3210) Internal error processing get_range_slices
+java.lang.NullPointerException
+at org.apache.cassandra.service.RowRepairResolver.maybeScheduleRepairs(RowRepairResolver.java:109)
+at org.apache.cassandra.service.RangeSliceResponseResolver$2.getReduced(RangeSliceResponseResolver.java:112)
+at org.apache.cassandra.service.RangeSliceResponseResolver$2.getReduced(RangeSliceResponseResolver.java:83)
+at org.apache.cassandra.utils.MergeIterator$ManyToOne.consume(MergeIterator.java:161)
+at org.apache.cassandra.utils.MergeIterator.computeNext(MergeIterator.java:88)
+at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:140)
+at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:135)
+at org.apache.cassandra.service.RangeSliceResponseResolver.resolve(RangeSliceResponseResolver.java:120)
+at org.apache.cassandra.service.RangeSliceResponseResolver.resolve(RangeSliceResponseResolver.java:43)
+Looking at the code in getReduced:
+                ColumnFamily resolved = versions.size() > 1
+                                      ? RowRepairResolver.resolveSuperset(versions)
+                                      : versions.get(0);
+seems like resolved becomes null when this happens and versions.size is larger than 1.
+RowRepairResolver.resolveSuperset() does actually return null if it cannot resolve anything, so there is definately a case here which can occur and is not handled.
+It may also be an interesting question if it is guaranteed that
+versions.add(current.left.cf);
+can never return null?
+Jonathan suggested on IRC that maybe
+                ColumnFamily resolved = versions.size() > 1
+                                      ? RowRepairResolver.resolveSuperset(versions)
+                                      : versions.get(0);
+                if (resolved == null)
+                      return new Row(key, resolved);
+could be a fix.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Terje Marthinussen
+Create date:
+24/Jun/11 15:39
+Update date:
+16/Apr/19 09:32
+Resolved date:
+28/Jun/11 07:55

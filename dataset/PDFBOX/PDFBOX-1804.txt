@@ -1,0 +1,61 @@
+Summary:
+PDFTextStripper Issue related to word positions not correctly being parsed
+Description:
+I found in a PDF I was pulling text from by using a custom PDFTextStripper subclass that overrides writeString(String text, List<TextPosition> textPositions) that i was getting the wrong textPositions that were not lined up with the text. I found that the test position of all “words” in a line always come over as the “last” text positions of the last word in the line. I found the issue in the PDFTextStripper class
+So here is the Code Issue:
+/**
+Used within {@link #normalize(List, boolean, boolean)} to handle a {@link TextPosition}.
+* @return The StringBuilder that must be used when calling this method.
+*/
+private StringBuilder normalizeAdd(LinkedList<WordWithTextPositions> normalized,
+StringBuilder lineBuilder, List<TextPosition> wordPositions, TextPosition text)
+{
+if (text instanceof WordSeparator)
+{ normalized.add(createWord(lineBuilder.toString(), wordPositions)); lineBuilder = new StringBuilder(); wordPositions.clear(); }
+else
+{ lineBuilder.append(text.getCharacter()); wordPositions.add(text); }
+return lineBuilder;
+}
+
+
+When the normalizeAdd method, you create a new word passing the wordPositions. A reference to the wordPositions is stored in the new WordWithTextPositions in the normalized linked list, but in the next line, you clear(). Since the last wordPositions was passed as a reference, the wordPositions is cleared in the WordWithTextPositions you just created.
+
+Soo, i would suggest you do the following:
+/**
+* Used within {@link #normalize(List, boolean, boolean)}
+to handle a
+{@link TextPosition}
+.
+@return The StringBuilder that must be used when calling this method.
+*/
+private StringBuilder normalizeAdd(LinkedList<WordWithTextPositions> normalized,
+StringBuilder lineBuilder, List<TextPosition> wordPositions, TextPosition text)
+Unknown macro: { if (text instanceof WordSeparator) { normalized.add(createWord(lineBuilder.toString(), new ArrayList<TextPosition>(wordPositions))); lineBuilder = new StringBuilder(); wordPositions.clear(); } else { lineBuilder.append(text.getCharacter()); wordPositions.add(text); } return lineBuilder; }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.3
+Fix_version:
+1.8.4, 2.0.0
+Component:
+Text extraction
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Andy Phillips
+Create date:
+09/Dec/13 14:44
+Update date:
+31/Jan/14 06:46
+Resolved date:
+02/Jan/14 09:24

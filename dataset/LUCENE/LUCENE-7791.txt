@@ -1,0 +1,39 @@
+Summary:
+AIOOBE on flush+sort
+Description:
+On released 6.5.0 version, flushing operation on sorted index throws ArrayIndexOutOfBoudException in NumericDocValuesWriter, NormValuesWriter and BinaryDocValuesWriter.
+New SortedXXXIterators are looking up documents in FixedBitSets or PackedValues based on remapped (sorted) document ID, without checking BitSets/Values ranges, which are based on original document IDs. Meanwhile FixedBitSets can be sparse not only in between documents with fields, but also after last (originally) document with given field (because writer's addValue() is not called for last documents without values for fields). So remapped (sorted) values range can have different useful values range and bounds checking should be done for remapped and not original ID.
+We were hit by this bug because our indexes are built from independent sources by partial updating fragments of documents, so there is always some documents without values in some fields.
+As I understand this bug, it shows when:
+maxDoc is greater than 64 (64 is pre-allocated size for writers FixedBitSets)
+some number of last taken documents have empty fields (so FixedBitSet won't be reallocated to maxDoc)
+Also, check for range of values for given field is now happening based on original ID (e.g. "upto < size"), so flushing can now lost some values, even without hitting AIOOBE.
+I will attach patch resolving issues with some writers; for other writers from LUCENE-7579, I am not sure if there are similar bugs in them; patch resolved our indexing issues, please check changes from LUCENE-7579 for confirmation of lack of additional bugs in other flush-sorting writers.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+6.5
+Fix_version:
+6.5.1, 6.6, 7.0
+Component:
+core/index
+Label:
+patch
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Przemysław Szeremiot
+Create date:
+20/Apr/17 10:39
+Update date:
+27/Apr/17 11:57
+Resolved date:
+21/Apr/17 01:17

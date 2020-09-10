@@ -1,0 +1,38 @@
+Summary:
+bloom filter compaction is too aggressive for Hfile which only contains small count of records
+Description:
+For HFile V2, the bloom filter will take a initial size, 128KB.
+When there are not that much records inserted into the bloom filter, the bloom fitler will start to shrink itself to do compaction.
+For example, for 128K, it will compact to 64K >32K>16K->8K->4K->2K->1K->512->256->128->64->32, as long as it think that it can be bounded by the estimate error rate.
+If we puts only a few records in the HFile, the bloom filter will be compacted to too small, then it will break the assumption that shrinking will still be bounded by the estimated error rate. The False positive rate will becomes un-acceptable high.
+For example, if we set the expected error rate is 0.00001, for 10 records, after compaction, The size of the bloom filter will be 64 bytes. The real effective false positive rate will be 50%.
+The use case is like this, if we are using HBase to store big record like images, and binaries, each record will take megabytes. Then for a 128M file, it will only contains dozens of records.
+The suggested fix is to set a lower limit for the bloom filter compaction process. I suggest to use 1000 bytes.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+0.94.5
+Fix_version:
+None
+Component:
+Performance, Scanners
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sean Zhong
+Reporter:
+Sean Zhong
+Create date:
+20/Feb/13 02:24
+Update date:
+04/Apr/13 03:33
+Resolved date:
+

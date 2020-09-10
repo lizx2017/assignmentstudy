@@ -1,0 +1,40 @@
+Summary:
+bulkLoad() method in StorageService throws AssertionError
+Description:
+Firstly, I apologize if this is a duplicate, as I cannot find a bug related to that.
+We tried to stream some data to our Cassandra cluster by using JMX bulkLoad method. However, jmx reports a AssertionError since 1.1.0. I haven't really debugged into Cassandra, but by eyeballing the code it seems the AssertionError is thrown from SSTableReader.open() method with the line:
+assert practitioner != null;
+and tracing the code backwards, it seems the code in SSTableLoader.openSSTables() method has been changed to get the partitioner from the impl of inner class SSTableLoader.Client:
+sstables.add(SSTableReader.open(desc, components, null, client.getPartitioner()));
+This is different than 1.0.x codebase, when the partitioner is retrieved from StorageService:
+sstables.add(SSTableReader.open(desc, components, null, StorageService.getPartitioner()));
+The problem seems to me is when StorageService.bulkLoad instantiaties an impl of SSTableLoader.Client() it never does anything with the partitioner, resulting in the call 'client.getPartitioner()' returning null, thus the AssertionError.
+(Note: this is me eyeballing the code only without debugging into it).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.2
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Danny Wong
+Create date:
+22/Jun/12 21:19
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Jun/12 17:39

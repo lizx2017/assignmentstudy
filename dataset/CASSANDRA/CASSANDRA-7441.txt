@@ -1,0 +1,79 @@
+Summary:
+Deleting an element from a list in UPDATE does not work with IF condition
+Description:
+When issuing a list deletion with an IF condition, that does not seem to work even when it says that the change was applied correctly.
+Here's a reproducible test case:
+cqlsh:casstest> create table foo(id text, values list<int>, condition int, primary key(id));
+cqlsh:casstest> insert into foo(id, values, condition)  values ('a', [1,2,3], 0);
+cqlsh:casstest> select * from foo;
+
+ id | condition | values
+----+-----------+-----------
+  a |         0 | [1, 2, 3]
+
+(1 rows)
+
+cqlsh:casstest> update foo set values = values - [3] where id = 'a' IF condition = 0;
+
+ [applied]
+-----------
+      True
+
+cqlsh:casstest> select * from foo;
+
+ id | condition | values
+----+-----------+-----------
+  a |         0 | [1, 2, 3]
+
+(1 rows)
+
+cqlsh:casstest> update foo set values = values - [3] where id = 'a';
+cqlsh:casstest> select * from foo;
+
+ id | condition | values
+----+-----------+--------
+  a |         0 | [1, 2]
+
+(1 rows)
+Addition seems to work though
+cqlsh:casstest> update foo set values = values + [3] where id = 'a' IF condition = 0;
+
+ [applied]
+-----------
+      True
+
+cqlsh:casstest> select * from foo;
+
+ id | condition | values
+----+-----------+-----------
+  a |         0 | [1, 2, 3]
+
+(1 rows)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Arvind Nithrakashyap
+Create date:
+24/Jun/14 17:53
+Update date:
+16/Apr/19 09:31
+Resolved date:
+22/Aug/14 14:03

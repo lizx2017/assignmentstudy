@@ -1,0 +1,162 @@
+Summary:
+nodetool repair triggers OOM
+Description:
+Customer has a 3 node cluster with 500Mb data on each node
+[cassandra@nbcqa-chc-a02 ~]$ nodetool status
+Note: Ownership information does not include topology; for complete information, specify a keyspace
+Datacenter: CH2
+===============
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address        Load       Tokens  Owns   Host ID                               Rack
+UN  162.150.4.234  255.26 MB  256     33.2%  4ad1b6a8-8759-4920-b54a-f059126900df  RAC1
+UN  162.150.4.235  318.37 MB  256     32.6%  3eb0ec58-4b81-442e-bee5-4c91da447f38  RAC1
+UN  162.150.4.167  243.7 MB   256     34.2%  5b2c1900-bf03-41c1-bb4e-82df1655b8d8  RAC1
+[cassandra@nbcqa-chc-a02 ~]$
+After we run repair command, system runs into OOM after some 45 minutes
+Nothing else is running
+[cassandra@nbcqa-chc-a02 ~]$ date
+Fri Sep 19 15:55:33 UTC 2014
+[cassandra@nbcqa-chc-a02 ~]$ nodetool repair -st -9220354588320251877 -et -9220354588320251873
+Sep 19, 2014 4:06:08 PM ClientCommunicatorAdmin Checker-run
+WARNING: Failed to check the connection: java.net.SocketTimeoutException: Read timed out
+Here is when we run OOM
+ERROR [ReadStage:28914] 2014-09-19 16:34:50,381 CassandraDaemon.java (line 199) Exception in thread Thread[ReadStage:28914,5,main]
+java.lang.OutOfMemoryError: Java heap space
+        at org.apache.cassandra.io.util.RandomAccessReader.<init>(RandomAccessReader.java:69)
+        at org.apache.cassandra.io.compress.CompressedRandomAccessReader.<init>(CompressedRandomAccessReader.java:76)
+        at org.apache.cassandra.io.compress.CompressedRandomAccessReader.open(CompressedRandomAccessReader.java:43)
+        at org.apache.cassandra.io.util.CompressedPoolingSegmentedFile.createReader(CompressedPoolingSegmentedFile.java:48)
+        at org.apache.cassandra.io.util.PoolingSegmentedFile.getSegment(PoolingSegmentedFile.java:39)
+        at org.apache.cassandra.io.sstable.SSTableReader.getFileDataInput(SSTableReader.java:1195)
+        at org.apache.cassandra.db.columniterator.SimpleSliceReader.<init>(SimpleSliceReader.java:57)
+        at org.apache.cassandra.db.columniterator.SSTableSliceIterator.createReader(SSTableSliceIterator.java:65)
+        at org.apache.cassandra.db.columniterator.SSTableSliceIterator.<init>(SSTableSliceIterator.java:42)
+        at org.apache.cassandra.db.filter.SliceQueryFilter.getSSTableColumnIterator(SliceQueryFilter.java:167)
+        at org.apache.cassandra.db.filter.QueryFilter.getSSTableColumnIterator(QueryFilter.java:62)
+        at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:250)
+        at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:53)
+        at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1547)
+        at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1376)
+        at org.apache.cassandra.db.Keyspace.getRow(Keyspace.java:333)
+        at org.apache.cassandra.db.SliceFromReadCommand.getRow(SliceFromReadCommand.java:65)
+        at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:1363)
+        at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1927)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+        at java.lang.Thread.run(Unknown Source)
+Cassandra process pegs 1 of the 8 CPU's 100%
+top - 16:50:07 up 11 days,  2:01,  2 users,  load average: 0.54, 0.60, 0.65
+Tasks: 175 total,   1 running, 174 sleeping,   0 stopped,   0 zombie
+Cpu0  :  0.0%us,  0.0%sy,  0.0%ni,100.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu1  :100.0%us,  0.0%sy,  0.0%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu2  :  0.0%us,  0.0%sy,  0.0%ni,100.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu3  :  0.7%us,  0.3%sy,  0.0%ni, 99.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu4  :  0.3%us,  0.3%sy,  0.0%ni, 99.3%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu5  :  0.3%us,  0.3%sy,  0.0%ni, 99.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.3%st
+Cpu6  :  0.0%us,  0.3%sy,  0.0%ni, 99.7%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu7  :  0.3%us,  0.3%sy,  0.0%ni, 99.3%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Mem:  16332056k total, 16167212k used,   164844k free,   149956k buffers
+Swap:        0k total,        0k used,        0k free,  8360056k cached
+
+  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
+ 2161 cassandr  20   0 11.5g 6.9g 227m S 107.8 44.0 281:59.49 java
+ 9942 root      20   0  106m 2320 1344 S  1.0  0.0   0:00.03 dhclient-script
+28969 opscente  20   0 4479m 188m  12m S  0.7  1.2  56:24.24 java
+ 5123 cassandr  20   0 1788m 107m  28m S  0.3  0.7   0:08.09 java
+    1 root      20   0 19228 1352 1072 S  0.0  0.0   0:00.82 init
+    2 root      20   0     0    0    0 S  0.0  0.0   0:00.02 kthreadd
+    3 root      RT   0     0    0    0 S  0.0  0.0   0:05.52 migration/0
+    4 root      20   0     0    0    0 S  0.0  0.0   0:13.15 ksoftirqd/0
+    5 root      RT   0     0    0    0 S  0.0  0.0   0:00.00 migration/0
+    6 root      RT   0     0    0    0 S  0.0  0.0   0:03.33 watchdog/0
+    7 root      RT   0     0    0    0 S  0.0  0.0   0:04.88 migration/1
+    8 root      RT   0     0    0    0 S  0.0  0.0   0:00.00 migration/1
+    9 root      20   0     0    0    0 S  0.0  0.0   0:19.21 ksoftirqd/1
+   10 root      RT   0     0    0    0 S  0.0  0.0   0:03.24 watchdog/1
+   11 root      RT   0     0    0    0 S  0.0  0.0   0:05.46 migration/2
+   12 root      RT   0     0    0    0 S  0.0  0.0   0:00.00 migration/2
+   13 root      20   0     0    0    0 S  0.0  0.0   0:16.87 ksoftirqd/2
+   14 root      RT   0     0    0    0 S  0.0  0.0   0:03.49 watchdog/2
+   15 root      RT   0     0    0    0 S  0.0  0.0   0:05.31 migration/3
+   16 root      RT   0     0    0    0 S  0.0  0.0   0:00.00 migration/3
+   17 root      20   0     0    0    0 S  0.0  0.0   0:19.33 ksoftirqd/3
+   18 root      RT   0     0    0    0 S  0.0  0.0   0:03.43 watchdog/3
+   19 root      RT   0     0    0    0 S  0.0  0.0   0:05.36 migration/4
+   20 root      RT   0     0    0    0 S  0.0  0.0   0:00.00 migration/4
+   21 root      20   0     0    0    0 S  0.0  0.0   0:17.64 ksoftirqd/4
+   22 root      RT   0     0    0    0 S  0.0  0.0   0:03.18 watchdog/4
+   23 root      RT   0     0    0    0 S  0.0  0.0   0:05.31 migration/5
+There is a 12Gb HeapDump, the memory leak suspects show the following trace
+ Thread Stack
+
+RMI TCP Connection(1621)-162.150.4.235
+  at org.apache.cassandra.service.StorageService.createRepairRangeFrom(Ljava/lang/String;Ljava/lang/String;)Ljava/util/Collection; (StorageService.java:2612)
+  at org.apache.cassandra.service.StorageService.forceRepairRangeAsync(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZLjava/util/Collection;Ljava/util/Collection;[Ljava/lang/String;)I (StorageService.java:2541)
+  at sun.reflect.NativeMethodAccessorImpl.invoke0(Ljava/lang/reflect/Method;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object; (Native Method)
+  at sun.reflect.NativeMethodAccessorImpl.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at sun.reflect.DelegatingMethodAccessorImpl.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at java.lang.reflect.Method.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at sun.reflect.misc.Trampoline.invoke(Ljava/lang/reflect/Method;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at sun.reflect.GeneratedMethodAccessor8.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at sun.reflect.DelegatingMethodAccessorImpl.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at java.lang.reflect.Method.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at sun.reflect.misc.MethodUtil.invoke(Ljava/lang/reflect/Method;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at com.sun.jmx.mbeanserver.StandardMBeanIntrospector.invokeM2(Ljava/lang/reflect/Method;Ljava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at com.sun.jmx.mbeanserver.StandardMBeanIntrospector.invokeM2(Ljava/lang/Object;Ljava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at com.sun.jmx.mbeanserver.MBeanIntrospector.invokeM(Ljava/lang/Object;Ljava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at com.sun.jmx.mbeanserver.PerInterface.invoke(Ljava/lang/Object;Ljava/lang/String;[Ljava/lang/Object;[Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at com.sun.jmx.mbeanserver.MBeanSupport.invoke(Ljava/lang/String;[Ljava/lang/Object;[Ljava/lang/String;)Ljava/lang/Object; (Unknown Source)
+  at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.invoke(Ljavax/management/ObjectName;Ljava/lang/String;[Ljava/lang/Object;[Ljava/lang/String;)Ljava/lang/Object; (Unknown Source)
+  at com.sun.jmx.mbeanserver.JmxMBeanServer.invoke(Ljavax/management/ObjectName;Ljava/lang/String;[Ljava/lang/Object;[Ljava/lang/String;)Ljava/lang/Object; (Unknown Source)
+  at javax.management.remote.rmi.RMIConnectionImpl.doOperation(I[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at javax.management.remote.rmi.RMIConnectionImpl.access$300(Ljavax/management/remote/rmi/RMIConnectionImpl;I[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at javax.management.remote.rmi.RMIConnectionImpl$PrivilegedOperation.run()Ljava/lang/Object; (Unknown Source)
+  at javax.management.remote.rmi.RMIConnectionImpl.doPrivilegedOperation(I[Ljava/lang/Object;Ljavax/security/auth/Subject;)Ljava/lang/Object; (Unknown Source)
+  at javax.management.remote.rmi.RMIConnectionImpl.invoke(Ljavax/management/ObjectName;Ljava/lang/String;Ljava/rmi/MarshalledObject;[Ljava/lang/String;Ljavax/security/auth/Subject;)Ljava/lang/Object; (Unknown Source)
+  at sun.reflect.GeneratedMethodAccessor37.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at sun.reflect.DelegatingMethodAccessorImpl.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at java.lang.reflect.Method.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object; (Unknown Source)
+  at sun.rmi.server.UnicastServerRef.dispatch(Ljava/rmi/Remote;Ljava/rmi/server/RemoteCall;)V (Unknown Source)
+  at sun.rmi.transport.Transport$1.run()Ljava/lang/Void; (Unknown Source)
+  at sun.rmi.transport.Transport$1.run()Ljava/lang/Object; (Unknown Source)
+  at java.security.AccessController.doPrivileged(Ljava/security/PrivilegedExceptionAction;Ljava/security/AccessControlContext;)Ljava/lang/Object; (Native Method)
+  at sun.rmi.transport.Transport.serviceCall(Ljava/rmi/server/RemoteCall;)Z (Unknown Source)
+  at sun.rmi.transport.tcp.TCPTransport.handleMessages(Lsun/rmi/transport/Connection;Z)V (Unknown Source)
+  at sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run0()V (Unknown Source)
+  at sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run()V (Unknown Source)
+  at java.util.concurrent.ThreadPoolExecutor.runWorker(Ljava/util/concurrent/ThreadPoolExecutor$Worker;)V (Unknown Source)
+  at java.util.concurrent.ThreadPoolExecutor$Worker.run()V (Unknown Source)
+  at java.lang.Thread.run()V (Unknown Source)
+The file is way too large to be attached here.
+It's currently held at my SCP server
+Let us know if there is any other info you may need
+I will be posting the other 2 system logs as soon as I get them
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.11, 2.1.1
+Component:
+Tool/nodetool
+Label:
+None
+Environment:
+dse
+Attachment number:
+0
+Assignee:
+Jimmy Mårdell
+Reporter:
+Jose Martinez Poblete
+Create date:
+20/Sep/14 16:38
+Update date:
+16/Apr/19 09:31
+Resolved date:
+30/Sep/14 16:00

@@ -1,0 +1,61 @@
+Summary:
+ByteSliceReader assert trips with 32-bit oracle 1.7.0_25 + G1GC
+Description:
+This assertion trips (sometimes from different tests), if you run the highlighting tests on branch_4x with r1512807.
+It reproduces about half the time, always only with 32bit + G1GC (other combinations do not seem to trip it, i didnt try looping or anything really though).
+rmuir@beast:~/workspace/branch_4x$ svn up -r 1512807
+rmuir@beast:~/workspace/branch_4x$ ant clean
+rmuir@beast:~/workspace/branch_4x$ rm -rf .caches #this is important,
+otherwise master seed does not work!
+rmuir@beast:~/workspace/branch_4x/lucene/highlighter$ ant test
+-Dtests.jvms=2 -Dtests.seed=EBBFA6F4E80A7365 -Dargs="-server
+-XX:+UseG1GC"
+Originally showed up like this:
+Build: http://jenkins.thetaphi.de/job/Lucene-Solr-4.x-Linux/6874/
+Java: 32bit/jdk1.7.0_25 -server -XX:+UseG1GC
+
+1 tests failed.
+REGRESSION:  org.apache.lucene.search.postingshighlight.TestPostingsHighlighter.testUserFailedToIndexOffsets
+
+Error Message:
+
+
+Stack Trace:
+java.lang.AssertionError
+        at __randomizedtesting.SeedInfo.seed([EBBFA6F4E80A7365:1FBF811885F2D611]:0)
+        at org.apache.lucene.index.ByteSliceReader.readByte(ByteSliceReader.java:73)
+        at org.apache.lucene.store.DataInput.readVInt(DataInput.java:108)
+        at org.apache.lucene.index.FreqProxTermsWriterPerField.flush(FreqProxTermsWriterPerField.java:453)
+        at org.apache.lucene.index.FreqProxTermsWriter.flush(FreqProxTermsWriter.java:85)
+        at org.apache.lucene.index.TermsHash.flush(TermsHash.java:116)
+        at org.apache.lucene.index.DocInverter.flush(DocInverter.java:53)
+        at org.apache.lucene.index.DocFieldProcessor.flush(DocFieldProcessor.java:81)
+        at org.apache.lucene.index.DocumentsWriterPerThread.flush(DocumentsWriterPerThread.java:501)
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+12/Aug/13 20:23
+Update date:
+14/Oct/16 12:56
+Resolved date:
+12/Oct/16 18:01

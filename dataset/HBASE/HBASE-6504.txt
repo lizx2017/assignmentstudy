@@ -1,0 +1,48 @@
+Summary:
+Adding GC details prevents HBase from starting in non-distributed mode
+Description:
+The conf/hbase-env.sh that ships with HBase contains a few commented out examples of variables that could be useful, such as adding -XX:+PrintGCDetails -XX:+PrintGCDateStamps to HBASE_OPTS. This has the annoying side effect that the JVM prints a summary of memory usage when it exits, and it does so on stdout:
+$ ./bin/hbase org.apache.hadoop.hbase.util.HBaseConfTool hbase.cluster.distributed
+false
+Heap
+ par new generation   total 19136K, used 4908K [0x000000073a200000, 0x000000073b6c0000, 0x0000000751860000)
+  eden space 17024K,  28% used [0x000000073a200000, 0x000000073a6cb0a8, 0x000000073b2a0000)
+  from space 2112K,   0% used [0x000000073b2a0000, 0x000000073b2a0000, 0x000000073b4b0000)
+  to   space 2112K,   0% used [0x000000073b4b0000, 0x000000073b4b0000, 0x000000073b6c0000)
+ concurrent mark-sweep generation total 63872K, used 0K [0x0000000751860000, 0x00000007556c0000, 0x00000007f5a00000)
+ concurrent-mark-sweep perm gen total 21248K, used 6994K [0x00000007f5a00000, 0x00000007f6ec0000, 0x0000000800000000)
+$ ./bin/hbase org.apache.hadoop.hbase.util.HBaseConfTool hbase.cluster.distributed >/dev/null
+(nothing printed)
+And this confuses bin/start-hbase.sh when it does
+distMode=`$bin/hbase --config "$HBASE_CONF_DIR" org.apache.hadoop.hbase.util.HBaseConfTool hbase.cluster.distributed`, because then the distMode variable is not just set to false, it also contains all this JVM spam.
+If you don't pay enough attention and realize that 3 processes are getting started (ZK, HM, RS) instead of just one (HM), then you end up with this confusing error message:
+Could not start ZK at requested port of 2181. ZK was started at port: 2182. Aborting as clients (e.g. shell) will not be able to find this ZK quorum., which is even more puzzling because when you run netstat to see who owns that port, then you won't find any rogue process other than the one you just started.
+I'm wondering if the fix is not to just change the if [ "$distMode" == 'false' ] to a switch $distMode case (false*) type of test, to work around this annoying JVM misfeature that pollutes stdout.
+Status:
+CLOSED
+Priority:
+Trivial
+Resolution:
+Fixed
+Affects_version:
+0.94.0
+Fix_version:
+0.94.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael Drzal
+Reporter:
+Benoit Sigoure
+Create date:
+02/Aug/12 22:21
+Update date:
+05/Aug/14 20:11
+Resolved date:
+15/Sep/12 07:34

@@ -1,0 +1,48 @@
+Summary:
+ServerName in master may not initialize with the configured ipc address of hbase.master.ipc.address
+Description:
+We are starting rpc server with default interface hostname or configured ipc address
+    this.rpcServer = HBaseRPC.getServer(this,
+      new Class<?>[]{HMasterInterface.class, HMasterRegionInterface.class},
+        initialIsa.getHostName(), // This is bindAddress if set else it's hostname
+        initialIsa.getPort(),
+        numHandlers,
+        0, // we dont use high priority handlers in master
+        conf.getBoolean("hbase.rpc.verbose", false), conf,
+        0); // this is a DNC w/o high priority handlers
+But we are initialzing servername with default hostname always master znode also have this hostname.
+    String hostname = Strings.domainNamePointerToHostName(DNS.getDefaultHost(
+      conf.get("hbase.master.dns.interface", "default"),
+      conf.get("hbase.master.dns.nameserver", "default")));
+ ...
+    this.serverName = new ServerName(hostname,
+      this.isa.getPort(), System.currentTimeMillis());
+If both default interface hostname and configured ipc address are not same clients will get MasterNotRunningException.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.2, 0.94.9
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+rajeshbabu
+Create date:
+29/May/13 11:43
+Update date:
+29/Aug/13 13:07
+Resolved date:
+03/Jun/13 03:52

@@ -1,0 +1,73 @@
+Summary:
+Wrong cluster information and replication
+Description:
+Two machine cluster - Cassandra 2.1.2, GossipingPropertyFileSnitch, one data center with one rack.
+Seed - 10.0.0.2
+Node - 10.0.0.3
+-start seed
+-start node
+Run "nodetool status" on any machine:
+Datacenter: DC1
+===============
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address   Load       Tokens  Owns    Host ID                               Rack
+UN  10.0.0.3  107.15 KB  256     ?       ad29cd96-d21e-4d02-94e7-0fd68ef5fbad  RAC1
+UN  10.0.0.2  87.73 KB   256     ?       c26fdffc-6df5-4d1a-8eda-6d585d2178c1  RAC1
+-stop both instances
+-run seed
+-run "nodetool status" on seed
+Datacenter: DC1
+===============
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address   Load       Tokens  Owns    Host ID                               Rack
+UN  10.0.0.2  113.31 KB  256     ?       c26fdffc-6df5-4d1a-8eda-6d585d2178c1  RAC1
+So no information about node 10.0.0.3 at all.
+Actually main problem is not wrong info, but replication/synchronization problem:
+On seed (after restart, when 2nd node is down) create keyspace with replication factor 2 (strategy doesn't matter), create table, insert something into table:
+CREATE KEYSPACE Excelsior WITH REPLICATION={'class':'SimpleStrategy','replication_factor':2};
+CREATE TABLE Excelsior.users (name text PRIMARY KEY, id int);
+INSERT INTO excelsior.users (name, id ) VALUES ( 'node',123);
+SELECT * FROM excelsior.users;
+
+ name | id
+------+-----
+ node | 123
+(1 rows)
+Start node, now "nodetool status" shows both nodes UN on both machines again.
+Now created keyspace and table are seen on node (create was propagated from seed), but is empty from node point of view:
+SELECT * FROM excelsior.users;
+ name | id
+------+----
+(0 rows)
+I guess synchronization problem probably not different bug, but stems from wrong cluster information.
+Version 2.0.11 works fine.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Invalid
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Vovodroid
+Create date:
+27/Dec/14 09:41
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Jan/15 10:00

@@ -1,0 +1,43 @@
+Summary:
+ServerCallable retries just once if timeout is not integer.max
+Description:
+If callTimeout is not integer.max and throwable is not SocketTimeoutException, we set the callTimeout to a negative value since endTime is not set yet. Therefore, the next call will always throw SocketTimeoutException.
+    if (this.callTimeout != HConstants.DEFAULT_HBASE_CLIENT_OPERATION_TIMEOUT)
+      if (throwable instanceof SocketTimeoutException
+          || (this.endTime - this.startTime > this.callTimeout)) {
+        throw (SocketTimeoutException) (SocketTimeoutException) new SocketTimeoutException(
+            "Call to access row '" + Bytes.toString(row) + "' on table '"
+                + Bytes.toString(tableName)
+                + "' failed on socket timeout exception: " + throwable)
+            .initCause(throwable);
+      } else {
+   ===>     this.callTimeout = ((int) (this.endTime - this.startTime));
+      }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.10
+Fix_version:
+0.94.12
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Jimmy Xiang
+Create date:
+08/Aug/13 23:58
+Update date:
+24/Sep/13 20:32
+Resolved date:
+20/Aug/13 16:57

@@ -1,0 +1,82 @@
+Summary:
+infinite loop of searching for a key in PDResources
+Description:
+error in code of class - org.apache.pdfbox.pdmodel.PDResources
+    private COSName createKey(COSName kind, String prefix)
+    {
+        COSDictionary dict = (COSDictionary)resources.getDictionaryObject(kind);
+        if (dict == null)
+        {
+            return COSName.getPDFName(prefix + 1);
+        }
+
+        // find a unique key
+        String key;
+        do
+        {
+            key = prefix + (dict.keySet().size() + 1);
+        }
+        while (dict.containsKey(key));    <--------------- infinite loop of searching for a key
+        return COSName.getPDFName(key);
+    }
+my test code:
+public class pdfmain_svg {
+
+ public static void main(String[] args) throws Exception {
+  System.out.println("hello");
+  PDDocument document = PDDocument.load(new File(
+    "d:\\Project\\pdfbox-image\\Acro6JSGuide.pdf"));
+
+  float fontSize = 10f;
+
+  PDFont font = PDType0Font.load(document, new File(
+    "c:\\Windows\\Fonts\\Arial.TTF"));
+
+  for (int pageIndex = 0; pageIndex < document.getNumberOfPages(); pageIndex++) {
+   System.out.println("page index = " + pageIndex);
+   PDPage page = document.getPage(pageIndex);  
+   PDPageContentStream contentStream = new PDPageContentStream(
+     document, page, true, true);
+   contentStream.setFont(font, fontSize); <---------------- hang on page 6
+   contentStream.setNonStrokingColor(Color.LIGHT_GRAY);
+   contentStream.beginText();
+   contentStream.newLineAtOffset(100, 100);
+   contentStream.showText("Test printing");
+   contentStream.endText();
+   contentStream.close();
+  }
+  File f = new File("d:\\work\\kostya.pdf");
+  document.save(f);
+  document.close();
+  System.out.println("f=" + f.getAbsolutePath() + ": " + f.exists());
+ }
+
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+PDModel
+Label:
+regression
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Konstantin Kakunin
+Create date:
+02/Jun/15 06:07
+Update date:
+17/Mar/16 19:07
+Resolved date:
+02/Jun/15 09:47

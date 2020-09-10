@@ -1,0 +1,119 @@
+Summary:
+Creating a table with 3000 regions on 2 nodes fails after 1 hour
+Description:
+I'm trying to create a table with 3000 regions on two regions servers, from the shell.
+It's ok on trunk a standalone config.
+It's ok on 0.94
+It's not ok on trunk: it fails after around 1 hour.
+If I remove all the code related to metrics in HRegion, the 3000 regions are created in 3 minutes (twice faster than the 0.94).
+On trunk, the region server spends its time in "waitForWork", while the master is in the tcp connection related code. It's a 1Gb network.
+I haven't looked at the metric code itself.
+Patch used to remove the metrics from HRegion:
+index c70e9ab..6677e65 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HRegion.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HRegion.java
+@@ -364,7 +364,7 @@ public class HRegion implements HeapSize { // , Writable{
+   private HTableDescriptor htableDescriptor = null;
+   private RegionSplitPolicy splitPolicy;
+ 
+-  private final MetricsRegion metricsRegion;
++  private final MetricsRegion metricsRegion = null;
+ 
+   /**
+    * Should only be used for testing purposes
+@@ -388,7 +388,7 @@ public class HRegion implements HeapSize { // , Writable{
+     this.coprocessorHost = null;
+     this.scannerReadPoints = new ConcurrentHashMap<RegionScanner, Long>();
+ 
+-    this.metricsRegion = new MetricsRegion(new MetricsRegionWrapperImpl(this));
++    //this.metricsRegion = new MetricsRegion(new MetricsRegionWrapperImpl(this));
+   }
+ 
+   /**
+@@ -451,7 +451,7 @@ public class HRegion implements HeapSize { // , Writable{
+     this.regiondir = getRegionDir(this.tableDir, encodedNameStr);
+     this.scannerReadPoints = new ConcurrentHashMap<RegionScanner, Long>();
+ 
+-    this.metricsRegion = new MetricsRegion(new MetricsRegionWrapperImpl(this));
++    //this.metricsRegion = new MetricsRegion(new MetricsRegionWrapperImpl(this));
+ 
+     /*
+      * timestamp.slop provides a server-side constraint on the timestamp. This
+@@ -1024,7 +1024,7 @@ public class HRegion implements HeapSize { // , Writable{
+         status.setStatus("Running coprocessor post-close hooks");
+         this.coprocessorHost.postClose(abort);
+       }
+-      this.metricsRegion.close();
++      //this.metricsRegion.close();
+       status.markComplete("Closed");
+       LOG.info("Closed " + this);
+       return result;
+@@ -2331,11 +2331,11 @@ public class HRegion implements HeapSize { // , Writable{
+       if (noOfPuts > 0) {
+         // There were some Puts in the batch.
+         double noOfMutations = noOfPuts + noOfDeletes;
+-        this.metricsRegion.updatePut();
++        //this.metricsRegion.updatePut();
+       }
+       if (noOfDeletes > 0) {
+         // There were some Deletes in the batch.
+-        this.metricsRegion.updateDelete();
++        //this.metricsRegion.updateDelete();
+       }
+       if (!success) {
+         for (int i = firstIndex; i < lastIndexExclusive; i++) {
+@@ -4270,7 +4270,7 @@ public class HRegion implements HeapSize { // , Writable{
+ 
+     // do after lock
+ 
+-    this.metricsRegion.updateGet();
++    //this.metricsRegion.updateGet();
+ 
+     return results;
+   }
+@@ -4657,7 +4657,7 @@ public class HRegion implements HeapSize { // , Writable{
+       closeRegionOperation();
+     }
+ 
+-    this.metricsRegion.updateAppend();
++    //this.metricsRegion.updateAppend();
+ 
+ 
+     if (flush) {
+@@ -4795,7 +4795,7 @@ public class HRegion implements HeapSize { // , Writable{
+         mvcc.completeMemstoreInsert(w);
+       }
+       closeRegionOperation();
+-      this.metricsRegion.updateIncrement();
++      //this.metricsRegion.updateIncrement();
+     }
+ 
+     if (flush) {
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+None
+Component:
+metrics, Performance, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Elliott Clark
+Reporter:
+Nicolas Liochon
+Create date:
+26/Nov/12 18:55
+Update date:
+30/Nov/12 02:46
+Resolved date:
+29/Nov/12 01:13

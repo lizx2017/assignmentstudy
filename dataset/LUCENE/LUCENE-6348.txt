@@ -1,0 +1,117 @@
+Summary:
+Incorrect results from UAX_URL_EMAIL tokenizer
+Description:
+I'm using an analyzer based on the UAX_URL_EMAIL, with a maximum token length of 64 characters. I expect the analyzer to discard any text in the URL beyond those 64 characters, but the actual results yield ordinary terms from the tail-end of the URL.
+For example,
+curl -XGET http://localhost:9200/my_index/_analyze?analyzer=uax_url_email_analyzer -d "hey, check out http://edge.org/conversation/yuval_noah_harari-daniel_kahneman-death-is-optional for some light reading."
+The results look like this:
+{
+    "tokens": [
+        {
+            "token": "hey",
+            "start_offset": 0,
+            "end_offset": 3,
+            "type": "<ALPHANUM>",
+            "position": 1
+        },
+        {
+            "token": "check",
+            "start_offset": 5,
+            "end_offset": 10,
+            "type": "<ALPHANUM>",
+            "position": 2
+        },
+        {
+            "token": "out",
+            "start_offset": 11,
+            "end_offset": 14,
+            "type": "<ALPHANUM>",
+            "position": 3
+        },
+        {
+            "token": "http://edge.org/conversation/yuval_noah_harari-daniel_kahneman-d",
+            "start_offset": 15,
+            "end_offset": 79,
+            "type": "<URL>",
+            "position": 4
+        },
+        {
+            "token": "eath",
+            "start_offset": 79,
+            "end_offset": 83,
+            "type": "<ALPHANUM>",
+            "position": 5
+        },
+        {
+            "token": "is",
+            "start_offset": 84,
+            "end_offset": 86,
+            "type": "<ALPHANUM>",
+            "position": 6
+        },
+        {
+            "token": "optional",
+            "start_offset": 87,
+            "end_offset": 95,
+            "type": "<ALPHANUM>",
+            "position": 7
+        },
+        {
+            "token": "for",
+            "start_offset": 96,
+            "end_offset": 99,
+            "type": "<ALPHANUM>",
+            "position": 8
+        },
+        {
+            "token": "some",
+            "start_offset": 100,
+            "end_offset": 104,
+            "type": "<ALPHANUM>",
+            "position": 9
+        },
+        {
+            "token": "light",
+            "start_offset": 105,
+            "end_offset": 110,
+            "type": "<ALPHANUM>",
+            "position": 10
+        },
+        {
+            "token": "reading",
+            "start_offset": 111,
+            "end_offset": 118,
+            "type": "<ALPHANUM>",
+            "position": 11
+        }
+    ]
+}
+The term from the extracted URL is correct, and correctly truncated at 64 characters. But as you can see, the analysis pipeline also creates three spurious terms [ "eath", "is" "optional" ] which come from the discarded portion of the URL.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+None
+Fix_version:
+None
+Component:
+modules/analysis
+Label:
+None
+Environment:
+ubuntu, elasticsearch
+Attachment number:
+0
+Assignee:
+Steve Rowe
+Reporter:
+Benji Smith
+Create date:
+06/Mar/15 21:56
+Update date:
+06/Mar/15 23:01
+Resolved date:
+06/Mar/15 22:59

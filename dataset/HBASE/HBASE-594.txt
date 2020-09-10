@@ -1,0 +1,73 @@
+Summary:
+tables are being reassigned instead of deleted
+Description:
+We are running HBase TRUNK (updated yesterday) and Hadoop TRUNK (updated a few days ago) on a 15 node cluster. One node doubles as master and region server. The remainder are region servers.
+I have been trying to use the HBase shell to drop tables for quite a few minutes now.
+The master schedules the table for deletion and the region server processes the deletion:
+08/04/18 16:57:29 INFO master.HMaster: deleted table: content.20b16c29
+08/04/18 16:57:34 INFO master.ServerManager: 10.30.94.35:60020 no longer serving regionname: content.20b16c29,,1208549961323, startKey: <>, endKey: <>, encodedName: 385178593, tableDesc: {name: content.20b16c29, families: {content:=
+{name: content, max versions: 1, compression: RECORD, in memory: false, block cache enabled: true, max length: 2147483647, bloom filter: none}
+, info:=
+{name: info, max versions: 1, compression: NONE, in memory: false, block cache enabled: true, maxlength: 2147483647, bloom filter: none}
+}}
+08/04/18 16:57:34 INFO master.ProcessRegionClose$1: region closed: content.20b16c29,,1208549961323
+but then a META scan happens and the table is reassigned to another server to live on as a zombie:
+08/04/18 16:57:48 INFO master.BaseScanner: RegionManager.metaScanner scanning meta region
+{regionname: .META.,,1, startKey: <>, server: 10.30.94.37:60020}
+08/04/18 16:57:48 INFO master.BaseScanner: RegionManager.metaScanner scan of meta region
+{regionname: .META.,,1, startKey: <>, server: 10.30.94.37:60020}
+complete
+08/04/18 16:57:48 INFO master.BaseScanner: all meta regions scanned
+08/04/18 16:57:49 INFO master.RegionManager: assigning region content.20b16c29,,1208549961323 to server 10.30.94.39:60020
+08/04/18 16:57:52 INFO master.BaseScanner: RegionManager.rootScanner scanning meta region
+{regionname: -ROOT-,,0, startKey: <>, server: 10.30.94.31:60020}
+08/04/18 16:57:52 INFO master.BaseScanner: RegionManager.rootScanner scan of meta region
+{regionname: -ROOT-,,0, startKey: <>, server: 10.30.94.31:60020}
+complete
+08/04/18 16:57:52 INFO master.ServerManager: 10.30.94.39:60020 serving content.20b16c29,,1208549961323
+08/04/18 16:57:52 INFO master.ProcessRegionOpen$1: regionname: content.20b16c29,,1208549961323, startKey: <>, endKey: <>, encodedName: 385178593, tableDesc: {name: content.20b16c29, families: {content:=
+{name: content, max versions: 1, compression: RECORD, in memory: false, block cache enabled: true, max length: 2147483647, bloom filter: none}
+, info:=
+{name: info, max versions: 1, compression: NONE, in memory: false, block cache enabled: true, max length: 2147483647, bloom filter: none}
+}} open on 10.30.94.39:60020
+08/04/18 16:57:52 INFO master.ProcessRegionOpen$1: updating row content.20b16c29,,1208549961323 in table .META.,,1 with startcode 1208552149355 and server 10.30.94.39:60020
+Approximately 50 META region scans then happen, then the following occurs and reoccurs over many many subsequent META scans:
+08/04/18 17:26:48 INFO master.BaseScanner: RegionManager.metaScanner scanning meta region
+{regionname: .META.,,1, startKey: <>, server: 10.30.94.37:60020}
+08/04/18 17:26:48 WARN master.HMaster: info:regioninfo is empty for row: content.20b16c29,,1208549961323; has keys: [info:server, info:serverstartcode]
+08/04/18 17:26:48 WARN master.BaseScanner: Found 1 rows with empty HRegionInfo while scanning meta region .META.,,1
+08/04/18 17:26:48 WARN master.HMaster: Removed region: content.20b16c29,,1208549
+961323 from meta region: .META.,,1 because HRegionInfo was empty
+08/04/18 17:26:48 INFO master.BaseScanner: RegionManager.metaScanner scan of meta region
+{regionname: .META.,,1, startKey: <>, server: 10.30.94.37:60020}
+complete
+08/04/18 17:26:48 INFO master.BaseScanner: all meta regions scanned
+yet finally the table disappears for a reason that does not appear in the logs... at least for this particular example. There is another table that is simply refusing to die...
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.2.0
+Fix_version:
+None
+Component:
+master, (1)
+Label:
+None
+Environment:
+centos, java 1.6
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Andrew Purtell
+Create date:
+18/Apr/08 23:06
+Update date:
+22/Aug/08 21:35
+Resolved date:
+22/Apr/08 07:00

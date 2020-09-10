@@ -1,0 +1,52 @@
+Summary:
+If getTaskList() returns null, splitlogWorker would go down and it won't serve any requests
+Description:
+During the hlog split operation if all the zookeepers are down ,then the paths will be returned as null and the splitworker thread wil be exited
+Now this regionserver wil not be able to acquire any other tasks since the splitworker thread is exited
+Please find the attached code for more details
+private List<String> getTaskList() {
+    for (int i = 0; i < zkretries; i++) {
+      try {
+        return (ZKUtil.listChildrenAndWatchForNewChildren(this.watcher,
+            this.watcher.splitLogZNode));
+      } catch (KeeperException e) {
+        LOG.warn("Could not get children of znode " +
+            this.watcher.splitLogZNode, e);
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e1) {
+          LOG.warn("Interrupted while trying to get task list ...", e1);
+          Thread.currentThread().interrupt();
+          return null;
+        }
+      }
+    }
+in the org.apache.hadoop.hbase.regionserver.SplitLogWorker
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.1
+Fix_version:
+0.94.0, 0.95.0
+Component:
+wal
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Chinna Rao Lalam
+Reporter:
+Kristam Subba Swathi
+Create date:
+26/Mar/12 09:56
+Update date:
+26/Feb/13 17:02
+Resolved date:
+23/Apr/12 16:50

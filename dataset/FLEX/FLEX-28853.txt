@@ -1,0 +1,42 @@
+Summary:
+Runtime/architectural issues need to be addressed with StageText events
+Description:
+Soft-keyboard and focus-related events dispatched by StageText tend to be inconsistent in their order or entirely missing. This is especially problematic on the Android platforms. The root of the problem is that the Runtime doesn't get any reliable events from the OS that they can translate to Flash events. So, they end up having to guess at what gestures or user actions may cause something to happen with the keyboard and dispatch events then. Because of this guessing, sometimes events are missing entirely (e.g. SDK-31845) or they are dispatched in an order that causes problems for downstream developers (e.g. SDK-31324).
+Steps to reproduce:
+There are no fixed steps to reproduce the problems here. This is an entire class of bugs associated with StageText events. Having the runtime team fix individual bugs in this area often introduces or reintroduces other event-related bugs. See SDK-31845, SDK-31324, and related bugs.
+Actual Results:
+When a soft keyboard event is missing, applications or components that are coded to resize or move in response to the showing or hiding of the soft keyboard fail to do so. The result for an end-user is a portion of the view or component being hidden by the soft keyboard or an application that fails to fill the screen after the keyboard is dismissed. These events most likely go missing on the Android platform because there is no reliable OS-dispatched event for the soft keyboard so the Runtime is left guessing when the soft keyboard may change state.
+When soft keyboard, focus, and mouse events are dispatched out of order, the result is often that the target of an event is incorrectly calculated. Because applications or components may resize or move in response to a soft keyboard event, those events must happen after the targets of the events tied to user interaction are determined. In the simplest sense, this means that soft keyboard events must come last. If the soft keyboard events instead come first, the object that the user thinks they have interacted with may have moved or resized because of the soft keyboard. The result is that the object that ends up handling the interaction will not be what the user thinks is the one they interacted with.
+Expected Results:
+Events dispatched by StageText need to be consistent and reliable. This may require getting new events from the operating systems' developers, a restructuring of what events we can expect to get from StageText and how we respond to them, or both.
+Workaround (if any):
+If soft keyboard events are missing, manually toggle the soft keyboard's visibility.
+To prevent targetting issues caused by out-of-order soft keyboard events, avoid placing components in such a way that they would move when the soft keyboard shows or hides: Do not put interactive components below other components that have percent heights. Do not give interactive components of fixed height a bottom constraint. Do not rely on a blank margin at the bottom of a view to dismiss the soft keyboard.
+Status:
+OPEN
+Priority:
+Critical
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Mobile: Text
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+20/Oct/11 15:36
+Update date:
+15/Nov/11 16:12
+Resolved date:
+

@@ -1,0 +1,42 @@
+Summary:
+Failing TestMasterFailover.testMasterFailoverWithMockedRITOnDeadRS up on jenkins
+Description:
+Root region is stuck in RIT.
+Seems to be because of this:
+3316 2011-04-29 05:53:11,941 WARN [Thread-642-EventThread] master.AssignmentManager(518): Received OPENED for region 70236052/ROOT from server vesta.apache.org,57336,1304056370834 but region was in the state null and not in expected PENDING_OPEN or OPENING states
+Later I see this:
+3334 2011-04-29 05:53:12,014 DEBUG [Master:0;vesta.apache.org,36450,1304056384388] master.AssignmentManager(260): Found REGION => {NAME => 'ROOT,,0', STARTKEY => '', ENDKEY => '', ENCODED => 70236052, TABLE => {{NAME => 'ROOT', IS_ROOT => 'true', IS_META => 'true', FAMILIES => [
+{NAME => 'info', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', COMPRESSION => 'NONE', VERSIONS => '10', TTL => '2147483647', BLOCKSIZE => '8192', IN_MEMORY => 'true', BLOCKCACHE => 'true'}
+]}}=vesta.apache.org,57336,1304056370834 in RITs
+The former makes it so we don't clear a successfully opened ROOT from RIT so we get the second line and then the test fails with:
+5192 2011-04-29 05:55:42,181 DEBUG [Thread-642] zookeeper.ZKAssign(815): ZK RIT -> 70236052
+printed over and over again.
+I don't get why the data is null in the zk when RS has updated it a couple of times. I see we do a double regionOnline in master code. This clears in-memory master state. I don't think this it but will commit this and more logging to help w/ the debug.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+29/Apr/11 23:22
+Update date:
+04/May/11 23:03
+Resolved date:
+04/May/11 23:03

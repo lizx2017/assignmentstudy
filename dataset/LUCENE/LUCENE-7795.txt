@@ -1,0 +1,61 @@
+Summary:
+WordDelimiterFilter produces invalid offsets in single word case
+Description:
+This problem is not present in WordDelimiterGraphFilter, but it is present in WordDelimiterFilter's interaction with HTMLStripCharFilter.
+Test code:
+public class TestTokenizationIssue2 {
+    public static void main(String... args) throws IOException {
+        HTMLStripCharFilter charFilter = new HTMLStripCharFilter(getText());
+        WhitespaceTokenizer whitespaceTokenizer = new WhitespaceTokenizer();
+        whitespaceTokenizer.setReader(charFilter);
+       // WordDelimiterGraphFilter wdgf = new WordDelimiterGraphFilter(whitespaceTokenizer,
+        //       WordDelimiterGraphFilter.GENERATE_WORD_PARTS, CharArraySet.EMPTY_SET);
+
+        WordDelimiterFilter wdgf = new WordDelimiterFilter(whitespaceTokenizer,
+               WordDelimiterFilter.GENERATE_WORD_PARTS, CharArraySet.EMPTY_SET);
+        wdgf.reset();
+
+        while (wdgf.incrementToken()) {
+            CharTermAttribute charTermAttribute = wdgf.getAttribute(CharTermAttribute.class);
+            OffsetAttribute offsetAttribute = wdgf.getAttribute(OffsetAttribute.class);
+
+            System.out.println(charTermAttribute.toString() + " - " + offsetAttribute.startOffset() + ',' + offsetAttribute.endOffset());
+        }
+    }
+
+    private static Reader getText() {
+        return new StringReader("&#x93;Risk");
+    }
+}
+The offsets produced by the WordDelimiterFilter are 1,10. With WordDelimiterGraphFilter the offsets produced are 0,10. It should be 0,10 as this is the original text:
+&#x93;Risk
+- and 1 is between the ampersand and hash.
+Inside WordDelimiterFilter, I believe the conditional branch from "if (isSingleWord && startOffset <= savedEndOffset) " is invalid and it should always use the saved start and end offsets because it can't make the assertion that the iterator's current and end are reliable markers.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+6.5, 7.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Michael Braun
+Create date:
+20/Apr/17 21:15
+Update date:
+20/Apr/17 21:37
+Resolved date:
+

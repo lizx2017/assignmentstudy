@@ -1,0 +1,47 @@
+Summary:
+IOException and partial rendering and colorspace creation error
+Description:
+I get this exception with the attached PDF, and the upper arc of the image is not rendered:
+java.io.IOException: Unknown colorspace type:COSDictionary{(COSName{BlackPoint}:COSArray{[COSFloat{0.0}, COSFloat{0.0}, COSFloat{0.0}]}) (COSName{Range}:COSArray{[COSFloat{-128.0}, COSFloat{127.0}, COSFloat{-128.0}, COSFloat{127.0}]}) (COSName{WhitePoint}:COSArray{[COSFloat{0.964203}, COSFloat{1.0}, COSFloat{0.824905}]}) }
+ at org.apache.pdfbox.pdmodel.graphics.color.PDColorSpaceFactory.createColorSpace(PDColorSpaceFactory.java:159)
+ at org.apache.pdfbox.pdmodel.graphics.color.PDColorSpaceFactory.createColorSpace(PDColorSpaceFactory.java:78)
+ at org.apache.pdfbox.pdmodel.graphics.color.PDColorSpaceFactory.createColorSpace(PDColorSpaceFactory.java:62)
+ at org.apache.pdfbox.pdmodel.graphics.color.PDICCBased.getAlternateColorSpaces(PDICCBased.java:291)
+ at org.apache.pdfbox.pdmodel.graphics.color.PDICCBased.createColorSpace(PDICCBased.java:154)
+ at org.apache.pdfbox.pdmodel.graphics.color.PDColorSpace.getJavaColorSpace(PDColorSpace.java:85)
+ at org.apache.pdfbox.pdmodel.graphics.color.PDDeviceN.createColorSpace(PDDeviceN.java:124)
+ at org.apache.pdfbox.pdmodel.graphics.color.PDColorSpace.getJavaColorSpace(PDColorSpace.java:85)
+There are several causes: (1) in PDICCBased.createColorSpace() the variable numberOfComponents is -1; (2) the exception is not caught correctly. Both are fixed in the 2.0 version but not in the 1.8 version. Because the exception isn't caught correctly, the alternate color space is to be used. (3) The implementation of getAlternateColorSpaces() (that part existed before it became an apache project) thinks that this is an array of colorspaces.This
+[/Lab<</BlackPoint[0.0 0.0 0.0]/Range[-128.0 127.0 -128.0 127.0]/WhitePoint[0.964203 1.0 0.824905]>>]
+is considered an array of two colorspaces. This is contrary to the spec, which mentions "An alternate colour space". I will fix the bug without changing the API in 1.8, but will change the API in 2.0, which will be
+public PDColorSpace getAlternateColorSpace() throws IOException
+instead of
+public List<PDColorSpace> getAlternateColorSpaces() throws IOException
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.6, 1.8.7, 2.0.0
+Fix_version:
+1.8.7, 2.0.0
+Component:
+Parsing, Rendering
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+11/Aug/14 16:31
+Update date:
+19/Sep/14 14:40
+Resolved date:
+11/Aug/14 17:47

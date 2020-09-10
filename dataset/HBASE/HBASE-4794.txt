@@ -1,0 +1,49 @@
+Summary:
+Altering a tables that splits can hold the command for the CatalogJanitor sleep time
+Description:
+In AssignmentManager.getReopenStatus, it calls a version of MetaReader.getTableRegions that sets excludeOfflinedSplitParents to false meaning that the offline parents are returned. What this means is that if one of them was already closed before the alter command was issued (and I believe there are a few other cases) then the alter will hang until the CatalogJanitor sweeps the parent .META. row.
+Since the CJ sleep time is 5 minutes, the worst case scenario is an alter that takes almost 5 minutes.
+Here's an example:
+925/948 regions updated.
+920/943 regions updated.
+913/934 regions updated.
+912/928 regions updated.
+912/928 regions updated.
+(5 minutes later)
+912/928 regions updated.
+912/928 regions updated.
+905/918 regions updated.
+897/906 regions updated.
+891/892 regions updated.
+891/891 regions updated.
+Done.
+I can confirm with the log that 37 parent regions were cleaned up.
+Also it's pretty nice to see how the number fluctuates up and down
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+0.92.0
+Fix_version:
+0.92.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jean-Daniel Cryans
+Create date:
+16/Nov/11 00:22
+Update date:
+03/May/13 20:22
+Resolved date:
+03/May/13 20:22

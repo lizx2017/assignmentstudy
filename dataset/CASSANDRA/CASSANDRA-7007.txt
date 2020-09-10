@@ -1,0 +1,63 @@
+Summary:
+Streaming Errors due to RejectedExecutionException
+Description:
+With the same repair setup as CASSANDRA-6984, I'm now seeing repair failures due to some streaming tasks hitting RejectedExecutionException:
+ERROR [STREAM-OUT-/127.0.0.3] 2014-04-08 13:50:15,424 StreamSession.java (line 420) [Stream #9f64e230-bf4e-11e3-b994-43eb3a328df9] Streaming error occurred
+java.util.concurrent.RejectedExecutionException: Task java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask@1eb6b48a rejected from java.util.concurrent.ScheduledThreadPoolExecutor@6d06dfc6[Terminated, pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0]
+    at java.util.concurrent.ThreadPoolExecutor$AbortPolicy.rejectedExecution(ThreadPoolExecutor.java:2048)
+    at java.util.concurrent.ThreadPoolExecutor.reject(ThreadPoolExecutor.java:821)
+    at java.util.concurrent.ScheduledThreadPoolExecutor.delayedExecute(ScheduledThreadPoolExecutor.java:325)
+    at java.util.concurrent.ScheduledThreadPoolExecutor.schedule(ScheduledThreadPoolExecutor.java:530)
+    at java.util.concurrent.Executors$DelegatedScheduledExecutorService.schedule(Executors.java:689)
+    at org.apache.cassandra.streaming.StreamTransferTask.scheduleTimeout(StreamTransferTask.java:125)
+    at org.apache.cassandra.streaming.StreamSession.fileSent(StreamSession.java:468)
+    at org.apache.cassandra.streaming.messages.OutgoingFileMessage$1.serialize(OutgoingFileMessage.java:60)
+    at org.apache.cassandra.streaming.messages.OutgoingFileMessage$1.serialize(OutgoingFileMessage.java:42)
+    at org.apache.cassandra.streaming.messages.StreamMessage.serialize(StreamMessage.java:45)
+    at org.apache.cassandra.streaming.ConnectionHandler$OutgoingMessageHandler.sendMessage(ConnectionHandler.java:383)
+    at org.apache.cassandra.streaming.ConnectionHandler$OutgoingMessageHandler.run(ConnectionHandler.java:355)
+    at java.lang.Thread.run(Thread.java:724)
+ INFO [STREAM-OUT-/127.0.0.3] 2014-04-08 13:50:15,431 StreamResultFuture.java (line 186) [Stream #9f64e230-bf4e-11e3-b994-43eb3a328df9] Session with /127.0.0.3 is complete
+ WARN [STREAM-OUT-/127.0.0.3] 2014-04-08 13:50:15,431 StreamResultFuture.java (line 215) [Stream #9f64e230-bf4e-11e3-b994-43eb3a328df9] Stream failed
+ERROR [NonPeriodicTasks:1] 2014-04-08 13:50:15,449 CassandraDaemon.java (line 198) Exception in thread Thread[NonPeriodicTasks:1,5,main]
+java.lang.RuntimeException: Outgoing stream handler has been closed
+    at org.apache.cassandra.streaming.ConnectionHandler.sendMessage(ConnectionHandler.java:170)
+    at org.apache.cassandra.streaming.StreamSession.maybeCompleted(StreamSession.java:620)
+    at org.apache.cassandra.streaming.StreamSession.taskCompleted(StreamSession.java:566)
+    at org.apache.cassandra.streaming.StreamReceiveTask$OnCompletionRunnable.run(StreamReceiveTask.java:120)
+    at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+    at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+    at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$201(ScheduledThreadPoolExecutor.java:178)
+    at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:292)
+    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+    at java.lang.Thread.run(Thread.java:724)
+Since the ThreadPoolExecutor says its state is TERMINATED, I'm guessing this is due to a race condition where the timeout executor can be shutdown too early.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Tyler Hobbs
+Create date:
+08/Apr/14 19:04
+Update date:
+16/Apr/19 09:31
+Resolved date:
+08/Apr/14 22:15

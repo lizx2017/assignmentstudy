@@ -1,0 +1,95 @@
+Summary:
+Error in log related to Murmur3Partitioner
+Description:
+Start a 2-node cluster on cassandra-1.1. Bring down one node, upgrade it to trunk, start it back up. The following error shows up in the log:
+...
+ INFO [main] 2012-08-22 10:44:40,012 CacheService.java (line 170) Scheduling row cache save to each 0 seconds (going to save all keys).
+ INFO [SSTableBatchOpen:1] 2012-08-22 10:44:40,106 SSTableReader.java (line 164) Opening /tmp/dtest-IYHWfV/test/node1/data/system/LocationInfo/system-LocationInfo-he-2 (148 bytes)
+ INFO [SSTableBatchOpen:2] 2012-08-22 10:44:40,106 SSTableReader.java (line 164) Opening /tmp/dtest-IYHWfV/test/node1/data/system/LocationInfo/system-LocationInfo-he-1 (226 bytes)
+ INFO [SSTableBatchOpen:3] 2012-08-22 10:44:40,106 SSTableReader.java (line 164) Opening /tmp/dtest-IYHWfV/test/node1/data/system/LocationInfo/system-LocationInfo-he-3 (89 bytes)
+ERROR [SSTableBatchOpen:3] 2012-08-22 10:44:40,114 CassandraDaemon.java (line 131) Exception in thread Thread[SSTableBatchOpen:3,5,main]
+java.lang.RuntimeException: Cannot open /tmp/dtest-IYHWfV/test/node1/data/system/LocationInfo/system-LocationInfo-he-3 because partitioner does not match org.apache.cassandra.dht.Murmur3Partitioner
+        at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:175)
+        at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:149)
+        at org.apache.cassandra.io.sstable.SSTableReader$1.run(SSTableReader.java:236)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+        at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+ERROR [SSTableBatchOpen:2] 2012-08-22 10:44:40,114 CassandraDaemon.java (line 131) Exception in thread Thread[SSTableBatchOpen:2,5,main]
+java.lang.RuntimeException: Cannot open /tmp/dtest-IYHWfV/test/node1/data/system/LocationInfo/system-LocationInfo-he-1 because partitioner does not match org.apache.cassandra.dht.Murmur3Partitioner
+        at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:175)
+        at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:149)
+        at org.apache.cassandra.io.sstable.SSTableReader$1.run(SSTableReader.java:236)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+        at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+ERROR [SSTableBatchOpen:1] 2012-08-22 10:44:40,114 CassandraDaemon.java (line 131) Exception in thread Thread[SSTableBatchOpen:1,5,main]
+java.lang.RuntimeException: Cannot open /tmp/dtest-IYHWfV/test/node1/data/system/LocationInfo/system-LocationInfo-he-2 because partitioner does not match org.apache.cassandra.dht.Murmur3Partitioner
+        at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:175)
+        at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:149)
+        at org.apache.cassandra.io.sstable.SSTableReader$1.run(SSTableReader.java:236)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+        at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+ INFO [main] 2012-08-22 10:44:40,486 DatabaseDescriptor.java (line 522) Couldn't detect any schema definitions in local storage.
+ INFO [main] 2012-08-22 10:44:40,487 DatabaseDescriptor.java (line 525) Found table data in data directories. Consider using the CLI to define your schema.
+...
+Note that the error does not happen when upgrading from cassandra-1.0 to cassandra-1.1, or when "upgrading" from trunk to trunk.
+This is the exact dtest I used:
+from dtest import Tester, debug
+
+FROM_VERSION = 'git:cassandra-1.1'
+TO_VERSION = 'git:trunk'
+
+class TestUpgradeOneNode(Tester):
+
+    def upgrade_test(self):
+        # Start a cluster
+        cluster = self.cluster
+        cluster.set_cassandra_dir(cassandra_version=FROM_VERSION)
+        cluster.populate(2).start()
+        node1 = cluster.nodelist()[0]
+        node1.watch_log_for('Listening for thrift clients...')
+
+        # Bring one node down and upgrade it.
+        node1.flush()
+        node1.stop(wait_other_notice=True)
+        node1.set_cassandra_dir(cassandra_version=TO_VERSION)
+        node1.start(wait_other_notice=True)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 1
+Component:
+None
+Label:
+None
+Environment:
+ubuntu, ccm
+Attachment number:
+0
+Assignee:
+Vijay
+Reporter:
+Tyler Patterson
+Create date:
+22/Aug/12 17:41
+Update date:
+16/Apr/19 09:32
+Resolved date:
+30/Aug/12 16:56

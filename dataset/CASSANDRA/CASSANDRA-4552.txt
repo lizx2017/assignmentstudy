@@ -1,0 +1,65 @@
+Summary:
+cqlsh doesn't handle Int32Type when fully-qualified package name is present
+Description:
+Steps to reproduce:
+1. Start Cassandra
+2. Start cqlsh: ./bin/cqlsh -3 --debug
+3. Execute these statements:
+create keyspace foo with strategy_class = 'SimpleStrategy' and strategy_options:replication_factor=1;
+use foo;
+create table bar (
+    a int,
+    b int,
+    primary key (a)
+);
+insert into bar (a, b) values (1, 1);
+select * from bar;
+Expected: to see my row results
+Actual: I see this error:
+Traceback (most recent call last):
+  File "./bin/cqlsh", line 926, in onecmd
+    self.handle_statement(st, statementtext)
+  File "./bin/cqlsh", line 954, in handle_statement
+    return custom_handler(parsed)
+  File "./bin/cqlsh", line 1015, in do_select
+    self.perform_statement(parsed.extract_orig(), decoder=decoder)
+  File "./bin/cqlsh", line 1042, in perform_statement
+    self.print_result(self.cursor)
+  File "./bin/cqlsh", line 1096, in print_result
+    self.print_static_result(cursor)
+  File "./bin/cqlsh", line 1112, in print_static_result
+    formatted_data = [map(self.myformat_value, row, coltypes) for row in cursor]
+  File "./bin/cqlsh", line 622, in myformat_value
+    float_precision=self.display_float_precision, **kwargs)
+  File "./bin/cqlsh", line 504, in format_value
+    escapedval = val.replace('\\', '\\\\')
+AttributeError: 'int' object has no attribute 'replace'
+This is similar to CASSANDRA-4083 in terms of the error message, but may be of a different cause.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+1.2.0 beta 1
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Kirk True
+Reporter:
+Kirk True
+Create date:
+16/Aug/12 21:58
+Update date:
+16/Apr/19 09:32
+Resolved date:
+16/Aug/12 22:05

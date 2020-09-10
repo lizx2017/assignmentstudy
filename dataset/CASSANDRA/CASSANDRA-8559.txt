@@ -1,0 +1,51 @@
+Summary:
+OOM caused by large tombstone warning.
+Description:
+When running with high amount of tombstones the error message generation from CASSANDRA-6117 can lead to out of memory situation with the default setting.
+Attached a heapdump viewed in visualvm showing how this construct created two 777mb strings to print the error message for a read query and then crashed OOM.
+        if (respectTombstoneThresholds() && columnCounter.ignored() > DatabaseDescriptor.getTombstoneWarnThreshold())
+        {
+            StringBuilder sb = new StringBuilder();
+            CellNameType type = container.metadata().comparator;
+            for (ColumnSlice sl : slices)
+            {
+                assert sl != null;
+
+                sb.append('[');
+                sb.append(type.getString(sl.start));
+                sb.append('-');
+                sb.append(type.getString(sl.finish));
+                sb.append(']');
+            }
+
+            logger.warn("Read {} live and {} tombstoned cells in {}.{} (see tombstone_warn_threshold). {} columns was requested, slices={}, delInfo={}",
+                        columnCounter.live(), columnCounter.ignored(), container.metadata().ksName, container.metadata().cfName, count, sb, container.deletionInfo());
+        }
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15, 2.1.5
+Component:
+None
+Label:
+tombstone
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Dominic Letz
+Create date:
+05/Jan/15 05:19
+Update date:
+16/Apr/19 09:31
+Resolved date:
+22/Mar/15 11:35

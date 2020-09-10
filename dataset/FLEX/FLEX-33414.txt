@@ -1,0 +1,72 @@
+Summary:
+Null textInput in ComboBox
+Description:
+commitProperties does a check that textInput in not bull, but at the end of the function assumes it's not null:
+// Clear the TextInput because we were programmatically set to NO_SELECTION
+// We call this after super.commitProperties because commitSelection might have
+// changed the value to NO_SELECTION
+if (selectedIndexChanged && selectedIndex == NO_SELECTION)
+textInput.text = "";
+I have a situation where textInput was null and caused an error there.
+I propose moving the code up into the scope of the check for textInput like this:
+override protected function commitProperties():void
+{
+// Keep track of whether selectedIndex was programmatically changed
+var selectedIndexChanged:Boolean = _proposedSelectedIndex != NO_PROPOSED_SELECTION;
+// If selectedIndex was set to CUSTOM_SELECTED_ITEM, and no selectedItem was specified,
+// then don't change the selectedIndex
+if (_proposedSelectedIndex == CUSTOM_SELECTED_ITEM &&
+_pendingSelectedItem == undefined)
+{ _proposedSelectedIndex = NO_PROPOSED_SELECTION; }
+super.commitProperties();
+if (textInput)
+{
+if (maxCharsChanged)
+{ textInput.maxChars = _maxChars; maxCharsChanged = false; }
+if (promptChanged)
+{ textInput.prompt = _prompt; promptChanged = false; }
+if (restrictChanged)
+{ textInput.restrict = _restrict; restrictChanged = false; }
+if (typicalItemChanged)
+{
+if (typicalItem != null)
+{ var itemString:String = LabelUtil.itemToLabel(typicalItem, labelField, labelFunction); textInput.widthInChars = itemString.length; }
+else
+{ // Just set it back to the default value textInput.widthInChars = 10; }
+typicalItemChanged = false;
+}
+// Clear the TextInput because we were programmatically set to NO_SELECTION
+// We call this after super.commitProperties because commitSelection might have
+// changed the value to NO_SELECTION
+if (selectedIndexChanged && selectedIndex == NO_SELECTION)
+textInput.text = "";
+}
+}
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+Apache Flex 4.10.0
+Component:
+Spark: ComboBox
+Label:
+easyfix
+Environment:
+
+Attachment number:
+0
+Assignee:
+Justin Mclean
+Reporter:
+Harbs
+Create date:
+27/Feb/13 13:53
+Update date:
+11/Mar/13 04:50
+Resolved date:
+11/Mar/13 04:50

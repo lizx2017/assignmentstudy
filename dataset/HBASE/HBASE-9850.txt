@@ -1,0 +1,52 @@
+Summary:
+Issues with UI for table compact/split operation completion. After split/compaction operation using UI, the page is not automatically redirecting back using IE8/Firefox.
+Description:
+Steps:
+1. create table with regions.
+2. insert some amount of data in such a way that make some Hfiles which is lessthan min.compacted files size (say 3 hfiles are there but min compaction files 10)
+3. from ui perform compact operation on the table.
+"TABLE ACTION REQUEST Accepted" page is displayed
+4. operation is failing becoz compaction criteria is not meeting. but from ui compaction requests are continously sending to server. This happens using IE(history.back() seems to resend compact/split request). Firefox seems Ok in this case.
+5. Later no automatic redirection to main hamster page occurs.
+SOLUTION:
+table.jsp in hbase master.
+The meta tag for HTML contains refresh with javascript:history.back().
+A javascript cannot execute in the meta refresh tag like above in table.jsp and snapshot.jsp
+<meta http-equiv="refresh" content="5,javascript:history.back()" />
+This will FAIL.
+W3 school also suggests to use refresh in JAVAscript rather than meta tag.
+If above meta is replaced as below, the behavior is OK verified for IE8/Firefox.
+<script type="text/javascript">
+<!--
+setTimeout("history.back()",5000);
+-->
+</script>
+Hence in table.jsp and snapshot.jsp, it should be modified as above.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.11
+Fix_version:
+0.98.0, 0.96.1, 0.94.14
+Component:
+UI
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Kashif
+Reporter:
+Kashif
+Create date:
+28/Oct/13 14:58
+Update date:
+26/Nov/13 05:53
+Resolved date:
+12/Nov/13 05:01

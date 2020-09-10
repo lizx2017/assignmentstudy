@@ -1,0 +1,52 @@
+Summary:
+HBASE-6649 broke replication
+Description:
+After running with HBASE-6646 and replication enabled I encountered this:
+2012-09-17 20:04:08,111 DEBUG org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Opening log for replication va1r3s24%2C10304%2C1347911704238.1347911706318 at 78617132
+2012-09-17 20:04:08,120 DEBUG org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Break on IOE: hdfs://va1r5s41:10101/va1-backup/.logs/va1r3s24,10304,1347911704238/va1r3s24%2C10304%2C1347911704238.1347911706318, entryStart=78641557, pos=78771200, end=78771200, edit=84
+2012-09-17 20:04:08,120 DEBUG org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: currentNbOperations:164529 and seenEntries:84 and size: 154068
+2012-09-17 20:04:08,120 DEBUG org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Replicating 84
+2012-09-17 20:04:08,146 INFO org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager: Going to report log #va1r3s24%2C10304%2C1347911704238.1347911706318 for position 78771200 in hdfs://va1r5s41:10101/va1-backup/.logs/va1r3s24,10304,1347911704238/va1r3s24%2C10304%2C1347911704238.1347911706318
+2012-09-17 20:04:08,158 INFO org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager: Removing 0 logs in the list: []
+2012-09-17 20:04:08,158 DEBUG org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Replicated in total: 93234
+2012-09-17 20:04:08,158 DEBUG org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Opening log for replication va1r3s24%2C10304%2C1347911704238.1347911706318 at 78771200
+2012-09-17 20:04:08,163 ERROR org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Unexpected exception in ReplicationSource, currentPath=hdfs://va1r5s41:10101/va1-backup/.logs/va1r3s24,10304,1347911704238/va1r3s24%2C10304%2C1347911704238.1347911706318
+java.lang.IndexOutOfBoundsException
+        at java.io.DataInputStream.readFully(DataInputStream.java:175)
+        at org.apache.hadoop.io.DataOutputBuffer$Buffer.write(DataOutputBuffer.java:63)
+        at org.apache.hadoop.io.DataOutputBuffer.write(DataOutputBuffer.java:101)
+        at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:2001)
+        at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1901)
+        at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1947)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.next(SequenceFileLogReader.java:235)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.readAllEntriesToReplicateOrNextFile(ReplicationSource.java:394)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.run(ReplicationSource.java:307)
+There's something weird at the end of the file and it's killing replication. We used to just retry.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Devaraj Das
+Reporter:
+Jean-Daniel Cryans
+Create date:
+20/Sep/12 17:25
+Update date:
+07/Apr/13 05:02
+Resolved date:
+20/Sep/12 19:00

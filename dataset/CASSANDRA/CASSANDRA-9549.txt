@@ -1,0 +1,39 @@
+Summary:
+Memory leak in Ref.GlobalState due to pathological ConcurrentLinkedQueue.remove behaviour
+Description:
+We have been experiencing a severe memory leak with Cassandra 2.1.5 that, over the period of a couple of days, eventually consumes all of the available JVM heap space, putting the JVM into GC hell where it keeps trying CMS collection but can't free up any heap space. This pattern happens for every node in our cluster and is requiring rolling cassandra restarts just to keep the cluster running. We have upgraded the cluster per Datastax docs from the 2.0 branch a couple of months ago and have been using the data from this cluster for more than a year without problem.
+As the heap fills up with non-GC-able objects, the CPU/OS load average grows along with it. Heap dumps reveal an increasing number of java.util.concurrent.ConcurrentLinkedQueue$Node objects. We took heap dumps over a 2 day period, and watched the number of Node objects go from 4M, to 19M, to 36M, and eventually about 65M objects before the node stops responding. The screen capture of our heap dump is from the 19M measurement.
+Load on the cluster is minimal. We can see this effect even with only a handful of writes per second. (See attachments for Opscenter snapshots during very light loads and heavier loads). Even with only 5 reads a sec we see this behavior.
+Log files show repeated errors in Ref.java:181 and Ref.java:279 and "LEAK detected" messages:
+ERROR [CompactionExecutor:557] 2015-06-01 18:27:36,978 Ref.java:279 - Error when closing class org.apache.cassandra.io.sstable.SSTableReader$InstanceTidier@1302301946:/data1/data/ourtablegoeshere-ka-1150
+java.util.concurrent.RejectedExecutionException: Task java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask@32680b31 rejected from org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor@573464d6[Terminated, pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 1644]
+ERROR [Reference-Reaper:1] 2015-06-01 18:27:37,083 Ref.java:181 - LEAK DETECTED: a reference (org.apache.cassandra.utils.concurrent.Ref$State@74b5df92) to class org.apache.cassandra.io.sstable.SSTableReader$DescriptorTypeTidy@2054303604:/data2/data/ourtablegoeshere-ka-1151 was not released before the reference was garbage collected
+This might be related to CASSANDRA-8723?
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Ivar Thorson
+Create date:
+04/Jun/15 17:41
+Update date:
+16/Apr/19 09:31
+Resolved date:
+17/Jun/15 16:15

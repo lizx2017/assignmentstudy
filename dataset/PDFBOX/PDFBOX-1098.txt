@@ -1,0 +1,39 @@
+Summary:
+Wrong implemented stream reader
+Description:
+The BaseParser#readUntilEndStream(OutputStream) method is parsing streams the wrong way. [1]
+This method will start reading a stream till the keyword "endstream" is reached and don't care about the length value inside the dictionary. This implementation brokes nearly every pdf document with a pdf embedded inside a stream [2].
+Encoder that is used for compressing streams can be block-based (like FlateDecode which is mostly used). If a block of data that should be compressed don't spare space after compressing, the encode do not compress this block and mark it as uncompressed. So a stream can containing compressed and uncompressed parts. So if someone try to embed pdf documents with streams inside a stream, the encoder will left most parts of the document uncompressed. Such parts can contain plan text like "endstream" or other critical keywords that can cause the parser to stop.
+So we need to read the whole stream length that was wrote inside the dictionary and don't look at "endstream" keywords until the end is reached.
+The current stream parser cause a ZIPException with the Message "Unexpected end of ZLIB input stream".
+A sample pdf and a patch is coming soon.
+[1] PDF 32000-1:2008 -> 7.3.8.2 Stream Extent
+[2] PDF 32000-1:2008 -> 7.11.4 Embedded File Streams
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Duplicate
+Affects_version:
+None
+Fix_version:
+1.7.0
+Component:
+Parsing
+Label:
+ZLIB
+Environment:
+
+Attachment number:
+0
+Assignee:
+Timo Boehme
+Reporter:
+Thomas Chojecki
+Create date:
+17/Aug/11 13:49
+Update date:
+29/May/12 16:21
+Resolved date:
+21/May/12 21:19

@@ -1,0 +1,61 @@
+Summary:
+IndexableField changes its IndexableFieldType when the index is re-opened for reading
+Description:
+This code:
+/* Store one document into an index */
+Directory index = new RAMDirectory();
+IndexWriterConfig config = new IndexWriterConfig(new StandardAnalyzer());
+IndexWriter w = new IndexWriter(index, config);
+
+Document d1 = new Document();
+d1.add(new StringField("isbn", "9900333X", Field.Store.YES));
+w.addDocument(d1);
+w.commit();
+w.close();
+
+/* inspect IndexableFieldType */
+IndexableField f1 = d1.getField("isbn");
+System.err.println("FieldType for " + f1.stringValue() + " : " + f1.fieldType());
+
+/* retrieve all documents and inspect IndexableFieldType */
+IndexSearcher s = new IndexSearcher(DirectoryReader.open(index));
+TopDocs td = s.search(new MatchAllDocsQuery(), 1);
+
+for (ScoreDoc sd : td.scoreDocs) {
+    Document d2 = s.doc(sd.doc);
+    IndexableField f2 = d2.getField("isbn");
+    System.err.println("FieldType for " + f2.stringValue() + " : " + f2.fieldType());
+}
+Produces:
+FieldType for 9900333X : stored,indexed,omitNorms,indexOptions=DOCS
+FieldType for 9900333X : stored,indexed,tokenized,omitNorms,indexOptions=DOCS
+The StringField field isbn is not tokenized, as correctly reported by the first output, which happens right after closing the writer.
+However, it becomes tokenized when the index is re-opened with a new reader.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+5.5
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Roberto Cornacchia
+Create date:
+04/Apr/16 14:34
+Update date:
+23/May/16 16:26
+Resolved date:
+

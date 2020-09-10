@@ -1,0 +1,37 @@
+Summary:
+Perf issue with multiple client threads trying to prefetch Region Cache from META
+Description:
+HBaseClient maintains a cache of Regions to region locations that gets cleared whenever the RS that the client talks to is unresponsive.
+This will result in the Client having to talk to META to fetch the region location before doing the get/put.
+https://issues.apache.org/jira/browse/HBASE-2468 introduces the feature to prewarm the cache, where the client gets some rows from META to warm the cache.
+This is a costly operation. And, it looks like all client threads that block on the regionLockObject, will go in and do the cache warmup; although the cache might have been already warmed up by an earlier thread.
+When there is a network issue going on, we see lots of Client threads blocking in locateRegionInMeta.
+The fix would be to check the cache again; before we do the prefetch after grabbing the lock. Currently, the client threads look in the cache at the begining of the method. But a lot could have changed while waiting for the regionLockObject.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+0.89-fb, 0.94.3, 0.94.5
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Amitanand Aiyer
+Reporter:
+Amitanand Aiyer
+Create date:
+21/Mar/13 18:44
+Update date:
+21/Mar/13 20:24
+Resolved date:
+

@@ -1,0 +1,34 @@
+Summary:
+If a memtable flush fails, possible deadlock for future flushes
+Description:
+If a memtable flush throws and exception, it won't signal the countdown latch that the post flush task is waiting on. Since the post flush executor is single threaded, it will continue to wait on its countdown latch and will not process any additional post flush tasks. After that, any blocking flush will deadlock waiting for the post flush task to finish.
+I hit this while I was adding tests for CASSANDRA-9057 where the memtable failed to write because my validation was wrong and then it deadlocked creating a new table, but it should be safeguarded against the possibility that a memtable flush fails for any reason.
+Attaching the jstack showing the deadlock.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Carl Yeksigian
+Create date:
+28/Apr/15 15:59
+Update date:
+16/Apr/19 09:31
+Resolved date:
+28/Apr/15 16:36

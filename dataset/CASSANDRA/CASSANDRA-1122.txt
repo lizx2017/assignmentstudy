@@ -1,0 +1,61 @@
+Summary:
+Lack of subcomparator_type will corrupt the keyspace in Thrift system_add_keyspace()
+Description:
+I had a problem earlier where I create a Keyspace by reading the default yaml config shipped with the above cassandra package and after parsing and creating the keyspace with PHP Thrift system_add_keysapce command, I would get 'TException: Error: Internal error processing describe_keyspace ' when trying to get describe_keyspace. In cassandra-cli I get the same error.
+The cassandra log shows a null pointed exception:
+ERROR [pool-1-thread-39] 2010-05-24 14:17:35,204 Cassandra.java (line 1943) Internal error processing describe_keyspace
+java.lang.NullPointerException
+at org.apache.cassandra.thrift.CassandraServer.describe_keyspace(CassandraServer.java:476)
+at org.apache.cassandra.thrift.Cassandra$Processor$describe_keyspace.process(Cassandra.java:1939)
+at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:1276)
+at org.apache.thrift.server.TThreadPoolServer$WorkerProcess.run(TThreadPoolServer.java:253)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:636)
+I traced down the problem to where I define cassandra_CfDef. When the type is Super and subcomparator_type is not set, Thrift code does not set it to any default value but blank "". The command system_add_keyspace() runs with no problem. Whatever happens in Cassandra afterwards, will create a useless keyspace.
+Here is my code snippet to generate the exception:
+<?php
+$GLOBALS['THRIFT_ROOT'] = '/usr/share/php/Thrift';
+require_once $GLOBALS['THRIFT_ROOT'].'/packages/cassandra/Cassandra.php';
+require_once $GLOBALS['THRIFT_ROOT'].'/packages/cassandra/cassandra_types.php';
+require_once $GLOBALS['THRIFT_ROOT'].'/transport/TSocket.php';
+require_once $GLOBALS['THRIFT_ROOT'].'/protocol/TBinaryProtocol.php';
+require_once $GLOBALS['THRIFT_ROOT'].'/transport/TFramedTransport.php';
+require_once $GLOBALS['THRIFT_ROOT'].'/transport/TBufferedTransport.php';
+try
+{ // Make a connection to the Thrift interface to Cassandra $socket = new TSocket('127.0.0.1', 9160); $transport = new TBufferedTransport($socket, 1024, 1024); $protocol = new TBinaryProtocolAccelerated($transport); $client = new CassandraClient($protocol); $transport->open(); //Try creating some keyspace/column family defs $ks = new cassandra_KsDef(); $ks->name = 'agoudarzi_Keyspace1'; $ks->strategy_class = 'org.apache.cassandra.locator.RackUnawareStrategy'; $ks->replication_factor = '1'; //Now add a column family to it $cf = new cassandra_CfDef(); $cf->name = 'Super3'; $cf->table = 'agoudarzi_Keyspace1'; $cf->column_type = 'Super'; $cf->comparator_type = 'LongType'; $cf->row_cache_size = '0'; $cf->key_cache_size = '50'; $cf->comment = 'A column family with supercolumns, whose column names are Longs (8 bytes)'; $ks->cf_defs[] = $cf; $client->system_add_keyspace($ks); sleep(2); //Try to check if keyspace description is good $client->set_keyspace('agoudarzi_Keyspace1'); $rs = $client->describe_keyspace('agoudarzi_Keyspace1'); $transport->close(); }
+catch (TException $tx) {
+print 'TException: '.$tx->why. ' Error: '.$tx->getMessage() . "\n";
+}
+?>
+I think a default subcomparator should be set by thrift or other defensive method be used to prevent this problem.
+Please investigate.
+Thanks.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+Arya Goudarzi
+Create date:
+24/May/10 21:27
+Update date:
+16/Apr/19 09:33
+Resolved date:
+26/May/10 19:04

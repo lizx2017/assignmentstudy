@@ -1,0 +1,76 @@
+Summary:
+Failed bootstrap can cause NPE in batch_mutate on every node, taking down the entire cluster
+Description:
+In adding a node to the cluster, the bootstrap failed (still investigating the cause). An hour later, the entire cluster failed, preventing any writes from being accepted. This exception started being printed to the logs:
+INFO [Timer-0] 2010-09-03 12:23:33,282 Gossiper.java (line 402) FatClient /10.251.243.191 has been silent for 3600000ms, removing from gossip
+ERROR [Timer-0] 2010-09-03 12:23:33,318 Gossiper.java (line 99) Gossip error
+java.util.ConcurrentModificationException
+at java.util.Hashtable$Enumerator.next(Hashtable.java:1048)
+at org.apache.cassandra.gms.Gossiper.doStatusCheck(Gossiper.java:383)
+at org.apache.cassandra.gms.Gossiper$GossipTimerTask.run(Gossiper.java:93)
+at java.util.TimerThread.mainLoop(Timer.java:534)
+at java.util.TimerThread.run(Timer.java:484)
+ERROR [pool-1-thread-69153] 2010-09-03 12:23:33,857 Cassandra.java (line 1659) Internal error processing batch_mutate
+java.lang.NullPointerException
+at org.apache.cassandra.gms.FailureDetector.isAlive(FailureDetector.java:135)
+at org.apache.cassandra.locator.AbstractReplicationStrategy.getHintedEndpoints(AbstractReplicationStrategy.java:85)
+at org.apache.cassandra.service.StorageProxy.mutateBlocking(StorageProxy.java:204)
+at org.apache.cassandra.thrift.CassandraServer.batch_mutate(CassandraServer.java:415)
+at org.apache.cassandra.thrift.Cassandra$Processor$batch_mutate.process(Cassandra.java:1651)
+at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:1166)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:167)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:636)
+ERROR [pool-1-thread-69154] 2010-09-03 12:23:33,869 Cassandra.java (line 1659) Internal error processing batch_mutate
+java.lang.NullPointerException
+at org.apache.cassandra.gms.FailureDetector.isAlive(FailureDetector.java:135)
+at org.apache.cassandra.locator.AbstractReplicationStrategy.getHintedEndpoints(AbstractReplicationStrategy.java:85)
+at org.apache.cassandra.service.StorageProxy.mutateBlocking(StorageProxy.java:204)
+at org.apache.cassandra.thrift.CassandraServer.batch_mutate(CassandraServer.java:415)
+at org.apache.cassandra.thrift.Cassandra$Processor$batch_mutate.process(Cassandra.java:1651)
+at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:1166)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:167)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:636)
+After a large number of iterations of that (at least thousands), the printed exception was shortened (this shortening is what made me mistakenly file #1462) to
+ERROR [pool-1-thread-68869] 2010-09-03 12:39:22,857 Cassandra.java (line 1659) Internal error processing batch_mutate
+java.lang.NullPointerException
+ERROR [pool-1-thread-68869] 2010-09-03 12:39:22,883 Cassandra.java (line 1659) Internal error processing batch_mutate
+java.lang.NullPointerException
+ERROR [pool-1-thread-68869] 2010-09-03 12:39:22,894 Cassandra.java (line 1659) Internal error processing batch_mutate
+java.lang.NullPointerException
+ERROR [pool-1-thread-68970] 2010-09-03 12:39:22,985 Cassandra.java (line 1659) Internal error processing batch_mutate
+java.lang.NullPointerException
+ERROR [pool-1-thread-68970] 2010-09-03 12:39:23,084 Cassandra.java (line 1659) Internal error processing batch_mutate
+java.lang.NullPointerException
+Rolling a restart over the cluster fixed it, but every node had to be restarted before it started accepting writes again.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.6, 0.7 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+David King
+Create date:
+03/Sep/10 20:50
+Update date:
+16/Apr/19 09:33
+Resolved date:
+04/Sep/10 20:34

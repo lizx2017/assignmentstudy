@@ -1,0 +1,76 @@
+Summary:
+batch_mutate Deletion with column family type mismatch causes RuntimeException
+Description:
+When specifying a super column family name inside a Deletion and a standard column family name in the mutations dictionary, we get a RuntimeException in the server and a TimedOutException on the client:
+ERROR 14:22:29,757 Error in ThreadPoolExecutor
+java.lang.RuntimeException: java.lang.UnsupportedOperationException: This operation is not supported for Super Columns.
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:619)
+Caused by: java.lang.UnsupportedOperationException: This operation is not supported for Super Columns.
+        at org.apache.cassandra.db.SuperColumn.timestamp(SuperColumn.java:137)
+        at org.apache.cassandra.db.ColumnSerializer.serialize(ColumnSerializer.java:65)
+        at org.apache.cassandra.db.ColumnSerializer.serialize(ColumnSerializer.java:29)
+        at org.apache.cassandra.db.ColumnFamilySerializer.serializeForSSTable(ColumnFamilySerializer.java:87)
+        at org.apache.cassandra.db.ColumnFamilySerializer.serialize(ColumnFamilySerializer.java:73)
+        at org.apache.cassandra.db.RowMutationSerializer.freezeTheMaps(RowMutation.java:337)
+        at org.apache.cassandra.db.RowMutationSerializer.serialize(RowMutation.java:349)
+        at org.apache.cassandra.db.RowMutationSerializer.serialize(RowMutation.java:322)
+        at org.apache.cassandra.db.RowMutation.getSerializedBuffer(RowMutation.java:275)
+        at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:200)
+        at org.apache.cassandra.service.StorageProxy$3.runMayThrow(StorageProxy.java:310)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+        ... 3 more
+ERROR 14:22:29,757 Fatal exception in thread Thread[ROW-MUTATION-STAGE:39,5,main]
+Traceback (most recent call last):
+  File "./test.py", line 15, in <module>
+    client.batch_mutate("Keyspace1", mutations, ConsistencyLevel.QUORUM)
+  File "cassandra/Cassandra.py", line 771, in batch_mutate
+    self.recv_batch_mutate()
+  File "cassandra/Cassandra.py", line 798, in recv_batch_mutate
+    raise result.te
+cassandra.ttypes.TimedOutException: TimedOutException()
+To reproduce:
+from thrift.transport.TSocket import TSocket
+from thrift.protocol.TBinaryProtocol import TBinaryProtocol
+from cassandra.Cassandra import Client
+from cassandra.ttypes import Deletion, Mutation, ConsistencyLevel
+
+if __name__ == "__main__":
+    tsocket = TSocket('localhost', 9160)
+    tsocket.open()
+    tprotocol = TBinaryProtocol(tsocket)
+    client = Client(tprotocol)
+    deletion = Deletion(1, 'supercolumn', None)
+    mutation = Mutation(deletion=deletion)
+    mutations = { 'key' : { 'Standard1' : [ mutation ] } }
+    client.batch_mutate("Keyspace1", mutations, ConsistencyLevel.QUORUM)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.3
+Component:
+None
+Label:
+Deletion batch_mutat
+Environment:
+linux, python
+Attachment number:
+0
+Assignee:
+Matthew F. Dennis
+Reporter:
+tholzer
+Create date:
+28/May/10 02:29
+Update date:
+16/Apr/19 09:33
+Resolved date:
+04/Jun/10 02:58

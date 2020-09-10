@@ -1,0 +1,44 @@
+Summary:
+Not all STATUS_CHANGE UP events reported via the native protocol
+Description:
+Not all gossip UP events are pushed to native protocol users who have registered for them. This seems to be a native protocol issue because nodes themselves get the UP event (as seen in their logs). I can consistently reproduce this issue as follows:
+1) connect a client to a cluster node ("node1") using the native protocol, register for TOPOLOGY_CHANGE and STATUS_CHANGE events. (Probably you only need to register for STATUS_CHANGE to see this, however my client registers for both).
+2) on another node ("node2"), send SIGSTOP to the Cassandra process.
+3) after about 30 seconds the client gets pushed a STATUS_CHANGE DOWN event for the stopped node.
+4) on node2, send SIGCONT to the the Cassandra process.
+5) wait forever to get a STATUS_CHANGE UP event. This is failure: no event is ever received.
+Observe that node1 does know that node2 is back up: in its system log I see for example
+INFO [GossipStage:1] 2013-07-17 14:27:41,238 Gossiper.java (line 771) InetAddress /172.18.34.169 is now UP
+shortly after sending SIGCONT to the stopped process.
+To eliminate the possibility that my client is at fault, I performed the following sanity check:
+2') on node2, stopped Cassandra nicely using: sudo service cassandra stop
+4') on node2, restarted Cassandra using: sudo service cassandra start
+In this case the client soon after gets a STATUS_CHANGE DOWN event followed by a STATUS_CHANGE UP event for node2.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.7
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Duncan Sands
+Create date:
+17/Jul/13 13:06
+Update date:
+16/Apr/19 09:32
+Resolved date:
+19/Jul/13 06:54

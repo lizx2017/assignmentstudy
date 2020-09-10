@@ -1,0 +1,57 @@
+Summary:
+AIOOB in PDResources.getFont()
+Description:
+As reported by Lauri Laanti in the users mailing list:
+java.lang.ArrayIndexOutOfBoundsException: 4
+at org.apache.fontbox.ttf.PostScriptTable.getName(PostScriptTable.java:318)
+at org.apache.pdfbox.pdmodel.font.PDTrueTypeFont.readEncodingFromFont(PDTrueTypeFont.java:260)
+at org.apache.pdfbox.pdmodel.font.PDSimpleFont.readEncoding(PDSimpleFont.java:134)
+at org.apache.pdfbox.pdmodel.font.PDTrueTypeFont.<init>(PDTrueTypeFont.java:209)
+at org.apache.pdfbox.pdmodel.font.PDFontFactory.createFont(PDFontFactory.java:75)
+at org.apache.pdfbox.pdmodel.PDResources.getFont(PDResources.java:143)
+
+
+Investigating the function in question:
+
+public String getName(int gid)
+313            {
+314                if (gid < 0 || glyphNames == null || gid > glyphNames.length)
+315                {
+316                    return null;
+317                }
+318                return glyphNames[gid];
+319            }
+
+I think that the check on line 314 should be :
+
+gid < 0 || glyphNames == null || gid >= glyphNames.length
+
+Otherwise, when gid == glyphNames.length there will be AIOOB.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.6
+Fix_version:
+2.0.7, 3.0.0 PDFBox
+Component:
+FontBox, Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+22/Jun/17 17:26
+Update date:
+21/Jul/17 04:40
+Resolved date:
+10/Jul/17 16:54

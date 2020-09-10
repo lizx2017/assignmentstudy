@@ -1,0 +1,61 @@
+Summary:
+Incorrect behavior for TestLaoBreakIterator.isWord()
+Description:
+The incorrect behavior appears in version 4.3.1 and in revision
+1496055.
+Method "TestLaoBreakIterator.isWord" contains this loop:
+for (int i = start; i < end; i += UTF16.getCharCount(codepoint)) {
+    codepoint = UTF16.charAt(text, 0, end, start);
+
+    if (UCharacter.isLetterOrDigit(codepoint))
+        return true;
+}
+It appears that the code is reading only one character again and
+again, irrespective of "i". This looks incorrect. I think the code
+inside the loop should use "i", e.g., read characters based on "i".
+If the intended behavior is to read only one character, then the loop
+should not be necessary.
+A similar problem appears in method
+"BreakIteratorWrapper.BIWrapper.calcStatus" for this loop:
+for (int i = begin; i < end; i += UTF16.getCharCount(codepoint)) {
+    codepoint = UTF16.charAt(text, 0, end, begin);
+
+    if (UCharacter.isDigit(codepoint))
+        return RuleBasedBreakIterator.WORD_NUMBER;
+    else if (UCharacter.isLetter(codepoint)) {
+        // TODO: try to separately specify ideographic, kana? 
+        // [currently all bundled as letter for this case]
+        return RuleBasedBreakIterator.WORD_LETTER;
+    }
+}
+Again, the computation inside the loop does not use "i", which seems
+incorrect. It appears that the code is reading only one character
+again and again, irrespective of "i".
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+4.3.1
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adrian Nistor
+Create date:
+24/Jun/13 14:14
+Update date:
+24/Jun/13 16:22
+Resolved date:
+

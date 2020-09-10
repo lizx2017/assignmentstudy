@@ -1,0 +1,46 @@
+Summary:
+type1CFont font with null encoding
+Description:
+The file from PDFBOX-427 does not display the bullets (near "diff" in the right column)
+Through debugging I found out:
+The glyph code to be rendered is 183. That code doesn't exist in the font, however a code 116 exists, and it came from an "sid" code (CFFGlyph2D constructor). A mapping of the name ("bullet") through the nameToCode table isn't done because encoding is null.
+PDSimpleFont.determineEncoding() sets a null encoding
+PDType1Font.determineEncoding() sets a "good" encoding based on getAFM()
+(both called from constructor)
+getAFM() gets an encoding table that includes codetoname/nametocode 183 <=> bullet
+Later, due to having a FontFile3, a new type1CFont is created with the external file, but with no encoding.
+The following change in PDType1Font.java works for me (first line is the existing line):
+if (type1CFont.getFontEncoding() == null && getFontEncoding() != null) //TH
+{
+    LOG.info("Encoding of Type1CFont '" + type1CFont.getBaseFont() + "' is null, trying Type1Font encoding");
+    type1CFont.setFontEncoding(getFontEncoding());
+    }
+Another improvement is the fat dash (at the beginning of "--use-merge-history" at the bottom of the mid column.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.3, 2.0.0
+Fix_version:
+2.0.0
+Component:
+PDModel
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Tilman Hausherr
+Create date:
+08/Oct/13 17:05
+Update date:
+17/Mar/16 19:08
+Resolved date:
+19/Jan/14 11:12

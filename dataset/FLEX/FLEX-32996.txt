@@ -1,0 +1,151 @@
+Summary:
+CLONE -NPE in AxisRenderer when stacked column chart has one data item
+Description:
+I have been unable to create a simple test-case that reproduces this error, but I think a code inspection shows a problem. I've also been unable to get any help with a workaround on the Adobe forums or flexcoders.
+The error is a null pointer exception when a stacked column chart has a single data item.
+In AxisRenderer.as (line 2200 in sdk3.3) we find a reference to "lastLabel" which will be null if there is only one label, because it is computed as _labels[1].
+Excerpt from AxisRenderer.calcStaggeredSpacing:
+lastLabel = _labels[1];
+if (adjustable.left == false)
+{ staggeredScale = Math.min( staggeredScale, staggeredleftGutter / (firstLabel.width / 2)); }
+if (adjustable.right == false)
+{ staggeredScale = Math.min( staggeredScale, staggeredrightGutter / (lastLabel.width / 2)); // (me) Here's where the NPE occurs. }
+Stack Crawl:
+__________
+TypeError: Error #1009: Cannot access a property or method of a null object reference.
+at mx.charts::AxisRenderer/calcStaggeredSpacing()[C:\work\flex\dmv_automation\proj ects\datavisualisation\src\mx\charts\AxisRenderer.as:2200]
+at mx.charts::AxisRenderer/calcRotationAndSpacing()[C:\work\flex\dmv_automation\pr ojects\datavisualisation\src\mx\charts\AxisRenderer.as:1591]
+at mx.charts::AxisRenderer/adjustGutters()[C:\work\flex\dmv_automation\projects\da tavisualisation\src\mx\charts\AxisRenderer.as:1331]
+at mx.charts::AxisRenderer/set gutters()[C:\work\flex\dmv_automation\projects\datavisualisation\src\mx\charts\ AxisRenderer.as:803]
+at mx.charts.chartClasses::CartesianChart/updateAxisLayout()[C:\work\flex\dmv_auto mation\projects\datavisualisation\src\mx\charts\chartClasses\CartesianChart.as:2 032]
+at mx.charts.chartClasses::CartesianChart/updateDisplayList()[C:\work\flex\dmv_aut omation\projects\datavisualisation\src\mx\charts\chartClasses\CartesianChart.as: 1359]
+at mx.core::UIComponent/validateDisplayList()[C:\autobuild\3.3.0\frameworks\projec ts\framework\src\mx\core\UIComponent.as:6351]
+at mx.managers::LayoutManager/validateDisplayList()[C:\autobuild\3.3.0\frameworks\ projects\framework\src\mx\managers\LayoutManager.as:622]
+at mx.managers::LayoutManager/doPhasedInstantiation()[C:\autobuild\3.3.0\framework s\projects\framework\src\mx\managers\LayoutManager.as:695]
+at Function/http://adobe.com/AS3/2006/builtin::apply()
+at mx.core::UIComponent/callLaterDispatcher2()[C:\autobuild\3.3.0\frameworks\proje cts\framework\src\mx\core\UIComponent.as:8633]
+at mx.core::UIComponent/callLaterDispatcher()[C:\autobuild\3.3.0\frameworks\projec ts\framework\src\mx\core\UIComponent.as:8573]
+Context from AxisRenderer:
+(Note: the second branch of the if statement is executing, thus adjustment.bottom is false which leads to the code path with the bug.)
+public function set gutters(value:Rectangle):void
+{
+var correctedGutters:Rectangle = value;
+// This check will rarely succeed, because _gutters
+// have been tweaked to represent placement.
+if (_gutters &&
+_gutters.left == correctedGutters.left &&
+_gutters.right == correctedGutters.right &&
+_gutters.top == correctedGutters.top &&
+_gutters.bottom == correctedGutters.bottom)
+{ _gutters = correctedGutters; return; }
+else
+{
+adjustGutters(value,
+{ left: false, top: false, right: false, bottom: false }
+);
+}
+}
+I am building the series list dynamically, it's a stacked column chart, and for me the bug occurs when there is one series and one data point.
+I haven't been able to trigger the bug with the following example, which has a similar structure to my actual code.
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" xmlns:local="*">
+<mx:Script>
+<![CDATA[
+import mx.charts.series.ColumnSeries;
+import mx.charts.chartClasses.Series;
+[Bindable]
+public var seriesList:Array = [];
+public function buildSeriesList(seriesList:Array):Array {
+var chartSeries:Array = new Array();
+var index:int = 0;
+for each (var series:Object in seriesList)
+{ var columnSeries:ColumnSeries = new ColumnSeries(); columnSeries.dataProvider = series.items; columnSeries.dataFunction = myDataFunction; columnSeries.displayName = series.category; chartSeries.push( columnSeries ); }
+return chartSeries;
+}
+private function categoryProvider(seriesList:Array):Array
+{ if (seriesList && seriesList.length > 0) return (seriesList[0]).items; return null; }
+private function myDataFunction(series:Series, item:Object, fieldName:String):Object {
+if(fieldName == "yValue")
+{ return item.value; }
+else if(fieldName == "xValue")
+{ return item.category; }
+else
+return null;
+}
+public function shortCategoryLabel(source:String):String
+{ return source; }
+
+
+
+public function longCategoryLabel(source:String):String { return source; }
+private function onRefresh(event:Event):void {
+this.seriesList = [ { category: "cat1" , items: [
+{ category: "Default Business Unit", value:574.1 }
+] }];
+}
+]]
+>
+</mx:Script>
+<mx:Button label="Refresh" click="onRefresh(event)" />
+<mx:ColumnChart height="100%"
+width="100%" type="stacked" series="
+{this.buildSeriesList(this.seriesList)}
+">
+<mx:horizontalAxis>
+<mx:CategoryAxis id="bottomAxis2" title="Horizontal Axis"
+dataProvider="
+{this.categoryProvider(this.seriesList)}
+"
+categoryField="category"
+/>
+</mx:horizontalAxis>
+<mx:verticalAxis>
+<mx:LinearAxis id="leftAxis2" title="Vertical Axis"/>
+</mx:verticalAxis>
+<mx:verticalAxisRenderers>
+<mx:AxisRenderer
+placement="left" styleName="verticalAxisRenderer"
+axis="
+{leftAxis2}
+" verticalAxisTitleAlignment="vertical"
+/>
+</mx:verticalAxisRenderers>
+<mx:horizontalAxisRenderers>
+<mx:AxisRenderer
+placement="bottom"
+axis="
+{bottomAxis2}
+" verticalAxisTitleAlignment="flippedVertical"
+>
+</mx:AxisRenderer>
+</mx:horizontalAxisRenderers>
+</mx:ColumnChart>
+</mx:Application>
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+05/Jul/11 10:09
+Update date:
+25/Aug/11 04:51
+Resolved date:
+

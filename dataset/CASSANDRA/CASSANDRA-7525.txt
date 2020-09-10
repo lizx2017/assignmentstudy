@@ -1,0 +1,88 @@
+Summary:
+Querying by multiple secondary indexes gives java.lang.IllegalArgumentException on some cases
+Description:
+Querying by:
+non-primary key column with secondary index + collection with secondary index
+primary key column with secondary index + non-primary key column with secondary index
+gives <ErrorMessage code=0000 [Server error] message="java.lang.IllegalArgumentException: expected one element but was: <org.apache.cassandra.db.index.composites.CompositesSearcher@156b5576, org.apache.cassandra.db.index.composites.CompositesSearcher@39b7c0f6>">
+Steps to reproduce:
+cqlsh:cs> CREATE TABLE test (
+      ...   id1 text,
+      ...   id2 text,
+      ...   column1 text,
+      ...   column2 text,
+      ...   collection set<text>,
+      ...   PRIMARY KEY (id1, id2)
+      ... );
+cqlsh:cs> 
+Simple query by primary key works as should:
+cqlsh:cs> SELECT * FROM test WHERE id1 = 'foo';
+
+(0 rows)
+
+cqlsh:cs> SELECT * FROM test WHERE id1 = 'foo' AND id2 = 'bar';
+
+(0 rows)
+Query by secondary index + non-indexed column:
+cqlsh:cs> CREATE INDEX test_column1s ON test(column1);
+cqlsh:cs> SELECT * FROM test WHERE column1 = 'foo';
+
+(0 rows)
+
+cqlsh:cs> SELECT * FROM test WHERE column1 = 'foo' AND column2 = 'bar' ALLOW FILTERING;
+
+(0 rows)
+Add secondary index also for the second column:
+cqlsh:cs> CREATE INDEX test_column2s ON test(column2);
+cqlsh:cs> SELECT * FROM test WHERE column1 = 'foo' AND column2 = 'bar' ALLOW FILTERING;
+
+(0 rows)
+Doesn't matter if we bring primary key or the collection there as well:
+cqlsh:cs> SELECT * FROM test WHERE id1 = 'blah' AND column1 = 'foo' AND column2 = 'bar' ALLOW FILTERING;
+
+(0 rows)
+
+cqlsh:cs> SELECT * FROM test WHERE column1 = 'foo' AND collection CONTAINS 'bar' ALLOW FILTERING;
+
+(0 rows)
+Let's add index for the collection:
+cqlsh:cs> CREATE INDEX test_collections ON test(collection);
+cqlsh:cs> SELECT * FROM test WHERE collection CONTAINS 'bar';
+
+(0 rows)
+But then combine secondary index column and collection with secondary index:
+cqlsh:cs> SELECT * FROM test WHERE column1 = 'foo' AND collection CONTAINS 'bar' ALLOW FILTERING;
+<ErrorMessage code=0000 [Server error] message="java.lang.IllegalArgumentException: expected one element but was: <org.apache.cassandra.db.index.composites.CompositesSearcher@68e37722, org.apache.cassandra.db.index.composites.CompositesSearcher@2da28efa>">
+Furthermore, query by primary key field with secondary index + non-primary key column with secondary index:
+cqlsh:cs> CREATE INDEX test_id2s ON test(id2);
+cqlsh:cs> SELECT * FROM test WHERE id2 = 'foo' AND column1 = 'bar' ALLOW FILTERING;
+<ErrorMessage code=0000 [Server error] message="java.lang.IllegalArgumentException: expected one element but was: <org.apache.cassandra.db.index.composites.CompositesSearcher@3ca899f1, org.apache.cassandra.db.index.composites.CompositesSearcher@6112bc53>">
+I'm a cassandra noob so maybe I'm trying to do things the db is not meant to do?
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc4
+Component:
+Feature/2i Index
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Tuukka Mustonen
+Create date:
+09/Jul/14 08:35
+Update date:
+16/Apr/19 09:31
+Resolved date:
+16/Jul/14 22:22

@@ -1,0 +1,83 @@
+Summary:
+Add timeout limit for HBaseClient dataOutputStream
+Description:
+I run jstack at client host. The result is below.
+"hbase-tablepool-60-thread-34" daemon prio=10 tid=0x00007f1e65a48000 nid=0x5173 runnable [0x00000000579cc000]
+java.lang.Thread.State: RUNNABLE
+at sun.nio.ch.EPollArrayWrapper.epollWait(Native Method)
+at sun.nio.ch.EPollArrayWrapper.poll(EPollArrayWrapper.java:210)
+at sun.nio.ch.EPollSelectorImpl.doSelect(EPollSelectorImpl.java:65)
+at sun.nio.ch.SelectorImpl.lockAndDoSelect(SelectorImpl.java:69)
+locked <0x0000000758cb0780> (a sun.nio.ch.Util$2)
+locked <0x0000000758cb0770> (a java.util.Collections$UnmodifiableSet)
+locked <0x0000000758cb0548> (a sun.nio.ch.EPollSelectorImpl)
+at sun.nio.ch.SelectorImpl.select(SelectorImpl.java:80)
+at org.apache.hadoop.net.SocketIOWithTimeout$SelectorPool.select(SocketIOWithTimeout.java:336)
+at org.apache.hadoop.net.SocketIOWithTimeout.doIO(SocketIOWithTimeout.java:158)
+at org.apache.hadoop.net.SocketOutputStream.write(SocketOutputStream.java:153)
+at org.apache.hadoop.net.SocketOutputStream.write(SocketOutputStream.java:114)
+at java.io.BufferedOutputStream.flushBuffer(BufferedOutputStream.java:65)
+at java.io.BufferedOutputStream.flush(BufferedOutputStream.java:123)
+locked <0x0000000754e978a0> (a java.io.BufferedOutputStream)
+at java.io.DataOutputStream.flush(DataOutputStream.java:106)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.sendParam(HBaseClient.java:620)
+locked <0x0000000754e97880> (a java.io.DataOutputStream)
+at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:975)
+at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Invoker.invoke(WritableRpcEngine.java:86)
+at $Proxy13.multi(Unknown Source)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation$3$1.call(HConnectionManager.java:1395)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation$3$1.call(HConnectionManager.java:1393)
+at org.apache.hadoop.hbase.client.ServerCallable.withoutRetries(ServerCallable.java:210)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation$3.call(HConnectionManager.java:1402)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation$3.call(HConnectionManager.java:1390)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+This thread have hung for one hours
+Meanwhile other thread try to close connection
+"IPC Client (1983049639) connection to dump002030.cm6.tbsite.net/10.246.2.30:30020 from admin" daemon prio=10 tid=0x00007f1e70674800 nid=0x3d76 waiting for monitor entry [0x000000004bc0f000]
+java.lang.Thread.State: BLOCKED (on object monitor)
+at java.io.BufferedOutputStream.flush(BufferedOutputStream.java:123)
+waiting to lock <0x0000000754e978a0> (a java.io.BufferedOutputStream)
+at java.io.DataOutputStream.flush(DataOutputStream.java:106)
+at java.io.FilterOutputStream.close(FilterOutputStream.java:140)
+at org.apache.hadoop.io.IOUtils.cleanup(IOUtils.java:237)
+at org.apache.hadoop.io.IOUtils.closeStream(IOUtils.java:254)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.close(HBaseClient.java:715)
+locked <0x0000000754e7b818> (a org.apache.hadoop.hbase.ipc.HBaseClient$Connection)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.run(HBaseClient.java:587)
+dump002030.cm6.tbsite.net is dead regionserver.
+I read hbase sourececode, discover connection.out doesn't set timeout
+this.out = new DataOutputStream
+(new BufferedOutputStream(NetUtils.getOutputStream(socket)));
+I see this mean epoll_wait will block indefinitely.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.5, 0.94.14
+Fix_version:
+0.94.16
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Liang Xie
+Reporter:
+wanbin
+Create date:
+16/May/13 15:18
+Update date:
+21/Jan/14 01:31
+Resolved date:
+21/Dec/13 08:43

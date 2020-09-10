@@ -1,0 +1,38 @@
+Summary:
+Writes should not block reads on blocking updates to memstores
+Description:
+We have a big data use case where we turn off WAL and have a ton of reads and writes. We found that:
+1. flushing a memstore takes a while (GZIP compression)
+2. incoming writes cause the new memstore to grow in an unbounded fashion
+3. this triggers blocking memstore updates
+4. in turn, this causes all the RPC handler threads to block on writes to that memstore
+5. we are not able to read during this time as RPC handlers are blocked
+At a higher level, we should not hold up the RPC threads while blocking updates, and we should build in some sort of rate control.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.4, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Karthik Ranganathan
+Create date:
+18/Jul/12 20:42
+Update date:
+02/May/13 02:30
+Resolved date:
+04/Dec/12 18:17

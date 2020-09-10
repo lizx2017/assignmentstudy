@@ -1,0 +1,60 @@
+Summary:
+Issue with reading from sstable
+Description:
+With Cassandra 1.2.5 this happens almost every week.
+java.lang.RuntimeException: org.apache.cassandra.io.sstable.CorruptSSTableException: java.io.EOFException: EOF after 5105 bytes out of 19815
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1582)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:724)
+Caused by: org.apache.cassandra.io.sstable.CorruptSSTableException: java.io.EOFException: EOF after 5105 bytes out of 19815
+ at org.apache.cassandra.db.columniterator.SimpleSliceReader.<init>(SimpleSliceReader.java:91)
+ at org.apache.cassandra.db.columniterator.SSTableSliceIterator.createReader(SSTableSliceIterator.java:68)
+ at org.apache.cassandra.db.columniterator.SSTableSliceIterator.<init>(SSTableSliceIterator.java:44)
+ at org.apache.cassandra.db.filter.SliceQueryFilter.getSSTableColumnIterator(SliceQueryFilter.java:101)
+ at org.apache.cassandra.db.filter.QueryFilter.getSSTableColumnIterator(QueryFilter.java:68)
+ at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:274)
+ at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:65)
+ at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1357)
+ at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1214)
+ at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1126)
+ at org.apache.cassandra.db.Table.getRow(Table.java:347)
+ at org.apache.cassandra.db.SliceFromReadCommand.getRow(SliceFromReadCommand.java:70)
+ at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:1052)
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1578)
+ ... 3 more
+Caused by: java.io.EOFException: EOF after 5105 bytes out of 19815
+ at org.apache.cassandra.io.util.FileUtils.skipBytesFully(FileUtils.java:350)
+ at org.apache.cassandra.utils.ByteBufferUtil.skipShortLength(ByteBufferUtil.java:382)
+ at org.apache.cassandra.db.columniterator.SimpleSliceReader.<init>(SimpleSliceReader.java:72)
+ ... 16 more
+This is occurring roughly weekly with quite minimal usage.
+Recreation of CF does not help.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/Local Write-Read Paths
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Mike Konobeevskiy
+Create date:
+27/Nov/13 09:48
+Update date:
+16/Apr/19 09:31
+Resolved date:
+11/Nov/15 18:53

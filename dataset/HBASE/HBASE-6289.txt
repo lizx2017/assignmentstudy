@@ -1,0 +1,46 @@
+Summary:
+ROOT region doesn't get re-assigned in ServerShutdownHandler if the RS is still working but only the RS's ZK node expires.
+Description:
+The ROOT RS has some network problem and its ZK node expires first, which kicks off the ServerShutdownHandler. it calls verifyAndAssignRoot() to try to re-assign ROOT. At that time, the RS is actually still working and passes the verifyRootRegionLocation() check, so the ROOT region is skipped from re-assignment.
+  private void verifyAndAssignRoot()
+  throws InterruptedException, IOException, KeeperException {
+    long timeout = this.server.getConfiguration().
+      getLong("hbase.catalog.verification.timeout", 1000);
+    if (!this.server.getCatalogTracker().verifyRootRegionLocation(timeout)) {
+      this.services.getAssignmentManager().assignRoot();
+    }
+  }
+After a few moments, this RS encounters DFS write problem and decides to abort. The RS then soon gets restarted from commandline, and constantly report:
+2012-06-27 23:13:08,627 DEBUG org.apache.hadoop.hbase.regionserver.HRegionServer: NotServingRegionException; Region is not online: -ROOT-,,0
+2012-06-27 23:13:08,627 DEBUG org.apache.hadoop.hbase.regionserver.HRegionServer: NotServingRegionException; Region is not online: -ROOT-,,0
+2012-06-27 23:13:08,628 DEBUG org.apache.hadoop.hbase.regionserver.HRegionServer: NotServingRegionException; Region is not online: -ROOT-,,0
+2012-06-27 23:13:08,628 DEBUG org.apache.hadoop.hbase.regionserver.HRegionServer: NotServingRegionException; Region is not online: -ROOT-,,0
+2012-06-27 23:13:08,630 DEBUG org.apache.hadoop.hbase.regionserver.HRegionServer: NotServingRegionException; Region is not online: -ROOT-,,0
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.90.6, 0.94.0
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Maryann Xue
+Create date:
+28/Jun/12 07:52
+Update date:
+21/Apr/15 00:39
+Resolved date:
+21/Apr/15 00:39

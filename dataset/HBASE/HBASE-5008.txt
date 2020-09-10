@@ -1,0 +1,59 @@
+Summary:
+The clusters can't provide services because Region can't flush.
+Description:
+Hbase version 0.90.4 + patches
+My analysis is as follows:
+//Started splitting region b24d8ccb852ff742f2a27d01b7f5853e and closed region.
+2011-12-10 17:32:48,653 INFO org.apache.hadoop.hbase.regionserver.SplitTransaction: Starting split of region Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.
+2011-12-10 17:32:49,759 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Closing Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.: disabling compactions & flushes
+2011-12-10 17:32:49,759 INFO org.apache.hadoop.hbase.regionserver.HRegion: Running close preflush of Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.
+//Processed a flush request and skipped , But flushRequested had set to true
+2011-12-10 17:33:06,963 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memstore flush for Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e., current region memstore size 12.6m
+2011-12-10 17:33:17,277 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Skipping flush on Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e. because closing
+//split region b24d8ccb852ff742f2a27d01b7f5853 failed and rolled back, flushRequested flag was true, So all handle was blocked
+2011-12-10 17:34:01,293 INFO org.apache.hadoop.hbase.regionserver.SplitTransaction: Cleaned up old failed split transaction detritus: hdfs://193.195.18.121:9000/hbase/Htable_UFDR_004/b24d8ccb852ff742f2a27d01b7f5853e/splits
+2011-12-10 17:34:01,294 INFO org.apache.hadoop.hbase.regionserver.HRegion: Onlined Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.; next sequenceid=15494173
+2011-12-10 17:34:01,295 INFO org.apache.hadoop.hbase.regionserver.CompactSplitThread: Successful rollback of failed split of Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.
+2011-12-10 17:43:10,147 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 19 on 20020' on region
+Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.: memstore size 384.0m is >= than blocking 384.0m size
+// All handles had been blocked. The clusters could not provide services
+2011-12-10 17:34:01,295 INFO org.apache.hadoop.hbase.regionserver.CompactSplitThread: Successful rollback of failed split of Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.
+2011-12-10 17:43:10,147 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 19 on 20020' on region Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.: memstore size 384.0m is >= than blocking 384.0m size
+2011-12-10 17:43:10,192 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 34 on 20020' on region Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.: memstore size 384.0m is >= than blocking 384.0m size
+2011-12-10 17:43:10,193 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 51 on 20020' on region Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.: memstore size 384.0m is >= than blocking 384.0m size
+2011-12-10 17:43:10,196 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 85 on 20020' on region Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.: memstore size 384.0m is >= than blocking 384.0m size
+2011-12-10 17:43:10,199 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 88 on 20020' on region Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.: memstore size 384.0m is >= than blocking 384.0m size
+2011-12-10 17:43:10,202 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 44 on 20020' on region Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.: memstore size 384.0m is >= than blocking 384.0m size
+2011-12-10 17:43:11,663 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 2 on 20020' on region Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.: memstore size 384.0m is >= than blocking 384.0m size
+2011-12-10 17:43:11,665 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 10 on 20020' on region Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.: memstore size 384.0m is >= than blocking 384.0m size
+2011-12-10 17:43:11,670 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 75 on 20020' on region Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.: memstore size 384.0m is >= than blocking 384.0m size
+2011-12-10 17:43:11,671 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 98 on 20020' on region Htable_UFDR_004,09781,1323508582833.b24d8ccb852ff742f2a27d01b7f5853e.: memstore size 384.0m is >= than blocking 384.0m size
+2011-12-10 17:43:11,680 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 11 on 20020' on region
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.6, 0.92.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+gaojinchao
+Reporter:
+gaojinchao
+Create date:
+11/Dec/11 12:37
+Update date:
+20/Nov/15 11:55
+Resolved date:
+12/Dec/11 18:46

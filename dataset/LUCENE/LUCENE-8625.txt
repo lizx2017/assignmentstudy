@@ -1,0 +1,73 @@
+Summary:
+int overflow in ByteBuffersDataInput.sliceBufferList
+Description:
+Hi,
+Once I fixed the bug here, https://issues.apache.org/jira/browse/LUCENE-8624, I encountered another Integer Overflow error in ByteBuffersDataInput:
+Exception in thread "Lucene Merge Thread #1540" Exception in thread "main" org.apache.lucene.index.MergePolicy$MergeException: java.lang.ArithmeticException: integer overflow
+at org.apache.lucene.index.ConcurrentMergeScheduler.handleMergeException(ConcurrentMergeScheduler.java:705)
+at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:685)
+Caused by: java.lang.ArithmeticException: integer overflow
+at java.lang.Math.toIntExact(Math.java:1011)
+at org.apache.lucene.store.ByteBuffersDataInput.sliceBufferList(ByteBuffersDataInput.java:299)
+at org.apache.lucene.store.ByteBuffersDataInput.slice(ByteBuffersDataInput.java:223)
+at org.apache.lucene.store.ByteBuffersIndexInput.clone(ByteBuffersIndexInput.java:186)
+at org.apache.lucene.store.ByteBuffersDirectory$FileEntry.openInput(ByteBuffersDirectory.java:254)
+at org.apache.lucene.store.ByteBuffersDirectory.openInput(ByteBuffersDirectory.java:223)
+at org.apache.lucene.store.FilterDirectory.openInput(FilterDirectory.java:100)
+at org.apache.lucene.store.FilterDirectory.openInput(FilterDirectory.java:100)
+at org.apache.lucene.store.FilterDirectory.openInput(FilterDirectory.java:100)
+at org.apache.lucene.store.Directory.openChecksumInput(Directory.java:157)
+at org.apache.lucene.codecs.lucene50.Lucene50CompoundFormat.write(Lucene50CompoundFormat.java:89)
+at org.apache.lucene.index.IndexWriter.createCompoundFile(IndexWriter.java:5004)
+at org.apache.lucene.index.IndexWriter.mergeMiddle(IndexWriter.java:4517)
+at org.apache.lucene.index.IndexWriter.merge(IndexWriter.java:4075)
+at org.apache.lucene.index.ConcurrentMergeScheduler.doMerge(ConcurrentMergeScheduler.java:626)
+at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:663)
+The exception is caused by a Math.toIntExact in sliceBufferList in ByteBuffersDataInput.
+ByteBuffersDataInput.java
+private static List<ByteBuffer> sliceBufferList(List<ByteBuffer> buffers, long offset, long length) {
+ ensureAssumptions(buffers);
+
+ if (buffers.size() == 1) {
+ ByteBuffer cloned = buffers.get(0).asReadOnlyBuffer();
+ cloned.position(Math.toIntExact(cloned.position() + offset));
+ cloned.limit(Math.toIntExact(length + cloned.position()));
+ return Arrays.asList(cloned);
+ } else {
+ long absStart = buffers.get(0).position() + offset;
+ long absEnd = Math.toIntExact(absStart + length);  // throws integer overflow 
+
+...
+
+ 
+Removing the Math.toIntExact works but I'm not sure if the logic will still be right since absEnd is used to calculate endOffset after a few lines:
+int endOffset = (int) absEnd & blockMask;
+  Thanks,
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+7.5
+Fix_version:
+7.7
+Component:
+core/store
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Dawid Weiss
+Reporter:
+Mulugeta Mammo
+Create date:
+27/Dec/18 20:28
+Update date:
+28/Dec/18 11:11
+Resolved date:
+28/Dec/18 11:06

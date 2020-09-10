@@ -1,0 +1,168 @@
+Summary:
+data created before index is not returned in where query
+Description:
+CQL version of bug
+// CREATE KS AND CF  
+CREATE KEYSPACE ks1 with 
+  strategy_class =  
+    'org.apache.cassandra.locator.SimpleStrategy' 
+  and strategy_options:replication_factor=1;
+
+use ks1;
+DROP COLUMNFAMILY users;
+
+CREATE COLUMNFAMILY users (
+  KEY varchar PRIMARY KEY, password varchar, gender varchar,
+  session_token varchar, state varchar, birth_year bigint);
+
+// INSERT DATA
+INSERT INTO users (KEY, password, gender, state, birth_year) VALUES ('user1', 'ch@ngem3a', 'f', 'TX', '1968');    
+INSERT INTO users (KEY, password, gender, state, birth_year) VALUES ('user2', 'ch@ngem3b', 'm', 'CA', '1971');    
+
+// CREATE INDEX
+CREATE INDEX gender_key ON users (gender);
+CREATE INDEX state_key ON users (state);
+CREATE INDEX birth_year_key ON users (birth_year);
+
+// INSERT DATA
+INSERT INTO users (KEY, password, gender, state, birth_year) VALUES ('user3', 'ch@ngem3c', 'f', 'FL', '1978');    
+INSERT INTO users (KEY, password, gender, state, birth_year) VALUES ('user4', 'ch@ngem3d', 'm', 'TX', '1974'); 
+
+// VERIFY DATA
+cqlsh> select * from users;
+   KEY | birth_year | gender |  password | state |
+ user1 |       1968 |      f | ch@ngem3a |    TX |
+ user4 |       1974 |      m | ch@ngem3d |    TX |
+ user3 |       1978 |      f | ch@ngem3c |    FL |
+ user2 |       1971 |      m | ch@ngem3b |    CA |
+
+//BUG : missing row from user1, created before index was added
+cqlsh> select * from users where state='TX';
+   KEY | birth_year | gender |  password | state |
+ user4 |       1974 |      m | ch@ngem3d |    TX |
+
+//BUG : missing row from user2, created before index was added
+cqlsh> select * from users where state='CA';
+CLI version of bug
+// CREATE KS AND CF  
+CREATE keyspace ks1 with
+  placement_strategy = 
+    'org.apache.cassandra.locator.SimpleStrategy'
+  and strategy_options = [{replication_factor:1}];
+
+use ks1;
+drop column family users;
+create column family users
+ with comparator = UTF8Type
+ and key_validation_class = UTF8Type
+ and default_validation_class = UTF8Type
+ and column_metadata = [{column_name: password, validation_class:UTF8Type}
+ {column_name: gender, validation_class: UTF8Type},
+ {column_name: session_token, validation_class: UTF8Type},
+ {column_name: state, validation_class: UTF8Type},
+ {column_name: birth_year, validation_class: LongType}];
+
+// INSERT DATA 
+set users['user1']['password']='ch@ngem3a';
+set users['user1']['gender']='f';
+set users['user1']['state']='TX';
+set users['user1']['birth_year']='1968';
+
+set users['user2']['password']='ch@ngem3b';
+set users['user2']['gender']='m';
+set users['user2']['state']='CA';
+set users['user2']['birth_year']='1971';
+
+// ADD INDEX 
+update column family users
+ with comparator = UTF8Type
+ and key_validation_class = UTF8Type
+ and default_validation_class = UTF8Type
+ and column_metadata = [{column_name: password, validation_class:UTF8Type}
+ {column_name: gender, validation_class: UTF8Type, index_type: KEYS},
+ {column_name: session_token, validation_class: UTF8Type},
+ {column_name: state, validation_class: UTF8Type, index_type: KEYS},
+ {column_name: birth_year, validation_class: LongType, index_type: KEYS}];
+
+// INSERT DATA
+set users['user3']['password']='ch@ngem3b';
+set users['user3']['gender']='f';
+set users['user3']['state']='FL';
+set users['user3']['birth_year']='1978';
+
+set users['user4']['password']='ch@ngem3c';
+set users['user4']['gender']='m';
+set users['user4']['state']='TX';
+set users['user4']['birth_year']='1974';
+
+// VERIFY DATA
+[default@cqldb] list users;
+Using default limit of 100
+-------------------
+RowKey: user1
+=> (column=birth_year, value=1968, timestamp=1318714655921000)
+=> (column=gender, value=f, timestamp=1318714655917000)
+=> (column=password, value=ch@ngem3a, timestamp=1318714655908000)
+=> (column=state, value=TX, timestamp=1318714655919000)
+-------------------
+RowKey: user4
+=> (column=birth_year, value=1974, timestamp=1318714671608000)
+=> (column=gender, value=m, timestamp=1318714670666000)
+=> (column=password, value=ch@ngem3c, timestamp=1318714670665000)
+=> (column=state, value=TX, timestamp=1318714670668000)
+-------------------
+RowKey: user3
+=> (column=birth_year, value=1978, timestamp=1318714670662000)
+=> (column=gender, value=f, timestamp=1318714670657000)
+=> (column=password, value=ch@ngem3b, timestamp=1318714670654000)
+=> (column=state, value=FL, timestamp=1318714670660000)
+-------------------
+RowKey: user2
+=> (column=birth_year, value=1971, timestamp=1318714657353000)
+=> (column=gender, value=m, timestamp=1318714655924000)
+=> (column=password, value=ch@ngem3b, timestamp=1318714655923000)
+=> (column=state, value=CA, timestamp=1318714655926000)
+
+4 Rows Returned.
+
+//BUG : missing row from user1, created before index was added
+[default@cqldb] get users where state='TX';
+-------------------
+RowKey: user4
+=> (column=birth_year, value=1974, timestamp=1318714671608000)
+=> (column=gender, value=m, timestamp=1318714670666000)
+=> (column=password, value=ch@ngem3c, timestamp=1318714670665000)
+=> (column=state, value=TX, timestamp=1318714670668000)
+
+//BUG : missing row from user2, created before index was added
+[default@cqldb] get users where state='CA';
+
+0 Row Returned.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Cathy Daw
+Create date:
+15/Oct/11 21:46
+Update date:
+16/Apr/19 09:32
+Resolved date:
+16/Feb/12 15:03

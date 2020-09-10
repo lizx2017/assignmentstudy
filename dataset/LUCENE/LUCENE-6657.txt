@@ -1,0 +1,97 @@
+Summary:
+NPE in TermAutomatonScorer assert statement
+Description:
+I randomly hit this while doing unrelated beasting ... I haven't dug into why yet, but it does repro on trunk currently (rev 1689075)
+.....ENOTE: reproduce with: ant test  -Dtestcase=TestTermAutomatonQuery -Dtests.method=testRandom -Dtests.seed=1646A72E65E35CE9 -Dtests.slow=true -Dtests.linedocsfile=/lucenedata/hudson.enwiki.random.lines.txt.fixed -Dtests.locale=mt -Dtests.timezone=Asia/Macao -Dtests.asserts=true -Dtests.file.encoding=UTF-8
+........NOTE: test params are: codec=Asserting(Lucene53), sim=DefaultSimilarity, locale=mt, timezone=Asia/Macao
+NOTE: Linux 3.13.0-46-generic amd64/Oracle Corporation 1.8.0_40 (64-bit)/cpus=8,threads=1,free=2013116904,total=2058354688
+NOTE: All tests run in this JVM: [TestTermAutomatonQuery]
+
+Time: 0.643
+There was 1 failure:
+1) testRandom(org.apache.lucene.search.TestTermAutomatonQuery)
+java.lang.NullPointerException
+ at __randomizedtesting.SeedInfo.seed([1646A72E65E35CE9:640A8221D483EA9A]:0)
+ at org.apache.lucene.search.TermAutomatonScorer.doNext(TermAutomatonScorer.java:177)
+ at org.apache.lucene.search.TermAutomatonScorer.nextDoc(TermAutomatonScorer.java:144)
+ at org.apache.lucene.search.Weight$DefaultBulkScorer.scoreAll(Weight.java:216)
+ at org.apache.lucene.search.Weight$DefaultBulkScorer.score(Weight.java:169)
+ at org.apache.lucene.search.AssertingBulkScorer.score(AssertingBulkScorer.java:80)
+ at org.apache.lucene.search.AssertingBulkScorer.score(AssertingBulkScorer.java:64)
+ at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:621)
+ at org.apache.lucene.search.AssertingIndexSearcher.search(AssertingIndexSearcher.java:92)
+ at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:425)
+ at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:544)
+ at org.apache.lucene.search.IndexSearcher.searchAfter(IndexSearcher.java:402)
+ at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:413)
+ at org.apache.lucene.search.TestTermAutomatonQuery.testRandom(TestTermAutomatonQuery.java:598)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+ at java.lang.reflect.Method.invoke(Method.java:497)
+ at com.carrotsearch.randomizedtesting.RandomizedRunner.invoke(RandomizedRunner.java:1627)
+ at com.carrotsearch.randomizedtesting.RandomizedRunner$6.evaluate(RandomizedRunner.java:836)
+ at com.carrotsearch.randomizedtesting.RandomizedRunner$7.evaluate(RandomizedRunner.java:872)
+ at com.carrotsearch.randomizedtesting.RandomizedRunner$8.evaluate(RandomizedRunner.java:886)
+ at org.apache.lucene.util.TestRuleSetupTeardownChained$1.evaluate(TestRuleSetupTeardownChained.java:50)
+ at org.apache.lucene.util.AbstractBeforeAfterRule$1.evaluate(AbstractBeforeAfterRule.java:46)
+ at org.apache.lucene.util.TestRuleThreadAndTestName$1.evaluate(TestRuleThreadAndTestName.java:49)
+ at org.apache.lucene.util.TestRuleIgnoreAfterMaxFailures$1.evaluate(TestRuleIgnoreAfterMaxFailures.java:65)
+ at org.apache.lucene.util.TestRuleMarkFailure$1.evaluate(TestRuleMarkFailure.java:48)
+ at com.carrotsearch.randomizedtesting.rules.StatementAdapter.evaluate(StatementAdapter.java:36)
+ at com.carrotsearch.randomizedtesting.ThreadLeakControl$StatementRunner.run(ThreadLeakControl.java:365)
+ at com.carrotsearch.randomizedtesting.ThreadLeakControl.forkTimeoutingTask(ThreadLeakControl.java:798)
+ at com.carrotsearch.randomizedtesting.ThreadLeakControl$3.evaluate(ThreadLeakControl.java:458)
+ at com.carrotsearch.randomizedtesting.RandomizedRunner.runSingleTest(RandomizedRunner.java:845)
+ at com.carrotsearch.randomizedtesting.RandomizedRunner$3.evaluate(RandomizedRunner.java:747)
+ at com.carrotsearch.randomizedtesting.RandomizedRunner$4.evaluate(RandomizedRunner.java:781)
+ at com.carrotsearch.randomizedtesting.RandomizedRunner$5.evaluate(RandomizedRunner.java:792)
+ at org.apache.lucene.util.AbstractBeforeAfterRule$1.evaluate(AbstractBeforeAfterRule.java:46)
+ at com.carrotsearch.randomizedtesting.rules.StatementAdapter.evaluate(StatementAdapter.java:36)
+ at org.apache.lucene.util.TestRuleStoreClassName$1.evaluate(TestRuleStoreClassName.java:42)
+ at com.carrotsearch.randomizedtesting.rules.NoShadowingOrOverridesOnMethodsRule$1.evaluate(NoShadowingOrOverridesOnMethodsRule.java:39)
+ at com.carrotsearch.randomizedtesting.rules.NoShadowingOrOverridesOnMethodsRule$1.evaluate(NoShadowingOrOverridesOnMethodsRule.java:39)
+ at com.carrotsearch.randomizedtesting.rules.StatementAdapter.evaluate(StatementAdapter.java:36)
+ at com.carrotsearch.randomizedtesting.rules.StatementAdapter.evaluate(StatementAdapter.java:36)
+ at com.carrotsearch.randomizedtesting.rules.StatementAdapter.evaluate(StatementAdapter.java:36)
+ at org.apache.lucene.util.TestRuleAssertionsRequired$1.evaluate(TestRuleAssertionsRequired.java:54)
+ at org.apache.lucene.util.TestRuleMarkFailure$1.evaluate(TestRuleMarkFailure.java:48)
+ at org.apache.lucene.util.TestRuleIgnoreAfterMaxFailures$1.evaluate(TestRuleIgnoreAfterMaxFailures.java:65)
+ at org.apache.lucene.util.TestRuleIgnoreTestSuites$1.evaluate(TestRuleIgnoreTestSuites.java:55)
+ at com.carrotsearch.randomizedtesting.rules.StatementAdapter.evaluate(StatementAdapter.java:36)
+ at com.carrotsearch.randomizedtesting.ThreadLeakControl$StatementRunner.run(ThreadLeakControl.java:365)
+ at java.lang.Thread.run(Thread.java:745)
+
+FAILURES!!!
+Tests run: 13,  Failures: 1
+The affected line is this assert:
+    assert docIDQueue.top().posEnum.docID() > docID;
+Must be some sort of corner case ...
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.3, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+03/Jul/15 22:30
+Update date:
+09/May/16 18:33
+Resolved date:
+04/Jul/15 10:15

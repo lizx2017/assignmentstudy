@@ -1,0 +1,39 @@
+Summary:
+Potential exception in TermInfosWriter#initialize() swallowed makes debugging hard
+Description:
+TermInfosWriter#initialize() can potentially fail with an exception when trying to write any of the values in the try block. If that happens the finally clause will be called and that may also fail during close(). This exception will mask the original one potentially hiding the real cause and making debugging such failures difficult.
+My particular case involves failing the first write in the initialize() and close() failing the seek. My code receives:
+Caused by: java.io.IOException: Illegal seek
+at java.io.RandomAccessFile.seek(Native Method) ~[na:1.6.0_31]
+at org.apache.lucene.store.FSDirectory$FSIndexOutput.seek(FSDirectory.java:479)
+at org.apache.lucene.index.TermInfosWriter.close(TermInfosWriter.java:244)
+at org.apache.lucene.util.IOUtils.close(IOUtils.java:141)
+which provides no indication as to why the initialization failed. The above stack trace has been created with lucene version 3.5.0 but the exception handling is still the same in 3.6.2
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Invalid
+Affects_version:
+3.6.2
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Chris Gioran
+Create date:
+19/Mar/13 12:02
+Update date:
+29/Apr/13 10:50
+Resolved date:
+20/Mar/13 13:12

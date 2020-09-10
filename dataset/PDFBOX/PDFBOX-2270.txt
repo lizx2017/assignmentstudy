@@ -1,0 +1,70 @@
+Summary:
+PDField.getFullyQualifiedName() returns name adding suffix '.null'
+Description:
+We have several pdf files where each one contains one pdf form with their own fields. We need to read all pdf fields and list them into a txt file.
+The problem comes when a pdf form has duplicated field names, so the field.getFullyQualifiedName() returns the name of the field wrong, adding '.null' at the final of field's names.
+-->Situation:
+1) PDf file containing a pdf form
+2) The pdf form contains lot of fields, some of their field's names are duplicated, like for example 'Applicant.city'.
+3) When I try to list all of field's names, duplicate field's names comes with a suffix '.null' --> this only happends on duplicated field's names.
+----------------------------------------------------------------------------------------------
+-->Example:
+1) PDF Form with 4 fields whos names are: 'Applicant.name', 'Applicant.phone', 'Applicant.ssn', 'Applicant.name'.
+2)After running the code shown bellow, the result list is: 'Applicant.name.null', 'Applicant.phone', 'Applicant.ssn', 'Applicant.name.null'.
+----------------------------------------------------------------------------------------------
+-->Attach the code for listing all pdf form field's names:
+public static Set<String> printFields( PDDocument doc ) throws IOException {
+PDDocumentCatalog docCatalog = doc.getDocumentCatalog();
+PDAcroForm acroForm = docCatalog.getAcroForm();
+List fields = acroForm.getFields();
+Iterator fieldsIter = fields.iterator();
+Set<String> fieldSet = new HashSet<String>();
+while ( fieldsIter.hasNext() )
+{ PDField field = (PDField)fieldsIter.next(); // String fieldFullName = processField(field); fieldSet.addAll( processField( field ) ); }
+return fieldSet;
+}
+private static Set<String> processField( PDField field ) throws IOException {
+List kids = field.getKids();
+Set<String> result = new HashSet<String>();
+if( kids != null ){
+Iterator kidsIter = kids.iterator();
+while ( kidsIter.hasNext() ){
+Object pdfObj = kidsIter.next();
+if( pdfObj instanceof PDField )
+{ PDField kid = (PDField)pdfObj; result.addAll( processField( kid ) ); }
+}
+}else
+{ //System.out.println( "field.getFullyQualifiedName(): " + field.getFullyQualifiedName() ); result.add( field.getFullyQualifiedName() ); }
+return result;
+}
+--------------------------------------------------------------------------------
+field.getFullyQualifiedName() is returning duplicated field's names with a prefix '.null'.
+Thanks in advance.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.5.0, 1.7.1, 1.8.0, 1.8.6
+Fix_version:
+1.8.7, 2.0.0
+Component:
+AcroForm
+Label:
+PDAcroForm PDField g
+Environment:
+jse
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Javier García Sánchez
+Create date:
+12/Aug/14 14:38
+Update date:
+19/Sep/14 14:40
+Resolved date:
+30/Aug/14 16:06

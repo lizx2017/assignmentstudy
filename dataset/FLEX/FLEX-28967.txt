@@ -1,0 +1,88 @@
+Summary:
+PopUpManagerImpl - centerPopUp method - TypeError: Error #1009: Cannot access a property or method of a null object reference
+Description:
+Steps to reproduce:
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+<fx:Script>
+<![CDATA[
+import mx.managers.PopUpManager;
+protected function button1_clickHandler(event:MouseEvent):void
+{ PopUpManager.centerPopUp(w); }
+]]>
+</fx:Script>
+<s:Button click="button1_clickHandler(event)"/>
+<s:TitleWindow id="w" bottom="10"/>
+</s:Application>
+1. using PopUpManager
+Error in the code:
+public function centerPopUp(popUp:IFlexDisplayObject):void
+{
+if (popUp is IInvalidating)
+IInvalidating(popUp).validateNow();
+const o:PopUpData = findPopupInfoByOwner(popUp);
+// If we don't find the pop owner or if the owner's parent is not specified or is not on the
+// stage, then center based on the popUp's current parent.
+var popUpParent:DisplayObject = (o && o.parent && o.parent.stage) ? o.parent : popUp.parent;
+if (popUpParent)
+{
+var systemManager:ISystemManager = o.systemManager;
+.
+.
+.
+.
+If const "o" is null, popUpParent is set to popUp.parent as stated by condition above.
+However in next step you assume that const "o" exists because you're asking for o.systemManager, but o is null.
+Therefore: TypeError: Error #1009: Cannot access a property or method of a null object reference
+Fix:
+public function centerPopUp(popUp:IFlexDisplayObject):void
+{
+if (popUp is IInvalidating)
+IInvalidating(popUp).validateNow();
+const o:PopUpData = findPopupInfoByOwner(popUp);
+var popUpParent:DisplayObject = (o && o.parent && o.parent.stage) ? o.parent : popUp.parent;
+if (popUpParent)
+{
+var systemManager:ISystemManager;
+if (o != null)
+{ systemManager = o.systemManager; }
+else if (popUpParent.hasOwnProperty("systemManager"))
+{ systemManager = popUpParent["systemManager"]; }
+else if (popUpParent is ISystemManager)
+{ systemManager = popUpParent as ISystemManager; }
+if (!systemManager)
+return; // or throw exception maybe ?
+.
+.
+.
+.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+Apache Flex Next
+Component:
+PopUp Manager
+Label:
+EasyFix
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Carlos Rovira
+Reporter:
+Adobe JIRA
+Create date:
+24/Nov/11 06:14
+Update date:
+24/Mar/13 12:34
+Resolved date:
+24/Mar/13 12:25

@@ -1,0 +1,65 @@
+Summary:
+PatternReplaceCharFilter can make Lucene hang
+Description:
+I'm using ElasticSearch (v2.2.0 , Lucene v5.4.1) and it's Pattern Replace Char Filter (Lucenes PatternReplaceCharFilter) . I need to filter out urls from my query text before it is tokenised. But I found that some input strings cause ElasticSearch to "hang" (slowly eating more CPU and memory) until the system crashes.
+Example
+// Character filters are used to "tidy up" a string *before* it is tokenized.
+'char_filter' => [
+    'url_removal_pattern' => [
+        'type'        => 'pattern_replace',
+        'pattern'     => '(?mi)\b((?:[a-z][\w-]+:(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:\'".,<>?«»""'']))',
+        'replacement' => '',
+    ],
+This filter was working fine for some weeks until suddenly ElasticSearch started crashing. We found someone was trying to do a javascript injection attack in our search box.
+I pasted the regex and the attack string into https://regex101.com
+Regexp:
+(?mi)\b((?:[a-z][\w-]+:(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s!()\[\]{};:\'".,<>?«»""'']))
+Test string:
+twitter.com/widgets.js\";fjs.parentNode.insertBefore(js,fjs);}}(document,\"script\",\"twitter-wjs\"
+https://regex101.com shows the problem to be "Catastrophic backtracking"
+Catastrophic backtracking has been detected and the execution of your expression has been halted. To find out more what this is, please read the following article: Runaway Regular Expressions.
+It would be great if Lucene could detect "Catastrophic backtracking" and throw a error or return null.
+As an aside, I created a unit test for our PHP application that uses the same regexp and test string. (PHP can understand the same regexp, even though it's obviously for Java in the ElasticSearch case) . Interestingly in php, the regex results in `null` which is the documented response of preg_replace when a error occurs. If PHP can return a error rather than crashing - surely Lucene / Java can too :trollface: ?
+namespace app\tests\unit;
+use \yii\codeception\TestCase;
+
+class TagsControllerTest extends TestCase
+{
+    public function testRegexForURLDetection()
+    {
+        $regex = '(?mi)\b((?:[a-z][\w-]+:(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:\'".,<>?«»""'']))';
+        // Test the Catastrophic backtracking problem
+        $testString = "twitter.com/widgets.js\";fjs.parentNode.insertBefore(js,fjs);}}(document,\"script\",\"twitter-wjs\"";
+        // This shows the regex is not working for our test string - it gives null but should give 'hello '
+        $this->assertEquals(null, preg_replace("/$regex/", '', "hello $testString"));
+    }
+}
+(I originally opened a ticket to the ElasticSearch project but got told opening it here would be more appropriate - sorry if I'm wrong)
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Won't Fix
+Affects_version:
+5.4.1
+Fix_version:
+None
+Component:
+modules/analysis
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Tom Fotherby
+Create date:
+26/Apr/16 09:33
+Update date:
+14/Jul/16 10:49
+Resolved date:
+09/Jun/16 16:41

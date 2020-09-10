@@ -1,0 +1,76 @@
+Summary:
+The release smoke tester inappropriately requires back compat index testing for versions not less than the one being smoke tested
+Description:
+I ran ant nightly-smoke on my laptop against the lucene_solr_5_3 branch and got the following error:
+   [smoker] Verify...
+   [smoker]   confirm all releases have coverage in TestBackwardsCompatibility
+   [smoker]     find all past Lucene releases...
+   [smoker]     run TestBackwardsCompatibility..
+   [smoker] Releases that don't seem to be tested:
+   [smoker]   5.4.0
+   [smoker] Traceback (most recent call last):
+   [smoker]   File "/Users/sarowe/svn/lucene/dev/branches/lucene_solr_5_3/dev-tools/scripts/smokeTestRele
+   [smoker] ase.py", line 1449, in <module>
+   [smoker]     main()
+   [smoker]   File "/Users/sarowe/svn/lucene/dev/branches/lucene_solr_5_3/dev-tools/scripts/smokeTestRelease.py", line 1394, in main
+   [smoker]     smokeTest(c.java, c.url, c.revision, c.version, c.tmp_dir, c.is_signed, ' '.join(c.test_args))
+   [smoker]   File "/Users/sarowe/svn/lucene/dev/branches/lucene_solr_5_3/dev-tools/scripts/smokeTestRelease.py", line 1432, in smokeTest
+   [smoker]     unpackAndVerify(java, 'lucene', tmpDir, 'lucene-%s-src.tgz' % version, svnRevision, version, testArgs, baseURL)
+   [smoker]   File "/Users/sarowe/svn/lucene/dev/branches/lucene_solr_5_3/dev-tools/scripts/smokeTestRelease.py", line 583, in unpackAndVerify
+   [smoker]     verifyUnpacked(java, project, artifact, unpackPath, svnRevision, version, testArgs, tmpDir, baseURL)
+   [smoker]   File "/Users/sarowe/svn/lucene/dev/branches/lucene_solr_5_3/dev-tools/scripts/smokeTestRelease.py", line 762, in verifyUnpacked
+   [smoker]     confirmAllReleasesAreTestedForBackCompat(unpackPath)
+   [smoker]   File "/Users/sarowe/svn/lucene/dev/branches/lucene_solr_5_3/dev-tools/scripts/smokeTestRelease.py", line 1387, in confirmAllReleasesAreTestedForBackCompat
+   [smoker]     raise RuntimeError('some releases are not tested by TestBackwardsCompatibility?')
+   [smoker] RuntimeError: some releases are not tested by TestBackwardsCompatibility?
+Here's the relevant section of smokeTestRelease.py - getAllLuceneReleases() fetches all dotted-version entries in the file listing page returned by the web server at https://archive.apache.org/dist/lucene/java/:
+def confirmAllReleasesAreTestedForBackCompat(unpackPath):
+
+  print('    find all past Lucene releases...')
+  allReleases = getAllLuceneReleases()
+  [...]
+  notTested = []
+  for x in allReleases:
+    if x not in testedIndices:
+      if '.'.join(str(y) for y in x) in ('1.4.3', '1.9.1', '2.3.1', '2.3.2'):
+        # Exempt the dark ages indices
+        continue
+      notTested.append(x)
+
+  if len(notTested) > 0:
+    notTested.sort()
+    print('Releases that don\'t seem to be tested:')
+    failed = True
+    for x in notTested:
+      print('  %s' % '.'.join(str(y) for y in x))
+    raise RuntimeError('some releases are not tested by TestBackwardsCompatibility?')
+I think the code above should allow/ignore versions greater than the version being smoke tested.
+AFAIK, version 5.3.2 will be the first release where a greater version has been released in the past since full back compat testing started being checked for by the smoke tester. (The last time this happened was when 4.9.1 was released after 4.10.0.)
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+5.3.2
+Fix_version:
+4.10.5, (7)
+Component:
+general/test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Steve Rowe
+Reporter:
+Steve Rowe
+Create date:
+31/Dec/15 19:06
+Update date:
+09/May/16 18:35
+Resolved date:
+10/Jan/16 20:08

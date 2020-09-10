@@ -1,0 +1,66 @@
+Summary:
+RandomAccessBuffer consumes too much memory.
+Description:
+RandomAccessBuffer holds uncompressed image during operation because it is what exactly pdfbox ExtractImages do.
+but holding uncompressed image instead of compressed one in memory consumes too much memory, not excluding many PDF XObjects that can use filter to compress itself. It would be good if pdfbox provides option that reverts to COSObject state just before the RandomAccess object created(the state that pdf XObject stream parsed and COSDictionary objects haven't created because user doesn't requested it using get____() method.) It is crucial feature so that pdfbox can analyze huge pdf file(>100MB).
+In current source, one must close COSStream unless required(and I know closed stream cannot reopened again.)
+Class Name | Shallow Heap | Retained Heap
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+org.apache.pdfbox.cos.COSObject @ 0x5ad4940 | 24 | 8,187,264
+<class> class org.apache.pdfbox.cos.COSObject @ 0x58c4020
+0 0
+generationNumber org.apache.pdfbox.cos.COSInteger @ 0x5ad0080
+24 24
+baseObject org.apache.pdfbox.cos.COSStream @ 0x5b25ea0
+32 8,187,216
+  <class> class org.apache.pdfbox.cos.COSStream @ 0x58c3e00
+8 8
+  items java.util.LinkedHashMap @ 0x5b2a0f0
+56 552
+  file org.apache.pdfbox.io.RandomAccessBuffer @ 0x5b2a128
+48 8,186,528
+    <class> class org.apache.pdfbox.io.RandomAccessBuffer @ 0x5ad2b00
+8 8
+    currentBuffer byte[16384] @ 0x590f360 16,400
+16,400
+    bufferList java.util.ArrayList @ 0x5b2e200
+24 8,170,080
+  '- Total: 3 entries  
+  filteredStream org.apache.pdfbox.io.RandomAccessFileOutputStream @ 0x5b2a158
+32 32
+  decodeResult org.apache.pdfbox.filter.DecodeResult @ 0xa65f618
+16 16
+  unFilteredStream org.apache.pdfbox.io.RandomAccessFileOutputStream @ 0xa71ab18
+32 32
+'- Total: 6 entries  
+objectNumber org.apache.pdfbox.cos.COSInteger @ 0x5b25ec0
+24 24
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+1.8.6, 2.0.0
+Fix_version:
+2.0.0
+Component:
+PDModel
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+gee
+Create date:
+30/Aug/14 14:56
+Update date:
+17/Mar/16 19:07
+Resolved date:
+20/Jul/15 10:23

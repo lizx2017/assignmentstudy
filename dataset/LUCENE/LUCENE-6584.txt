@@ -1,0 +1,78 @@
+Summary:
+Docs on StandardTokenizer don't mention the behaviour change in Version.LUCENE_4_7_0
+Description:
+The following test shows that the behaviour of StandardTokenizer differs once you start passing Version.LUCENE_4_7_0 or greater:
+import java.io.StringReader;
+
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.standard.StandardTokenizer;
+import org.apache.lucene.util.Version;
+import org.junit.Test;
+
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
+
+public class TestStandardTokenizerStandalone
+{
+    @Test
+    public void testLucene4_6_1() throws Exception
+    {
+        doTest(Version.LUCENE_4_6_1);
+    }
+
+    @Test
+    public void testLucene4_7_0() throws Exception
+    {
+        doTest(Version.LUCENE_4_7_0);
+    }
+
+    public void doTest(Version version) throws Exception
+    {
+        try (TokenStream stream = new StandardTokenizer(version, new StringReader(makeLongString(2550))))
+        {
+            stream.reset();
+
+            assertThat(stream.incrementToken(), is(false));
+        }
+    }
+
+    private String makeLongString(int length)
+    {
+        StringBuilder builder = new StringBuilder(length);
+        for (int i = 0; i < length; i++)
+        {
+            builder.append('x');
+        }
+        return builder.toString();
+    }
+}
+However, the Javadoc only mentions the behaviour changes in versions 3.1 and 3.4.
+The constructor for passing the version is deprecated, presumably under the false impression that no changes occurred during Lucene 4. I know the Version parameter was killed off entirely in version 5, which presumably means that people who tokenised stuff in Lucene 4.6 or earlier have now been trapped and have to copy the tokeniser from Lucene 4 to keep their queries working.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+4.10.4
+Fix_version:
+None
+Component:
+modules/analysis
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Trejkaz
+Create date:
+18/Jun/15 23:37
+Update date:
+19/Jun/15 10:34
+Resolved date:
+

@@ -1,0 +1,85 @@
+Summary:
+ERROR [MIGRATION-STAGE:1] Previous Version Mistmatch
+Description:
+I fired up a 3 node cluster. I created few keyspaces using API and inserted to them with no problem. Now I tried to add more CFs to one of those existing Keyspaces in a loop. I got the following exception:
+ERROR [MIGRATION-STAGE:1] 2010-08-12 14:46:40,493 CassandraDaemon.java (line 82) Uncaught exception in thread Thread[MIGRATION-STAGE:1,5,main]
+java.util.concurrent.ExecutionException: java.lang.RuntimeException: org.apache.cassandra.config.ConfigurationException: Previous version mismatch. cannot apply.
+at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:252)
+at java.util.concurrent.FutureTask.get(FutureTask.java:111)
+at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor.afterExecute(DebuggableThreadPoolExecutor.java:87)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1118)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:636)
+Caused by: java.lang.RuntimeException: org.apache.cassandra.config.ConfigurationException: Previous version mismatch. cannot apply.
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:334)
+at java.util.concurrent.FutureTask.run(FutureTask.java:166)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+... 2 more
+Caused by: org.apache.cassandra.config.ConfigurationException: Previous version mismatch. cannot apply.
+at org.apache.cassandra.db.migration.Migration.apply(Migration.java:101)
+at org.apache.cassandra.db.DefinitionsUpdateResponseVerbHandler$1.runMayThrow(DefinitionsUpdateResponseVerbHandler.java:70)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+... 6 more
+The above exception is logged in the log of node in which I send the request to and not other seeds. It is noteworthy that my schem_agreement is stuck in a disagreed state:
+Array
+(
+[1775e847-a658-11df-960f-7d867dfef3ae] => Array
+(
+[0] => 10.50.26.134
+)
+[163d874a-a65b-11df-aef0-d73a63bafff3] => Array
+(
+[0] => 10.50.26.133
+)
+[14869031-a658-11df-8553-930ba61048ac] => Array
+(
+[0] => 10.50.26.132
+)
+)
+And this does not change. Affect is that some keyspaces would not respond to reads any more giving Internal Error:
+ERROR [pool-1-thread-26] 2010-08-12 14:50:57,034 Cassandra.java (line 2988) Internal error processing batch_mutate
+java.lang.AssertionError
+at org.apache.cassandra.locator.AbstractReplicationStrategy.getNaturalEndpoints(AbstractReplicationStrategy.java:91)
+at org.apache.cassandra.service.StorageService.getNaturalEndpoints(StorageService.java:1289)
+at org.apache.cassandra.service.StorageService.getNaturalEndpoints(StorageService.java:1277)
+at org.apache.cassandra.service.StorageProxy.mutateBlocking(StorageProxy.java:193)
+at org.apache.cassandra.thrift.CassandraServer.doInsert(CassandraServer.java:474)
+at org.apache.cassandra.thrift.CassandraServer.batch_mutate(CassandraServer.java:438)
+at org.apache.cassandra.thrift.Cassandra$Processor$batch_mutate.process(Cassandra.java:2980)
+at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:2499)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:167)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:636)
+In my CF creation, I block for CF creation of the same name and not different names.
+Please advice.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 2
+Component:
+None
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+Arya Goudarzi
+Create date:
+12/Aug/10 22:04
+Update date:
+16/Apr/19 09:33
+Resolved date:
+16/Aug/10 19:26

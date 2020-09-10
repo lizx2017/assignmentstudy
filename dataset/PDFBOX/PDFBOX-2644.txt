@@ -1,0 +1,55 @@
+Summary:
+Load FDF document creates Temp file when called with file parameter
+Description:
+Load FDF document creates Temp file when called with file parameter, as shown by this stack trace from
+https://stackoverflow.com/questions/28229085/temp-file-creation-error-on-gae-with-pdfbox
+com.sun.jersey.spi.container.ContainerResponse mapMappableContainerException: The RuntimeException could not be mapped to a response, re-throwing to the HTTP container
+java.lang.SecurityException: Unable to create temporary file
+ at java.io.File.checkAndCreate(File.java:1873)
+ at java.io.File.createTempFile(File.java:1968)
+ at java.io.File.createTempFile(File.java:2013)
+ at org.apache.pdfbox.pdfparser.NonSequentialPDFParser.createTmpFile(NonSequentialPDFParser.java:298)
+ at org.apache.pdfbox.pdfparser.NonSequentialPDFParser.<init>(NonSequentialPDFParser.java:278)
+ at org.apache.pdfbox.pdfparser.NonSequentialPDFParser.<init>(NonSequentialPDFParser.java:264)
+ at org.apache.pdfbox.pdmodel.fdf.FDFDocument.load(FDFDocument.java:200)
+ at org.apache.pdfbox.pdmodel.fdf.FDFDocument.load(FDFDocument.java:172)
+and this source code
+        File pdfFile = new File("resources/GenerateFDF.pdf");
+        File fdfFile = new File("resources/fdftest.fdf");
+
+        PDDocument pdfDoc = PDDocument.load(pdfFile);
+        FDFDocument fdfDoc = FDFDocument.load(fdfFile);
+I had a quick look at the sources of FDFDocument:
+    public static FDFDocument load( File file ) throws IOException
+    {
+        return load( new BufferedInputStream( new FileInputStream( file ) ) );
+    }
+Is it needed this way, i.e. can't the NonSequentialPDFParser constructor be called instead, as it is done when opening a *P*DF Document?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.8
+Fix_version:
+1.8.9
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+30/Jan/15 07:37
+Update date:
+28/Mar/15 14:10
+Resolved date:
+01/Feb/15 19:56

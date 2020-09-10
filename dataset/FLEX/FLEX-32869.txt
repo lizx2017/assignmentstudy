@@ -1,0 +1,52 @@
+Summary:
+Bug in autoAdjust using multiple axes
+Description:
+Steps to reproduce:
+1. Create a cartesian chart, setting its horizontalAxisRenderers but not its horizontalAxis, because you want to use multiple horizontal axes.
+2. Add multiple data series to the chart (I've tested both PlotSeries and LineSeries)
+Actual Results:
+The horizontal axes do not update their ranges
+Expected Results:
+The horizontal axes' ranges should be updated
+Workaround (if any):
+I've isolated the problem to the set dataTransform method in Series. The updateSeries method in CartesianChart removes all the Series from the chart and re-adds them. When a Series is removed from the chart, removeElement sets its dataTransform to null. This disconnects the Series from the axis by calling unregisterDataTransform. When the Series is re-added to the chart, there is no code re-register the Series with the axes. I worked around this by sub-classing LineSeries and PlotSeries and adding the following code:
+private var m_savedTransform:DataTransform;
+override public function parentChanged (p:DisplayObjectContainer) : void {
+super.parentChanged(p);
+if (!p)
+{ m_savedTransform = dataTransform; }
+else if (m_savedTransform) {
+for (var axis:String in m_savedTransform.axes)
+{ m_savedTransform.getAxis(axis).registerDataTransform(m_savedTransform, axis); }
+m_savedTransform = null;
+}
+}
+This will fail if the Series is removed from one chart and added to another, but that can't happen in my application, so the workaround works for me, but it may not work for everyone.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.1 (
+Fix_version:
+None
+Component:
+Charts:Multiple Axes
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+01/Sep/10 12:36
+Update date:
+01/Sep/10 12:36
+Resolved date:
+

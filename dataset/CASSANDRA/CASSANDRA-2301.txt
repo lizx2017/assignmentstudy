@@ -1,0 +1,35 @@
+Summary:
+OOM on repair with many inconsistent ranges
+Description:
+Repair can OOM when lots of ranges are inconsistent, causing many sstables to be streamed.
+I replicated the error by making 1264 3MB sstables on one node, added a second node, changed the replication factor to 2, and ran a repair.
+Looking at the heap dump of the original failure, there were 2.4GB of FutureTasks, each taking up 8MB of space. I tracked down the BufferedRandomAccessFile and made sure that it was cleared every time it was closed inside of src/java/org/apache/cassandra/io/sstable/SSTableWriter.java.
+Attached is the patch I used which stopped the error when I was trying to replicate it.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Joaquin Casares
+Reporter:
+Joaquin Casares
+Create date:
+09/Mar/11 19:46
+Update date:
+16/Apr/19 09:33
+Resolved date:
+11/Mar/11 02:57

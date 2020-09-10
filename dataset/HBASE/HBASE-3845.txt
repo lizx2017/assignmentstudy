@@ -1,0 +1,46 @@
+Summary:
+data loss because lastSeqWritten can miss memstore edits
+Description:
+(I don't have a test case to prove this yet but I have run it by Dhruba and Kannan internally and wanted to put this up for some feedback.)
+In this discussion let us assume that the region has only one column family. That way I can use region/memstore interchangeably.
+After a memstore flush it is possible for lastSeqWritten to have a log-sequence-id for a region that is not the earliest log-sequence-id for that region's memstore.
+HLog.append() does a putIfAbsent into lastSequenceWritten. This is to ensure that we only keep track of the earliest log-sequence-number that is present in the memstore.
+Every time the memstore is flushed we remove the region's entry in lastSequenceWritten and wait for the next append to populate this entry again. This is where the problem happens.
+step 1:
+flusher.prepare() snapshots the memstore under HRegion.updatesLock.writeLock().
+step 2 :
+as soon as the updatesLock.writeLock() is released new entries will be added into the memstore.
+step 3 :
+wal.completeCacheFlush() is called. This method removes the region's entry from lastSeqWritten.
+step 4:
+the next append will create a new entry for the region in lastSeqWritten(). But this will be the log seq id of the current append. All the edits that were added in step 2 are missing.
+==
+as a temporary measure, instead of removing the region's entry in step 3 I will replace it with the log-seq-id of the region-flush-event.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+Prakash Khemani
+Create date:
+02/May/11 19:59
+Update date:
+20/Nov/15 12:43
+Resolved date:
+30/Jul/11 11:37

@@ -1,0 +1,47 @@
+Summary:
+Possible Atomicity Violations in StreamSession and ThriftSessionManager
+Description:
+I'm developing a tool for atomicity violation detection and I think it have found two atomicity violations in cassandra.
+In org.apache.cassandra.streaming.StreamSession there might be an atomicity violation in method addTransferFiles(), lines 310-314:
+310:     StreamTransferTask task = transfers.get(cfId);
+            if (task == null)
+            {
+                task = new StreamTransferTask(this, cfId);
+314:         transfers.put(cfId, task);
+            }
+A concurrent thread can insert a transfer with the same uuid creating two StreamTransferTask, and only one get into "transfers".
+In org.apache.cassandra.thrift.ThriftSessionManager, a simular situation can occur in method currentSession(), lines 57-61:
+57:  ThriftClientState cState = activeSocketSessions.get(socket);
+        if (cState == null)
+        {
+            cState = new ThriftClientState(socket);
+51:       activeSocketSessions.put(socket, cState);
+        }
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.9, 2.2.1, 3.0 alpha 1
+Component:
+Legacy/Streaming and Messaging
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Paulo Motta
+Reporter:
+Diogo Sousa
+Create date:
+12/Aug/14 15:41
+Update date:
+16/Apr/19 09:31
+Resolved date:
+30/Jul/15 01:00

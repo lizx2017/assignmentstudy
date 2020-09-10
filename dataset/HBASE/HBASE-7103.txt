@@ -1,0 +1,45 @@
+Summary:
+Need to fail split if SPLIT znode is deleted even before the split is completed.
+Description:
+This came up after the following mail in dev list
+'infinite loop of RS_ZK_REGION_SPLIT on .94.2'.
+The following is the reason for the problem
+The following steps happen
+-> Initially the parent region P1 starts splitting.
+-> The split is going on normally.
+-> Another split starts at the same time for the same region P1. (Not sure why this started).
+-> Rollback happens seeing an already existing node.
+-> This node gets deleted in rollback and nodeDeleted Event starts.
+-> In nodeDeleted event the RIT for the region P1 gets deleted.
+-> Because of this there is no region in RIT.
+-> Now the first split gets over. Here the problem is we try to transit the node to SPLITTING to SPLIT. But the node even does not exist.
+But we don take any action on this. We think it is successful.
+-> Because of this SplitRegionHandler never gets invoked.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.3, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudevan
+Reporter:
+ramkrishna.s.vasudevan
+Create date:
+06/Nov/12 10:09
+Update date:
+26/Feb/13 08:20
+Resolved date:
+12/Nov/12 19:46

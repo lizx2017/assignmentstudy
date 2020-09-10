@@ -1,0 +1,74 @@
+Summary:
+Error 1009 in AdvancedListBase after re-binding backing array collection
+Description:
+Background
+We have an advanced datagrid defined as such:
+<mx:AdvancedDataGrid 
+    headerStyleName="headerStyle"
+    headerSortSeparatorSkin="mx.skins.ProgrammaticSkin"
+    id="myGrid"
+    designViewDataType="tree" 
+    displayItemsExpanded="true"
+    treeColumn="{supersessionTreeGrid.columns[1]}"
+    width="100%" 
+    maxWidth="{this.width-10}" 
+    height="100%"
+    dataProvider="{new HierarchicalData(model.myGridData)}"      
+    verticalGridLines="false"
+    sortableColumns="false"
+    draggableColumns="false" 
+    borderAlpha="1"
+    folderClosedIcon="{null}" 
+    folderOpenIcon="{null}"
+    defaultLeafIcon="{null}"
+    variableRowHeight="true"
+    borderVisible="true"
+    columns="{model.myGridCOlumns}" 
+</mx:ExtendedAdvancedDataGrid>
+If the ArrayCollection myGridColumns is rebound, from a click that originates within the grid, we're getting a 1009 error on AdvancedListBase:9250
+AdvancedListBase.as:9249
+    var rowData:BaseListData = rowMap[item.name];
+    lastUID = rowData.uid;
+Root Cause
+It appears that the AdvancedListBase is trying to execute a mouseOverHandler event against the OLD row data (prior to the rebind). Since the new row data does not contain the item in question, the rowMap lookup returns a null object, and "rowData.uid" pops a NPE.
+The simple fix is to just wrap another null check around that... but I'm not sure if it's symptmatic of something larger (e.g. should the event be supressed higher up?).
+Simple Fix
+AdvancedListBase.as:9247
+    ...
+    if (lastHighlightItemRenderer && highlightUID)
+    {
+        var rowData:BaseListData = rowMap[item.name];
+        if (!rowData) {
+            return;
+        }
+        lastUID = rowData.uid;
+    }
+    ...
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Apache Flex 4.14.1
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+easyfix easytest
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Skylar Sutton
+Create date:
+08/Jan/16 16:55
+Update date:
+16/May/16 00:35
+Resolved date:
+

@@ -1,0 +1,57 @@
+Summary:
+Performance regression in tombstone heavy workloads
+Description:
+CASSANDRA-5614 causes a huge performance regression in tombstone heavy workloads. The isDeleted checks here cause a huge CPU overhead: https://github.com/apache/cassandra/blob/cassandra-2.0/src/java/org/apache/cassandra/db/AtomicSortedColumns.java#L189-L196
+An insert workload which does perfectly fine on 1.2, pegs CPU use at 100% on 2.0, with all of the mutation threads sitting in that loop. For example:
+"MutationStage:20" daemon prio=10 tid=0x00007fb1c4c72800 nid=0x2249 runnable [0x00007fb1b0330000]
+   java.lang.Thread.State: RUNNABLE
+at org.apache.cassandra.db.marshal.BytesType.bytesCompare(BytesType.java:45)
+at org.apache.cassandra.db.marshal.UTF8Type.compare(UTF8Type.java:34)
+at org.apache.cassandra.db.marshal.UTF8Type.compare(UTF8Type.java:26)
+at org.apache.cassandra.db.marshal.AbstractType.compareCollectionMembers(AbstractType.java:267)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:85)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:35)
+at org.apache.cassandra.db.RangeTombstoneList.searchInternal(RangeTombstoneList.java:253)
+at org.apache.cassandra.db.RangeTombstoneList.isDeleted(RangeTombstoneList.java:210)
+at org.apache.cassandra.db.DeletionInfo.isDeleted(DeletionInfo.java:136)
+at org.apache.cassandra.db.DeletionInfo.isDeleted(DeletionInfo.java:123)
+at org.apache.cassandra.db.AtomicSortedColumns.addAllWithSizeDelta(AtomicSortedColumns.java:193)
+at org.apache.cassandra.db.Memtable.resolve(Memtable.java:194)
+at org.apache.cassandra.db.Memtable.put(Memtable.java:158)
+at org.apache.cassandra.db.ColumnFamilyStore.apply(ColumnFamilyStore.java:890)
+at org.apache.cassandra.db.Keyspace.apply(Keyspace.java:368)
+at org.apache.cassandra.db.Keyspace.apply(Keyspace.java:333)
+at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:201)
+at org.apache.cassandra.db.RowMutationVerbHandler.doVerb(RowMutationVerbHandler.java:56)
+at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:60)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+at java.lang.Thread.run(Thread.java:744)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.8, 2.1 beta2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Jeremiah Jordan
+Create date:
+28/Mar/14 15:25
+Update date:
+16/Apr/19 09:31
+Resolved date:
+22/Apr/14 15:51

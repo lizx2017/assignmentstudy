@@ -1,0 +1,58 @@
+Summary:
+Merging documents with nested fields duplicates child fields
+Description:
+I have a pdf with a lot of acroforms, I do some manipulation on it which results in a new pdf. So I have PDF-1 (which is the original one )and PDF-2 (just a duplication of PDF-1), now I want to merge them. Both PDFs have some acroforms for example: field_a, field_2...
+Before I merge them I flatten PDF-1, because I only want to have acrofields from PDF-2. When I check then my new merged PDF I can see that there are no visible fields on on the pages from PDF-1 and there are fields on pages of fields of PDF-2. At the first look it seems ok, but when I inspect the fields I can see that the merger has renamed all the fields for PDF-2 e.g. field_a_dummy123, field_b_dummy232 ...
+It seems to me, that flattening does not remove the fields and thats why the PDFMerger from PDFBox will rename the fields for PDF-2 because acrofields need to be unique.Another guess was that there is a bug in mergeAcroForm()
+  @Test
+public void flattenAndMerge() throws IOException {
+    File testForm = new File(classLoader.getResource("./TestForm.pdf").getFile());
+
+    byte[] testFormAsByte = Files.readAllBytes(testForm.toPath());
+    byte[] testFormAsByte2 = Files.readAllBytes(testForm.toPath());
+
+    PDDocument pdf1 = PDDocument.load(testFormAsByte);
+    PDAcroForm acroform = pdf1.getDocumentCatalog().getAcroForm();
+    acroform.flatten();
+    Path flattendedPdf = Files.createTempFile("flatten", ".pdf");
+    pdf1.save(flattendedPdf.toFile());
+
+
+    PDFMergerUtility merger = new PDFMergerUtility();
+    merger.addSource(new ByteArrayInputStream(Files.readAllBytes(flattendedPdf)));
+    merger.addSource(new ByteArrayInputStream(testFormAsByte2));
+    merger.setDestinationFileName("./build/flattenAndMerge.pdf");
+    merger.mergeDocuments(MemoryUsageSetting.setupMainMemoryOnly());
+
+}
+Here is my SO Article
+https://stackoverflow.com/questions/48271924/pdfbox-flatten-pdf-does-not-remove-acroform-elements?noredirect=1#comment83544858_48271924
+   
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.8
+Fix_version:
+2.0.9, 3.0.0 PDFBox
+Component:
+AcroForm, Utilities
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Maruan Sahyoun
+Reporter:
+Al Phaba
+Create date:
+16/Jan/18 12:30
+Update date:
+24/Mar/18 09:41
+Resolved date:
+02/Feb/18 17:16

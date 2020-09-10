@@ -1,0 +1,40 @@
+Summary:
+Split rollback leaves parent with writesEnabled=false
+Description:
+I saw a split rollback today, and it left the region in a state where it was able to take writes, but wasn't able to flush or compact. It's printing this message every few milliseconds:
+NOT flushing memstore for region xxx., flushing=false, writesEnabled=false
+I see why, writesEnabled is never set back in HRegion.initialize:
+// See if region is meant to run read-only.
+if (this.regionInfo.getTableDesc().isReadOnly()) {
+  this.writestate.setReadOnly(true);
+}
+Instead it needs to pass isReadOnly into the setReadOnly method to work correctly.
+I think it should go in 0.90.0 if there's a new RC.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+07/Dec/10 23:52
+Update date:
+20/Nov/15 12:44
+Resolved date:
+10/Dec/10 05:53

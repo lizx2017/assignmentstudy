@@ -1,0 +1,42 @@
+Summary:
+post-effective ownership nodetool ring returns invalid information in some circumstances
+Description:
+CASSANDRA-3412 broke something. We had a test cluster that I observed was unbalanced (unexpected because it wasn't supposed to be). Later, it wasn't. We realized a node was being replaced at the time it showed as unbalanced. The diff shows:
+-10.34.115.115   dc        ael         Up     Normal  26.32 KB        9.09%               36090554067372261276418518970036022421      
+-10.35.108.128   dc        aoa         Up     Normal  24.42 KB        9.09%               41246347505568298601621164537184025624      
+-10.34.244.104   dc        ajk         Up     Normal  27.11 KB        9.09%               46402140943764335926823810104332028827      
+-10.35.86.129    dc        ane         Up     Normal  31.67 KB        9.09%               51557934381960373252026455671480032030      
++10.35.108.128   dc        aoa         Up     Normal  24.42 KB        12.12%              41246347505568298601621164537184025624      
++10.34.244.104   dc        ajk         Up     Normal  27.11 KB        12.12%              46402140943764335926823810104332028827      
++10.35.86.129    dc        ane         Up     Normal  31.67 KB        12.12%              51557934381960373252026455671480032030      
+The node that caused this was being replaced (with replace token, not regular bootstrap) into the ring either during this or in relation to this in time. The node was never removed, and if a mistake was made to do regular bootstrap it should be showing up as joining.
+Hypothesis without looking at code: Somehow nodes in HIBERNATE state are incorrectly considered?
+(Marked fix for 1.1.1 because that's the fix-for of effective-ownership.)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+1.1.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Vijay
+Reporter:
+Peter Schuller
+Create date:
+09/Mar/12 21:07
+Update date:
+16/Apr/19 09:32
+Resolved date:
+03/Apr/12 19:37

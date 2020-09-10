@@ -1,0 +1,43 @@
+Summary:
+OfflineSorter's merging is O(N^2) cost for large sorts
+Description:
+Our OfflineSorter acts just like Lucene, writing small initial
+segments of sorted values (from what it was able to sort at once in
+heap), periodically merging them when there are too many, and doing a
+forceMerge(1) in the end.
+But the merge logic is too simplistic today, resulting in O(N^2)
+cost. Smallish sorts usually won't hit it, because the default 128
+merge factor is so high, but e.g. the new 2B points tests do hit the
+N^2 behavior. I suspect the high merge factor hurts performance (OS
+struggles to use what free RAM it has to read-ahead on 128 files), and
+also risks file descriptor exhaustion.
+I think we should implement a simple log merge policy for it, and drop
+its default merge factor to 10.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.0, 6.1, 7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+14/Mar/16 14:03
+Update date:
+17/Jun/16 13:11
+Resolved date:
+15/Mar/16 11:41

@@ -1,0 +1,75 @@
+Summary:
+Cassandra silently loses data when a single row gets large (under "heavy load")
+Description:
+When you insert a large number of columns in a single row, cassandra silently loses some or all of these inserts while flushing memtable to disk (potentialy leaving you with zero-sized data files). This happens when the memtable threshold is violated, i.e. when currentSize_ >= threshold_ (MemTableSizeInMB) OR currentObjectCount_ >= thresholdCount_ (MemTableObjectCountInMillions). This was a problem with the old code in code.google and the code with the jdk7 dependencies also. No OutOfMemory errors are thrown, there is nothing relevant in the logs. It is not clear why this happens under heavy load (when no throttle is used) as it works fine when when you pace requests. I have confirmed this with another member of the community.
+In storage-conf.xml:
+<HashingStrategy>RANDOM</HashingStrategy>
+<MemtableSizeInMB>32</MemtableSizeInMB>
+<MemtableObjectCountInMillions>1</MemtableObjectCountInMillions>
+<Tables>
+<Table Name="MyTable">
+<ColumnFamily ColumnType="Super" ColumnSort="Name" Name="MySuper"></ColumnFamily>
+</Table>
+</Tables>
+You can also test it with different values for thresholdCount_ In db/Memtable.java, say:
+private int thresholdCount_ = 512*1024;
+Here is a small program that will help you reproduce this (hopefully):
+private static void doWrite() throws Throwable
+{
+int numRequests=0;
+int numRequestsPerSecond = 3;
+Table table = Table.open("MyTable");
+Random random = new Random();
+byte[] bytes = new byte[8];
+String key = "MyKey";
+int totalUsed = 0;
+int total = 0;
+for (int i = 0; i < 1500; ++i) {
+RowMutation rm = new RowMutation("MyTable", key);
+random.nextBytes(bytes);
+int[] used = new int[500*1024];
+for (int z=0; z<500*1024;z++)
+{ used[z]=0; }
+int n = random.nextInt(16*1024);
+for ( int k = 0; k < n; ++k ) {
+int j = random.nextInt(500*1024);
+if ( used[j] == 0 )
+{ used[j] = 1; ++totalUsed; //int w = random.nextInt(4); int w = 0; rm.add("MySuper:SuperColumn-" + j + ":Column-" + i, bytes, w); }
+}
+rm.apply();
+total += n;
+System.out.println("n="n " total="+ total+" totalUsed="+totalUsed);
+//Thread.sleep(1000*numRequests/numRequestsPerSecond);
+numRequests++;
+}
+System.out.println("Write done");
+}
+PS. Please note that (a) I'm no java guru and (b) I have tried this initially with a C++ thrift client. The outcome is always the same: zero-sized data files under heavy load — it works fine when you pace requests.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.3
+Component:
+None
+Label:
+None
+Environment:
+linux, java 1.7
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Neophytos Demetriou
+Create date:
+22/Mar/09 11:35
+Update date:
+16/Apr/19 09:33
+Resolved date:
+15/Apr/09 20:31

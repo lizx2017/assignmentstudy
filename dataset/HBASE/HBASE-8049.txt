@@ -1,0 +1,65 @@
+Summary:
+If a RS cannot use a compression codec, it should have a retry limit on checking results of CompressionTest
+Description:
+Observed Behavior:
+When a user attempts to create a table but there is an issue with the codec, the attempt continues repeatedly. The shell command times out but the RS and Master are both occupied, leading to HBase being down. Further, HBase creates the folders for the table in HDFS.
+The only way to restore the service is by disabling and dropping the table.
+Here are the log lines when a table, t8, is created with this definition:
+create 't8',
+{NAME=>'f1',COMPRESSION=>'lzo'}
+Error from shell:
+hbase(main):003:0> create 't8',
+{NAME=>'f1',BLOOMFILTER=>'row', COMPRESSION=>'lzo'}
+ERROR: org.apache.hadoop.hbase.client.RegionOfflineException: Only 0 of 1 regions are online; retries exhausted.
+Log lines on Master (repeats a few times/second):
+2013-03-07 22:55:31,389 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Using pre-existing plan for region t8,,1362725678436.311edabcc1fe52001cb00e7c3e7f75d4.; plan=hri=t8,,1362725678436.311edabcc1fe52001cb00e7c3e7f75d4., src=, dest=upgrade-vm-1.ent.cloudera.com,60020,1362709586485
+2013-03-07 22:55:31,389 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region t8,,1362725678436.311edabcc1fe52001cb00e7c3e7f75d4. to upgrade-vm-1.ent.cloudera.com,60020,1362709586485
+2013-03-07 22:55:31,398 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=upgrade-vm-1.ent.cloudera.com,60020,1362709586485, region=311edabcc1fe52001cb00e7c3e7f75d4
+2013-03-07 22:55:31,406 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_FAILED_OPEN, server=upgrade-vm-1.ent.cloudera.com,60020,1362709586485, region=311edabcc1fe52001cb00e7c3e7f75d4
+2013-03-07 22:55:31,406 DEBUG org.apache.hadoop.hbase.master.handler.ClosedRegionHandler: Handling CLOSED event for 311edabcc1fe52001cb00e7c3e7f75d4
+2013-03-07 22:55:31,406 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Forcing OFFLINE; was=t8,,1362725678436.311edabcc1fe52001cb00e7c3e7f75d4. state=CLOSED, ts=1362725731398, server=upgrade-vm-1.ent.cloudera.com,60020,1362709586485
+2013-03-07 22:55:31,406 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x13d47d214830000 Creating (or updating) unassigned node for 311edabcc1fe52001cb00e7c3e7f75d4 with OFFLINE state
+2013-03-07 22:55:31,414 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=M_ZK_REGION_OFFLINE, server=upgrade-vm-1.ent.cloudera.com:60000, region=311edabcc1fe52001cb00e7c3e7f75d4
+Log lines on RS (repeats a few times/second):
+2013-03-07 22:58:23,323 ERROR org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Failed open of region=t8,,1362725678436.311edabcc1fe52001cb00e7c3e7f75d4.
+java.io.IOException: Compression algorithm 'lzo' previously failed test.
+at org.apache.hadoop.hbase.util.CompressionTest.testCompression(CompressionTest.java:78)
+at org.apache.hadoop.hbase.regionserver.HRegion.checkCompressionCodecs(HRegion.java:2797)
+at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:2786)
+at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:2774)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.openRegion(OpenRegionHandler.java:319)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:105)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:163)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Expected behavior:
+We expect to fail fast (after a few retries). This should take <1 sec.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+0.90.6, 0.94.7, 0.95.0
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+Including, but not limited to, Centos6_64
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudevan
+Reporter:
+Aleksandr Shulman
+Create date:
+08/Mar/13 20:27
+Update date:
+27/Nov/13 23:32
+Resolved date:
+

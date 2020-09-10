@@ -1,0 +1,45 @@
+Summary:
+NPE in EventHandler when region already reassigned
+Description:
+When a region takes too long to open, it will try to update the unassigned znode and will fail on an ugly NPE like this:
+DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x22dc571dde04ca7 Attempting to transition node 0519dc3b62a569347526875048c37faa from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+DEBUG org.apache.hadoop.hbase.zookeeper.ZKUtil: regionserver:60020-0x22dc571dde04ca7 Unable to get data of znode /hbase/unassigned/0519dc3b62a569347526875048c37faa because node does not exist (not necessarily an error)
+ERROR org.apache.hadoop.hbase.executor.EventHandler: Caught throwable while processing event M_RS_OPEN_REGION
+java.lang.NullPointerException
+at org.apache.hadoop.hbase.util.Writables.getWritable(Writables.java:75)
+at org.apache.hadoop.hbase.executor.RegionTransitionData.fromBytes(RegionTransitionData.java:198)
+at org.apache.hadoop.hbase.zookeeper.ZKAssign.transitionNode(ZKAssign.java:672)
+at org.apache.hadoop.hbase.zookeeper.ZKAssign.retransitionNodeOpening(ZKAssign.java:585)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.tickleOpening(OpenRegionHandler.java:322)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:97)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:151)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+I think the region server in this case should be closing the region ASAP.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.1
+Fix_version:
+0.90.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Jean-Daniel Cryans
+Create date:
+12/Mar/11 00:13
+Update date:
+20/Nov/15 12:43
+Resolved date:
+24/Mar/11 19:04

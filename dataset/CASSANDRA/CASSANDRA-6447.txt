@@ -1,0 +1,65 @@
+Summary:
+SELECT someColumns FROM table results in AssertionError in AbstractQueryPager.discardFirst
+Description:
+I have a query which must read all the rows from the table:
+Query: "SELECT key, col1, col2, col3 FROM mytable"
+Here is the corresponding code (this is using datastax driver):
+ResultSet result = session.execute("SELECT key, col1, col2, col3 FROM mytable");
+for (Row row : result) {
+     // do some work with row
+}
+Messages sent from the client to Cassandra:
+1st: QUERY SELECT key, col1, col2, col3 FROM mytable([cl=ONE, vals=[], skip=false, psize=5000, state=null, serialCl=ONE])
+2nd: QUERY SELECT key, col1, col2, col3 FROM mytable([cl=ONE, vals=[], skip=false, psize=5000, state=java.nio.HeapByteBuffer[pos=24 lim=80 cap=410474], serialCl=ONE])
+On the first message, everything is fine, and the server returns 5000 rows.
+On the second message, paging is in progress, and the server fails in AbstractQueryPager.discardFirst: AssertionError (stack trace attached).
+Here is some more info (step by step debugging on reception of 2nd message):
+AbstractQueryPager.fetchPage(int):
+* pageSize=5000, currentPageSize=5001, rows size=5002, liveCount=5001
+* containsPreviousLast(rows.get(0)) returns true
+
+-> AbstractQueryPager.discardFirst(List<Row>):
+* rows size=5002
+* first=TreeMapBackedSortedColumns[with TreeMap size=1]
+
+-> AbstractQueryPager.discardHead(ColumnFamily, ...):
+* counter = ColumnCounter$GroupByPrefix
+* iter.hasNext() returns true (TreeMap$ValueIterator with TreeMap size=1)
+* Column c = DeletedColumn
+* counter.count() -> c.isLive returns false (c is DeletedColumn)
+* counter.live() = 0
+* iter.hasNext() returns false
+* Math.min(0, toDiscard==1) returns 0
+
+<- AbstractQueryPager.discardFirst(List<Row>):
+* discarded = 0;
+* count = newCf.getColumnCount() = 0;
+-> assert discarded == 1 throws AssertionError
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.4
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Julien Aymé
+Create date:
+04/Dec/13 11:50
+Update date:
+16/Apr/19 09:31
+Resolved date:
+20/Dec/13 07:50

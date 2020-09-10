@@ -1,0 +1,55 @@
+Summary:
+ThreadContext.setResources() doesn't handle empty maps correctly
+Description:
+ThreadLocal.setResources() doesn't handle the case where resources is want to be cleared.
+This could be used in situation when session is switched temporary to another thread.
+One could do:
+old = ThreadContext.getResources();
+ThreadContext.setResources(new);
+// do the magic
+ThreadContext.setResources(old);
+If the old resources was empty it will leave new resources in place.
+Fix would be trivial:
+    public static void setResources(Map<Object, Object> newResources) {
+        if (CollectionUtils.isEmpty(newResources)) {
+            return;
+        }
+        resources.get().clear();
+        resources.get().putAll(newResources);
+    }
+->
+    public static void setResources(Map<Object, Object> newResources) {
+        resources.get().clear();
+        if (CollectionUtils.isEmpty(newResources)) {
+            return;
+        }
+        resources.get().putAll(newResources);
+    }
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+1.2.2, 1.2.3
+Fix_version:
+None
+Component:
+Session Management
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Vesa Jääskeläinen
+Create date:
+21/Sep/14 08:15
+Update date:
+05/Oct/15 22:33
+Resolved date:
+

@@ -1,0 +1,71 @@
+Summary:
+CQL3 has error with Compund row keys when secondray index involved
+Description:
+CREATE TABLE test(
+interval text,
+seq int,
+id int,
+severity int,
+PRIMARY KEY ((interval, seq), id))
+WITH CLUSTERING ORDER BY (id DESC);
+–
+CREATE INDEX ON test(severity);
+insert into test(interval, seq, id , severity) values('t',1, 1, 1);
+insert into test(interval, seq, id , severity) values('t',1, 2, 1);
+insert into test(interval, seq, id , severity) values('t',1, 3, 2);
+insert into test(interval, seq, id , severity) values('t',1, 4, 3);
+insert into test(interval, seq, id , severity) values('t',2, 1, 3);
+insert into test(interval, seq, id , severity) values('t',2, 2, 3);
+insert into test(interval, seq, id , severity) values('t',2, 3, 1);
+insert into test(interval, seq, id , severity) values('t',2, 4, 2);
+select * from test where severity = 3 and interval = 't' and seq =1;
+Bad Request: Start key sorts after end key. This is not allowed; you probably should not specify end key at all under random partitioner
+The following works fine
+CREATE TABLE test(
+interval text,
+id int,
+severity int,
+PRIMARY KEY (interval, id))
+WITH CLUSTERING ORDER BY (id DESC);
+–
+CREATE INDEX ON test(severity);
+insert into test(interval, id , severity) values('t1', 4, 1);
+insert into test(interval, id , severity) values('t1', 1, 3);
+insert into test(interval, id , severity) values('t1', 2, 2);
+insert into test(interval, id , severity) values('t1', 3, 3);
+insert into test(interval, id , severity) values('t2', 3, 3);
+insert into test(interval, id , severity) values('t2', 1, 3);
+insert into test(interval, id , severity) values('t2', 2, 1);
+select * from test where severity = 3 and interval = 't1';
+interval | id | severity
+--------------------
+t1 | 3 | 3
+t1 | 1 | 3
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.2
+Component:
+None
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Shahryar Sedghi
+Create date:
+11/Feb/13 13:25
+Update date:
+16/Apr/19 09:32
+Resolved date:
+20/Feb/13 16:54

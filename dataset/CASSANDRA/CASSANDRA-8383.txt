@@ -1,0 +1,32 @@
+Summary:
+Memtable flush may expire records from the commit log that are in a later memtable
+Description:
+This is a pretty obvious bug with any care of thought, so not sure how I managed to introduce it. We use OpOrder to ensure all writes to a memtable have finished before flushing, however we also use this OpOrder to direct writes to the correct memtable. However this is insufficient, since the OpOrder is only a partial order; an operation from the "future" (i.e. for the next memtable) could still interleave with the "past" operations in such a way that they grab a CL entry inbetween the "past" operations. Since we simply take the max ReplayPosition of those in the past, this would mean any interleaved future operations would be expired even though they haven't been persisted to disk.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.3
+Component:
+None
+Label:
+commitlog
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Benedict
+Create date:
+27/Nov/14 12:55
+Update date:
+16/Apr/19 09:31
+Resolved date:
+12/Dec/14 13:22

@@ -1,0 +1,54 @@
+Summary:
+HFileBlockIndex Write Error in HFile V2 due to incorrect split into intermediate index blocks
+Description:
+After writing some data, compaction and scan operation both failure, the exception message is below:
+2012-09-18 06:32:26,227 ERROR org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest: Compaction failed regionName=hfile_test,,1347778722498.d220df43fb9d8af4633bd7f547613f9e., storeName=page_info, fileCount=7, fileSize=1.3m (188.0k, 188.0k, 188.0k, 188.0k, 188.0k, 185.8k, 223.3k), priority=9, time=45826250816757428java.io.IOException: Could not reseek StoreFileScanner[HFileScanner for reader reader=hdfs://hadoopdev1.cm6:9000/hbase/hfile_test/d220df43fb9d8af4633bd7f547613f9e/page_info/b0f6118f58de47ad9d87cac438ee0895, compression=lzo, cacheConf=CacheConfig:enabled [cacheDataOnRead=true] [cacheDataOnWrite=false] [cacheIndexesOnWrite=false] [cacheBloomsOnWrite=false] [cacheEvictOnClose=false] [cacheCompressed=false], firstKey=http://com.truereligionbrandjeans.www/Womens_Dresses/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Sweaters/pl/c/Womens_Sweaters/pl/c/Womens_Sweaters/pl/c/Womens_Sweaters/pl/c/Womens_Sweaters/pl/c/Womens_Sweaters/pl/c/Womens_Shirts/pl/c/Womens_Sweaters/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Sweaters/pl/c/Womens_Sweaters/pl/c/Womens_Shirts/pl/c/Womens_Shirts/pl/c/Womens_Sweaters/pl/c/Womens_Sweaters/pl/c/Womens_Sweaters/pl/c/Womens_Sweaters/pl/c/Womens_Sweaters/pl/c/4010.html/page_info:anchor_sig/1347764439449/DeleteColumn, lastKey=http://com.trura.www//page_info:page_type/1347763395089/Put, avgKeyLen=776, avgValueLen=4, entries=12853, length=228611, cur=http://com.truereligionbrandjeans.www/Womens_Exclusive_Details/pl/c/4970.html/page_info:is_deleted/1347764003865/Put/vlen=1/ts=0] to key http://com.truereligionbrandjeans.www/Womens_Exclusive_Details/pl/c/4970.html/page_info:is_deleted/OLDEST_TIMESTAMP/Minimum/vlen=0/ts=0
+at org.apache.hadoop.hbase.regionserver.StoreFileScanner.reseek(StoreFileScanner.java:178)
+at org.apache.hadoop.hbase.regionserver.NonLazyKeyValueScanner.doRealSeek(NonLazyKeyValueScanner.java:54)
+at org.apache.hadoop.hbase.regionserver.KeyValueHeap.generalizedSeek(KeyValueHeap.java:299)
+at org.apache.hadoop.hbase.regionserver.KeyValueHeap.reseek(KeyValueHeap.java:244)
+at org.apache.hadoop.hbase.regionserver.StoreScanner.reseek(StoreScanner.java:521)
+at org.apache.hadoop.hbase.regionserver.StoreScanner.next(StoreScanner.java:402)
+at org.apache.hadoop.hbase.regionserver.Store.compactStore(Store.java:1570)
+at org.apache.hadoop.hbase.regionserver.Store.compact(Store.java:997)
+at org.apache.hadoop.hbase.regionserver.HRegion.compact(HRegion.java:1216)
+at org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest.run(CompactionRequest.java:250)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Caused by: java.io.IOException: Expected block type LEAF_INDEX, but got INTERMEDIATE_INDEX: blockType=INTERMEDIATE_INDEX, onDiskSizeWithoutHeader=8514, uncompressedSizeWithoutHeader=131837, prevBlockOffset=-1, dataBeginsWith=\x00\x00\x00\x9B\x00\x00\x00\x00\x00\x00\x03#\x00\x00\x050\x00\x00\x08\xB7\x00\x00\x0Cr\x00\x00\x0F\xFA\x00\x00\x120, fileOffset=218942 at org.apache.hadoop.hbase.io.hfile.HFileReaderV2.validateBlockType(HFileReaderV2.java:378)
+at org.apache.hadoop.hbase.io.hfile.HFileReaderV2.readBlock(HFileReaderV2.java:331) at org.apache.hadoop.hbase.io.hfile.HFileBlockIndex$BlockIndexReader.seekToDataBlock(HFileBlockIndex.java:213)
+at org.apache.hadoop.hbase.io.hfile.HFileReaderV2$AbstractScannerV2.seekTo(HFileReaderV2.java:455)
+at org.apache.hadoop.hbase.io.hfile.HFileReaderV2$AbstractScannerV2.reseekTo(HFileReaderV2.java:493)
+at org.apache.hadoop.hbase.regionserver.StoreFileScanner.reseekAtOrAfter(StoreFileScanner.java:242)
+at org.apache.hadoop.hbase.regionserver.StoreFileScanner.reseek(StoreFileScanner.java:167)
+After some debug works，I found that when hfile closing, if the rootChunk is empty, the only one curInlineChunk will upgrade to root chunk. But if the last block flushing make curInlineChunk exceed max index block size, the root chunk(upgrade from curInlineChunk) will be splited into intermediate index blocks, and the index level is set to 2. So when BlockIndexReader read the root index, it expects the next level index block is leaf index(index level=2), but the on disk index block is intermediate block, the error happened.
+After I add some code to check curInlineChunk's size when rootChunk is empty in shouldWriteBlock(boolean closing), this bug can be fixed.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.1
+Fix_version:
+0.94.2
+Component:
+HFile
+Label:
+None
+Environment:
+redhat 5u4
+Attachment number:
+0
+Assignee:
+Mikhail Bautin
+Reporter:
+Feng Wang
+Create date:
+24/Sep/12 09:59
+Update date:
+07/Apr/13 05:04
+Resolved date:
+29/Sep/12 04:12

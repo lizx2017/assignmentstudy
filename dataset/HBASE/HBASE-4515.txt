@@ -1,0 +1,41 @@
+Summary:
+User.getCurrent() can fail to initialize the current user
+Description:
+When testing with miniclusters that shutdown and are restarted, sometimes a call to User.getCurrent().getName() NPEs when attempting to restart hbase. Oddly this happens consistently on particular branches and not on others. I don't know or understand why this happens but it has something to do with the getCurrentUGI call in o.a.h.h.security.User.HadoopUser sometimes returning null and sometimes returning data.
+   private HadoopUser() {
+      try {
+        ugi = (UserGroupInformation) callStatic("getCurrentUGI");
+        if (ugi == null) {
+          LOG.warn("Although successfully retrieved UserGroupInformation" 
+              + "  it was null!");
+        }
+      } catch (RuntimeException re) {
+This patch essentially is a workaround – it propagates the null so that clients can check and avoid the NPE.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.4, (2)
+Fix_version:
+0.90.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Helmling
+Reporter:
+Jonathan Hsieh
+Create date:
+29/Sep/11 21:15
+Update date:
+20/Nov/15 11:52
+Resolved date:
+01/Oct/11 01:47

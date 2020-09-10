@@ -1,0 +1,92 @@
+Summary:
+ShiroWebModule.config does not work with sisu-guice 3.1.8
+Description:
+ShiroWebModule$FilterConfigKey is not instantiable in sisu-guice 3.1.8.
+To reproduce the error, configure dependencies.
+<dependency>
+    <groupId>org.apache.shiro</groupId>
+    <artifactId>shiro-guice</artifactId>
+    <version>1.2.2</version>
+    <exclusions>
+        <exclusion>
+            <artifactId>guice</artifactId>
+            <groupId>com.google.inject</groupId>
+        </exclusion>
+        <exclusion>
+            <artifactId>guice-multibindings</artifactId>
+            <groupId>com.google.inject.extensions</groupId>
+        </exclusion>
+    </exclusions>
+</dependency>
+<dependency>
+    <groupId>org.apache.shiro</groupId>
+    <artifactId>shiro-web</artifactId>
+    <version>1.2.2</version>
+</dependency>
+<dependency>
+    <groupId>org.sonatype.sisu.inject</groupId>
+    <artifactId>guice-servlet</artifactId>
+    <version>3.1.0</version>
+</dependency>
+<dependency>
+    <groupId>javax.servlet</groupId>
+    <artifactId>servlet-api</artifactId>
+    <version>2.4</version>
+</dependency>
+<dependency>
+    <groupId>org.sonatype.sisu</groupId>
+    <artifactId>sisu-guice</artifactId>
+    <version>3.1.8</version>
+</dependency>
+Run this code:
+public static void main(String[] args) {
+    new MyShiroWebModule();
+}
+
+private static class MyShiroWebModule extends ShiroWebModule {
+    public MyShiroWebModule() {
+        super(null);
+        addFilterChain("/**", AUTHC, config(PERMS, "hello"));
+    }
+    @Override public void configureShiroWeb() {}
+}
+And the result:
+Exception in thread "main" com.google.inject.ConfigurationException: Guice configuration errors:
+
+1) T cannot be used as a key; It is not fully specified.
+
+1 error
+ at com.google.inject.internal.MoreTypes.canonicalizeForKey(MoreTypes.java:80)
+ at com.google.inject.Key.<init>(Key.java:115)
+ at org.apache.shiro.guice.web.ShiroWebModule$FilterConfigKey.<init>(ShiroWebModule.java:243)
+ at org.apache.shiro.guice.web.ShiroWebModule$FilterConfigKey.<init>(ShiroWebModule.java:238)
+ at org.apache.shiro.guice.web.ShiroWebModule.config(ShiroWebModule.java:225)
+ at com.bacamt.ibaca.sandbox.ShiroBug$MyShiroWebModule.<init>(ShiroBug.java:14)
+Status:
+OPEN
+Priority:
+Trivial
+Resolution:
+Unresolved
+Affects_version:
+1.2.2
+Fix_version:
+None
+Component:
+Integration: Guice
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jared Bunting
+Reporter:
+Ignacio Baca Moreno-
+Create date:
+06/Mar/14 20:51
+Update date:
+05/Oct/16 20:19
+Resolved date:
+

@@ -1,0 +1,65 @@
+Summary:
+Memory Leak - Chart Column/Bar Series
+Description:
+On Column Charts that display (Live) data, if setStyle("labelPosition","none") is specified (even though it is the default) on the Bar series, the "Label" class leaks memory on every series refresh (1 Label per Bar).
+To demonstrate, run the following code and examine the "Label" class (need to remove standard filters). If the setStyle("labelPosition","none") is omitted or set to "inside" or "outside" the Label class instance count remains constant at 1 Label per bar. If the style is specified as "none", the Label class instance count increments by 1 Label instance per bar each refresh. In the example below, there are 2 bars displayed.
+Here is a simple mxml example. Run as an Air application. It was tested on 4.6, 12 and 13 and always produces the memory leak:
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx"
+creationComplete="application1_creationCompleteHandler(event)">
+<fx:Script>
+<![CDATA[
+import mx.collections.ArrayCollection;
+import mx.events.FlexEvent;
+[Bindable]
+public var data : ArrayCollection = new ArrayCollection();
+private var mytimer:Timer = new Timer(2000);
+protected function application1_creationCompleteHandler(event:FlexEvent):void
+{ mytimer.addEventListener(TimerEvent.TIMER,ontimer); mytimer.start(); }
+protected function ontimer (e:TimerEvent) : void
+{ data.removeAll(); var o : Object = new Object(); o.month= "january"; o.expenses = 10; data.addItem(o); o = new Object(); o.month= "february"; o.expenses = 10; data.addItem(o); }
+protected function mySeries_creationCompleteHandler(event:FlexEvent):void
+{ mySeries.labelField = "expenses"; mySeries.xField="month" mySeries.yField="expenses" mySeries.setStyle("labelPosition","none"); }
+]]>
+</fx:Script>
+<mx:ColumnChart dataProvider="
+{data}
+">
+<mx:horizontalAxis>
+<mx:CategoryAxis categoryField="month"/>
+</mx:horizontalAxis>
+<mx:series>
+<mx:ColumnSeries id="mySeries" creationComplete="mySeries_creationCompleteHandler(event)"/>
+</mx:series>
+</mx:ColumnChart>
+</s:WindowedApplication>
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.6 (
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Air running on Windows (XP/Windows7 and Windo
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jeff Olajos
+Create date:
+25/Feb/15 20:05
+Update date:
+25/Feb/15 20:05
+Resolved date:
+

@@ -1,0 +1,63 @@
+Summary:
+sstable2json doesn't work for secondary index sstable due to partitioner mismatch
+Description:
+sstable2json doesn't work for secondary index sstable in 1.0.6 while it worked in version 0.8.x.
+$ bin/sstable2json $DATA/data/Keyspace1/users-hc-1-Data.db
+{
+"1111": [["birth_year","1973",1326450301786000], ["full_name","Patrick Rothfuss",1326450301782000]],
+"1020": [["birth_year","1975",1326450301776000], ["full_name","Brandon Sanderson",1326450301716000]]
+}
+$ bin/sstable2json $DATA/data/Keyspace1/users.users_birth_year_idx-hc-1-Data.db
+Exception in thread "main" java.lang.RuntimeException: Cannot open data/Keyspace1/users.users_birth_year_idx-hc-1 because partitioner does not match org.apache.cassandra.dht.RandomPartitioner
+at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:145)
+at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:123)
+at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:118)
+at org.apache.cassandra.tools.SSTableExport.export(SSTableExport.java:360)
+at org.apache.cassandra.tools.SSTableExport.export(SSTableExport.java:373)
+at org.apache.cassandra.tools.SSTableExport.main(SSTableExport.java:431)
+I tested with following sample data via cli:
+create keyspace Keyspace1;
+use Keyspace1;
+create column family users with comparator=UTF8Type and
+column_metadata=[
+{column_name: full_name, validation_class: UTF8Type}
+,
+{column_name: email, validation_class: UTF8Type}
+,
+{column_name: birth_year, validation_class: LongType, index_type: KEYS}
+,
+{column_name: state, validation_class: UTF8Type, index_type: KEYS}
+];
+set users[1020][full_name] = 'Brandon Sanderson';
+set users[1020][birth_year] = 1975;
+set users[1111][full_name] = 'Patrick Rothfuss';
+set users[1111][birth_year] = 1973;
+get users where birth_year = 1973;
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.8
+Component:
+Feature/2i Index
+Label:
+tools
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Shotaro Kamio
+Create date:
+13/Jan/12 10:35
+Update date:
+16/Apr/19 09:32
+Resolved date:
+20/Jan/12 23:16

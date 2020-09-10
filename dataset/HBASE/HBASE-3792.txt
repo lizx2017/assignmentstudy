@@ -1,0 +1,34 @@
+Summary:
+TableInputFormat leaks ZK connections
+Description:
+The TableInputFormat creates an HTable using a new Configuration object, and it never cleans it up. When running a Mapper, the TableInputFormat is instantiated and the ZK connection is created. While this connection is not explicitly cleaned up, the Mapper process eventually exits and thus the connection is closed. Ideally the TableRecordReader would close the connection in its close() method rather than relying on the process to die for connection cleanup. This is fairly easy to implement by overriding TableRecordReader, and also overriding TableInputFormat to specify the new record reader.
+The leak occurs when the JobClient is initializing and needs to retrieves the splits. To get the splits, it instantiates a TableInputFormat. Doing so creates a ZK connection that is never cleaned up. Unlike the mapper, however, my job client process does not die. Thus the ZK connections accumulate.
+I was able to fix the problem by writing my own TableInputFormat that does not initialize the HTable in the getConf() method and does not have an HTable member variable. Rather, it has a variable for the table name. The HTable is instantiated where needed and then cleaned up. For example, in the getSplits() method, I create the HTable, then close the connection once the splits are retrieved. I also create the HTable when creating the record reader, and I have a record reader that closes the connection when done.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.90.1
+Fix_version:
+None
+Component:
+mapreduce
+Label:
+None
+Environment:
+java 1.6, mac os x
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Bryan Keller
+Create date:
+16/Apr/11 12:08
+Update date:
+16/Nov/16 21:16
+Resolved date:
+16/Nov/16 21:16

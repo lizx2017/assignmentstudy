@@ -1,0 +1,55 @@
+Summary:
+Starting a LocalHBaseCluster when 2181 is occupied results in "Too many open files"
+Description:
+This bug was introduced via HBASE-6677 "Random ZooKeeper port in test can overrun max port".
+If 2181 is occupied but you start a LocalHBaseCluster (let's say you untar hbase and start it right away) you'll get this:
+13/09/03 10:38:13 INFO server.NIOServerCnxnFactory: binding to port 0.0.0.0/0.0.0.0:2181
+13/09/03 10:38:13 INFO server.NIOServerCnxnFactory: binding to port 0.0.0.0/0.0.0.0:2181
+13/09/03 10:38:13 INFO server.NIOServerCnxnFactory: binding to port 0.0.0.0/0.0.0.0:2181
+...
+13/09/03 10:38:44 INFO server.NIOServerCnxnFactory: binding to port 0.0.0.0/0.0.0.0:2181
+13/09/03 10:38:44 INFO server.NIOServerCnxnFactory: binding to port 0.0.0.0/0.0.0.0:2181
+13/09/03 10:38:44 ERROR master.HMasterCommandLine: Master exiting
+java.io.IOException: Too many open files
+        at sun.nio.ch.EPollArrayWrapper.epollCreate(Native Method)
+        at sun.nio.ch.EPollArrayWrapper.<init>(EPollArrayWrapper.java:87)
+        at sun.nio.ch.EPollSelectorImpl.<init>(EPollSelectorImpl.java:68)
+        at sun.nio.ch.EPollSelectorProvider.openSelector(EPollSelectorProvider.java:36)
+        at java.nio.channels.Selector.open(Selector.java:227)
+        at org.apache.zookeeper.server.NIOServerCnxnFactory.<init>(NIOServerCnxnFactory.java:61)
+        at org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster.startup(MiniZooKeeperCluster.java:165)
+        at org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster.startup(MiniZooKeeperCluster.java:131)
+        at org.apache.hadoop.hbase.master.HMasterCommandLine.startMaster(HMasterCommandLine.java:164)
+        at org.apache.hadoop.hbase.master.HMasterCommandLine.run(HMasterCommandLine.java:134)
+        at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:70)
+        at org.apache.hadoop.hbase.util.ServerCommandLine.doMain(ServerCommandLine.java:78)
+        at org.apache.hadoop.hbase.master.HMaster.main(HMaster.java:2812)
+The reason is that MiniZookeeperCluster.selectClientPort returns 2181 if defaultClientPort is greater than 0, which it always is when starting a LocalHBaseCluster.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.96.0
+Fix_version:
+0.98.0, 0.96.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+03/Sep/13 22:19
+Update date:
+20/Nov/15 11:55
+Resolved date:
+16/Sep/13 21:05

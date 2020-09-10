@@ -1,0 +1,57 @@
+Summary:
+Prohibit Counter type as part of the PK
+Description:
+C* let me do this:
+create table aggregated.counter1 ( a counter , b int , PRIMARY KEY (b,a)) WITH CLUSTERING ORDER BY (a desc);
+and then treated a as an int!
+cqlsh> update aggregated.counter1 set a= a+1 where b = 2 ;Bad Request: Invalid operation (a = a + 1) for non counter column a
+insert INTO aggregated.counter1 (b, a ) VALUES ( 3, 2) ;
+(should have given can't insert must update error)
+Even though desc table still shows it as a counter type:
+CREATE TABLE counter1 (
+  b int,
+  a counter,
+  PRIMARY KEY ((b), a)
+) WITH CLUSTERING ORDER BY (a DESC) AND
+  bloom_filter_fp_chance=0.010000 AND
+  caching='KEYS_ONLY' AND
+  comment='' AND
+  dclocal_read_repair_chance=0.100000 AND
+  gc_grace_seconds=864000 AND
+  index_interval=128 AND
+  read_repair_chance=0.000000 AND
+  replicate_on_write='true' AND
+  populate_io_cache_on_flush='false' AND
+  default_time_to_live=0 AND
+  speculative_retry='99.0PERCENTILE' AND
+  memtable_flush_period_in_ms=0 AND
+  compaction={'class': 'SizeTieredCompactionStrategy'} AND
+  compression={'sstable_compression': 'LZ4Compressor'};
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.7, 3.0.7, 3.7
+Component:
+Legacy/CQL
+Label:
+lhf
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brett Snyder
+Reporter:
+Sebastian Estevez
+Create date:
+14/May/15 22:49
+Update date:
+16/Apr/19 09:31
+Resolved date:
+06/May/16 18:25

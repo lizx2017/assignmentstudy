@@ -1,0 +1,56 @@
+Summary:
+Splitlog() executed while the namenode was in safemode may cause data-loss
+Description:
+I found this problem while the namenode went into safemode due to some unclear reasons.
+There's one patch about this problem:
+try {
+HLogSplitter splitter = HLogSplitter.createLogSplitter(
+conf, rootdir, logDir, oldLogDir, this.fs);
+try
+{ splitter.splitLog(); }
+catch (OrphanHLogAfterSplitException e)
+{ LOG.warn("Retrying splitting because of:", e); // An HLogSplitter instance can only be used once. Get new instance. splitter = HLogSplitter.createLogSplitter(conf, rootdir, logDir, oldLogDir, this.fs); splitter.splitLog(); }
+splitTime = splitter.getTime();
+splitLogSize = splitter.getSize();
+} catch (IOException e)
+{ checkFileSystem(); LOG.error("Failed splitting " + logDir.toString(), e); master.abort("Shutting down HBase cluster: Failed splitting hlog files...", e); }
+finally
+{ this.splitLogLock.unlock(); }
+And it was really give some useful help to some extent, while the namenode process exited or been killed, but not considered the Namenode safemode exception.
+I think the root reason is the method of checkFileSystem().
+It gives out an method to check whether the HDFS works normally(Read and write could be success), and that maybe the original propose of this method. This's how this method implements:
+DistributedFileSystem dfs = (DistributedFileSystem) fs;
+try {
+if (dfs.exists(new Path("/")))
+{ return; }
+} catch (IOException e)
+{ exception = RemoteExceptionHandler.checkIOException(e); }
+I have check the hdfs code, and learned that while the namenode was in safemode ,the dfs.exists(new Path("/")) returned true. Because the file system could provide read-only service. So this method just checks the dfs whether could be read. I think it's not reasonable.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.2
+Fix_version:
+0.90.4
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jieshan Bean
+Create date:
+26/Apr/11 01:15
+Update date:
+20/Nov/15 12:42
+Resolved date:
+19/May/11 21:15

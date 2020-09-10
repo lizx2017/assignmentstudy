@@ -1,0 +1,46 @@
+Summary:
+Custom Implementation of the IHierarchicalCollectionView is not working correctly with ADG.
+Description:
+It was reproduced on the 3.3 SDK version of DVC.
+Steps to reproduce:
+1. I created custom implementation of IHierarchicalCollectionView interface just by copying the the one from the Data Visualization package and the same way I created custom implemetation of IHierarchicalCollectionViewCursor and let my custom implementation of IHierarchicalCollectionView usi it in createCursor() method. All because I need to solve some issues with handling of ItemPendingError in the children collections (that I didn't report as the SDK is moving away from IPE).
+2. I removed code from IHierarchicalCollectionView regarding using of XML (XMLNode, XMLList) as it was using some class inaccessible from my package and i didn't need it.
+3. In code I create new instance of this custom implementation of IHierarchicalCollectionView with one instance of class implementing IIHierarchicalData. and set it as data provider to AdvancedDataGrid.
+Actual Results:
+The ADG displayed data as flat as if I pass just ArrayCollection as dp of ADG - no icons of folders no disclosure triangles.
+Expected Results:
+If I create instance of SDK implementation of IHierarchicalCollectionView with the same instance of IHierarchicalData it shows the folders and disclosure triangles where children are present.
+Workaround (if any):
+Digging in the code of ADG I found probably a mistake in the code of mx.controls.AdvancedDataGrid::makeListData() method where there is (on row 4135) condition check "iterator is HierarchicalCollectionViewCursor" that checks only if the iterator property is concrete implementation of IHierarchicalCollectionViewCursor instead of checking if it it implements IHierarchicalCollectionViewCursor. Overriding this method and fixing this issue seems to fix the problem.
+Possible workarround in subclass of ADG:
+override protected function makeListData(data:Object, uid:String,
+rowNum:int, columnNum:int, column:AdvancedDataGridColumn):BaseListData
+{ var advancedDataGridListData:AdvancedDataGridListData = super.makeListData(data, uid, rowNum,columnNum,column) as AdvancedDataGridListData; if (iterator && iterator is IHierarchicalCollectionViewCursor && columnNum == treeColumnIndex && !(data is AdvancedDataGridColumn)) initListData(data, advancedDataGridListData); else advancedDataGridListData.item = data; return advancedDataGridListData; }
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+16/Jun/09 02:50
+Update date:
+29/Jun/11 22:58
+Resolved date:
+15/Mar/11 02:35

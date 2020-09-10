@@ -1,0 +1,55 @@
+Summary:
+Usage of FilterList slows down scans
+Description:
+When using a FilterList the scan is much slower compared to a scan with only a single filter (tested SingleColumnValueFilter and PrefixFilter).
+The difference is extrem for very small ranges: if the range is only 10 rows the scan is 10 times slower when using the FilterList.
+Is the cause just GC or object serialization/deserialization?
+For a simple test I used the PerformanceEvaluation tool and created the TestTable with only 10 rows:
+$ bin/hbase org.apache.hadoop.hbase.PerformanceEvaluation --rows=10 sequentialWrite 1
+The attached test performs 100 scan using diffent filters. The filter is then wrapped into a FilterList (with only a single filter). This FilterList is then nested two more times into another FilterList. For each nested level the scan gets slower and slower.
+The test created the following output:
+Scan Null Filter (10): 391ms
+Scan FilterList with Null Filter (0): 4788ms
+Scan Nested FilterList with Null Filter (0): 8303ms
+Scan Nested Nested FilterList with Null Filter (0): 11915ms
+Scan SingleColumValueFilter Equal (0): 257ms
+Scan FilterList with SingleColumValueFilter Equal (0): 4121ms
+Scan Nested FilterList with SingleColumValueFilter Equal (0): 7965ms
+Scan Nested Nested FilterList with SingleColumValueFilter Equal (0): 11600ms
+Scan SingleColumValueFilter Not Equal (10): 912ms
+Scan FilterList with SingleColumValueFilter Not Equal (10): 4542ms
+Scan Nested FilterList with SingleColumValueFilter Not Equal (10): 8459ms
+Scan Nested Nested FilterList with SingleColumValueFilter Not Equal (10): 11513ms
+Scan PrefixFilter (10): 306ms
+Scan FilterList with PrefixFilter (10): 3695ms
+Scan Nested FilterList with PrefixFilter (10): 7762ms
+Scan Nested Nested FilterList with PrefixFilter (10): 11721ms
+Get: 245ms
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.3
+Fix_version:
+0.20.4, 0.90.0
+Component:
+Filters
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Stefan Seelmann
+Create date:
+19/Mar/10 15:28
+Update date:
+12/Oct/12 06:15
+Resolved date:
+09/Apr/10 00:11

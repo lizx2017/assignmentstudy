@@ -1,0 +1,83 @@
+Summary:
+Scrub does not understand compound primary key created in CQL 3 beta
+Description:
+We have a customer who was using the beta version of CQL 3 in DSE 3.0 which includes Cassandra 1.1.9 plus patches backported from later versions. They've now upgraded to DSE 3.1, which includes Cassandra 1.2.6 plus patches.
+When restarting for the first time after running upgradesstables, they noticed the following error in the log:
+Thread[SSTableBatchOpen:2,5,main]
+java.lang.AssertionError
+        at org.apache.cassandra.utils.ByteBufferUtil.readBytes(ByteBufferUtil.java:401)
+        at org.apache.cassandra.io.sstable.IndexSummary$IndexSummarySerializer.deserialize(IndexSummary.java:124)
+        at org.apache.cassandra.io.sstable.SSTableReader.loadSummary(SSTableReader.java:426)
+        at org.apache.cassandra.io.sstable.SSTableReader.load(SSTableReader.java:360)
+        at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:201)
+        at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:154)
+        at org.apache.cassandra.io.sstable.SSTableReader$1.run(SSTableReader.java:241)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:439)
+        at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+This error was also reported on CASSANDRA-5703. The comments suggested it was caused by an empty row key, so I had them run scrub on it. When they did, scrub reported the following warning almost 4 million times:
+ WARN [CompactionExecutor:27] 2013-08-02 10:13:13,041 OutputHandler.java (line 52) Row at 530332255 is unreadable; skipping to next
+ WARN [CompactionExecutor:27] 2013-08-02 10:13:13,041 OutputHandler.java (line 57) Non-fatal error reading row (stacktrace follows)
+java.lang.RuntimeException: Error validating row DecoratedKey(139154446688383793922009760478335751546, 735fc9da503b11e2844b123140ff209f)
+ at org.apache.cassandra.io.sstable.SSTableIdentityIterator.getColumnFamilyWithColumns(SSTableIdentityIterator.java:243)
+ at org.apache.cassandra.db.compaction.PrecompactedRow.merge(PrecompactedRow.java:114)
+ at org.apache.cassandra.db.compaction.PrecompactedRow.<init>(PrecompactedRow.java:98)
+ at org.apache.cassandra.db.compaction.CompactionController.getCompactedRow(CompactionController.java:160)
+ at org.apache.cassandra.db.compaction.CompactionController.getCompactedRow(CompactionController.java:166)
+ at org.apache.cassandra.db.compaction.Scrubber.scrub(Scrubber.java:173)
+ at org.apache.cassandra.db.compaction.CompactionManager.scrubOne(CompactionManager.java:529)
+ at org.apache.cassandra.db.compaction.CompactionManager.doScrub(CompactionManager.java:518)
+ at org.apache.cassandra.db.compaction.CompactionManager.access$400(CompactionManager.java:73)
+ at org.apache.cassandra.db.compaction.CompactionManager$3.perform(CompactionManager.java:283)
+ at org.apache.cassandra.db.compaction.CompactionManager$2.call(CompactionManager.java:253)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: org.apache.cassandra.db.marshal.MarshalException: String didn't validate.
+ at org.apache.cassandra.db.marshal.UTF8Type.validate(UTF8Type.java:66)
+ at org.apache.cassandra.db.Column.validateFields(Column.java:292)
+ at org.apache.cassandra.db.ColumnFamily.validateColumnFields(ColumnFamily.java:382)
+ at org.apache.cassandra.io.sstable.SSTableIdentityIterator.getColumnFamilyWithColumns(SSTableIdentityIterator.java:239)
+ ... 15 more
+The customer did some testing and they've determined that the issue only exists when taking a Cassandra 1.1 sstable with compound primary keys and running scrub on it in either Cassandra 1.1 or 1.2.
+It appears that the scrub does not understand the 1.1 compound primary key so is invalidating the row.
+The customer provided a cassandra data directory that's from DSE 3.0. Running "nodetool scrub" in either DSE 3.0 or 3.1 generates all sorts of exceptions.
+If you fire up cassandra before running the scrub, running this query:
+select count(*) from b_projectsubscription_project;
+will return 88.
+After the scrub, it returns 0.
+When I discussed this with Alexey Yeschenko, he said that if he recalls correctly, the beta didn't have row markers, and did not use a composite comparator for simple primary keys. Whereas CQL3 final used CompositeType(UTF8Type), the beta would just use UTF8Type. I asked him if this could cause these errors, and he said he didn't think so because after upgrading your schema created under the beta would still have UTF8Type, so Cassandra would know how to handle it correctly.
+Based on the customer's investigation, it sounds like this may be true of the normal read/write path but not for scrub. However, given the error that occurred at startup, this may be causing some issues aside from just scrub. My theory is that scrub is looking at what's just a UTF8 string and trying to interpret the first few bytes as the sentinels for a composite type. When it then tries to interpret the remaining bytes, if only part of a multi-byte UTF8 character was in the remaining byte array, it might cause the UTF8 validation errors above.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.9, 2.0.0
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+J.B. Langston
+Create date:
+07/Aug/13 15:02
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Aug/13 22:10

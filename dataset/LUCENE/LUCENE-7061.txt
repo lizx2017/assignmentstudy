@@ -1,0 +1,45 @@
+Summary:
+fix remaining api issues with XYZPoint classes
+Description:
+There are still some major problems today:
+XYZPoint.newRangeQuery has "brain damage" from variable length terms. nulls for open ranges make no sense: these are fixed-width types and instead you can use things like Integer.maxValue. Removing the nulls is safe, as we can just switch to primitive types instead of boxed types.
+XYZPoint.newRangeQuery requires boolean arrays for inclusive/exclusive, but thats just more brain damage. If you want to exclude an integer, you just subtract 1 from it and other simple stuff.
+For the apis, this means Instead of:
+public static Query newRangeQuery(String field, Long lowerValue, boolean lowerInclusive, Long upperValue, boolean upperInclusive);
+  
+public static Query newMultiRangeQuery(String field, Long[] lowerValue, boolean lowerInclusive[], Long[] upperValue, boolean upperInclusive[]);
+we have:
+public static Query newRangeQuery(String field, long lowerValue, long upperValue);
+public static Query newRangeQuery(String field, long[] lowerValue, long[] upperValue);
+PointRangeQuery is horribly complex due to these nulls and boolean arrays, and need not be. Now it only works "inclusive" and is much simpler.
+XYZPoint.newSetQuery throws IOException, just creating the query. This is very confusing and unnecessary (no i/o happens).
+LatLonPoint's bounding box query is not inclusive like the other geo. And the test does not fail!
+I also found a few missing checks here and there while cleaning up.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+02/Mar/16 20:01
+Update date:
+09/May/16 18:37
+Resolved date:
+02/Mar/16 22:30

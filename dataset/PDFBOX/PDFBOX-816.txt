@@ -1,0 +1,59 @@
+Summary:
+1.2.1 - PDFTextStripper* uses different Y values when cropbox has non-zero Y: not so for X coordinates.
+Description:
+[First off, kudos to the folks who work on PDFBox. It's got some great functionality.]
+The issue is that a cropbox with non-zero "lower-left-corner" changes positions reported for text by PDFTextStripper. In the Y coordinate only.
+See page 5 of the attached PDF (which is a phony tax return, not real data).
+As an example, near the top is the tax year, "2009". Using a program such as Apple's Preview, one would estimate that a snug bounding rectangle for that text would be x=300, y=54, w=41, and h=18.
+And on other PDFs, that would be fine with PDFTextStripperByArea. But this PDF has a non-zero-origin cropbox set, one with the alleged lower-left-corner at [-24.0, -24.0]. So the region coordinates that PDFTextStripperByArea wants to see need to be offset by subtracting -24 from x and y, i.e., yielding x=324, y=78.
+Or so you would think. It turns out that the X coordinate stays the same, only the Y coordinate gets affected by the cropbox setting.
+Using the sample program PrintTextLocations, which, like PDFTextStripperByArea, derives from PDFTextStripper, reports both coordinates as being offset by 24 in its processTextPosition():
+...
+String[92.0,94.0 fs=12.0 xscale=1.0 height=9.0720005 space=3.3360004 width=186.71997]U.S. Individual Income Tax Retur
+String[278.71997,94.0 fs=12.0 xscale=1.0 height=9.0720005 space=3.3360004 width=7.3320007]n
+String[301.0,94.0 fs=18.0 xscale=1.0 height=13.122001 space=5.0040007 width=30.023987]200
+String[331.024,94.0 fs=18.0 xscale=1.0 height=13.122001 space=5.0040007 width=10.007996]9
+String[368.0,94.0 fs=8.0 xscale=1.0 height=7.5200005 space=2.2240002 width=11.559998](99
+String[379.56,94.0 fs=8.0 xscale=1.0 height=7.5200005 space=2.2240002 width=2.6640015])
+String[399.0,94.0 fs=6.0 xscale=1.0 height=4.5360003 space=1.6680002 width=36.34201]IRS Use Only
+...
+(Lines 3 and 4 are the only key ones, the others for comparison).
+To make sense of this: 301.0 is close enough to 300 for the X coordinate: if I go to 324, I don't get the "200", just the "9".
+Also, the y coordinate of 94 is the bottom of the text, with a height of 18 that roughly extends up to 76, but 78 works as far as extractRegions() is concerned (I think it only cares about the lower-left corner of each character).
+So the bounding rectangle reported above for "2009" is lower-left corner (301.0, 94.0) to upper-right corner approx (341.03, 76).
+In those coordinates, the region that works with extractRegions() is LL (300, 96) to UR (341, 78).
+(Or, the exact Rectangle2D I pass to extractRegions: x=300, y=78, w=41, h=18).
+This applies to any field you choose on this page.
+So:
+(a) it doesn't seem to me that a cropbox has any business changing the coordinates. But I could be wrong.
+(b) if it does make sense for a cropbox to affect the coordinates, it should do so in both X and Y dimensions, shouldn't it?
+(c) I suppose it would be too much to ask for notes explaining the coordinates used for each method, but it's a nice thought.
+I tried looking through PDFTextStripper* but I'm not sufficiently familiar with the code to determine where the coordinate perturbation occurs. It might be in how PDFStreamEngine.processEncodedText() is using the graphicsState (initialized with the cropbox) to transform textMatrixStDisp, but that seems to be initialized with a Dimension, so I don't see how an offset would affect it.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.2.1
+Fix_version:
+1.8.11, 2.0.0
+Component:
+Utilities
+Label:
+None
+Environment:
+mac os x, java 1.6, ubuntu
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Larry West
+Create date:
+04/Sep/10 02:53
+Update date:
+17/Mar/16 19:07
+Resolved date:
+30/Jan/16 21:24

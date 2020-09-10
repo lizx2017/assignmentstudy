@@ -1,0 +1,98 @@
+Summary:
+Modify the conditions to ensure that Master waits for sufficient number of Region Servers before starting region assignments
+Description:
+Continuing from HBASE-6375.
+It seems I was mistaken in my assumption that changing the value of "hbase.master.wait.on.regionservers.mintostart" to a sufficient number (from default of 1) can help prevent assignment of all regions to one (or a small number of) region server(s).
+While this was the case in 0.90.x and 0.92.x, the behavior has changed in 0.94.0 onwards to address HBASE-4993.
+From 0.94.0 onwards, Master will proceed immediately after the timeout has lapsed, even if "hbase.master.wait.on.regionservers.mintostart" has not reached.
+Reading the current conditions of waitForRegionServers() clarifies it
+ServerManager.java (trunk rev:1360470)
+....
+581   /**
+582    * Wait for the region servers to report in.
+583    * We will wait until one of this condition is met:
+584    *  - the master is stopped
+585    *  - the 'hbase.master.wait.on.regionservers.timeout' is reached
+586    *  - the 'hbase.master.wait.on.regionservers.maxtostart' number of
+587    *    region servers is reached
+588    *  - the 'hbase.master.wait.on.regionservers.mintostart' is reached AND
+589    *   there have been no new region server in for
+590    *      'hbase.master.wait.on.regionservers.interval' time
+591    *
+592    * @throws InterruptedException
+593    */
+594   public void waitForRegionServers(MonitoredTask status)
+595   throws InterruptedException {
+....
+....
+612     while (
+613       !this.master.isStopped() &&
+614         slept < timeout &&
+615         count < maxToStart &&
+616         (lastCountChange+interval > now || count < minToStart)
+617       ){
+....
+So with the current conditions, the wait will end as soon as timeout is reached even lesser number of RS have checked-in with the Master and the master will proceed with the region assignment among these RSes alone.
+As mentioned in HBASE-4993, and I concur, this could have disastrous effect in large cluster especially now that MSLAB is turned on.
+To enforce the required quorum as specified by "hbase.master.wait.on.regionservers.mintostart" irrespective of timeout, these conditions need to be modified as following
+ServerManager.java
+..
+  /**
+   * Wait for the region servers to report in.
+   * We will wait until one of this condition is met:
+   *  - the master is stopped
+   *  - the 'hbase.master.wait.on.regionservers.maxtostart' number of
+   *    region servers is reached
+   *  - the 'hbase.master.wait.on.regionservers.mintostart' is reached AND
+   *   there have been no new region server in for
+   *      'hbase.master.wait.on.regionservers.interval' time AND
+   *   the 'hbase.master.wait.on.regionservers.timeout' is reached
+   *
+   * @throws InterruptedException
+   */
+  public void waitForRegionServers(MonitoredTask status)
+..
+..
+    int minToStart = this.master.getConfiguration().
+    getInt("hbase.master.wait.on.regionservers.mintostart", 1);
+    int maxToStart = this.master.getConfiguration().
+    getInt("hbase.master.wait.on.regionservers.maxtostart", Integer.MAX_VALUE);
+    if (maxToStart < minToStart) {
+      maxToStart = minToStart;
+    }
+..
+..
+    while (
+      !this.master.isStopped() &&
+        count < maxToStart &&
+        (lastCountChange+interval > now || timeout > slept || count < minToStart)
+      ){
+..
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.0, 0.95.2
+Fix_version:
+0.94.3, 0.95.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aditya Kishore
+Reporter:
+Aditya Kishore
+Create date:
+13/Jul/12 01:05
+Update date:
+26/Feb/13 08:20
+Resolved date:
+03/Nov/12 22:56

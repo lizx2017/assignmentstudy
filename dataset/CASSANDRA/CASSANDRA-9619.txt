@@ -1,0 +1,47 @@
+Summary:
+Read performance regression in tables with many columns on trunk and 2.2 vs. 2.1
+Description:
+There seems to be a regression in read in 2.2 and trunk, as compared to 2.1 and 2.0. I found it running cstar_perf jobs with 50-column tables. 2.2 may be worse than trunk, though my results on that aren't consistent. The relevant cstar_perf jobs are here:
+http://cstar.datastax.com/tests/id/273e2ea8-0fc8-11e5-816c-42010af0688f
+http://cstar.datastax.com/tests/id/3a8002d6-1480-11e5-97ff-42010af0688f
+http://cstar.datastax.com/tests/id/40ff2766-1248-11e5-bac8-42010af0688f
+The sequence of commands for these jobs is
+stress write n=65000000 -rate threads=300 -col n=FIXED\(50\)
+stress read n=65000000 -rate threads=300
+stress read n=65000000 -rate threads=300
+Have a look at the operations per second going from the first read operation to the second read operation. They've fallen from ~135K to ~100K comparing trunk to 2.1 and 2.0. It's slightly worse for 2.2, and 2.2 operations per second fall continuously from the first to the second read operation.
+There's a corresponding increase in read latency – it's noticable on trunk and pretty bad on 2.2. Again, the latency gets higher and higher on 2.2 as the read operations progress (see the graphs here and here).
+I see a similar regression in a more recent test, though in this one trunk performed worse than 2.2. This run also didn't display the increasing latency in 2.2.
+This regression may show for smaller numbers of columns, but not as prominently, as shown in the results to this test with the stress default of 5 columns. There's an increase in latency variability on trunk and 2.2, but I don't see a regression in summary statistics.
+My measurements aren't confounded by the recent regression in cassandra-stress; cstar_perf uses the same stress program (from trunk) on all versions on the cluster.
+I'm currently working to
+reproduce with a smaller workload so this is easier to bisect and debug.
+get results with larger numbers of columns, since we've seen the regression on 50 columns but not the stress default of 5.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.x, 2.2.x
+Component:
+None
+Label:
+perfomance
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Jim Witschey
+Create date:
+18/Jun/15 15:34
+Update date:
+16/Apr/19 09:31
+Resolved date:
+28/Sep/15 04:51

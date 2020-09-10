@@ -1,0 +1,122 @@
+Summary:
+nodetool repair -pr on all nodes won't repair the full range when a Keyspace isn't in all DC's
+Description:
+nodetool repair -pr on all nodes won't repair the full range when a Keyspace isn't in all DC's
+Commands follow, but the TL;DR of it, range (127605887595351923798765477786913079296,0] doesn't get repaired between .38 node and .236 node until I run a repair, no -pr, on .38
+It seems like primary arnge calculation doesn't take schema into account, but deciding who to ask for merkle tree's from does.
+Address         DC          Rack        Status State   Load            Owns                Token                                       
+                                                                                           127605887595351923798765477786913079296     
+10.72.111.225   Cassandra   rack1       Up     Normal  455.87 KB       25.00%              0                                           
+10.2.29.38      Analytics   rack1       Up     Normal  40.74 MB        25.00%              42535295865117307932921825928971026432      
+10.46.113.236   Analytics   rack1       Up     Normal  20.65 MB        50.00%              127605887595351923798765477786913079296     
+
+create keyspace Keyspace1
+  with placement_strategy = 'NetworkTopologyStrategy'
+  and strategy_options = {Analytics : 2}
+  and durable_writes = true;
+
+-------
+# nodetool -h 10.2.29.38 repair -pr Keyspace1 Standard1
+[2013-04-03 15:46:58,000] Starting repair command #1, repairing 1 ranges for keyspace Keyspace1
+[2013-04-03 15:47:00,881] Repair session b79b4850-9c75-11e2-0000-8b5bf6ebea9e for range (0,42535295865117307932921825928971026432] finished
+[2013-04-03 15:47:00,881] Repair command #1 finished
+
+root@ip-10-2-29-38:/home/ubuntu# grep b79b4850-9c75-11e2-0000-8b5bf6ebea9e /var/log/cassandra/system.log
+ INFO [AntiEntropySessions:1] 2013-04-03 15:46:58,009 AntiEntropyService.java (line 676) [repair #b79b4850-9c75-11e2-0000-8b5bf6ebea9e] new session: will sync a1/10.2.29.38, /10.46.113.236 on range (0,42535295865117307932921825928971026432] for Keyspace1.[Standard1]
+ INFO [AntiEntropySessions:1] 2013-04-03 15:46:58,015 AntiEntropyService.java (line 881) [repair #b79b4850-9c75-11e2-0000-8b5bf6ebea9e] requesting merkle trees for Standard1 (to [/10.46.113.236, a1/10.2.29.38])
+ INFO [AntiEntropyStage:1] 2013-04-03 15:47:00,202 AntiEntropyService.java (line 211) [repair #b79b4850-9c75-11e2-0000-8b5bf6ebea9e] Received merkle tree for Standard1 from /10.46.113.236
+ INFO [AntiEntropyStage:1] 2013-04-03 15:47:00,697 AntiEntropyService.java (line 211) [repair #b79b4850-9c75-11e2-0000-8b5bf6ebea9e] Received merkle tree for Standard1 from a1/10.2.29.38
+ INFO [AntiEntropyStage:1] 2013-04-03 15:47:00,879 AntiEntropyService.java (line 1015) [repair #b79b4850-9c75-11e2-0000-8b5bf6ebea9e] Endpoints /10.46.113.236 and a1/10.2.29.38 are consistent for Standard1
+ INFO [AntiEntropyStage:1] 2013-04-03 15:47:00,880 AntiEntropyService.java (line 788) [repair #b79b4850-9c75-11e2-0000-8b5bf6ebea9e] Standard1 is fully synced
+ INFO [AntiEntropySessions:1] 2013-04-03 15:47:00,880 AntiEntropyService.java (line 722) [repair #b79b4850-9c75-11e2-0000-8b5bf6ebea9e] session completed successfully
+
+root@ip-10-46-113-236:/home/ubuntu# grep b79b4850-9c75-11e2-0000-8b5bf6ebea9e /var/log/cassandra/system.log
+ INFO [AntiEntropyStage:1] 2013-04-03 15:46:59,944 AntiEntropyService.java (line 244) [repair #b79b4850-9c75-11e2-0000-8b5bf6ebea9e] Sending completed merkle tree to /10.2.29.38 for (Keyspace1,Standard1)
+
+root@ip-10-72-111-225:/home/ubuntu# grep b79b4850-9c75-11e2-0000-8b5bf6ebea9e /var/log/cassandra/system.log
+root@ip-10-72-111-225:/home/ubuntu# 
+
+-------
+# nodetool -h 10.46.113.236  repair -pr Keyspace1 Standard1
+[2013-04-03 15:48:00,274] Starting repair command #1, repairing 1 ranges for keyspace Keyspace1
+[2013-04-03 15:48:02,032] Repair session dcb91540-9c75-11e2-0000-a839ee2ccbef for range (42535295865117307932921825928971026432,127605887595351923798765477786913079296] finished
+[2013-04-03 15:48:02,033] Repair command #1 finished
+
+root@ip-10-46-113-236:/home/ubuntu# grep dcb91540-9c75-11e2-0000-a839ee2ccbef /var/log/cassandra/system.log
+ INFO [AntiEntropySessions:5] 2013-04-03 15:48:00,280 AntiEntropyService.java (line 676) [repair #dcb91540-9c75-11e2-0000-a839ee2ccbef] new session: will sync a0/10.46.113.236, /10.2.29.38 on range (42535295865117307932921825928971026432,127605887595351923798765477786913079296] for Keyspace1.[Standard1]
+ INFO [AntiEntropySessions:5] 2013-04-03 15:48:00,285 AntiEntropyService.java (line 881) [repair #dcb91540-9c75-11e2-0000-a839ee2ccbef] requesting merkle trees for Standard1 (to [/10.2.29.38, a0/10.46.113.236])
+ INFO [AntiEntropyStage:1] 2013-04-03 15:48:01,710 AntiEntropyService.java (line 211) [repair #dcb91540-9c75-11e2-0000-a839ee2ccbef] Received merkle tree for Standard1 from a0/10.46.113.236
+ INFO [AntiEntropyStage:1] 2013-04-03 15:48:01,943 AntiEntropyService.java (line 211) [repair #dcb91540-9c75-11e2-0000-a839ee2ccbef] Received merkle tree for Standard1 from /10.2.29.38
+ INFO [AntiEntropyStage:1] 2013-04-03 15:48:02,031 AntiEntropyService.java (line 1015) [repair #dcb91540-9c75-11e2-0000-a839ee2ccbef] Endpoints a0/10.46.113.236 and /10.2.29.38 are consistent for Standard1
+ INFO [AntiEntropyStage:1] 2013-04-03 15:48:02,032 AntiEntropyService.java (line 788) [repair #dcb91540-9c75-11e2-0000-a839ee2ccbef] Standard1 is fully synced
+ INFO [AntiEntropySessions:5] 2013-04-03 15:48:02,032 AntiEntropyService.java (line 722) [repair #dcb91540-9c75-11e2-0000-a839ee2ccbef] session completed successfully
+
+root@ip-10-2-29-38:/home/ubuntu# grep dcb91540-9c75-11e2-0000-a839ee2ccbef /var/log/cassandra/system.log
+ INFO [AntiEntropyStage:1] 2013-04-03 15:48:01,898 AntiEntropyService.java (line 244) [repair #dcb91540-9c75-11e2-0000-a839ee2ccbef] Sending completed merkle tree to /10.46.113.236 for (Keyspace1,Standard1)
+
+root@ip-10-72-111-225:/home/ubuntu# grep dcb91540-9c75-11e2-0000-a839ee2ccbef /var/log/cassandra/system.log
+root@ip-10-72-111-225:/home/ubuntu# 
+
+-------
+# nodetool -h 10.72.111.225  repair -pr Keyspace1 Standard1
+[2013-04-03 15:48:30,417] Starting repair command #1, repairing 1 ranges for keyspace Keyspace1
+[2013-04-03 15:48:30,428] Repair session eeb12670-9c75-11e2-0000-316d6fba2dbf for range (127605887595351923798765477786913079296,0] finished
+[2013-04-03 15:48:30,428] Repair command #1 finished
+
+root@ip-10-72-111-225:/home/ubuntu# grep eeb12670-9c75-11e2-0000-316d6fba2dbf /var/log/cassandra/system.log
+ INFO [AntiEntropySessions:1] 2013-04-03 15:48:30,427 AntiEntropyService.java (line 676) [repair #eeb12670-9c75-11e2-0000-316d6fba2dbf] new session: will sync /10.72.111.225 on range (127605887595351923798765477786913079296,0] for Keyspace1.[Standard1]
+ INFO [AntiEntropySessions:1] 2013-04-03 15:48:30,428 AntiEntropyService.java (line 681) [repair #eeb12670-9c75-11e2-0000-316d6fba2dbf] No neighbors to repair with on range (127605887595351923798765477786913079296,0]: session completed
+
+root@ip-10-46-113-236:/home/ubuntu# grep eeb12670-9c75-11e2-0000-316d6fba2dbf /var/log/cassandra/system.log
+root@ip-10-46-113-236:/home/ubuntu# 
+
+root@ip-10-2-29-38:/home/ubuntu# grep eeb12670-9c75-11e2-0000-316d6fba2dbf /var/log/cassandra/system.log
+root@ip-10-2-29-38:/home/ubuntu# 
+
+---
+root@ip-10-2-29-38:/home/ubuntu# nodetool -h 10.2.29.38 repair Keyspace1 Standard1
+[2013-04-03 16:13:28,674] Starting repair command #2, repairing 3 ranges for keyspace Keyspace1
+[2013-04-03 16:13:31,786] Repair session 6bb81c20-9c79-11e2-0000-8b5bf6ebea9e for range (42535295865117307932921825928971026432,127605887595351923798765477786913079296] finished
+[2013-04-03 16:13:31,786] Repair session 6cb05ed0-9c79-11e2-0000-8b5bf6ebea9e for range (0,42535295865117307932921825928971026432] finished
+[2013-04-03 16:13:31,806] Repair session 6d24a470-9c79-11e2-0000-8b5bf6ebea9e for range (127605887595351923798765477786913079296,0] finished
+[2013-04-03 16:13:31,807] Repair command #2 finished
+
+root@ip-10-2-29-38:/home/ubuntu# grep 6d24a470-9c79-11e2-0000-8b5bf6ebea9e /var/log/cassandra/system.log
+ INFO [AntiEntropySessions:7] 2013-04-03 16:13:31,065 AntiEntropyService.java (line 676) [repair #6d24a470-9c79-11e2-0000-8b5bf6ebea9e] new session: will sync a1/10.2.29.38, /10.46.113.236 on range (127605887595351923798765477786913079296,0] for Keyspace1.[Standard1]
+ INFO [AntiEntropySessions:7] 2013-04-03 16:13:31,065 AntiEntropyService.java (line 881) [repair #6d24a470-9c79-11e2-0000-8b5bf6ebea9e] requesting merkle trees for Standard1 (to [/10.46.113.236, a1/10.2.29.38])
+ INFO [AntiEntropyStage:1] 2013-04-03 16:13:31,751 AntiEntropyService.java (line 211) [repair #6d24a470-9c79-11e2-0000-8b5bf6ebea9e] Received merkle tree for Standard1 from /10.46.113.236
+ INFO [AntiEntropyStage:1] 2013-04-03 16:13:31,785 AntiEntropyService.java (line 211) [repair #6d24a470-9c79-11e2-0000-8b5bf6ebea9e] Received merkle tree for Standard1 from a1/10.2.29.38
+ INFO [AntiEntropyStage:1] 2013-04-03 16:13:31,805 AntiEntropyService.java (line 1015) [repair #6d24a470-9c79-11e2-0000-8b5bf6ebea9e] Endpoints /10.46.113.236 and a1/10.2.29.38 are consistent for Standard1
+ INFO [AntiEntropyStage:1] 2013-04-03 16:13:31,806 AntiEntropyService.java (line 788) [repair #6d24a470-9c79-11e2-0000-8b5bf6ebea9e] Standard1 is fully synced
+ INFO [AntiEntropySessions:7] 2013-04-03 16:13:31,806 AntiEntropyService.java (line 722) [repair #6d24a470-9c79-11e2-0000-8b5bf6ebea9e] session completed successfully
+
+root@ip-10-46-113-236:/home/ubuntu# grep 6d24a470-9c79-11e2-0000-8b5bf6ebea9e /var/log/cassandra/system.log 
+ INFO [AntiEntropyStage:1] 2013-04-03 16:13:31,665 AntiEntropyService.java (line 244) [repair #6d24a470-9c79-11e2-0000-8b5bf6ebea9e] Sending completed merkle tree to /10.2.29.38 for (Keyspace1,Standard1)
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Jeremiah Jordan
+Create date:
+03/Apr/13 16:58
+Update date:
+16/Apr/19 09:32
+Resolved date:
+19/Apr/13 21:34

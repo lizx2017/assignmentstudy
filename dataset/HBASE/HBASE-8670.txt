@@ -1,0 +1,36 @@
+Summary:
+[0.94] Backport HBASE-8449,HBASE-8204 and HBASE-8699 to 0.94 (Refactor recoverLease retries and pauses)
+Description:
+Some history:
+Up until 0.94.8, Hbase did not check the result of recoverLease() call, but things kind of worked since we are checking for 0-length files in distributed log split tasks from region servers. If lease recovery is not finished, the log file will report 0 length, and the task will fail, and master will then re-call recoverLease() and reassign the task. This scheme might fail for log files that are larger than 1 hdfs block though.
+In 0.94.8, we committed (HBASE-8354, which is backport of HBASE-7878) and later increased the sleep time to 4 secs in HBASE-8389.
+However, the proper solution arrived in trunk in HBASE-8449 which uses a backoff sleep policy + isFileClosed() api. We should backport this patch to 0.94 as well.
+isFileClosed() is released in Hadoop 1.2.0 (HDFS-4774) and 2.0.5(HDFS-4525).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.11
+Component:
+Filesystem Integration,
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Enis Soztutar
+Reporter:
+Enis Soztutar
+Create date:
+31/May/13 21:54
+Update date:
+21/Aug/13 00:08
+Resolved date:
+02/Aug/13 05:21

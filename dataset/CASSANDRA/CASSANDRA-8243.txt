@@ -1,0 +1,38 @@
+Summary:
+DTCS can leave time-overlaps, limiting ability to expire entire SSTables
+Description:
+CASSANDRA-6602 (DTCS) and CASSANDRA-5228 are supposed to be a perfect match for tables where every value is written with a TTL. DTCS makes sure to keep old data separate from new data. So shortly after the TTL has passed, Cassandra should be able to throw away the whole SSTable containing a given data point.
+CASSANDRA-5228 deletes the very oldest SSTables, and only if they don't overlap (in terms of timestamps) with another SSTable which cannot be deleted.
+DTCS however, can't guarantee that SSTables won't overlap (again, in terms of timestamps). In a test that I ran, every single SSTable overlapped with its nearest neighbors by a very tiny amount. My reasoning for why this could happen is that the dumped memtables were already overlapping from the start. DTCS will never create an overlap where there is none. I surmised that this happened in my case because I sent parallel writes which must have come out of order. This was just locally, and out of order writes should be much more common non-locally.
+That means that the SSTable removal optimization may never get a chance to kick in!
+I can see two solutions:
+1. Make DTCS split SSTables on time window borders. This will essentially only be done on a newly dumped memtable once every base_time_seconds.
+2. Make TTL SSTable expiry more aggressive. Relax the conditions on which an SSTable can be dropped completely, of course without affecting any semantics.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15, 2.1.3
+Component:
+None
+Label:
+compaction dtcs perf
+Environment:
+
+Attachment number:
+0
+Assignee:
+Björn Hegerfors
+Reporter:
+Björn Hegerfors
+Create date:
+03/Nov/14 00:01
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Nov/14 10:14

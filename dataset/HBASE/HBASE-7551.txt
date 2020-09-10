@@ -1,0 +1,52 @@
+Summary:
+nodeChildrenChange event may happen after the transition to RS_ZK_REGION_SPLITTING in SplitTransaction causing the SPLIT event to be missed in the master side.
+Description:
+This came from HBASE-7468.
+I got the issue. I am able to reproduce this
+See the logs
+2013-01-14 14:37:21,760 INFO  [main] regionserver.SplitTransaction(216): Starting split of region testShouldClearRITWhenNodeFoundInSplittingState,,1358154439514.a9e57d09c58b3ef3b949d602232fb2c2.
+
+2013-01-14 14:37:21,760 DEBUG [main] regionserver.SplitTransaction(871): regionserver:61665-0x13c384e4e4f0002 Creating ephemeral node for a9e57d09c58b3ef3b949d602232fb2c2 in SPLITTING state
+
+2013-01-14 14:37:21,844 DEBUG [main] zookeeper.ZKAssign(757): regionserver:61665-0x13c384e4e4f0002 Attempting to transition node a9e57d09c58b3ef3b949d602232fb2c2 from RS_ZK_REGION_SPLITTING to RS_ZK_REGION_SPLITTING
+
+2013-01-14 14:37:21,849 DEBUG [Thread-873-EventThread] zookeeper.ZooKeeperWatcher(277): master:62334-0x13c384e4e4f001b Received ZooKeeper Event, type=NodeChildrenChanged, state=SyncConnected, path=/hbase/unassigned
+
+2013-01-14 14:37:21,853 DEBUG [main] zookeeper.ZKUtil(1565): regionserver:61665-0x13c384e4e4f0002 Retrieved 140 byte(s) of data from znode /hbase/unassigned/a9e57d09c58b3ef3b949d602232fb2c2; data=region=testShouldClearRITWhenNodeFoundInSplittingState,,1358154439514.a9e57d09c58b3ef3b949d602232fb2c2., origin=Ram.Home,61665,1358154325430, state=RS_ZK_REGION_SPLITTING
+
+2013-01-14 14:37:21,918 DEBUG [main] zookeeper.ZKAssign(820): regionserver:61665-0x13c384e4e4f0002 Successfully transitioned node a9e57d09c58b3ef3b949d602232fb2c2 from RS_ZK_REGION_SPLITTING to RS_ZK_REGION_SPLITTING
+
+2013-01-14 14:37:21,919 DEBUG [Thread-873-EventThread] zookeeper.ZKUtil(417): master:62334-0x13c384e4e4f001b Set watcher on existing znode /hbase/unassigned/a9e57d09c58b3ef3b949d602232fb2c2
+Here we can observe that the SPLITTING node was first created. Then we transit it to SPLITTING to SPLITTING so that AM can have the nodeDataChange event. But for the nodeDataChange event to happen first nodeChildrenChange event should happen so that the master can set a watcher on the node.
+Now when this hang happens, we can see that after the transition happens only then the watcher is set by nodeChildrenChange event and so the SPLITTING to SPLITTING event itself is missed or skipped.
+Ideally the nodeChildrenChange event iterates thro the list of new znodes on the /hbase/assignment nodes. And then creates a watcher on that. One reason could be there are more than one znode and so the watch setting operation takes time. The order of execution is different when we try running from eclipse and when we run mvn tests.
+My conclusion is that the testcase actually reveals the problem but the same can happen in any case where the SPLITTING event can get missed out. May be some of the SPLIT related bugs that were raised is due to this? Need to analyse.
+Any suggestions welcome. We should ensure that the transition from SPLITTING to SPLITTING should happen only after the master has set the watch on the znode and we should be sure of that.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.4
+Fix_version:
+0.94.5, 0.95.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudevan
+Reporter:
+ramkrishna.s.vasudevan
+Create date:
+14/Jan/13 10:01
+Update date:
+26/Feb/13 08:27
+Resolved date:
+15/Jan/13 22:18

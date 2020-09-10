@@ -1,0 +1,49 @@
+Summary:
+TestHTableMultiplexer is flaky
+Description:
+I reproduce it all the time if I comment the sleep here:
+  private void verifyAllBufferedPutsHaveFlushed(HTableMultiplexerStatus status) {
+    int retries = 8;
+    int tries = 0;
+    do {         /*
+      try {
+        Thread.sleep(2 * TEST_UTIL.getConfiguration().getLong(
+          HTableMultiplexer.TABLE_MULTIPLEXER_FLUSH_FREQ_MS, 100));
+        tries++;
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }         */
+    } while (status.getTotalBufferedCounter() != 0 && tries != retries);
+
+    assertEquals("There are still some buffered puts left in the queue",
+        0, status.getTotalBufferedCounter());
+  }
+Given that getTotalBufferedCounter is never decremented, there is a misunderstanding somewhere. As well, reading plain values without a volatile or a synchronized in a MT context is likely to be wrong.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.0
+Fix_version:
+0.98.0, 0.95.1
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Nicolas Liochon
+Create date:
+08/Apr/13 13:33
+Update date:
+23/Sep/13 19:08
+Resolved date:
+09/Apr/13 07:14

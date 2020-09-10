@@ -1,0 +1,83 @@
+Summary:
+NPE in BaseParser.parseCOSDictionaryValue() due to object reference in content stream
+Description:
+java.lang.NullPointerException
+ at org.apache.pdfbox.pdfparser.BaseParser.parseCOSDictionaryValue(BaseParser.java:235)
+ at org.apache.pdfbox.pdfparser.BaseParser.parseCOSDictionary(BaseParser.java:311)
+ at org.apache.pdfbox.pdfparser.PDFStreamParser.parseNextToken(PDFStreamParser.java:217)
+ at org.apache.pdfbox.pdfparser.PDFStreamParser.access$000(PDFStreamParser.java:47)
+ at org.apache.pdfbox.pdfparser.PDFStreamParser$1.tryNext(PDFStreamParser.java:144)
+ at org.apache.pdfbox.pdfparser.PDFStreamParser$1.hasNext(PDFStreamParser.java:157)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processStreamOperators(PDFStreamEngine.java:477)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processStream(PDFStreamEngine.java:456)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processPage(PDFStreamEngine.java:167)
+ at org.apache.pdfbox.preflight.content.PreflightContentStream.validatePageContentStream(PreflightContentStream.java:72)
+ at org.apache.pdfbox.preflight.process.reflect.SinglePageValidationProcess.validateContent(SinglePageValidationProcess.java:186)
+ at org.apache.pdfbox.preflight.process.reflect.SinglePageValidationProcess.validate(SinglePageValidationProcess.java:89)
+ at org.apache.pdfbox.preflight.utils.ContextHelper.callValidation(ContextHelper.java:83)
+ at org.apache.pdfbox.preflight.utils.ContextHelper.validateElement(ContextHelper.java:55)
+ at org.apache.pdfbox.preflight.process.PageTreeValidationProcess.validatePage(PageTreeValidationProcess.java:60)
+ at org.apache.pdfbox.preflight.process.PageTreeValidationProcess.validate(PageTreeValidationProcess.java:48)
+ at org.apache.pdfbox.preflight.utils.ContextHelper.callValidation(ContextHelper.java:83)
+ at org.apache.pdfbox.preflight.utils.ContextHelper.validateElement(ContextHelper.java:121)
+ at org.apache.pdfbox.preflight.PreflightDocument.validate(PreflightDocument.java:164)
+ at com.mycompany.preflightmasstest.PreflightChecker.run(PreflightChecker.java:49)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+ at java.lang.Thread.run(Unknown Source)
+The cause is a malformed content stream:
+(186) Tj
+-132.88 -0.24 TD
+/F1 10.00 Tf
+(TOTAL RESOURCES:) Tj
+162.08 0.00 TD
+(\(DAYS\)) Tj
+155.92 16.48 TD
+(February  15, 2001) Tj
+ET
+Q 0 g 0 G
+endstream
+endobj
+649 0 obj
+4096
+endobj
+647 0 obj
+<<
+/Type /Page
+/MediaBox [0 0 612 792]
+/Parent 3 0 R
+/Resources <</ProcSet [ /PDF /Text ] /Font << /F0 12 0 R /F1 13 0 R >> >>
+/Contents 648 0 R
+/CropBox [0 0 612 792]
+>>
+endobj
+BaseParser.parseCOSDictionaryValue() is used both by PDFParser and by PDFStreamParser because these have a few things in common, e.g. dictionaries. The difference is that "document" is null for a content stream, so document.getObjectFromPool() fails.
+However the spec tells us: "Indirect objects and object references shall not be permitted at all" in content streams. I will throw an exception instead.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+16/Apr/15 17:51
+Update date:
+17/Mar/16 19:07
+Resolved date:
+16/Apr/15 18:32

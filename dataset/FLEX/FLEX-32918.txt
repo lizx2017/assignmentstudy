@@ -1,0 +1,49 @@
+Summary:
+Flex Charts: Line Series throws Error 1010 when form = curve and single point in data
+Description:
+I've come across an issue in GraphicsUtilities.as in the case of a line series that has the form of "curve" and there is only a single point, or multiple entries in the array that have the same data points(x and y).
+The problem occurs at line 325 in the following while cause:
+while (start != end)
+{
+if (pts[start + incr][hProp] != pts[start][hProp] ||
+pts[start + incr][vProp] != pts[start][vProp])
+{ break; }
+start += incr;
+}
+The problem occurs when you have 2 objects in the set with the same data-x and data-y coordinates, the pts[start+incr] fails on the second pass since if does not exist. The check while(start != end) is incorrect in that the start value begins at 0, however the end value begins at 2. Hence, there is an extra loop that results in a non existent pts[start+incr], which would result in looking at an element in the array of pts[2]... in a two element array you would only have pts[0] and pts[1].
+I have tried to modify the source to correct this by trying while(start+incr != end) and also while(start != innerEnd), but neither of these checks stops the unwanted loop from occurring.
+In the first pass, as written, start would be 0 and end would be 2.. so inequality would be true.
+In the second pass, as written, start would be 1 and end would be 2... so inequality would also be true, however since the array element being evaluated is pts[2] (which doesnt exist since pts[start+incr] equals 2) the error is thrown.
+What is confusing me is that even when modifying the source, with either of the above modifications, the loop is still running even when (start+incr == end) (the second loop).
+Anyone have any ideas as to why this loop is still being evaluated even though the conditions are false?
+In other words, why is the while loop being executed when (start+incr != end) is false when start=1 incr=1 and end = 2???
+Workaround:
+I would think the above modifications would correct the problem, however they are still being executed even though the conditions are false.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+18/Jan/11 10:15
+Update date:
+11/Sep/11 23:30
+Resolved date:
+

@@ -1,0 +1,56 @@
+Summary:
+Nodetool status always displays the first token instead of the number of vnodes
+Description:
+nodetool status command always displays the first token for a node even if using vnodes. The defect is only reproduced on version 2.0.7.
+With the same configuration 2.0.7 displays:
+Datacenter: DC1
+===============
+Status=Up/Down
+/ State=Normal/Leaving/Joining/Moving
+– Address Load Owns (effective) Host ID Token Rack
+UN 127.0.0.1 156.34 KB 100.0% d6629553-d6e9-434d-bf01-54c257b20ea9 -9134643033027010921 Rack1
+But 2.0.6 displays:
+Datacenter: DC1
+===============
+Status=Up/Down
+/ State=Normal/Leaving/Joining/Moving
+– Address Load Tokens Owns Host ID
+UN 127.0.0.1 210.32 KB 256 100.0% 08208ec9-8976-4ad0-b6bb-ee5dcf0109e
+The problem seems to be in NodeCmd.java the check for vnodes.
+In the print() method there is a check
+// More tokens then nodes (aka vnodes)?
+if (tokensToEndpoints.values().size() < tokensToEndpoints.keySet().size())
+isTokenPerNode = false;
+while in 2.0.6 the same code was:
+// More tokens then nodes (aka vnodes)?
+if (new HashSet<String>(tokensToEndpoints.values()).size() < tokensToEndpoints.keySet().size())
+isTokenPerNode = false;
+In 2.0.7 this check is never true as values collection is always equal by size with key set size.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.17, 2.0.8
+Component:
+Tool/nodetool
+Label:
+nodetool
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Jivko Donev
+Create date:
+24/Apr/14 10:14
+Update date:
+16/Apr/19 09:31
+Resolved date:
+25/Apr/14 22:06

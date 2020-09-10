@@ -1,0 +1,39 @@
+Summary:
+synchronization issue during region assignment
+Description:
+In master, both the shutdown threads and balancer thread could change the region state. It could create some race condition. HBase-4899 fixes the issue under normal situation. Still it seems like there is a really small time window HBase-4899 won't cover.
+T1. ServerShutdownHandler. the check for "if (rit != null && !rit.isClosing() && !rit.isPendingClose()" return false as the region is still in closing state. It is actually closed by the RS; Master's state is "closing" due to the delay in ZK notification.
+T2. Right after the above check, ZK notification happens and Master starts the opening of the region as requested by load balancer.
+T3. "else
+{ this.services.getAssignmentManager().assign(e.getKey(), true); }
+" is called for another assignment.
+Also HBase-5094 has fixes and discussion about this.
+Could we make it such that only one thread can transition a region at a time?
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+master
+Label:
+delete
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ming Ma
+Create date:
+17/Jan/12 03:18
+Update date:
+06/Jan/15 16:50
+Resolved date:
+06/Jan/15 16:50

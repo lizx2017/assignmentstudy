@@ -1,0 +1,64 @@
+Summary:
+stress read fails with IOException "Data returned was not validated"
+Description:
+I'm working to do some basic testing of read/write with the new stress. First, I populate data using write like so:
+rhatch@whatup:~/git/cstar/cassandra$ tools/bin/cassandra-stress write n=1000000 CL=ONE -key dist=FIXED\(1\) -col n=UNIFORM\(1..100\) -schema replication\(factor=3\) -rate threads=50
+Then I attempt a read test, and this happens:
+rhatch@whatup:~/git/cstar/cassandra$ tools/bin/cassandra-stress read n=1000000 CL=ONE -key dist=FIXED\(1\) -col n=UNIFORM\(1..100\) -schema replication\(factor=3\) -rate threads=50
+Warming up READ with 50000 iterations...
+INFO  19:38:14 New Cassandra host /127.0.0.3 added
+INFO  19:38:14 New Cassandra host /127.0.0.2 added
+Connected to cluster: test_stress
+Datatacenter: datacenter1; Host: localhost/127.0.0.1; Rack: rack1
+Datatacenter: datacenter1; Host: /127.0.0.2; Rack: rack1
+Datatacenter: datacenter1; Host: /127.0.0.3; Rack: rack1
+java.io.IOException: Operation [11055] x0 key 0000000001 (0x30303030303030303031) Data returned was not validated
+
+ at org.apache.cassandra.stress.Operation.error(Operation.java:298)
+ at org.apache.cassandra.stress.Operation.timeWithRetry(Operation.java:276)
+ at org.apache.cassandra.stress.operations.ThriftReader.run(ThriftReader.java:46)
+ at org.apache.cassandra.stress.StressAction$Consumer.run(StressAction.java:304)
+Sleeping 2s...
+Running READ with 50 threads  for 1000000 iterations
+ops       ,    op/s,adj op/s,   key/s,    mean,     med,     .95,     .99,    .999,     max,   time,   stderr
+11287     ,   11286,   11286,   11286,     4.7,     3.8,    11.9,    21.8,    34.0,    52.9,    1.0,  0.00000
+23263     ,   11764,   11764,   11764,     4.3,     3.5,    10.4,    18.1,    29.8,    51.8,    2.0,  0.00000
+35300     ,   11889,   11889,   11889,     4.2,     3.7,     9.6,    15.3,    27.3,    40.0,    3.0,  0.01467
+47239     ,   11737,   11737,   11737,     4.3,     3.7,    10.1,    17.0,    26.9,    47.7,    4.0,  0.01289
+59140     ,   11729,   11729,   11729,     4.3,     3.8,     9.6,    15.1,    25.7,    47.9,    5.1,  0.00979
+java.io.IOException: Operation [66434] x0 key 0000000001 (0x30303030303030303031) Data returned was not validated
+
+ at org.apache.cassandra.stress.Operation.error(Operation.java:298)
+ at org.apache.cassandra.stress.Operation.timeWithRetry(Operation.java:276)
+ at org.apache.cassandra.stress.operations.ThriftReader.run(ThriftReader.java:46)
+ at org.apache.cassandra.stress.StressAction$Consumer.run(StressAction.java:304)
+66584     ,   11952,   11952,   11952,     4.2,     3.6,     9.9,    15.7,    24.7,    64.9,    5.7,  0.00788
+FAILURE
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 beta2
+Component:
+Legacy/Tools
+Label:
+qa-resolved
+Environment:
+java 1.7
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Russ Hatch
+Create date:
+18/Mar/14 19:57
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/Mar/14 01:07

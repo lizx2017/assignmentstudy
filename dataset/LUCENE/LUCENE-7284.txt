@@ -1,0 +1,104 @@
+Summary:
+UnsupportedOperationException wrt SpanNearQuery with Gap (Needed for Synonym Query Expansion)
+Description:
+I am trying to support synonyms on the query side by doing
+query expansion.
+For example, the query "open webpage" can be expanded if the following
+things are synonyms:
+"open" | "go to"
+This becomes the following: (I'm using both the stop word filter and the
+stemming filter)
+spanNear(
+         [
+                 spanOr([Title:open, Title:go]),
+                 Title:webpag
+         ],
+         0,
+         true
+)
+Notice that "go to" became just "go", because apparently "to" is removed
+by the stop word filter.
+Interestingly, if you turn "go to webpage" into a phrase, you get "go ?
+webpage", but if you turn "go to" into a phrase, you just get "go",
+because apparently a trailing stop word in a PhraseQuery gets dropped.
+(there would actually be no way to represent the gap currently because
+it represents gaps implicitly via the position of the phrase tokens, and
+if there is no second token, there's no way to implicitly indicate that
+there is a gap there)
+The above query then fails to match "go to webpage", because "go to
+webpage" in the index tokenizes as "go _ webpage", and the query,
+because it lost its gap, tried to only match "go webpage".
+To try and work around that, I represent "go to" not as a phrase, but as
+a SpanNearQuery, like this:
+spanNear(
+         [
+                 spanOr(
+                         [
+                                 Title:open,
+                                 spanNear([Title:go, SpanGap(:1)], 0, true),
+                         ]
+                 ),
+                 Title:webpag
+         ],
+         0,
+         true
+)
+However, when I run that query, I get the following:
+A Java exception occurred: java.lang.UnsupportedOperationException
+     at 
+org.apache.lucene.search.spans.SpanNearQuery$GapSpans.positionsCost(SpanNearQuery.java:398)
+     at 
+org.apache.lucene.search.spans.ConjunctionSpans.asTwoPhaseIterator(ConjunctionSpans.java:96)
+     at 
+org.apache.lucene.search.spans.NearSpansOrdered.asTwoPhaseIterator(NearSpansOrdered.java:45)
+     at 
+org.apache.lucene.search.spans.ScoringWrapperSpans.asTwoPhaseIterator(ScoringWrapperSpans.java:88)
+     at 
+org.apache.lucene.search.ConjunctionDISI.addSpans(ConjunctionDISI.java:104)
+     at 
+org.apache.lucene.search.ConjunctionDISI.intersectSpans(ConjunctionDISI.java:82)
+     at 
+org.apache.lucene.search.spans.ConjunctionSpans.<init>(ConjunctionSpans.java:41)
+     at 
+org.apache.lucene.search.spans.NearSpansOrdered.<init>(NearSpansOrdered.java:54)
+     at 
+org.apache.lucene.search.spans.SpanNearQuery$SpanNearWeight.getSpans(SpanNearQuery.java:232)
+     at 
+org.apache.lucene.search.spans.SpanWeight.scorer(SpanWeight.java:134)
+     at org.apache.lucene.search.spans.SpanWeight.scorer(SpanWeight.java:38)
+     at org.apache.lucene.search.Weight.bulkScorer(Weight.java:135)
+... and when I look up that GapSpans class in SpanNearQuery.java, I see:
+@Override
+public float positionsCost() {
+   throw new UnsupportedOperationException();
+}
+I asked this question on the mailing list on May 14 and was directed to submit a bug here.
+This issue is of relatively high priority for us, since this represents the most promising technique we have for supporting synonyms on top of Lucene. (since the SynonymFilter suffers serious issues wrt multi-word synonyms)
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.5.2, 5.6, (2)
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alan Woodward
+Reporter:
+Daniel Bigham
+Create date:
+16/May/16 12:40
+Update date:
+17/Jun/16 13:11
+Resolved date:
+15/Jun/16 21:40

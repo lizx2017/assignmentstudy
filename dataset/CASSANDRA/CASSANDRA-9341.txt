@@ -1,0 +1,122 @@
+Summary:
+IndexOutOfBoundsException on server when unlogged batch write times out
+Description:
+In our application (golang) we were debugging an issue that caused our entire app to lockup (I think this is community-driver related, and has little to do with the server).
+What caused this issue is we were rapidly sending large batches - and (pretty rarely) one of these write requests would timeout. I think what may have happened is the we end up writing incomplete data to the server.
+When this happens we get this response frame from the server
+This is with the native protocol version 2
+ flags=0x0 
+stream=9 
+op=ERROR 
+length=107
+Error Code: 0
+Message: java.lang.IndexOutOfBoundsException: index: 1408818, length: 1375797264 (expected: range(0, 1506453))
+And in the Cassandra logs on that node:
+ERROR [SharedPool-Worker-28] 2015-05-10 22:32:15,242 Message.java:538 - Unexpected exception during request; channel = [id: 0x68d4acfb, /10.129.196.41:33549 => /10.129.196.24:9042]
+java.lang.IndexOutOfBoundsException: index: 1408818, length: 1375797264 (expected: range(0, 1506453))
+ at io.netty.buffer.AbstractByteBuf.checkIndex(AbstractByteBuf.java:1143) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.buffer.SlicedByteBuf.slice(SlicedByteBuf.java:155) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.buffer.AbstractByteBuf.readSlice(AbstractByteBuf.java:669) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at org.apache.cassandra.transport.CBUtil.readValue(CBUtil.java:336) ~[apache-cassandra-2.1.5.jar:2.1.5]
+ at org.apache.cassandra.transport.CBUtil.readValueList(CBUtil.java:386) ~[apache-cassandra-2.1.5.jar:2.1.5]
+ at org.apache.cassandra.transport.messages.BatchMessage$1.decode(BatchMessage.java:64) ~[apache-cassandra-2.1.5.jar:2.1.5]
+ at org.apache.cassandra.transport.messages.BatchMessage$1.decode(BatchMessage.java:45) ~[apache-cassandra-2.1.5.jar:2.1.5]
+ at org.apache.cassandra.transport.Message$ProtocolDecoder.decode(Message.java:247) ~[apache-cassandra-2.1.5.jar:2.1.5]
+ at org.apache.cassandra.transport.Message$ProtocolDecoder.decode(Message.java:235) ~[apache-cassandra-2.1.5.jar:2.1.5]
+ at io.netty.handler.codec.MessageToMessageDecoder.channelRead(MessageToMessageDecoder.java:89) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:333) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:319) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.handler.codec.MessageToMessageDecoder.channelRead(MessageToMessageDecoder.java:103) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:333) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:319) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:163) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:333) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:319) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:787) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollSocketChannel$EpollSocketUnsafe.epollInReady(EpollSocketChannel.java:722) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollEventLoop.processReady(EpollEventLoop.java:326) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollEventLoop.run(EpollEventLoop.java:264) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.util.concurrent.SingleThreadEventExecutor$2.run(SingleThreadEventExecutor.java:116) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.util.concurrent.DefaultThreadFactory$DefaultRunnableDecorator.run(DefaultThreadFactory.java:137) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at java.lang.Thread.run(Thread.java:745) [na:1.7.0_76]
+ERROR [SharedPool-Worker-28] 2015-05-10 22:32:15,248 Message.java:538 - Unexpected exception during request; channel = [id: 0x68d4acfb, /10.129.196.41:33549 => /10.129.196.24:9042]
+io.netty.handler.codec.DecoderException: org.apache.cassandra.transport.ProtocolException: Invalid or unsupported protocol version: 110
+ at io.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:280) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:149) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:333) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:319) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:787) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollSocketChannel$EpollSocketUnsafe.epollInReady(EpollSocketChannel.java:722) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollEventLoop.processReady(EpollEventLoop.java:326) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollEventLoop.run(EpollEventLoop.java:264) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.util.concurrent.SingleThreadEventExecutor$2.run(SingleThreadEventExecutor.java:116) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.util.concurrent.DefaultThreadFactory$DefaultRunnableDecorator.run(DefaultThreadFactory.java:137) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at java.lang.Thread.run(Thread.java:745) [na:1.7.0_76]
+Caused by: org.apache.cassandra.transport.ProtocolException: Invalid or unsupported protocol version: 110
+ at org.apache.cassandra.transport.Frame$Decoder.decode(Frame.java:184) ~[apache-cassandra-2.1.5.jar:2.1.5]
+ at io.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:249) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ ... 10 common frames omitted
+ERROR [SharedPool-Worker-22] 2015-05-10 22:32:15,260 Message.java:538 - Unexpected exception during request; channel = [id: 0x68d4acfb, /10.129.196.41:33549 => /10.129.196.24:9042]
+io.netty.handler.codec.DecoderException: org.apache.cassandra.transport.ProtocolException: Invalid or unsupported protocol version: 110
+ at io.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:280) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:149) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:333) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:319) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:787) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollSocketChannel$EpollSocketUnsafe.epollInReady(EpollSocketChannel.java:722) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollEventLoop.processReady(EpollEventLoop.java:326) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollEventLoop.run(EpollEventLoop.java:264) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.util.concurrent.SingleThreadEventExecutor$2.run(SingleThreadEventExecutor.java:116) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.util.concurrent.DefaultThreadFactory$DefaultRunnableDecorator.run(DefaultThreadFactory.java:137) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at java.lang.Thread.run(Thread.java:745) [na:1.7.0_76]
+Caused by: org.apache.cassandra.transport.ProtocolException: Invalid or unsupported protocol version: 110
+ at org.apache.cassandra.transport.Frame$Decoder.decode(Frame.java:184) ~[apache-cassandra-2.1.5.jar:2.1.5]
+ at io.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:249) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ ... 10 common frames omitted
+ERROR [SharedPool-Worker-19] 2015-05-10 22:32:15,260 Message.java:538 - Unexpected exception during request; channel = [id: 0x68d4acfb, /10.129.196.41:33549 => /10.129.196.24:9042]
+io.netty.handler.codec.DecoderException: org.apache.cassandra.transport.ProtocolException: Invalid or unsupported protocol version: 110
+ at io.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:280) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:149) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:333) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:319) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:787) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollSocketChannel$EpollSocketUnsafe.epollInReady(EpollSocketChannel.java:722) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollEventLoop.processReady(EpollEventLoop.java:326) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollEventLoop.run(EpollEventLoop.java:264) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.util.concurrent.SingleThreadEventExecutor$2.run(SingleThreadEventExecutor.java:116) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.util.concurrent.DefaultThreadFactory$DefaultRunnableDecorator.run(DefaultThreadFactory.java:137) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at java.lang.Thread.run(Thread.java:745) [na:1.7.0_76]
+Caused by: org.apache.cassandra.transport.ProtocolException: Invalid or unsupported protocol version: 110
+ at org.apache.cassandra.transport.Frame$Decoder.decode(Frame.java:184) ~[apache-cassandra-2.1.5.jar:2.1.5]
+ at io.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:249) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ ... 10 common frames omitted
+... repeated a couple more times ... 
+I'm ultimately unfamiliar with what should happen here, but I'm not sure if the database should throw an IndexOutOfBoundsException back to the client (is this a security issue?) In any case I wanted to bring up this issue just in case if this exception is something that shouldn't happen in normal operation.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Nimi Wariboko Jr.
+Create date:
+11/May/15 06:07
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Aug/15 19:02

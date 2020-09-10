@@ -1,0 +1,65 @@
+Summary:
+Empty page causes NPE in importPage
+Description:
+An empty page does not need to have a Contents item.
+PDDocument.importPage() fails with a NullPointerException when such an empty page is imported.
+Eclipse Workspace Patch 1.0
+#P pdfbox
+Index: pdfbox/src/main/java/org/apache/pdfbox/pdmodel/PDDocument.java
+===================================================================
+pdfbox/src/main/java/org/apache/pdfbox/pdmodel/PDDocument.java (revision 1026306)
++++ pdfbox/src/main/java/org/apache/pdfbox/pdmodel/PDDocument.java (working copy)
+@@ -322,16 +322,19 @@
+try
+{
+PDStream src = page.getContents();
+PDStream dest = new PDStream( new COSStream( src.getStream(), document.getScratchFile() ) );
+importedPage.setContents( dest );
+os = dest.createOutputStream();
++ if (src != null)
++ {
++ PDStream dest = new PDStream( new COSStream( src.getStream(), document.getScratchFile() ) );
++ importedPage.setContents( dest );
++ os = dest.createOutputStream();
+byte[] buf = new byte[10240];
+int amountRead = 0;
+is = src.createInputStream();
+while((amountRead = is.read(buf,0,10240)) > -1)
+{
+os.write(buf, 0, amountRead);
++ byte[] buf = new byte[10240];
++ int amountRead = 0;
++ is = src.createInputStream();
++ while((amountRead = is.read(buf,0,10240)) > -1)
++ { + os.write(buf, 0, amountRead); + }
+}
+addPage( importedPage );
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.3.1
+Fix_version:
+1.4.0
+Component:
+PDModel
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adam Nichols
+Reporter:
+Kevin Jackson
+Create date:
+08/Nov/10 20:11
+Update date:
+20/Dec/10 09:38
+Resolved date:
+23/Nov/10 18:02

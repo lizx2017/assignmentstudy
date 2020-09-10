@@ -1,0 +1,98 @@
+Summary:
+Tables created by cassandra-stress are omitted in DESCRIBE KEYSPACE
+Description:
+CASSANDRA-9374 modified cassandra-stress to only use CQL for creating its schema. This seems to work, as I'm testing on a cluster with start_rpc:false.
+However, when I try to run a DESCRIBE on the schema it omits the tables, complaining that they were created with a "legacy API":
+cqlsh> DESCRIBE KEYSPACE keyspace1 ;
+
+CREATE KEYSPACE keyspace1 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}  AND durable_writes = true;
+
+/*
+Warning: Table keyspace1.counter1 omitted because it has constructs not compatible with CQL (was created via legacy API).
+
+Approximate structure, for reference:
+(this should not be used to reproduce this schema)
+
+CREATE TABLE keyspace1.counter1 (
+    key blob PRIMARY KEY,
+    "C0" counter,
+    "C1" counter,
+    "C2" counter,
+    "C3" counter,
+    "C4" counter
+) WITH COMPACT STORAGE
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'min_threshold': '4', 'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32'}
+    AND compression = {}
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99.0PERCENTILE';
+*/
+
+/*
+Warning: Table keyspace1.standard1 omitted because it has constructs not compatible with CQL (was created via legacy API).
+
+Approximate structure, for reference:
+(this should not be used to reproduce this schema)
+
+CREATE TABLE keyspace1.standard1 (
+    key blob PRIMARY KEY,
+    "C0" blob,
+    "C1" blob,
+    "C2" blob,
+    "C3" blob,
+    "C4" blob
+) WITH COMPACT STORAGE
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'min_threshold': '4', 'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32'}
+    AND compression = {}
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99.0PERCENTILE';
+*/
+
+cqlsh> 
+Note that it attempts to describe them anyway, but they are commented out and shouldn't be used to restore from.
+This is the ccm workflow I used to test this
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 rc2
+Component:
+None
+Label:
+cqlsh stress
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Ryan McGuire
+Create date:
+24/Jun/15 20:43
+Update date:
+16/Apr/19 09:31
+Resolved date:
+06/Jul/15 16:33

@@ -1,0 +1,68 @@
+Summary:
+AIOOBE when doing select count(*) from on a mixed cluster.
+Description:
+After upgrading one node from 1.2 to 2.0, the following query fails with timeout:
+Connected to test at localhost:9160.
+[cqlsh 4.1.0 | Cassandra 2.0.5.1-SNAPSHOT | CQL spec 3.1.1 | Thrift protocol 19.39.0]
+Use HELP for help.
+cqlsh> select count(*) from cfs.sblocks;
+Request did not complete within rpc_timeout.
+Table definition:
+cqlsh> describe columnfamily cfs.sblocks;
+
+CREATE TABLE sblocks (
+  key blob,
+  column1 blob,
+  value blob,
+  PRIMARY KEY (key, column1)
+) WITH COMPACT STORAGE AND
+  bloom_filter_fp_chance=0.000068 AND
+  caching='KEYS_ONLY' AND
+  comment='Stores blocks of information associated with a inode' AND
+  dclocal_read_repair_chance=0.000000 AND
+  gc_grace_seconds=864000 AND
+  index_interval=128 AND
+  read_repair_chance=0.100000 AND
+  replicate_on_write='true' AND
+  populate_io_cache_on_flush='true' AND
+  default_time_to_live=0 AND
+  speculative_retry='99.0PERCENTILE' AND
+  memtable_flush_period_in_ms=0 AND
+  compaction={'class': 'com.datastax.bdp.hadoop.cfs.compaction.CFSCompactionStrategy'} AND
+  compression={};
+The 1.2 node reports the following error:
+ERROR 08:38:02,006 Exception in thread Thread[Thread-32,5,main]
+java.lang.ArrayIndexOutOfBoundsException: 36
+ at org.apache.cassandra.net.MessageIn.read(MessageIn.java:59)
+ at org.apache.cassandra.net.IncomingTcpConnection.receiveMessage(IncomingTcpConnection.java:208)
+ at org.apache.cassandra.net.IncomingTcpConnection.handleModernVersion(IncomingTcpConnection.java:140)
+ at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:83)
+There were no errors during the upgrade.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.6
+Component:
+None
+Label:
+None
+Environment:
+dse
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Piotr Kołaczkowski
+Create date:
+14/Feb/14 08:56
+Update date:
+16/Apr/19 09:31
+Resolved date:
+17/Feb/14 13:54

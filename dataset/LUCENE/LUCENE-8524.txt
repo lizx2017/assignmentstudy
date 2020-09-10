@@ -1,0 +1,289 @@
+Summary:
+Nori (Korean) analyzer tokenization issues
+Description:
+I opened this originally as an Elastic bug, but was asked to re-file it here. (Sorry for the poor formatting. "pre-formatted" isn't behaving.)
+Elastic version
+{
+"name" : "adOS8gy",
+"cluster_name" : "elasticsearch",
+"cluster_uuid" : "GVS7gpVBQDGwtHl3xnJbLw",
+"version" :
+{ "number" : "6.4.0", "build_flavor" : "default", "build_type" : "deb", "build_hash" : "595516e", "build_date" : "2018-08-17T23:18:47.308994Z", "build_snapshot" : false, "lucene_version" : "7.4.0", "minimum_wire_compatibility_version" : "5.6.0", "minimum_index_compatibility_version" : "5.0.0" }
+,
+"tagline" : "You Know, for Search"
+}
+Plugins installed: [analysis-icu, analysis-nori]
+JVM version:
+openjdk version "1.8.0_181"
+OpenJDK Runtime Environment (build 1.8.0_181-8u181-b13-1~deb9u1-b13)
+OpenJDK 64-Bit Server VM (build 25.181-b13, mixed mode)
+OS version:
+Linux vagrantes6 4.9.0-6-amd64 #1 SMP Debian 4.9.82-1+deb9u3 (2018-03-02) x86_64 GNU/Linux
+Description of the problem including expected versus actual behavior:
+I've uncovered a number of oddities in tokenization in the Nori analyzer. All examples are from Korean Wikipedia or Korean Wiktionary (including non-CJK examples). In rough order of importance:
+A. Tokens are split on different character POS types (which seem to not quite line up with Unicode character blocks), which leads to weird results for non-CJK tokens:
+εἰμί is tokenized as three tokens: ε/SL(Foreign language) + ἰ/SY(Other symbol) + μί/SL(Foreign language)
+ka̠k̚t͡ɕ͈a̠k̚ is tokenized as ka/SL(Foreign language) + ̠/SY(Other symbol) + k/SL(Foreign language) + ̚/SY(Other symbol) + t/SL(Foreign language) + ͡ɕ͈/SY(Other symbol) + a/SL(Foreign language) + ̠/SY(Other symbol) + k/SL(Foreign language) + ̚/SY(Other symbol)
+Ба̀лтичко̄ is tokenized as ба/SL(Foreign language) + ̀/SY(Other symbol) + лтичко/SL(Foreign language) + ̄/SY(Other symbol)
+don't is tokenized as don + t; same for don’t (with a curly apostrophe).
+אוֹג׳וּ is tokenized as אוֹג/SY(Other symbol) + וּ/SY(Other symbol)
+Мoscow (with a Cyrillic М and the rest in Latin) is tokenized as м + oscow
+While it is still possible to find these words using Nori, there are many more chances for false positives when the tokens are split up like this. In particular, individual numbers and combining diacritics are indexed separately (e.g., in the Cyrillic example above), which can lead to a performance hit on large corpora like Wiktionary or Wikipedia.
+Work around: use a character filter to get rid of combining diacritics before Nori processes the text. This doesn't solve the Greek, Hebrew, or English cases, though.
+Suggested fix: Characters in related Unicode blocks—like "Greek" and "Greek Extended", or "Latin" and "IPA Extensions"—should not trigger token splits. Combining diacritics should not trigger token splits. Non-CJK text should be tokenized on spaces and punctuation, not by character type shifts. Apostrophe-like characters should not trigger token splits (though I could see someone disagreeing on this one).
+B. The character "arae-a" (ㆍ, U+318D) is sometimes used instead of a middle dot (·, U+00B7) for lists. When the arae-a is used, everything after the first one ends up in one giant token. 도로ㆍ지반ㆍ수자원ㆍ건설환경ㆍ건축ㆍ화재설비연구 is tokenized as 도로 + ㆍ지반ㆍ수자원ㆍ건설환경ㆍ건축ㆍ화재설비연구.
+Note that "HANGUL LETTER ARAEA" (ㆍ, U+318D) is used this way, while "HANGUL JUNGSEONG ARAEA" (ᆞ, U+119E) is used to create syllable blocks for which there is no precomposed Unicode character.
+Work around: use a character filter to convert arae-a (U+318D) to a space.
+Suggested fix: split tokens on all instances of arae-a (U+318D).
+C. Nori splits tokens on soft hyphens (U+00AD) and zero-width non-joiners (U+200C), splitting tokens that should not be split.
+hyphen­ation (with a soft hyphen in the middle) is tokenized as hyphen + ation.
+بازی‌های (with a zero-width non-joiner) is tokenized as بازی + های.
+Work around: use a character filter to strip soft hyphens and zero-width non-joiners before Nori.
+Suggested fix: Nori should strip soft hyphens and zero-width non-joiners.
+D. Analyzing 그레이맨 generates an extra empty token after it. There may be others, but this is the only one I've found. Work around: at a min length token filter with a minimum length of 1.
+E. Analyzing 튜토리얼 generates a token with an extra space at the end of it. There may be others, but this is the only one I've found. No work around needed, I guess, since this is only the internal representation of the token. I'm not sure if it has any negative effects.
+Steps to reproduce:
+1. Set up Nori analyzer
+curl -X PUT "localhost:9200/nori?pretty" -H 'Content-Type: application/json' -d'
+{
+"settings" : {
+"index": {
+"analysis": {
+"analyzer": {
+"text":
+{ "type": "nori" }
+}
+}
+}
+}
+}
+'
+  2. Analyze example tokens:
+A. POS Types cause token splits
+curl -sk localhost:9200/nori/_analyze?pretty -H 'Content-Type: application/json' -d '
+{"analyzer": "text", "text" : "εἰμί", "attributes" : ["leftPOS"], "explain": true }
+'
+{
+"detail" : {
+"custom_analyzer" : false,
+"analyzer" : {
+"name" : "text",
+"tokens" : [
+{ "token" : "ε", "start_offset" : 0, "end_offset" : 1, "type" : "word", "position" : 0, "leftPOS" : "SL(Foreign language)" }
+,
+{ "token" : "ἰ", "start_offset" : 1, "end_offset" : 2, "type" : "word", "position" : 1, "leftPOS" : "SY(Other symbol)" }
+,
+{ "token" : "μί", "start_offset" : 2, "end_offset" : 4, "type" : "word", "position" : 2, "leftPOS" : "SL(Foreign language)" }
+]
+}
+}
+curl -sk localhost:9200/nori/_analyze?pretty -H 'Content-Type: application/json' -d '
+{"analyzer": "text", "text" : "ka̠k̚t͡ɕ͈a̠k̚", "attributes" : ["leftPOS"], "explain": true }
+'
+{
+"detail" : {
+"custom_analyzer" : false,
+"analyzer" : {
+"name" : "text",
+"tokens" : [
+{ "token" : "ka", "start_offset" : 0, "end_offset" : 2, "type" : "word", "position" : 0, "leftPOS" : "SL(Foreign language)" }
+,
+{ "token" : "̠", "start_offset" : 2, "end_offset" : 3, "type" : "word", "position" : 1, "leftPOS" : "SY(Other symbol)" }
+,
+{ "token" : "k", "start_offset" : 3, "end_offset" : 4, "type" : "word", "position" : 2, "leftPOS" : "SL(Foreign language)" }
+,
+{ "token" : "̚", "start_offset" : 4, "end_offset" : 5, "type" : "word", "position" : 3, "leftPOS" : "SY(Other symbol)" }
+,
+{ "token" : "t", "start_offset" : 5, "end_offset" : 6, "type" : "word", "position" : 4, "leftPOS" : "SL(Foreign language)" }
+,
+{ "token" : "͡ɕ͈", "start_offset" : 6, "end_offset" : 9, "type" : "word", "position" : 5, "leftPOS" : "SY(Other symbol)" }
+,
+{ "token" : "a", "start_offset" : 9, "end_offset" : 10, "type" : "word", "position" : 6, "leftPOS" : "SL(Foreign language)" }
+,
+{ "token" : "̠", "start_offset" : 10, "end_offset" : 11, "type" : "word", "position" : 7, "leftPOS" : "SY(Other symbol)" }
+,
+{ "token" : "k", "start_offset" : 11, "end_offset" : 12, "type" : "word", "position" : 8, "leftPOS" : "SL(Foreign language)" }
+,
+{ "token" : "̚", "start_offset" : 12, "end_offset" : 13, "type" : "word", "position" : 9, "leftPOS" : "SY(Other symbol)" }
+]
+}
+}
+}
+curl -sk localhost:9200/nori/_analyze?pretty -H 'Content-Type: application/json' -d '
+{"analyzer": "text", "text" : "Ба̀лтичко̄", "attributes" : ["leftPOS"], "explain": true }
+'
+{
+"detail" : {
+"custom_analyzer" : false,
+"analyzer" : {
+"name" : "text",
+"tokens" : [
+{ "token" : "ба", "start_offset" : 0, "end_offset" : 2, "type" : "word", "position" : 0, "leftPOS" : "SL(Foreign language)" }
+,
+{ "token" : "̀", "start_offset" : 2, "end_offset" : 3, "type" : "word", "position" : 1, "leftPOS" : "SY(Other symbol)" }
+,
+{ "token" : "лтичко", "start_offset" : 3, "end_offset" : 9, "type" : "word", "position" : 2, "leftPOS" : "SL(Foreign language)" }
+,
+{ "token" : "̄", "start_offset" : 9, "end_offset" : 10, "type" : "word", "position" : 3, "leftPOS" : "SY(Other symbol)" }
+]
+}
+}
+}
+curl -sk localhost:9200/nori/_analyze?pretty -H 'Content-Type: application/json' -d '
+{"analyzer": "text", "text" : "don'"'"'t", "attributes" : ["leftPOS"], "explain": true }
+'
+{
+"detail" : {
+"custom_analyzer" : false,
+"analyzer" : {
+"name" : "text",
+"tokens" : [
+{ "token" : "don", "start_offset" : 0, "end_offset" : 3, "type" : "word", "position" : 0, "leftPOS" : "SL(Foreign language)" }
+,
+{ "token" : "t", "start_offset" : 4, "end_offset" : 5, "type" : "word", "position" : 1, "leftPOS" : "SL(Foreign language)" }
+]
+}
+}
+}
+curl -sk localhost:9200/nori/_analyze?pretty -H 'Content-Type: application/json' -d '
+{"analyzer": "text", "text" : "don’t", "attributes" : ["leftPOS"], "explain": true }
+'
+{
+"detail" : {
+"custom_analyzer" : false,
+"analyzer" : {
+"name" : "text",
+"tokens" : [
+{ "token" : "don", "start_offset" : 0, "end_offset" : 3, "type" : "word", "position" : 0, "leftPOS" : "SL(Foreign language)" }
+,
+{ "token" : "t", "start_offset" : 4, "end_offset" : 5, "type" : "word", "position" : 1, "leftPOS" : "SL(Foreign language)" }
+]
+}
+}
+}
+curl -sk localhost:9200/nori/_analyze?pretty -H 'Content-Type: application/json' -d '
+{"analyzer": "text", "text" : "אוֹג׳וּ", "attributes" : ["leftPOS"], "explain": true }
+'
+{
+"detail" : {
+"custom_analyzer" : false,
+"analyzer" : {
+"name" : "text",
+"tokens" : [
+{ "token" : "אוֹג", "start_offset" : 0, "end_offset" : 4, "type" : "word", "position" : 0, "leftPOS" : "SY(Other symbol)" }
+,
+{ "token" : "וּ", "start_offset" : 5, "end_offset" : 7, "type" : "word", "position" : 1, "leftPOS" : "SY(Other symbol)" }
+]
+}
+}
+}
+B. arae-a as middle dot
+curl -sk localhost:9200/nori/_analyze?pretty -H 'Content-Type: application/json' -d '
+{"analyzer": "text", "text" : "도로ㆍ지반ㆍ수자원ㆍ건설환경ㆍ건축ㆍ화재설비연구", "attributes" : ["leftPOS"], "explain": true }
+'
+{
+"detail" : {
+"custom_analyzer" : false,
+"analyzer" : {
+"name" : "text",
+"tokens" : [
+{ "token" : "도로", "start_offset" : 0, "end_offset" : 2, "type" : "word", "position" : 0, "leftPOS" : "NNG(General Noun)" }
+,
+{ "token" : "ㆍ지반ㆍ수자원ㆍ건설환경ㆍ건축ㆍ화재설비연구", "start_offset" : 2, "end_offset" : 24, "type" : "word", "position" : 1, "leftPOS" : "UNKNOWN(Unknown)" }
+]
+}
+}
+}
+C. soft hyphens and zero-width non-joiners
+curl -sk localhost:9200/nori/_analyze?pretty -H 'Content-Type: application/json' -d '
+{"analyzer": "text", "text" : "hyphen­ation", "attributes" : ["leftPOS"], "explain": true }
+'
+{
+"detail" : {
+"custom_analyzer" : false,
+"analyzer" : {
+"name" : "text",
+"tokens" : [
+{ "token" : "hyphen", "start_offset" : 0, "end_offset" : 6, "type" : "word", "position" : 0, "leftPOS" : "SL(Foreign language)" }
+,
+{ "token" : "ation", "start_offset" : 7, "end_offset" : 12, "type" : "word", "position" : 1, "leftPOS" : "SL(Foreign language)" }
+]
+}
+}
+}
+curl -sk localhost:9200/nori/_analyze?pretty -H 'Content-Type: application/json' -d '
+{"analyzer": "text", "text" : "بازی‌های", "attributes" : ["leftPOS"], "explain": true }
+'
+{
+"detail" : {
+"custom_analyzer" : false,
+"analyzer" : {
+"name" : "text",
+"tokens" : [
+{ "token" : "بازی", "start_offset" : 0, "end_offset" : 4, "type" : "word", "position" : 0, "leftPOS" : "SY(Other symbol)" }
+,
+{ "token" : "های", "start_offset" : 5, "end_offset" : 8, "type" : "word", "position" : 1, "leftPOS" : "SY(Other symbol)" }
+]
+}
+}
+}
+  D. 그레이맨 generates empty token
+curl -sk localhost:9200/nori/_analyze?pretty -H 'Content-Type: application/json' -d '
+{"analyzer": "text", "text" : "그레이맨", "attributes" : ["leftPOS"], "explain": true }
+'
+{
+"detail" : {
+"custom_analyzer" : false,
+"analyzer" : {
+"name" : "text",
+"tokens" : [
+{ "token" : "그레이", "start_offset" : 1, "end_offset" : 4, "type" : "word", "position" : 0, "leftPOS" : "NNG(General Noun)" }
+,
+{ "token" : "", "start_offset" : 4, "end_offset" : 4, "type" : "word", "position" : 1, "leftPOS" : "NNG(General Noun)" }
+]
+}
+}
+}
+E. 튜토리얼 has a space added during tokenization
+curl -sk localhost:9200/nori/_analyze?pretty -H 'Content-Type: application/json' -d '
+{"analyzer": "text", "text" : "튜토리얼", "attributes" : ["leftPOS"], "explain": true }
+'
+{
+"detail" : {
+"custom_analyzer" : false,
+"analyzer" : {
+"name" : "text",
+"tokens" : [
+{ "token" : "튜토리얼 ", "start_offset" : 0, "end_offset" : 4, "type" : "word", "position" : 0, "leftPOS" : "NNG(General Noun)" }
+]
+}
+}
+}
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+7.6, 8.0
+Component:
+modules/analysis
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Trey Jones
+Create date:
+04/Oct/18 20:30
+Update date:
+26/Oct/18 08:33
+Resolved date:
+26/Oct/18 08:33

@@ -1,0 +1,43 @@
+Summary:
+[89-FB] Fix race condition between append/sync and HLog.close() work flow.
+Description:
+The RegionServer was performing a shutdown as it got YouAreDeadException. It closed the HLog and was waiting to close all the regions where it got stuck.
+The reason region close is stuck because it's trying to obtain a lock which is occupied by the put op, which in turn is waiting for append to HLog to complete.
+There is race condition here is between append/sync and HLog.close() work flow.
+Scenario:
+Thread 1 => doing the append
+Thread 2 => doing HregionServer shutdown
+Timeline:
+t1> 1: Verifies that LogSyncer is not shutting down and HLog is not closed and calls sync()
+t2> 2: HRegionServer issued HLog.close()
+t3> 2: In HLog.close(), it joins the LogSyncer thread, which signals all the threads waiting on syncDone and exits.
+t4> 1: In sync, it sees that the sync has not complete until its txd, hence adds itself to the syncDone.await queue.
+Note: at t4, it does not check whether the LogSyncer Thread is alive or not, which caused this hang.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Won't Fix
+Affects_version:
+0.89-fb
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Rishit Shroff
+Reporter:
+Rishit Shroff
+Create date:
+29/Mar/13 19:19
+Update date:
+25/Sep/17 19:05
+Resolved date:
+25/Sep/17 19:05

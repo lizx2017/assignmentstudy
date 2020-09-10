@@ -1,0 +1,61 @@
+Summary:
+PDF page rotation is not working
+Description:
+PDFToImage creates empty images when PDF with page rotation is provided as input. Rotation logic in PDPage is not correct. Because of this problem PDF contents are rendered outside the graphics area. Hence it creates empty images. Patch file is below. Tested on pdf http://eeweb.poly.edu/~yao/EE3414/image_filtering.pdf
+---------------------------------------------------------------------
+— /data/pdf/pdfbox/pdfbox-svn/trunk/pdfbox/src/main/java/org/apache/pdfbox/pdmodel/PDPage.java 2012-10-14 08:45:34.275123749 +0530
++++ /data/pdf/pdfbox/pdfbox-1.7.1/pdfbox/src/main/java/org/apache/pdfbox/pdmodel/PDPage.java 2012-10-14 13:37:16.887054874 +0530
+@@ -708,8 +708,13 @@
+//TODO The following reduces accuracy. It should really be a Dimension2D.Float.
+Dimension pageDimension = new Dimension( (int)widthPt, (int)heightPt );
+BufferedImage retval = null;
+float rotation = (float)Math.toRadians(findRotation());
+if (rotation != 0)
++ int rotationAngle = findRotation();
++ //PDF spec does not say rotation angle should be within 360 degrees
++ //Restrict rotation to -360 to +360 degrees range.
++ rotationAngle = rotationAngle % 360;
++ float rotation = (float)Math.toRadians(rotationAngle);
++ //Flip the image horizontally only for +/-90 and +/-270 degree rotation
++ if ((rotationAngle % 180) != 0) { retval = new BufferedImage( heightPx, widthPx, imageType ); }
+@@ -722,7 +727,26 @@
+graphics.clearRect( 0, 0, retval.getWidth(), retval.getHeight() );
+if (rotation != 0)
+{
+graphics.translate(retval.getWidth(), 0.0f);
++ int translateX = 0;
++ int translateY = 0;
++ switch(rotationAngle) { + case -270: + case 90: + translateX = retval.getWidth(); + break; + + case -90: + case 270: + translateY = retval.getHeight(); + break; + + case -180: + case 180: + translateX = retval.getWidth(); + translateY = retval.getHeight(); + break; + }
++ graphics.translate(translateX,translateY);
+graphics.rotate(rotation);
+}
+graphics.scale( scaling, scaling );
+---------------------------------------------------------------------
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.7.1
+Fix_version:
+1.8.0
+Component:
+PDModel
+Label:
+patch
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Ravi Hegde
+Create date:
+14/Oct/12 08:30
+Update date:
+23/Mar/13 12:56
+Resolved date:
+14/Oct/12 12:38

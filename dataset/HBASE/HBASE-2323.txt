@@ -1,0 +1,34 @@
+Summary:
+filter.RegexStringComparator does not work with certain bytes
+Description:
+I'm trying to use RegexStringComparator in conjunction with RowFilter. One of my row keys contained the byte 0xA, which turns out to be the ASCII code for the newline character (\n). When the row key is converted to a string in order to use the regexp facility of the Java standard library, it becomes a string containing two lines and my regexp does not match.
+I believe the solution is to compile the regexp with the DOTALL flag. Luckily, this flag can be "passed" by the client by prefixing the regexp with (?s) so people working with an older version of HBase can work around this issue without having to upgrade.
+Second problem: One of my row keys contained the sequence 0x00 0x00 0x9D (0x9D = -99 when stored in a Java byte) but in compareTo the row key is transformed in a String using Bytes.toString, which just assumes that the byte array is an UTF8 encoded string. Java "cleverly" substituted the 0x9D byte with 0x63 (character '?'). In my case, I want to use encoding ISO-8859-1 as it preserves every byte when the byte array is converted to a String and back to a byte array, unlike UTF-8 or ASCII. Should we add a new method to RegexStringComparator to allow the user to specify their own Charset instance?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.3
+Fix_version:
+0.20.6, 0.90.0
+Component:
+Filters
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benoit Sigoure
+Reporter:
+Benoit Sigoure
+Create date:
+14/Mar/10 02:38
+Update date:
+12/Oct/12 06:16
+Resolved date:
+15/Mar/10 18:52

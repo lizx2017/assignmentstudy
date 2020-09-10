@@ -1,0 +1,38 @@
+Summary:
+Regions stuck in transition after rolling restart, perpetual timeout handling but nothing happens
+Description:
+The rolling restart script is great for bringing on the weird stuff. On my little loaded cluster if I run it, it horks the cluster and it doesn't recover. I notice two issues that need fixing:
+1. We'll miss noticing that a server was carrying .META. and it never gets assigned – the shutdown handlers get stuck in perpetual wait on a .META. assign that will never happen.
+2. Perpetual cycling of the this sequence per region not succesfully assigned:
+ 2010-10-23 21:37:57,404 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out:  usertable,user510588360,1287547556587.7f2d92497d2d03917afd574ea2aca55b. state=PENDING_OPEN,                       ts=1287869814294  45154 2010-10-23 21:37:57,404 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_OPEN or OPENING for too long, reassigning region=usertable,user510588360,1287547556587.                                     7f2d92497d2d03917afd574ea2aca55b.  45155 2010-10-23 21:37:57,404 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x2bd57d1475046a Attempting to transition node 7f2d92497d2d03917afd574ea2aca55b from RS_ZK_REGION_OPENING to M_ZK_REGION_OFFLINE  45156 2010-10-23 21:37:57,404 WARN org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x2bd57d1475046a Attempt to transition the unassigned node for 7f2d92497d2d03917afd574ea2aca55b from RS_ZK_REGION_OPENING to                 M_ZK_REGION_OFFLINE failed, the node existed but was in the state M_ZK_REGION_OFFLINE  45157 2010-10-23 21:37:57,404 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region transitioned OPENING to OFFLINE so skipping timeout, region=usertable,user510588360,1287547556587.7f2d92497d2d03917afd574ea2aca55b.  
+,,,
+Timeout period again elapses an then same sequence.
+This is what I've been working on.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+24/Oct/10 22:22
+Update date:
+20/Nov/15 12:43
+Resolved date:
+26/Oct/10 16:53

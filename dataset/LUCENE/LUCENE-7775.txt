@@ -1,0 +1,89 @@
+Summary:
+Throwable not processed
+Description:
+Hi
+In recent github morror (lucene-solr), I've found the following suspicious code by Findbugs.
+lucene/core/src/java/org/apache/lucene/index/BufferedUpdatesStream.java
+436   /** Close segment states previously opened with openSegmentStates. */
+437   private ApplyDeletesResult closeSegmentStates(IndexWriter.ReaderPool pool, SegmentState[] s    egStates, boolean success, long gen) throws IOException {
+438     int numReaders = segStates.length;
+439     Throwable firstExc = null;
+440     List<SegmentCommitInfo> allDeleted = null;
+441     long totDelCount = 0;
+442     for (int j=0;j<numReaders;j++) {
+443       SegmentState segState = segStates[j];
+444       if (success) {
+445         totDelCount += segState.rld.getPendingDeleteCount() - segState.startDelCount;
+446         segState.reader.getSegmentInfo().setBufferedDeletesGen(gen);
+447         int fullDelCount = segState.rld.info.getDelCount() + segState.rld.getPendingDeleteCou    nt();
+448         assert fullDelCount <= segState.rld.info.info.maxDoc();
+449         if (fullDelCount == segState.rld.info.info.maxDoc()) {
+450           if (allDeleted == null) {
+451             allDeleted = new ArrayList<>();
+452           }
+453           allDeleted.add(segState.reader.getSegmentInfo());
+454         }
+455       }
+456       try {
+457         segStates[j].finish(pool);
+458       } catch (Throwable th) {
+459         if (firstExc != null) {
+460           firstExc = th;
+461         }
+462       }
+463     }
+464 
+465     if (success) {
+466       // Does nothing if firstExc is null:
+467       IOUtils.reThrow(firstExc);
+468     }
+In Line 459, firstExc seems always null. So, Line 460 never be reached. Would Line 459 be like this (firstExc is assigned only once when it is null)?:
+459         if (firstExc == null) {
+Similar issue is in Line 88
+of lucene/core/src/java/org/apache/lucene/index/SegmentDocValues.java as well.
+ 80   synchronized void decRef(List<Long> dvProducersGens) throws IOException {
+ 81     Throwable t = null;
+ 82     for (Long gen : dvProducersGens) {
+ 83       RefCount<DocValuesProducer> dvp = genDVProducers.get(gen);
+ 84       assert dvp != null : "gen=" + gen;
+ 85       try {
+ 86         dvp.decRef();
+ 87       } catch (Throwable th) {
+ 88         if (t != null) {
+ 89           t = th;
+ 90         }
+ 91       }
+ 92     }
+ 93     if (t != null) {
+ 94       IOUtils.reThrow(t);
+ 95     }
+ 96   }
+This might be just a trivial thing but I thought it is worth to report just in case. Thanks!
+Status:
+CLOSED
+Priority:
+Trivial
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.6, 7.0
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+JC
+Create date:
+10/Apr/17 20:35
+Update date:
+08/Jun/17 23:26
+Resolved date:
+10/Apr/17 23:08

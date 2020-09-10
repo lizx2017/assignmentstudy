@@ -1,0 +1,176 @@
+Summary:
+"The system cannot find the path specified" when creating hard link on Windows
+Description:
+When upgrading from Cassandra 1.0.5 to 1.1.3, we have a test case (uses embedded Cassandra) that started failing as shown below. Other than the upgrade, no changes were made to the code or config. I believe this MAY be related to the change made in CASSANDRA-3101.
+We verified that the file it is trying to create the hard link to does exist - so it is purely the creation of the link that is failing.
+Here is the basic failure:
+[11:31:00.307] [ERROR] [o.a.c.u.CLibrary] [createHardLinkWithExec] [Unable to create hard link]
+java.io.IOException: Exception while executing the command: cmd /c mklink /H C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\snapshots\1346340659980-PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db, command error Code: 1, command output: The system cannot find the path specified.
+Here is a more complete log output:
+[11:30:59.975] [DEBUG] [o.a.c.d.CollationController] [collectAllData] [collectAllData]
+[11:30:59.976] [DEBUG] [o.a.c.i.u.FileUtils] [deleteWithConfirm] [Deleting system-schema_columnfamilies-he-4-Digest.sha1]
+[11:30:59.977] [DEBUG] [o.a.c.i.u.FileUtils] [deleteWithConfirm] [Deleting system-schema_columnfamilies-he-4-Index.db]
+[11:30:59.978] [DEBUG] [o.a.c.i.u.FileUtils] [deleteWithConfirm] [Deleting system-schema_columnfamilies-he-4-Filter.db]
+[11:30:59.978] [DEBUG] [o.a.c.d.CollationController] [collectAllData] [collectAllData]
+[11:30:59.979] [DEBUG] [o.a.c.d.CollationController] [collectAllData] [collectAllData]
+[11:30:59.979] [DEBUG] [o.a.c.i.u.FileUtils] [deleteWithConfirm] [Deleting system-schema_columnfamilies-he-4-Statistics.db]
+[11:30:59.979] [DEBUG] [o.a.c.d.CollationController] [collectAllData] [collectAllData]
+[11:30:59.980] [DEBUG] [o.a.c.d.CollationController] [collectAllData] [collectAllData]
+[11:30:59.980] [DEBUG] [o.a.c.i.s.SSTable] [delete] [Deleted target\test\cassandra\data\system\schema_columnfamilies\system-schema_columnfamilies-he-4]
+[11:30:59.981] [INFO ] [o.a.c.d.ColumnFamilyStore] [maybeSwitchMemtable] [Enqueuing flush of Memtable-PropertyProductDefaultInventoryCounts@2002512083(74/92 serialized/live bytes, 1 ops)]
+[11:30:59.981] [INFO ] [o.a.c.d.Memtable] [writeSortedContents] [Writing Memtable-PropertyProductDefaultInventoryCounts@2002512083(74/92 serialized/live bytes, 1 ops)]
+[11:30:59.992] [DEBUG] [o.a.c.d.Directories] [getLocationWithMaximumAvailableSpace] [expected data files size is 134; largest free partition (target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts) has 82645161984 bytes free]
+[11:31:00.012] [INFO ] [o.a.c.d.Memtable] [writeSortedContents] [Completed flushing target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-Data.db (123 bytes) for commitlog position ReplayPosition(segmentId=592725621297887, position=6701)]
+[11:31:00.013] [DEBUG] [o.a.c.u.I.IntervalNode] [<init>] [Creating IntervalNode from [Interval(DecoratedKey(70791399548943621833439300945136455431, 50726f706572747950726f6475637431323334), DecoratedKey(70791399548943621833439300945136455431, 50726f706572747950726f6475637431323334))]]
+[11:31:00.013] [DEBUG] [o.a.c.d.DataTracker] [addNewSSTablesSize] [adding target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1 to list of files tracked for RevKeyspace.PropertyProductDefaultInventoryCounts]
+[11:31:00.014] [DEBUG] [o.a.c.d.c.CompactionManager] [submitBackground] [Scheduling a background task check for RevKeyspace.PropertyProductDefaultInventoryCounts with SizeTieredCompactionStrategy]
+[11:31:00.014] [DEBUG] [o.a.c.d.c.CompactionManager] [runMayThrow] [Checking RevKeyspace.PropertyProductDefaultInventoryCounts]
+[11:31:00.014] [DEBUG] [o.a.c.d.c.CommitLog] [call] [discard completed log segments for ReplayPosition(segmentId=592725621297887, position=6701), column family 1001]
+[11:31:00.014] [DEBUG] [o.a.c.d.c.SizeTieredCompactionStrategy] [getNextBackgroundTask] [Compaction buckets are [[SSTableReader(path='target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-Data.db')]]]
+[11:31:00.014] [DEBUG] [o.a.c.d.c.CommitLog] [call] [Not safe to delete commit log CommitLogSegment(target\test\cassandra\commitlog\CommitLog-592725621297887.log); dirty is Versions (7), ; hasNext: false]
+[11:31:00.015] [DEBUG] [o.a.c.d.c.CompactionManager] [runMayThrow] [No tasks available]
+[11:31:00.307] [ERROR] [o.a.c.u.CLibrary] [createHardLinkWithExec] [Unable to create hard link]
+java.io.IOException: Exception while executing the command: cmd /c mklink /H C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\snapshots\1346340659980-PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db, command error Code: 1, command output: The system cannot find the path specified.
+at org.apache.cassandra.utils.FBUtilities.exec(FBUtilities.java:573) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.utils.CLibrary.createHardLinkWithExec(CLibrary.java:188) [cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.utils.CLibrary.createHardLink(CLibrary.java:151) [cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.io.sstable.SSTableReader.createLinks(SSTableReader.java:905) [cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.ColumnFamilyStore.snapshotWithoutFlush(ColumnFamilyStore.java:1515) [cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.ColumnFamilyStore.snapshot(ColumnFamilyStore.java:1564) [cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.DefsTable.dropColumnFamily(DefsTable.java:517) [cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.DefsTable.mergeColumnFamilies(DefsTable.java:386) [cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:271) [cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.service.MigrationManager$1.call(MigrationManager.java:211) [cassandra-all-1.1.3.jar:1.1.3]
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303) [na:1.6.0_33]
+at java.util.concurrent.FutureTask.run(FutureTask.java:138) [na:1.6.0_33]
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886) [na:1.6.0_33]
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908) [na:1.6.0_33]
+at java.lang.Thread.run(Thread.java:662) [na:1.6.0_33]
+[11:31:00.308] [ERROR] [o.a.c.s.AbstractCassandraDaemon] [uncaughtException] [Exception in thread Thread[MigrationStage:1,5,main]]
+java.io.IOError: java.io.IOException: Exception while executing the command: cmd /c mklink /H C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\snapshots\1346340659980-PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db, command error Code: 1, command output: The system cannot find the path specified.
+at org.apache.cassandra.db.ColumnFamilyStore.snapshotWithoutFlush(ColumnFamilyStore.java:1526) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.ColumnFamilyStore.snapshot(ColumnFamilyStore.java:1564) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.DefsTable.dropColumnFamily(DefsTable.java:517) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.DefsTable.mergeColumnFamilies(DefsTable.java:386) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:271) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.service.MigrationManager$1.call(MigrationManager.java:211) ~[cassandra-all-1.1.3.jar:1.1.3]
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303) ~[na:1.6.0_33]
+at java.util.concurrent.FutureTask.run(FutureTask.java:138) ~[na:1.6.0_33]
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886) [na:1.6.0_33]
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908) [na:1.6.0_33]
+at java.lang.Thread.run(Thread.java:662) [na:1.6.0_33]
+Caused by: java.io.IOException: Exception while executing the command: cmd /c mklink /H C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\snapshots\1346340659980-PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db, command error Code: 1, command output: The system cannot find the path specified.
+at org.apache.cassandra.utils.FBUtilities.exec(FBUtilities.java:573) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.utils.CLibrary.createHardLinkWithExec(CLibrary.java:188) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.utils.CLibrary.createHardLink(CLibrary.java:151) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.io.sstable.SSTableReader.createLinks(SSTableReader.java:905) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.ColumnFamilyStore.snapshotWithoutFlush(ColumnFamilyStore.java:1515) ~[cassandra-all-1.1.3.jar:1.1.3]
+... 10 common frames omitted
+[11:31:00.309] [ERROR] [o.a.c.t.CustomTThreadPoolServer] [run] [Error occurred during processing of message.]
+java.lang.RuntimeException: java.util.concurrent.ExecutionException: java.io.IOError: java.io.IOException: Exception while executing the command: cmd /c mklink /H C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\snapshots\1346340659980-PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db, command error Code: 1, command output: The system cannot find the path specified.
+at org.apache.cassandra.utils.FBUtilities.waitOnFuture(FBUtilities.java:373) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.service.MigrationManager.announce(MigrationManager.java:188) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.service.MigrationManager.announceKeyspaceDrop(MigrationManager.java:170) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.thrift.CassandraServer.system_drop_keyspace(CassandraServer.java:1008) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.thrift.Cassandra$Processor$system_drop_keyspace.getResult(Cassandra.java:3476) ~[cassandra-thrift-1.1.3.jar:1.1.3]
+at org.apache.cassandra.thrift.Cassandra$Processor$system_drop_keyspace.getResult(Cassandra.java:3464) ~[cassandra-thrift-1.1.3.jar:1.1.3]
+at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:186) ~[cassandra-all-1.1.3.jar:1.1.3]
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886) [na:1.6.0_33]
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908) [na:1.6.0_33]
+at java.lang.Thread.run(Thread.java:662) [na:1.6.0_33]
+Caused by: java.util.concurrent.ExecutionException: java.io.IOError: java.io.IOException: Exception while executing the command: cmd /c mklink /H C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\snapshots\1346340659980-PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db, command error Code: 1, command output: The system cannot find the path specified.
+at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222) ~[na:1.6.0_33]
+at java.util.concurrent.FutureTask.get(FutureTask.java:83) ~[na:1.6.0_33]
+at org.apache.cassandra.utils.FBUtilities.waitOnFuture(FBUtilities.java:369) ~[cassandra-all-1.1.3.jar:1.1.3]
+... 11 common frames omitted
+Caused by: java.io.IOError: java.io.IOException: Exception while executing the command: cmd /c mklink /H C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\snapshots\1346340659980-PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db, command error Code: 1, command output: The system cannot find the path specified.
+at org.apache.cassandra.db.ColumnFamilyStore.snapshotWithoutFlush(ColumnFamilyStore.java:1526) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.ColumnFamilyStore.snapshot(ColumnFamilyStore.java:1564) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.DefsTable.dropColumnFamily(DefsTable.java:517) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.DefsTable.mergeColumnFamilies(DefsTable.java:386) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:271) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.service.MigrationManager$1.call(MigrationManager.java:211) ~[cassandra-all-1.1.3.jar:1.1.3]
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303) ~[na:1.6.0_33]
+at java.util.concurrent.FutureTask.run(FutureTask.java:138) ~[na:1.6.0_33]
+... 3 common frames omitted
+Caused by: java.io.IOException: Exception while executing the command: cmd /c mklink /H C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\snapshots\1346340659980-PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db C:\XYZ\source_code\s7-t1\crs-inventory\inventory-core\target\test\cassandra\data\RevKeyspace\PropertyProductDefaultInventoryCounts\RevKeyspace-PropertyProductDefaultInventoryCounts-he-1-CompressionInfo.db, command error Code: 1, command output: The system cannot find the path specified.
+at org.apache.cassandra.utils.FBUtilities.exec(FBUtilities.java:573) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.utils.CLibrary.createHardLinkWithExec(CLibrary.java:188) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.utils.CLibrary.createHardLink(CLibrary.java:151) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.io.sstable.SSTableReader.createLinks(SSTableReader.java:905) ~[cassandra-all-1.1.3.jar:1.1.3]
+at org.apache.cassandra.db.ColumnFamilyStore.snapshotWithoutFlush(ColumnFamilyStore.java:1515) ~[cassandra-all-1.1.3.jar:1.1.3]
+... 10 common frames omitted
+[11:31:00.309] [DEBUG] [o.a.c.s.ClientState] [logout] [logged out: #<User allow_all groups=[]>]
+[11:31:00.310] [DEBUG] [m.p.c.c.c.HThriftClient] [close] [Closing client CassandraClient<127.0.0.1:9162-5>]
+[11:31:00.310] [ERROR] [m.p.c.c.HConnectionManager] [markHostAsDown] [MARK HOST AS DOWN TRIGGERED for host 127.0.0.1(127.0.0.1):9162]
+[11:31:00.310] [ERROR] [m.p.c.c.HConnectionManager] [markHostAsDown] [Pool state on shutdown: <ConcurrentCassandraClientPoolByHost>: {127.0.0.1(127.0.0.1):9162}
+; IsActive?: true; Active: 1; Blocked: 0; Idle: 15; NumBeforeExhausted: 49]
+[11:31:00.311] [INFO ] [m.p.c.c.ConcurrentHClientPool] [shutdown] [Shutdown triggered on <ConcurrentCassandraClientPoolByHost>: {127.0.0.1(127.0.0.1):9162}
+]
+[11:31:00.311] [DEBUG] [m.p.c.c.c.HThriftClient] [close] [Closing client CassandraClient<127.0.0.1:9162-6>]
+[11:31:00.311] [DEBUG] [m.p.c.c.c.HThriftClient] [close] [Closing client CassandraClient<127.0.0.1:9162-15>]
+[11:31:00.311] [DEBUG] [o.a.c.t.CustomTThreadPoolServer] [run] [Thrift transport error occurred during processing of message.]
+org.apache.thrift.transport.TTransportException: Cannot read. Remote side has closed. Tried to read 4 bytes, but only got 0 bytes. (This is often indicative of an internal error on the server side. Please check your server logs.)
+at org.apache.thrift.transport.TTransport.readAll(TTransport.java:86) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.protocol.TBinaryProtocol.readAll(TBinaryProtocol.java:378) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.protocol.TBinaryProtocol.readI32(TBinaryProtocol.java:297) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.protocol.TBinaryProtocol.readMessageBegin(TBinaryProtocol.java:204) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:22) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:186) ~[cassandra-all-1.1.3.jar:1.1.3]
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886) [na:1.6.0_33]
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908) [na:1.6.0_33]
+at java.lang.Thread.run(Thread.java:662) [na:1.6.0_33]
+[11:31:00.311] [DEBUG] [m.p.c.c.c.HThriftClient] [close] [Closing client CassandraClient<127.0.0.1:9162-14>]
+[11:31:00.312] [DEBUG] [o.a.c.t.CustomTThreadPoolServer] [run] [Thrift transport error occurred during processing of message.]
+org.apache.thrift.transport.TTransportException: Cannot read. Remote side has closed. Tried to read 4 bytes, but only got 0 bytes. (This is often indicative of an internal error on the server side. Please check your server logs.)
+at org.apache.thrift.transport.TTransport.readAll(TTransport.java:86) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.protocol.TBinaryProtocol.readAll(TBinaryProtocol.java:378) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.protocol.TBinaryProtocol.readI32(TBinaryProtocol.java:297) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.protocol.TBinaryProtocol.readMessageBegin(TBinaryProtocol.java:204) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:22) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:186) ~[cassandra-all-1.1.3.jar:1.1.3]
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886) [na:1.6.0_33]
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908) [na:1.6.0_33]
+at java.lang.Thread.run(Thread.java:662) [na:1.6.0_33]
+[11:31:00.312] [DEBUG] [o.a.c.t.CustomTThreadPoolServer] [run] [Thrift transport error occurred during processing of message.]
+org.apache.thrift.transport.TTransportException: Cannot read. Remote side has closed. Tried to read 4 bytes, but only got 0 bytes. (This is often indicative of an internal error on the server side. Please check your server logs.)
+at org.apache.thrift.transport.TTransport.readAll(TTransport.java:86) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.protocol.TBinaryProtocol.readAll(TBinaryProtocol.java:378) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.protocol.TBinaryProtocol.readI32(TBinaryProtocol.java:297) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.protocol.TBinaryProtocol.readMessageBegin(TBinaryProtocol.java:204) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:22) ~[libthrift-0.7.0.jar:0.7.0]
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:186) ~[cassandra-all-1.1.3.jar:1.1.3]
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886) [na:1.6.0_33]
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908) [na:1.6.0_33]
+at java.lang.Thread.run(Thread.java:662) [na:1.6.0_33]
+[11:31:00.312] [DEBUG] [m.p.c.c.c.HThriftClient] [close] [Closing client CassandraClient<127.0.0.1:9162-13>]
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.5
+Component:
+None
+Label:
+None
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Allen Servedio
+Create date:
+30/Aug/12 18:44
+Update date:
+16/Apr/19 09:32
+Resolved date:
+07/Sep/12 16:58

@@ -1,0 +1,39 @@
+Summary:
+Nodes never bootstrap if schema is empty
+Description:
+Since 1.2.15, bootstrap never completes if the schema is empty. The bootstrapping node endlessly prints:
+INFO 12:37:44,863 JOINING: waiting for schema information to complete
+until you add something to the schema (i.e. create a keyspace).
+The problem looks to be caused by CASSANDRA-6648, where MigrationManager.isReadForBootstrap() was changed to:
+return Schema.instance.getVersion() != null && !Schema.emptyVersion.equals(Schema.instance.getVersion());
+This is wrong since Schema.emptyVersion.equals(Schema.instance.getVersion()) is always true if there is no schema.
+We need some different logic for determining when the schema is propagated.
+I haven't tested, but I expect this issue appears in 2.0.5 too.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.16
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Richard Low
+Create date:
+10/Feb/14 12:46
+Update date:
+16/Apr/19 09:31
+Resolved date:
+10/Feb/14 15:41

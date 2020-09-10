@@ -1,0 +1,69 @@
+Summary:
+Fuzzy searches are case sensitive
+Description:
+I've found that fuzzy search terms are case sensitive. For example, "Adagio" is calculated as having a levenshtein distance of 1 from "adagio". Of course, "ADAGIO" has a distance of 6, and would not get returned as a search result if searching for 'adagio~'.
+the patch is trivial and I have it here:
+lucene-1.2\src\java\org\apache\lucene\search\FuzzyTermEnum.java Sun Jun 09 13:47:54 2002
+patched\src\java\org\apache\lucene\search\FuzzyTermEnum.java Fri Mar 14 11:37:20 2003
+***************
+77,83 ****
+super(reader, term);
+searchTerm = term;
+field = searchTerm.field();
+! text = searchTerm.text();
+textlen = text.length();
+setEnum(reader.terms(new Term(searchTerm.field(), "")));
+}
+77,83 ----
+super(reader, term);
+searchTerm = term;
+field = searchTerm.field();
+! text = searchTerm.text().toLowerCase();
+textlen = text.length();
+setEnum(reader.terms(new Term(searchTerm.field(), "")));
+}
+***************
+88,94 ****
+*/
+final protected boolean termCompare(Term term) {
+if (field == term.field()) {
+! String target = term.text();
+int targetlen = target.length();
+int dist = editDistance(text, target, textlen, targetlen);
+distance = 1 - ((double)dist / (double)Math.min(textlen, targetlen));
+88,94 ----
+*/
+final protected boolean termCompare(Term term) {
+if (field == term.field()) {
+! String target = term.text().toLowerCase();
+int targetlen = target.length();
+int dist = editDistance(text, target, textlen, targetlen);
+distance = 1 - ((double)dist / (double)Math.min(textlen, targetlen));
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+1.2
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Cormac Twomey
+Create date:
+15/Mar/03 04:13
+Update date:
+27/May/06 01:36
+Resolved date:
+27/May/06 01:36

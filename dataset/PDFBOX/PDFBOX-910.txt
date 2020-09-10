@@ -1,0 +1,67 @@
+Summary:
+certain sequences (such as endstrea[^m] are eaten by BaseParser#readUntilEndStream
+Description:
+Reported on the dev list by Martijn List:
+It looks like there are two missing else parts in
+BaseParser#readUntilEndStream.
+The last part when trying to match "endstream" contains this:
+if(byteRead==M){
+//found the whole marker
+pdfSource.unread( ENDSTREAM );
+return;
+}
+But what happens when the last character is not "m" (for example
+endstreaX). Because there is no else statement it seems that "endstrea"
+is never written. Shouldn't it be:
+if(byteRead==M){
+//found the whole marker
+pdfSource.unread( ENDSTREAM );
+return;
+}
+else {
+out.write(ENDSTREAM, 0, 8);
+}
+Similar thing happens happens below when matching "endobj".
+If the last character does not match "j". "endob" is not written:
+if(byteRead==J){
+//found whole marker
+pdfSource.unread( ENDOBJ );
+return;
+}
+shouldn't it be:
+if(byteRead==J){
+//found whole marker
+pdfSource.unread( ENDOBJ );
+return;
+}
+else {
+out.write(ENDOBJ, 0, 5);
+}
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+1.3.1
+Fix_version:
+1.4.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adam Nichols
+Reporter:
+Adam Nichols
+Create date:
+29/Nov/10 18:28
+Update date:
+20/Dec/10 09:38
+Resolved date:
+29/Nov/10 18:31

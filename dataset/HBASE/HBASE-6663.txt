@@ -1,0 +1,42 @@
+Summary:
+NPE race in HConnection if zookeeper is reset
+Description:
+On 0.94, HConnectionImplementation has code like this:
+getZooKeeperWatcher();
+String tableNameStr = Bytes.toString(tableName);
+try {
+  if (online) {
+    return ZKTable.isEnabledTable(this.zooKeeper, tableNameStr);
+  }
+  return ZKTable.isDisabledTable(this.zooKeeper, tableNameStr);
+The issue is that between the time that getZooKeeperWatcher is called and this.zooKeeper is used, this.zooKeeper can be set to null by another thread via resetZooKeeperTrackers.
+The cleanest solution to me seems to be to cache the value. I have a patch that does this and a test that fails without the patch and passes with it.
+This issue doesn't appear on 0.96 because the zookeeper code has been separated in HBASE-5399.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.1
+Fix_version:
+0.94.2
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gregory Chanan
+Reporter:
+Gregory Chanan
+Create date:
+25/Aug/12 01:08
+Update date:
+24/Oct/12 05:40
+Resolved date:
+25/Aug/12 05:31

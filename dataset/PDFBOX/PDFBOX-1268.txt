@@ -1,0 +1,63 @@
+Summary:
+OutOfMemory Error because of huge colors
+Description:
+Hi,
+Am 26.03.2012 07:42, schrieb Christophe Vandeplas:
+Hello List,
+I'm working on a PDF scanning tool and with a specific (malicious) PDF
+I always get OutOfMemory Errors.
+The backtrace is:
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+at org.apache.pdfbox.filter.FlateFilter.decodePredictor(FlateFilter.java:218)
+at org.apache.pdfbox.filter.FlateFilter.decode(FlateFilter.java:170)
+at org.apache.pdfbox.cos.COSStream.doDecode(COSStream.java:279)
+at org.apache.pdfbox.cos.COSStream.doDecode(COSStream.java:221)
+at org.apache.pdfbox.cos.COSStream.getUnfilteredStream(COSStream.java:156)
+at ScanPdf.checkCOSBaseObject(ScanPdf.java:199)
+...
+When looking in the PDFBox code FlateFilter.java:218 is
+byte[] lastline = new byte[rowlength];
+In that contact rowlength = 1073741838 => seems rather big, no?
+Looking back in the code it seems that it's colors who is so big.
+Colors seems to be extracted from the dict in FlateFilter.java:96:
+colors = dict.getInt(COSName.COLORS);
+The (malicious) PDF has indeed the definition : /Colors 1073741838
+Hmm, that sounds quite large, but the pdf spec describes the colors value as follows:
+"(May be used only if Predictor is greater than 1) The number of interleaved colour components per sample. Valid values are 1 to 4 (PDF 1.0) and 1 or greater (PDF 1.3). Default value: 1."
+So my question is now:
+Is this something I need to catch in my own code, or should PDFBox be
+patched to catch such issues? (like the catched OutOfMemoryError in
+FlateFilter:124)
+PDFBox should handle that. Please create an issue on JIRA [1] and attach the pdf in question.
+Thanks for your expertise
+Christophe
+BR
+Andreas Lehmkühler
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.6.0
+Fix_version:
+1.8.7, 2.0.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Christophe Vandeplas
+Create date:
+26/Mar/12 06:17
+Update date:
+19/Sep/14 14:40
+Resolved date:
+04/Aug/14 19:38

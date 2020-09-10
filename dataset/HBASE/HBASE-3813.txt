@@ -1,0 +1,40 @@
+Summary:
+Change RPC callQueue size from "handlerCount * MAX_QUEUE_SIZE_PER_HANDLER;"
+Description:
+Yesterday debugging w/ Jack we noticed that with few handlers on a big box, he was seeing stats like this:
+2011-04-21 11:54:49,451 DEBUG org.apache.hadoop.ipc.HBaseServer: Server connection from X.X.X.X:60931; # active connections: 11; # queued calls: 2500
+We had 2500 items in the rpc queue waiting to be processed.
+Turns out he had too few handlers for number of clients (but also, it seems like he figured hw issues in that his RAM bus was running at 1/4 the rate that it should have been running at).
+Chatting w/ J-D this morning, he asked if the queues hold 'data'. The queues hold 'Calls'. Calls are the client request. They contain data.
+Jack had 2500 items queued. If each item to insert was 1MB, thats 2.5k * 1MB of memory that is outside of our generally accounting.
+Currently the queue size is handlers * MAX_QUEUE_SIZE_PER_HANDLER where MAX_QUEUE_SIZE_PER_HANDLER is hardcoded to be 100.
+If the queue is full we block (LinkedBlockingQueue).
+Going to change the queue size from 100 to 10 by default – but also will make it configurable and will doc. this as possible cause of OOME. Will try it on production here before committing patch.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+22/Apr/11 16:59
+Update date:
+16/Feb/16 16:54
+Resolved date:
+31/Jan/12 21:42

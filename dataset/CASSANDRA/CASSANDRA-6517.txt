@@ -1,0 +1,120 @@
+Summary:
+Loss of secondary index entries if nodetool cleanup called before compaction
+Description:
+From time to time we had the feeling of not getting all results that should have been returned using secondary indexes. Now we tracked down some situations and found out, it happened:
+1) To primary keys that were already deleted and have been re-created later on
+2) After our nightly maintenance scripts were running
+We can reproduce now the following szenario:
+create a row entry with an indexed column included
+query it and use the secondary index criteria -> Success
+delete it, query again -> entry gone as expected
+re-create it with the same key, query it -> success again
+Now use in exactly that sequence
+nodetool cleanup
+nodetool flush
+nodetool compact
+When issuing the query now, we don't get the result using the index. The entry is indeed available in it's table when I just ask for the key. Below is the exact copy-paste output from CQL when I reproduced the problem with an example entry on on of our tables.
+mwerrch@mstc01401:/opt/cassandra$ current/bin/cqlsh Connected to 14-15-Cluster at localhost:9160.
+[cqlsh 4.1.0 | Cassandra 2.0.3 | CQL spec 3.1.1 | Thrift protocol 19.38.0] Use HELP for help.
+cqlsh> use mwerrch;
+cqlsh:mwerrch> desc tables;
+B4Container_Demo
+cqlsh:mwerrch> desc table "B4Container_Demo";
+CREATE TABLE "B4Container_Demo" (
+key uuid,
+archived boolean,
+bytes int,
+computer int,
+deleted boolean,
+description text,
+doarchive boolean,
+filename text,
+first boolean,
+frames int,
+ifversion int,
+imported boolean,
+jobid int,
+keepuntil bigint,
+nextchunk text,
+node int,
+recordingkey blob,
+recstart bigint,
+recstop bigint,
+simulationid bigint,
+systemstart bigint,
+systemstop bigint,
+tapelabel bigint,
+version blob,
+PRIMARY KEY (key)
+) WITH COMPACT STORAGE AND
+bloom_filter_fp_chance=0.010000 AND
+caching='KEYS_ONLY' AND
+comment='demo' AND
+dclocal_read_repair_chance=0.000000 AND
+gc_grace_seconds=604800 AND
+index_interval=128 AND
+read_repair_chance=1.000000 AND
+replicate_on_write='true' AND
+populate_io_cache_on_flush='false' AND
+default_time_to_live=0 AND
+speculative_retry='NONE' AND
+memtable_flush_period_in_ms=0 AND
+compaction=
+{'class': 'SizeTieredCompactionStrategy'}
+AND
+compression=
+{'sstable_compression': 'LZ4Compressor'}
+;
+CREATE INDEX mwerrch_Demo_computer ON "B4Container_Demo" (computer);
+CREATE INDEX mwerrch_Demo_node ON "B4Container_Demo" (node);
+CREATE INDEX mwerrch_Demo_recordingkey ON "B4Container_Demo" (recordingkey);
+cqlsh:mwerrch> INSERT INTO "B4Container_Demo" (key,computer,node) VALUES (78c70562-1f98-3971-9c28-2c3d8e09c10f, 50, 50); cqlsh:mwerrch> select key,node,computer from "B4Container_Demo" where computer=50;
+key | node | computer
+--------------------------------------------------
+78c70562-1f98-3971-9c28-2c3d8e09c10f | 50 | 50
+(1 rows)
+cqlsh:mwerrch> DELETE FROM "B4Container_Demo" WHERE key=78c70562-1f98-3971-9c28-2c3d8e09c10f;
+cqlsh:mwerrch> select key,node,computer from "B4Container_Demo" where computer=50;
+(0 rows)
+cqlsh:mwerrch> INSERT INTO "B4Container_Demo" (key,computer,node) VALUES (78c70562-1f98-3971-9c28-2c3d8e09c10f, 50, 50); cqlsh:mwerrch> select key,node,computer from "B4Container_Demo" where computer=50;
+key | node | computer
+--------------------------------------------------
+78c70562-1f98-3971-9c28-2c3d8e09c10f | 50 | 50
+(1 rows)
+**********************************
+Now we execute (maybe from a different shell so we don't have to close this session) from /opt/cassandra/current/bin directory:
+./nodetool cleanup
+./nodetool flush
+./nodetool compact
+Going back to our CQL session the result will no longer be available if queried via the index:
+*********************************
+cqlsh:mwerrch> select key,node,computer from "B4Container_Demo" where computer=50;
+(0 rows)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.5
+Component:
+Feature/2i Index, (1)
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Christoph Werres
+Create date:
+20/Dec/13 12:40
+Update date:
+16/Apr/19 09:31
+Resolved date:
+31/Jan/14 15:45

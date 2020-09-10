@@ -1,0 +1,49 @@
+Summary:
+Changing from higher to lower compaction throughput causes long (multi hour) pause in large compactions
+Description:
+We're running a major compaction against a column family that is 2.1TB (yes, I know it's crazy huge, that's an entirely different discussion). During the evenings, we run a setcompactionthroughput 0 to unthrottle completely, and throttle again down to 20mb at the end of the maintenance window.
+Every morning we've come in to check progress, we find that the progress completely halts as soon as the compaction throttling command is issued. Eventually, compaction continues. I was looking at the throttling code, and I think I see the issue, but would like confirmation:
+throttleDelta (org.apache.cassandra.utils.Throttle.throttleDelta) sets a sleep time based on the amount of data transferred since the last throttle time. Since we've gone from 20 MB to wide open, and back to 20MB, the wait that is calculated is based on an attempt to average the new throttling rate over the last 6.5 hours of running wide open.
+I think this could be fixed by adding a reset of bytesAtLastDelay and timeAtLastDelay to the current values after the check at line 64:
+Current:
+// if the target changed, log
+if (newTargetBytesPerMS != targetBytesPerMS)
+logger.debug("{} target throughput now {} bytes/ms.", this, newTargetBytesPerMS);
+targetBytesPerMS = newTargetBytesPerMS;
+New:
+// if the target changed, log
+if (newTargetBytesPerMS != targetBytesPerMS) {
+logger.debug("{} target throughput now {} bytes/ms.", this, newTargetBytesPerMS);
+if(newTargetBytesPerMS < targetBytesPerMS || targetBytesPerMS < 1)
+{ bytesAtLastDelay += bytesDelta; timeAtLastDelay = System.currentTimeMillis(); targetBytesPerMS = newTargetBytesPerMS; return; }
+targetBytesPerMS = newTargetBytesPerMS;
+}
+Some redundancies that can be removed there, but I wanted to keep the approach local to where I thought the problem was.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.9, 1.2.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+J.B. Langston
+Reporter:
+J.B. Langston
+Create date:
+21/Dec/12 16:17
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Dec/12 15:15

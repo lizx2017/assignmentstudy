@@ -1,0 +1,35 @@
+Summary:
+AtomicSortedColumns.addAllWithSizeDelta has a spin loop that allocates memory
+Description:
+In order to preserve atomicity, this code attempts to read, clone/update, then CAS the state of the partition.
+Under heavy contention for updating a single partition this can cause some fairly staggering memory growth (the more cores on your machine the worst it gets).
+Whilst many usage patterns don't do highly concurrent updates to the same partition, hinting today, does, and in this case wild (order(s) of magnitude more than expected) memory allocation rates can be seen (especially when the updates being hinted are small updates to different partitions which can happen very fast on their own) - see CASSANDRA-7545
+It would be best to eliminate/reduce/limit the spinning memory allocation whilst not slowing down the very common un-contended case.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+graham sanderson
+Reporter:
+graham sanderson
+Create date:
+15/Jul/14 00:56
+Update date:
+16/Apr/19 09:31
+Resolved date:
+13/Oct/14 17:14

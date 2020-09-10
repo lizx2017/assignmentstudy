@@ -1,0 +1,93 @@
+Summary:
+CQL3 range query with secondary index fails
+Description:
+This query fails:
+select * from indextest where setid = 0 and row < 1;
+when there's a secondary index on 'setid'; row isn't the primary key.
+CQL3
+bin$ ./cqlsh --cql3
+Connected to Git at localhost:9160.
+[cqlsh 2.2.0 | Cassandra 1.1.0-SNAPSHOT | CQL spec 3.0.0 | Thrift protocol 19.31.0]
+Use HELP for help.
+cqlsh> use warehouse1;
+cqlsh:warehouse1> create table indextest (id int primary key, row int, setid int);
+cqlsh:warehouse1> create index indextest_setid_idx on indextest (setid);
+cqlsh:warehouse1> insert into indextest (id, row, setid) values (0, 0, 0);
+cqlsh:warehouse1> insert into indextest (id, row, setid) values (1, 1, 0);
+cqlsh:warehouse1> insert into indextest (id, row, setid) values (2, 2, 0);
+cqlsh:warehouse1> select * from indextest where setid = 0;
+ id | row | setid
+----+-----+-------
+  0 |   0 |     0
+  1 |   1 |     0
+  2 |   2 |     0
+
+cqlsh:warehouse1> select * from indextest where setid = 0 and row = 1;
+ id | row | setid
+----+-----+-------
+  1 |   1 |     0
+
+cqlsh:warehouse1> select * from indextest where setid = 0 and row < 1;
+TSocket read 0 bytes
+Error message
+ERROR 13:36:23,544 Error occurred during processing of message.
+java.lang.NullPointerException
+  at org.apache.cassandra.cql3.statements.SelectStatement.getIndexExpressions(SelectStatement.java:546)
+  at org.apache.cassandra.cql3.statements.SelectStatement.multiRangeSlice(SelectStatement.java:253)
+  at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:132)
+  at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:108)
+  at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:121)
+  at org.apache.cassandra.thrift.CassandraServer.execute_cql_query(CassandraServer.java:1237)
+  at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3542)
+  at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3530)
+  at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+  at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+  at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:186)
+  at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+  at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+  at java.lang.Thread.run(Thread.java:680)
+Works fine in CQL2:
+CQL2
+bin$ ./cqlsh_uuid --cql2
+Connected to Git at localhost:9160.
+[cqlsh 2.2.0 | Cassandra 1.1.0-SNAPSHOT | CQL spec 2.0.0 | Thrift protocol 19.31.0]
+Use HELP for help.
+cqlsh> use warehouse1;
+cqlsh:warehouse1> select * from indextest where setid = 0 and row < 1;
+ id | row | setid
+----+-----+-------
+  0 |   0 |     0
+
+cqlsh:warehouse1> select * from indextest where setid = 0 and row < 2;
+ id | row | setid
+----+-----+-------
+  0 |   0 |     0
+  1 |   1 |     0
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.1
+Component:
+Feature/2i Index, (1)
+Label:
+cql3 index
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sean Billig
+Create date:
+17/May/12 19:06
+Update date:
+16/Apr/19 09:32
+Resolved date:
+24/May/12 14:45

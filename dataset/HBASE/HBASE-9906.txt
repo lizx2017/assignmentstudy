@@ -1,0 +1,46 @@
+Summary:
+Restore snapshot fails to restore the meta edits sporadically
+Description:
+After snaphot restore, we see failures to find the table in meta:
+> disable 'tablefour'
+> restore_snapshot 'snapshot_tablefour'
+> enable 'tablefour'
+ERROR: Table tablefour does not exist.'
+This is quite subtle. From the looks of it, we successfully restore the snapshot, do the meta updates, return to the client about the status. The client then tries to do an operation for the table (like enable table, or scan in the test outputs) which fails because the meta entry for the region seems to be gone (in case of single region, the table will be reported missing). Subsequent attempts for creating the table will also fail because the table directories will be there, but not the meta entries.
+For restoring meta entries, we are doing a delete then a put to the same region:
+2013-11-04 10:39:51,582 INFO org.apache.hadoop.hbase.snapshot.RestoreSnapshotHelper: region to restore: 76d0e2b7ec3291afcaa82e18a56ccc30
+2013-11-04 10:39:51,582 INFO org.apache.hadoop.hbase.snapshot.RestoreSnapshotHelper: region to remove: fa41edf43fe3ee131db4a34b848ff432
+...
+2013-11-04 10:39:52,102 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted [{ENCODED => fa41edf43fe3ee131db4a34b848ff432, NAME => 'tablethree_mod,,1383559723345.fa41edf43fe3ee131db4a34b848ff432.', STARTKEY => '', ENDKEY => ''}, {ENCODED => 76d0e2b7ec3291afcaa82e18a56ccc30, NAME => 'tablethree_mod,,1383561123097.76d0e2b7ec3291afcaa82e18a56ccc30.', STARTKE
+2013-11-04 10:39:52,111 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Added 1
+The root cause for this sporadic failure is that, the delete and subsequent put will have the same timestamp if they execute in the same ms. The delete will override the put in the same ts, even though the put have a larger ts.
+See: HBASE-9905, HBASE-8770
+Credit goes to Huned Lokhandwala for reporting this bug.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.96.1, 0.94.14
+Component:
+snapshots
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Enis Soztutar
+Reporter:
+Enis Soztutar
+Create date:
+06/Nov/13 22:25
+Update date:
+26/Nov/13 05:53
+Resolved date:
+08/Nov/13 03:10

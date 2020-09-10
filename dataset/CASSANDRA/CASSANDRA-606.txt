@@ -1,0 +1,59 @@
+Summary:
+Compaction can't find files
+Description:
+We have been seeing issues with compaction running very often. We ran into this case when I found out in one of our CFs we were inserting a high volume of columns. Our threshold for memtable size flushes is 64MB but the MemtableObjectCountInMillions is 0.1 (we know this is low and will increase). On average we are writing so much data that compaction kicks off reguarly. And when we start trying to lookup data, we get lots of errors during compaction and get_slice (since sometimes files don't get cleaned up). In every event that this has occurred, a -Filter file was left behind. Never Data or Index.
+ERROR [COMPACTION-POOL:1] 2009-12-05 15:04:47,412 DebuggableThreadPoolExecutor.java (line 120) Error in executor futuretask
+java.util.concurrent.ExecutionException: java.io.FileNotFoundException: /mnt/var/cassandra/data/Digg/UserActivity-1243-Data.db (No such file or directory)
+at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor.afterExecute(DebuggableThreadPoolExecutor.java:112)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:888)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+Caused by: java.io.FileNotFoundException: /mnt/var/cassandra/data/Digg/UserActivity-1243-Data.db (No such file or directory)
+at java.io.RandomAccessFile.open(Native Method)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:212)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:98)
+at org.apache.cassandra.io.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:142)
+at org.apache.cassandra.io.SSTableScanner.<init>(SSTableScanner.java:47)
+at org.apache.cassandra.io.SSTableReader.getScanner(SSTableReader.java:386)
+at org.apache.cassandra.io.CompactionIterator.getCollatingIterator(CompactionIterator.java:65)
+at org.apache.cassandra.io.CompactionIterator.<init>(CompactionIterator.java:48)
+at org.apache.cassandra.db.ColumnFamilyStore.doFileCompaction(ColumnFamilyStore.java:902)
+at org.apache.cassandra.db.ColumnFamilyStore.doFileCompaction(ColumnFamilyStore.java:861)
+at org.apache.cassandra.db.ColumnFamilyStore.doCompaction(ColumnFamilyStore.java:663)
+at org.apache.cassandra.db.CompactionManager$1.call(CompactionManager.java:180)
+at org.apache.cassandra.db.CompactionManager$1.call(CompactionManager.java:177)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+... 2 more
+INFO [main] 2009-12-05 15:08:54,384 SSTable.java (line 156) Deleted /mnt/var/cassandra/data/Digg/UserActivity-1130-Data.db
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Chris Goffinet
+Reporter:
+Chris Goffinet
+Create date:
+05/Dec/09 23:34
+Update date:
+16/Apr/19 09:33
+Resolved date:
+06/Dec/09 01:46

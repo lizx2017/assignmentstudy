@@ -1,0 +1,116 @@
+Summary:
+Bulk insert with multiple reducers broken due to improper ImmutableBytesWritable comparator
+Description:
+If I run MR to prepare HFIles with more than one reducer then some values for keys are not appeared in the table after loadtable.rb script execution. With one reducer everything works fine.
+References:
+http://hadoop.apache.org/hbase/docs/r0.20.3/api/org/apache/hadoop/hbase/mapreduce/package-summary.html#bulk
+the row id must be formatted as a ImmutableBytesWritable
+MR job should ensure a total ordering among all keys
+MAPREDUCE-366 (patch-5668-3.txt)
+TotalOrderPartitioner that uses the new API (attached)
+HBASE-2063
+patched HFileOutputFormat (attached)
+Input data (attached):
+my_sample_log_1k.txt - sample data, input for MyHFilesWriter
+Source (attached):
+MyKeyComparator.java - comparator for my ImmutableBytesWritable keys
+TestTotalOrderPartitionerForMyKeys.java - test case for my keys (note that I've set up MyKeyComparator to pass that test)
+MyHFilesWriter.java - My MR job to prepare HFiles
+HFileOutputFormat.java - from MAPREDUCE-366
+TotalOrderPartitioner.java - from MAPREDUCE-366
+MySampler.java - My RandomSampler based on Sampler from MAPREDUCE-366 BUT I've put the following string into getSample method (without that string it doesn't work):
+            reader.initialize(splits.get(i), new TaskAttemptContext(job.getConfiguration(), new TaskAttemptID()));
+Test case:
+comment the following string in MyHFilesWriter: //job.setSortComparatorClass(MyKeyComparator.class);
+hadoop jar keyvalue-poc.jar MyHFilesWriter -in /test_hbase/my_sample_log_1k.txt -out /test_hbase/hfiles/01/ -r 1
+hadoop jar keyvalue-poc.jar MyHFilesWriter -in /test_hbase/my_sample_log_1k.txt -out /test_hbase/hfiles/02/ -r 2
+hbase> create 'tst_hfiles_01', {NAME => 'vals'}
+# hbase> create 'tst_hfiles_02', {NAME => 'vals'}
+hbase org.jruby.Main /usr/lib/hbase-0.20/bin/loadtable.rb tst_hfiles_01 /test_hbase/hfiles/01
+hbase org.jruby.Main /usr/lib/hbase-0.20/bin/loadtable.rb tst_hfiles_02 /test_hbase/hfiles/02
+check values for keys
+uncomment the following string in MyHFilesWriter: //job.setSortComparatorClass(MyKeyComparator.class);
+hadoop jar keyvalue-poc.jar MyHFilesWriter -in /test_hbase/my_sample_log_1k.txt -out /test_hbase/hfiles/03/ -r 2
+for example, results:
+hbase(main):006:0* count 'tst_hfiles_01', 100 
+Current count: 100, row: 0.14.USA.IL.602.ELMHURST.1.1.0.0                                                     
+Current count: 200, row: 0.245.USA.ME.500.PORTLAND.1.1.0.0                                                    
+Current count: 300, row: 0.34.USA.FL.Rollup.Rollup.1.1.0.0                                                    
+Current count: 400, row: 0.443.USA.CA.803.LOS.ANGELES.1.1.0                                                   
+Current count: 500, row: 0.8.USA.CO.751.CASTLE.ROCK.1.1.0                                                     
+Current count: 600, row: 1.14.DZA.Rollup.Rollup.Rollup.1.1.0.1                                                
+Current count: 700, row: 1.159.SWE.AB.Rollup.Rollup.1.1.0.1                                                   
+Current count: 800, row: 1.17.USA.TN.659.CLARKSVILLE.1.1.0.1                                                  
+Current count: 900, row: 1.220.USA.MI.505.SOUTHFIELD.1.1.0.1                                                  
+999 row(s) in 0.0930 seconds
+hbase(main):007:0> count 'tst_hfiles_02', 100
+Current count: 100, row: 0.231.USA.GA.524.BUFORD.1.1.0.1                                                      
+Current count: 200, row: 0.4.USA.VA.573.Rollup.1.1.0.0                                                        
+Current count: 300, row: 0.9.ROU.B.-1.BUCHAREST.1.1.0.0                                                       
+Current count: 400, row: 1.16.USA.IA.679.Rollup.1.1.1.0                                                       
+Current count: 500, row: 1.245.NOR.03.-1.OSLO.1.1.0.0                                                         
+Current count: 600, row: 0.245.GBR.ENG.826005.BEXLEY.1.1.0.1                                                  
+Current count: 700, row: 0.48.GBR.ENG.826027.Rollup.1.1.0.1                                                   
+Current count: 800, row: 1.14.SWE.Rollup.Rollup.Rollup.1.1.0.1                                                
+Current count: 900, row: 1.201.GBR.ENG.826005.LONDON.1.1.0.1                                                  
+999 row(s) in 0.1630 seconds
+hbase(main):008:0> get 'tst_hfiles_01', '0.14.USA.IL.602.ELMHURST.1.1.0.0'
+COLUMN                       CELL                                                                             
+ vals:key0                   timestamp=1269542753914, value=0                                                 
+ vals:key1                   timestamp=1269542753914, value=14                                                
+ vals:key2                   timestamp=1269542753914, value=USA                                               
+ vals:key3                   timestamp=1269542753914, value=IL                                                
+ vals:key4                   timestamp=1269542753914, value=602                                               
+ vals:key5                   timestamp=1269542753914, value=ELMHURST                                          
+ vals:key6                   timestamp=1269542753914, value=1                                                 
+ vals:key7                   timestamp=1269542753914, value=1                                                 
+ vals:key8                   timestamp=1269542753914, value=0                                                 
+ vals:key9                   timestamp=1269542753914, value=0                                                 
+ vals:val0                   timestamp=1269542753914, value=2                                                 
+11 row(s) in 0.0160 seconds
+hbase(main):009:0> get 'tst_hfiles_02', '0.14.USA.IL.602.ELMHURST.1.1.0.0'
+COLUMN                       CELL                                                                             
+0 row(s) in 0.0220 seconds
+with MyKeyComparator
+java.io.IOException: Added a key not lexically larger than previous key=.103.FRA.V.-1.LYON.1.1.0.0valskey0'XXX, lastkey=1.20.USA.AOL.0.AOL.1.1.0.0valsval0'XXX
+ at org.apache.hadoop.hbase.io.hfile.HFile$Writer.checkKey(HFile.java:551)
+ at org.apache.hadoop.hbase.io.hfile.HFile$Writer.append(HFile.java:513)
+ at org.apache.hadoop.hbase.io.hfile.HFile$Writer.append(HFile.java:481)
+ at com.contextweb.hadoop.hbase.mapred.HFileOutputFormat$1.write(HFileOutputFormat.java:77)
+ at com.contextweb.hadoop.hbase.mapred.HFileOutputFormat$1.write(HFileOutputFormat.java:49)
+ at org.apache.hadoop.mapred.ReduceTask$NewTrackingRecordWriter.write(ReduceTask.java:508)
+ at org.apache.hadoop.mapreduce.TaskInputOutputContext.write(TaskInputOutputContext.java:80)
+ at org.apache.hadoop.hbase.mapreduce.KeyValueSortReducer.reduce(KeyValueSortReducer.java:46)
+ at org.apache.hadoop.hbase.mapreduce.KeyValueSortReducer.reduce(KeyValueSortReducer.java:35)
+ at org.apache.hadoop.mapreduce.Reducer.run(Reducer.java:176)
+ at org.apache.hadoop.mapred.ReduceTask.runNewReducer(ReduceTask.java:566)
+ at org.apache.hadoop.mapred.ReduceTask.run(ReduceTask.java:408)
+ at org.apache.hadoop.mapred.Child.main(Child.java:170)
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.20.3
+Fix_version:
+0.20.4, 0.90.0
+Component:
+mapreduce
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Todd Lipcon
+Reporter:
+Ruslan Salyakhov
+Create date:
+25/Mar/10 19:24
+Update date:
+12/Oct/12 06:15
+Resolved date:
+30/Mar/10 05:36

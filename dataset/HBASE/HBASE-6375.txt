@@ -1,0 +1,90 @@
+Summary:
+Master may be using a stale list of region servers for creating assignment plan during startup
+Description:
+While investigating an Out of Memory issue, I had an interesting observation where the master tries to assign all regions to a single region server even though 7 other had already registered with it.
+As the cluster had MSLAB enabled, this resulted in OOM on the RS when it tired to open all of them.
+From master's log (edited for brevity):
+55,468 Waiting on regionserver(s) to checkin
+56,968 Waiting on regionserver(s) to checkin
+58,468 Waiting on regionserver(s) to checkin
+59,968 Waiting on regionserver(s) to checkin
+01,242 Registering server=srv109.datacenter,60020,1338673920529,regionCount=0,userLoad=false
+01,469 Waiting on regionserver(s) count to settle; currently=1
+02,969 Finished waiting for regionserver count to settle; count=1,sleptFor=46500
+02,969 Exiting wait on regionserver(s) to checkin; count=1, stopped=false,count of regions out on cluster=0
+03,010 Processing region -ROOT-,,0.70236052 in state M_ZK_REGION_OFFLINE
+03,220 -ROOT- assigned=0, rit=true, location=srv109.datacenter:60020
+03,221 Processing region .META.,,1.1028785192 in state M_ZK_REGION_OFFLINE
+03,336 Detected completed assignment of META, notifying catalog tracker
+03,350 .META. assigned=0, rit=true, location=srv109.datacenter:60020
+03,350 Master startup proceeding: cluster startup
+04,006 Registering server=srv111.datacenter,60020,1338673923399,regionCount=0,userLoad=false
+04,012 Registering server=srv113.datacenter,60020,1338673923532,regionCount=0,userLoad=false
+04,269 Registering server=srv115.datacenter,60020,1338673923471,regionCount=0,userLoad=false
+04,363 Registering server=srv117.datacenter,60020,1338673923928,regionCount=0,userLoad=false
+04,599 Registering server=srv127.datacenter,60020,1338673924067,regionCount=0,userLoad=false
+04,606 Registering server=srv119.datacenter,60020,1338673923953,regionCount=0,userLoad=false
+04,804 Registering server=srv129.datacenter,60020,1338673924339,regionCount=0,userLoad=false
+05,126 Bulk assigning 1252 region(s) across 1 server(s), retainAssignment=true
+05,546 hd109.datacenter,60020,1338673920529 unassigned znodes=207 of
+A peek at AssignmentManager code offer some explanation:
+  public void assignAllUserRegions() throws IOException, InterruptedException {
+    // Get all available servers
+    List<HServerInfo> servers = serverManager.getOnlineServersList();
+
+    // Scan META for all user regions, skipping any disabled tables
+    Map<HRegionInfo,HServerAddress> allRegions =
+      MetaReader.fullScan(catalogTracker, this.zkTable.getDisabledTables(), true);
+    if (allRegions == null || allRegions.isEmpty()) return;
+
+    // Determine what type of assignment to do on startup
+    boolean retainAssignment = master.getConfiguration().
+      getBoolean("hbase.master.startup.retainassign", true);
+
+    Map<HServerInfo, List<HRegionInfo>> bulkPlan = null;
+    if (retainAssignment) {
+      // Reuse existing assignment info
+      bulkPlan = LoadBalancer.retainAssignment(allRegions, servers);
+    } else {
+      // assign regions in round-robin fashion
+      bulkPlan = LoadBalancer.roundRobinAssignment(new ArrayList<HRegionInfo>(allRegions.keySet()), servers);
+    }
+    LOG.info("Bulk assigning " + allRegions.size() + " region(s) across " +
+      servers.size() + " server(s), retainAssignment=" + retainAssignment);
+    ...
+In the function assignAllUserRegions(), listed above, AM fetches the server list from ServerManager long before it actually use it to create assignment plan.
+In between these, it performs a full scan of META to create an assignment map of regions. So even if additional RSes have registered in the meantime (as happened in this case), AM still has the old list of just one server.
+This code snippet is from 0.90.6 but the same issue exists in 0.92, 0.94 and trunk. Since MSLAB is enabled by default in 0.92 onwards, any large cluster can hit this issue upon cluster start-up when the following sequence holds true.
+Master start long before the RSes (by default this long ~= 4.5 seconds)
+All the RSes start togather but one wins the race of registering with Master by few seconds.
+I am attaching a patch for the trunk which moves the code which fetches the RS list form the beginning of the function to where it is first use.
+Apart from this change, one other HBase setting that now becomes important is "hbase.master.wait.on.regionservers.mintostart" due to MSLAB being enabled by default.
+In large clusters which keeps it enabled now must modify "hbase.master.wait.on.regionservers.mintostart" to a suitable number than the default of 1 to ensure that the master waits for a quorum of RSes which are sufficient to open all the regions among themselves. I'll create a separate JIRA for the documentation change.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.6, (3)
+Fix_version:
+0.94.1, 0.95.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aditya Kishore
+Reporter:
+Aditya Kishore
+Create date:
+11/Jul/12 23:16
+Update date:
+26/Feb/13 08:15
+Resolved date:
+12/Jul/12 21:32

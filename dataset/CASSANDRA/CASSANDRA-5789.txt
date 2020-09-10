@@ -1,0 +1,92 @@
+Summary:
+Data not fully replicated with 2 nodes and replication factor 2
+Description:
+I'm seeing a problem with a 2-node Cassandra test deployment, where it seems that data isn't being replicated among the nodes as I would expect.
+The setup and test is as follows:
+Two Cassandra nodes in the cluster (they each have themselves and the other node as seeds in cassandra.yaml).
+Create 40 keyspaces, each with simple replication strategy and
+replication factor 2.
+Populate 125,000 rows into each keyspace, using a pycassa client with a connection pool pointed at both nodes. These are populated with writes using consistency level of 1.
+Wait until nodetool on each node reports that there are no hinted handoffs outstanding (see output below).
+Do random reads of the rows in the keyspaces, again using a pycassa client with a connection pool pointed at both nodes. These are read using consistency level 1.
+I'm finding that the vast majority of reads are successful, but a small
+proportion (~0.1%) are returned as Not Found. If I manually try to look up
+those keys using cassandra-cli, I see that they are returned when querying one of the nodes, but not when querying the other. So it seems like some of the rows have simply not been replicated, even though the write for these rows was reported to the client as successful.
+If I reduce the rate at which the test tool initially writes data into the database then I don't see any failed reads, so this seems like a load-related issue. My understanding is that if all writes were successful and there are no pending hinted handoffs, then the data should be fully-replicated and reads should return it (even with read and write consistency of 1).
+Here's the output from notetool on the two nodes:
+comet-mvs01:/dsc-cassandra-1.2.6# ./bin/nodetool tpstats
+Pool Name Active Pending Completed Blocked All time blocked
+ReadStage 0 0 2 0 0
+RequestResponseStage 0 0 878494 0 0
+MutationStage 0 0 2869107 0 0
+ReadRepairStage 0 0 0 0 0
+ReplicateOnWriteStage 0 0 0 0 0
+GossipStage 0 0 2208 0 0
+AntiEntropyStage 0 0 0 0 0
+MigrationStage 0 0 994 0 0
+MemtablePostFlusher 0 0 4399 0 0
+FlushWriter 0 0 2264 0 556
+MiscStage 0 0 0 0 0
+commitlog_archiver 0 0 0 0 0
+InternalResponseStage 0 0 153 0 0
+HintedHandoff 0 0 2 0 0
+Message type Dropped
+RANGE_SLICE 0
+READ_REPAIR 0
+BINARY 0
+READ 0
+MUTATION 87655
+_TRACE 0
+REQUEST_RESPONSE 0
+comet-mvs02:/dsc-cassandra-1.2.6# ./bin/nodetool tpstats
+Pool Name Active Pending Completed Blocked All time blocked
+ReadStage 0 0 868 0 0
+RequestResponseStage 0 0 3919665 0 0
+MutationStage 0 0 8177325 0 0
+ReadRepairStage 0 0 113 0 0
+ReplicateOnWriteStage 0 0 0 0 0
+GossipStage 0 0 9624 0 0
+AntiEntropyStage 0 0 0 0 0
+MigrationStage 0 0 2666 0 0
+MemtablePostFlusher 0 0 7869 0 0
+FlushWriter 0 0 4273 0 1179
+MiscStage 0 0 0 0 0
+commitlog_archiver 0 0 0 0 0
+InternalResponseStage 0 0 215 0 0
+HintedHandoff 0 0 8 0 0
+Message type Dropped
+RANGE_SLICE 0
+READ_REPAIR 0
+BINARY 0
+READ 0
+MUTATION 531988
+_TRACE 0
+REQUEST_RESPONSE 0
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+qa-resolved
+Environment:
+redhat
+Attachment number:
+0
+Assignee:
+Russ Hatch
+Reporter:
+James Lee
+Create date:
+22/Jul/13 11:19
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Jan/14 21:26

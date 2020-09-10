@@ -1,0 +1,70 @@
+Summary:
+PDFTextStripper.isParagraphSeparation(...)
+Description:
+PDFTextStripper.isParagraphSeparation(...) seems to have an issue with how it finds Y text indentation.
+PROBLEM:
+I believe the issue is due to precision in the the following logic:
+            float yGap = Math.abs(position.getTextPosition().getYDirAdj()-
+                    lastPosition.getTextPosition().getYDirAdj());
+            float xGap = (position.getTextPosition().getXDirAdj()-
+                    lastLineStartPosition.getTextPosition().getXDirAdj());
+
+            if(yGap > (getDropThreshold()*maxHeightForLine))
+            {
+                        result = true;
+yGap has a precision to 1000th+, while (getDropThreshold()*maxHeightForLine) has a precision to 100,000th. Resulting in the following comparison (example):
+16.018 > 16.018005
+which evaluates to "True". However 16.018 > 16.018 would evaluate to "False".
+EFFECT OF THE PROBLEM:
+every line in the output is marked as "isParagraphStart = true" and "writeParagraphEnd() ... = true".
+I.E.
+NEW_LINE
+PARAGRAPH_START PDFBox has been designed to represent PDF documents using familiar object-oriented paradigms. The data NEW_LINE
+contained in a PDF document is a collection of basic object types: arrays, booleans, dictionaries, numbers,|||NEW_LINE|||
+PARAGRAPH_END NEW_LINE
+PARAGRAPH_START strings and binary streams. PDFBox captures these basic object types in the org.pdfbox.cos package (the NEW_LINE
+COS Model). While it's possible to create any desired interactions with a PDF document using only these|||NEW_LINE|||
+PARAGRAPH_END NEW_LINE
+In the source PDF these lines appear as such:
+"PDFBox has been designed to represent PDF documents using familiar object-oriented paradigms. The data
+contained in a PDF document is a collection of basic object types: arrays, booleans, dictionaries, numbers,
+strings and binary streams. PDFBox captures these basic object types in the org.pdfbox.cos package (the
+COS Model). While it's possible to create any desired interactions with a PDF document using only these"
+MY WORKAROUND:
+NOTE: there is a small performance hit with this workaround.
+  float yGap = Math.abs(position.getTextPosition().getYDirAdj()
+  - lastPosition.getTextPosition().getYDirAdj());
+ 
+  DecimalFormat df = new DecimalFormat("#.00");
+  float yGapTruncated = Float.valueOf(df.format(yGap));
+ 
+  float newYVal = Float.valueOf(df.format(getDropThreshold()
+  * maxHeightForLine));
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+1.8.8, 2.0.0
+Fix_version:
+1.8.9, 2.0.0
+Component:
+Text extraction
+Label:
+patch
+Environment:
+eclipse
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Yuri Burrows
+Create date:
+31/Jan/14 15:39
+Update date:
+28/Mar/15 14:10
+Resolved date:
+21/Dec/14 16:06

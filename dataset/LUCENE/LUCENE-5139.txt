@@ -1,0 +1,47 @@
+Summary:
+ArrayIndexOutOfBoundsException in FacetsAccumulator.accumulate while indexing
+Description:
+It is a hard to reproduce problem, but I see it from time to time. I am indexing some 100k documents and while I am doing that, I use the search and facet module.
+In some cases, I get an AIOOBE on the FacetAccumulator.accumulate method. See for example this little stacktrace:
+java.lang.ArrayIndexOutOfBoundsException: 1400222
+at org.apache.lucene.facet.search.FastCountingFacetsAggregator.aggregate(FastCountingFacetsAggregator.java:87)
+at org.apache.lucene.facet.search.FacetsAccumulator.accumulate(FacetsAccumulator.java:167)
+at org.apache.lucene.facet.search.FacetsCollector.getFacetResults(FacetsCollector.java:214)
+at ...
+Some more detail:
+I have a index that is being written to by an IndexWriter. The index is searched by a SearcherManager that uses the same Directory. The searcherManager has a scheduled maybeRefresh each 1000ms. When refreshing, I also check whether the taxonomy has changed. If so, I replace it by the new one. I use this code:
+TaxonomyReader newReader = TaxonomyReader.openIfChanged( this.taxoReader );
+if ( newReader != null )
+{
+ this.taxoReader = newReader;
+ LOG.info( "Reopening taxonomyReader because it has changed!" );
+}
+I will try to make it more reproducable; but maybe someone already has an idea on what might trigger this.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+4.4
+Fix_version:
+None
+Component:
+modules/facet
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Rob Audenaerde
+Create date:
+26/Jul/13 09:32
+Update date:
+16/Dec/13 09:39
+Resolved date:
+16/Dec/13 09:39

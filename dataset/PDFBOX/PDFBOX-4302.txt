@@ -1,0 +1,45 @@
+Summary:
+ToUnicode CMap is not written correctly when the entry count is just 100.
+Description:
+The following warning log is output when I execute attached PDFSample.java.
+org.apache.pdfbox.pdmodel.font.PDFont <init>
+WARN: Invalid ToUnicode CMap in font AAKCFF+IPAMincho
+org.apache.pdfbox.pdmodel.font.PDType0Font toUnicode
+WARN: No Unicode mapping for CID+598 (598) in font AAKCFF+IPAMincho
+:
+This program creates a simple japanese pdf and read the image.
+This program reads a font file. You can download the file from the following URL.
+https://ipafont.ipa.go.jp/old/ipafont/download.html#en
+I investigated the problem and found a bug in ToUnicodeWriter class.
+In writeTo method, a loop count in a operator is calculated by the following line. But the count will be 0 if the srcFrom size is just 100.
+int count = batch == batchCount - 1 ? srcFrom.size() % 100 : 100;
+I changed this line to below and I confirmed that the problem was resolved.
+int count = batch == batchCount - 1 ? srcFrom.size() - 100 * batch : 100;
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+2.0.11
+Fix_version:
+2.0.12, 3.0.0 PDFBox
+Component:
+PDModel
+Label:
+None
+Environment:
+windows 10
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Atsushi Doita
+Create date:
+28/Aug/18 09:50
+Update date:
+05/Oct/18 04:53
+Resolved date:
+30/Aug/18 17:02

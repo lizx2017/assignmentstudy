@@ -1,0 +1,78 @@
+Summary:
+Printjob crashes AIR Debug Launcher
+Description:
+When printing a bitmap image from a display object on an application built to use a desktop AIR PC app, Adobe AIR Debug Launcher stops working - with no errors in the debug console window.
+This happens on Air 3.4 and 3.1
+I have tried many resolutions, but found other people have a similar problem, none of the online solutions such as waiting for the stage sprites to be complete etc, revalidating the display objects or delaying printing of visible bitmaps onscreen using a timer help at all.
+I have noticed a key difference which may help find the problem, I first built a prototype using the following code.
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx"
+width="1920" height="1080">
+<fx:Script>
+<![CDATA[
+import flash.printing.*;
+function printMe():void
+{
+trace("printing");
+test.test2('hi there matey');
+var pj:PrintJob = new PrintJob();
+pj.selectPaperSize(PaperSize.LEGAL);
+pj.orientation = PrintJobOrientation.LANDSCAPE;
+pj.showPageSetupDialog();
+//pj.pixelsPerInch = 300;
+trace("dpi="+pj.maxPixelsPerInch);
+if (derek.height > pj.pageHeight)
+{ derek.height = pj.pageHeight; }
+if (derek.width > pj.pageWidth)
+{ derek.width = pj.pageWidth; }
+derek.validateNow();
+pj.jobName = "Flash test print";
+var started:Boolean = pj.start2(null, false);
+if(started)
+{ pj.addPage(this.derek); pj.send(); }
+;
+pj = null;
+}
+]]>
+</fx:Script>
+<fx:Declarations>
+<!-- Place non-visual elements (e.g., services, value objects) here -->
+</fx:Declarations>
+<s:Button x="29" y="29" label="Button" click="printMe()"/>
+<s:Image id="derek" x="516" y="337" source="example.jpg"/>
+</s:WindowedApplication>
+This worked ok, printing to the Microsoft XPS document creator. I then built the code into a more complex app that uses "States" and this is where the problem began.Seems to happen if the application has multiple "States" using mxml - an app with a single state causes no issues.
+My more complex app runs fine in every other way, has no errors etc and triggers a version of the above function - what is strange and impossible to diagnose is because the crash occurs with no warnings on compilation either - it happens only at runtime - also tried exporting as a .air file too, same happens with the runtime version as well as the debug app. The crash occurs after the page properties are selected using the print dialog, no error appears and the AIR debug crashes, Flash Builder remains running though, oblivious to any issues.
+(I also tried outputting a PDF too, just in case the Microsoft printing method was faulty) same issue.
+start2 command is being used. Also happens if the app shows the print properties dialog too. I also tried the standard printjob methods and had the same problems.
+Crash dump file is available here... https://www.dropbox.com/s/arktxqhsabwkyze/adl.exe.68800.zip
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Apache Flex 4.9.0
+Fix_version:
+Apache Flex Next
+Component:
+Print Management
+Label:
+air print printJob p
+Environment:
+Windows 7 x64, Flash Builder 4.6, Intel Core 
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Derek Clifford Foley
+Create date:
+20/Feb/13 19:03
+Update date:
+20/Feb/13 22:21
+Resolved date:
+

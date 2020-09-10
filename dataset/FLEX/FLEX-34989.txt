@@ -1,0 +1,71 @@
+Summary:
+String literals cross-compile incorrectly
+Description:
+String literals containing escaped quotes and unicode characters compile incorrectly.
+AS input:
+public static function test1():String {
+ return " ' \" ";
+}
+public static function test2():String {
+ return ' \' " ';
+}
+public static function test3():String {
+ return "\u2028";
+}
+Incorrect JS output:
+WeaveTest.test1 = function() {
+  return " ' " ";
+};
+WeaveTest.test2 = function() {
+  return ' ' " ';
+};
+WeaveTest.test3 = function() {
+  return "
+";
+};
+Error messages:
+Dec 11, 2015 3:23:30 PM com.google.javascript.jscomp.LoggerErrorManager println
+SEVERE: C:\Weave\WeaveJS\bin\js-debug\WeaveTest.js:74: ERROR - Parse error. Unterminated string literal
+  return " ' " ";
+               ^
+
+Dec 11, 2015 3:27:44 PM com.google.javascript.jscomp.LoggerErrorManager println
+SEVERE: C:\Weave\WeaveJS\bin\js-debug\WeaveTest.js:74: ERROR - Parse error. Unterminated string literal
+  return ' ' " ';
+             ^
+
+Dec 11, 2015 2:27:32 PM com.google.javascript.jscomp.LoggerErrorManager println
+SEVERE: /home/pkovac/Source/Weave/WeaveJS/bin/js-debug/weavejs/util/StandardLib.js:313: ERROR - Parse error. Unterminated string literal
+   return " 
+";
+That last error only appears when building on Linux.
+It looks like the offending code is getStringLiteralContent() in JSGeneratingReducer.java:
+https://github.com/apache/flex-falcon/blob/808fd1601a0228883b06d061d0f6bd101888284e/compiler.js/src/org/apache/flex/compiler/internal/as/codegen/JSGeneratingReducer.java#L1865
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Apache FlexJS 0.5.0
+Fix_version:
+Apache FalconJX 0.6.
+Component:
+Falcon, FlexJS
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Harui
+Reporter:
+Andy Dufilie
+Create date:
+11/Dec/15 20:30
+Update date:
+21/Dec/15 19:47
+Resolved date:
+21/Dec/15 19:47

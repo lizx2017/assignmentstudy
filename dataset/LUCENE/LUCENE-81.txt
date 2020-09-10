@@ -1,0 +1,76 @@
+Summary:
+Escape bug
+Description:
+package cz.finesoft.socd;
+import junit.framework.*;
+import org.apache.lucene.index.*;
+import org.apache.lucene.analysis.*;
+import org.apache.lucene.analysis.standard.*;
+import org.apache.lucene.store.*;
+import org.apache.lucene.document.*;
+import org.apache.lucene.search.*;
+import org.apache.lucene.queryParser.*;
+/**
+Escape bug. Please report solutions on lzap@root.cz, thanks.
+Here is the description:
+*
+When searching for (1) everything is ok. But let`s search for: (?)
+YES! Nothing found! It`s same with \" and maybe other escaped characters.
+*
+User: Lukas Zapletal
+Date: Feb 1, 2003
+*
+JUnit test case follows:
+*/
+public class juEscapeBug extends TestCase {
+Directory dir = new RAMDirectory();
+String testText = "This is a test. (abc) Is there a bug OR not? \"Question\"!";
+public juEscapeBug(String tn)
+{ super(tn); }
+protected void setUp() throws Exception
+{ IndexWriter writer = new IndexWriter(dir, new SimpleAnalyzer(), true); Document doc = new Document(); doc.add(Field.Text("contents", testText)); writer.addDocument(doc); writer.optimize(); writer.close(); }
+private boolean doQuery(String queryString) throws Exception
+{ Searcher searcher = new IndexSearcher(dir); Analyzer analyzer = new StandardAnalyzer(); Query query = QueryParser.parse(queryString, "contents", analyzer); Hits hits = searcher.search(query); searcher.close(); return (hits.length() == 1); }
+public void testBugOk1() throws Exception
+{ assertTrue(doQuery("Test")); }
+public void testBugOk2() throws Exception
+{ assertFalse(doQuery("This is not there")); }
+public void testBugOk3() throws Exception
+{ assertTrue(doQuery("abc")); }
+public void testBugOk4() throws Exception
+{ assertTrue(doQuery("\\(abc\\)")); }
+public void testBugHere1() throws Exception
+{ assertTrue(doQuery("\\(a?c\\)")); // BUG HERE !!! }
+public void testBugHere2() throws Exception
+{ assertTrue(doQuery("\\(a*\\)")); // BUG HERE !!! }
+public void testBugHere3() throws Exception
+{ assertTrue(doQuery("\\\"qu*on\\\"")); // BUG HERE !!! }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Incomplete
+Affects_version:
+1.2
+Fix_version:
+None
+Component:
+core/queryparser
+Label:
+None
+Environment:
+windows xp
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Lukas Zapletal
+Create date:
+03/Feb/03 00:12
+Update date:
+27/May/06 01:36
+Resolved date:
+27/May/06 01:36

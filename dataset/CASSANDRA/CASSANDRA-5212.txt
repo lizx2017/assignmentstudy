@@ -1,0 +1,137 @@
+Summary:
+Unable to start when using Ec2Snitch
+Description:
+Hello, we're using vanilla Cassandra in an EC2 environment and I just tested upgrading from 1.2.0 to 1.2.1 on two test instances. Cassandra fails to start because it's unable to load the Ec2Snitch. Version 1.2.0 was working OK. I have tried this on uninitialized/empty instances and received the same result. Cassandra successfully starts when switching to SimpleSnitch. Log output is below. We're using the official debian package from apache.org. Please let me know if you need any more details, thanks!
+output.log
+ERROR 21:25:06,684 Fatal configuration error
+org.apache.cassandra.exceptions.ConfigurationException: Error instantiating snitch class 'org.apache.cassandra.locator.Ec2Snitch'.
+ at org.apache.cassandra.utils.FBUtilities.construct(FBUtilities.java:475)
+ at org.apache.cassandra.config.DatabaseDescriptor.createEndpointSnitch(DatabaseDescriptor.java:525)
+ at org.apache.cassandra.config.DatabaseDescriptor.loadYaml(DatabaseDescriptor.java:338)
+ at org.apache.cassandra.config.DatabaseDescriptor.<clinit>(DatabaseDescriptor.java:122)
+ at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:151)
+ at org.apache.cassandra.service.CassandraDaemon.init(CassandraDaemon.java:315)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+ at java.lang.reflect.Method.invoke(Method.java:616)
+ at org.apache.commons.daemon.support.DaemonLoader.load(DaemonLoader.java:212)
+Caused by: java.lang.reflect.InvocationTargetException
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:57)
+ at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+ at java.lang.reflect.Constructor.newInstance(Constructor.java:532)
+ at org.apache.cassandra.utils.FBUtilities.construct(FBUtilities.java:457)
+ ... 10 more
+Caused by: java.lang.ExceptionInInitializerError
+ at org.apache.cassandra.locator.Ec2Snitch.<init>(Ec2Snitch.java:65)
+ ... 15 more
+Caused by: java.lang.RuntimeException: Unable to read cassandra-rackdc.properties
+ at org.apache.cassandra.locator.SnitchProperties.<clinit>(SnitchProperties.java:39)
+ ... 16 more
+Caused by: java.lang.NullPointerException
+ at java.util.Properties$LineReader.readLine(Properties.java:435)
+ at java.util.Properties.load0(Properties.java:354)
+ at java.util.Properties.load(Properties.java:342)
+ at org.apache.cassandra.locator.SnitchProperties.<clinit>(SnitchProperties.java:35)
+ ... 16 more
+Error instantiating snitch class 'org.apache.cassandra.locator.Ec2Snitch'.
+Fatal configuration error; unable to start server.  See log for stacktrace.
+Service exit with a return value of 1
+system.log
+INFO [main] 2013-01-31 21:25:05,016 CassandraDaemon.java (line 123) JVM vendor/version: OpenJDK 64-Bit Server VM/1.6.0_24
+<SNIP>
+ERROR [main] 2013-01-31 21:24:52,028 DatabaseDescriptor.java (line 509) Fatal configuration error
+org.apache.cassandra.exceptions.ConfigurationException: Error instantiating snitch class 'org.apache.cassandra.locator.Ec2Snitch'.
+ at org.apache.cassandra.utils.FBUtilities.construct(FBUtilities.java:475)
+ at org.apache.cassandra.config.DatabaseDescriptor.createEndpointSnitch(DatabaseDescriptor.java:525)
+ at org.apache.cassandra.config.DatabaseDescriptor.loadYaml(DatabaseDescriptor.java:338)
+ at org.apache.cassandra.config.DatabaseDescriptor.<clinit>(DatabaseDescriptor.java:122)
+ at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:151)
+ at org.apache.cassandra.service.CassandraDaemon.init(CassandraDaemon.java:315)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+ at java.lang.reflect.Method.invoke(Method.java:616)
+ at org.apache.commons.daemon.support.DaemonLoader.load(DaemonLoader.java:212)
+Caused by: java.lang.reflect.InvocationTargetException
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:57)
+ at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+ at java.lang.reflect.Constructor.newInstance(Constructor.java:532)
+ at org.apache.cassandra.utils.FBUtilities.construct(FBUtilities.java:457)
+ ... 10 more
+Caused by: java.lang.ExceptionInInitializerError
+ at org.apache.cassandra.locator.Ec2Snitch.<init>(Ec2Snitch.java:65)
+ ... 15 more
+Caused by: java.lang.RuntimeException: Unable to read cassandra-rackdc.properties
+ at org.apache.cassandra.locator.SnitchProperties.<clinit>(SnitchProperties.java:39)
+ ... 16 more
+Caused by: java.lang.NullPointerException
+ at java.util.Properties$LineReader.readLine(Properties.java:435)
+ at java.util.Properties.load0(Properties.java:354)
+ at java.util.Properties.load(Properties.java:342)
+ at org.apache.cassandra.locator.SnitchProperties.<clinit>(SnitchProperties.java:35)
+ ... 16 more
+<SNIP>
+ INFO [main] 2013-01-31 21:25:06,656 DatabaseDescriptor.java (line 267) Global memtable threshold is enabled at 407MB
+ERROR [main] 2013-01-31 21:25:06,684 DatabaseDescriptor.java (line 509) Fatal configuration error
+org.apache.cassandra.exceptions.ConfigurationException: Error instantiating snitch class 'org.apache.cassandra.locator.Ec2Snitch'.
+ at org.apache.cassandra.utils.FBUtilities.construct(FBUtilities.java:475)
+ at org.apache.cassandra.config.DatabaseDescriptor.createEndpointSnitch(DatabaseDescriptor.java:525)
+ at org.apache.cassandra.config.DatabaseDescriptor.loadYaml(DatabaseDescriptor.java:338)
+ at org.apache.cassandra.config.DatabaseDescriptor.<clinit>(DatabaseDescriptor.java:122)
+ at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:151)
+ at org.apache.cassandra.service.CassandraDaemon.init(CassandraDaemon.java:315)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+ at java.lang.reflect.Method.invoke(Method.java:616)
+ at org.apache.commons.daemon.support.DaemonLoader.load(DaemonLoader.java:212)
+Caused by: java.lang.reflect.InvocationTargetException
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:57)
+ at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+ at java.lang.reflect.Constructor.newInstance(Constructor.java:532)
+ at org.apache.cassandra.utils.FBUtilities.construct(FBUtilities.java:457)
+ ... 10 more
+Caused by: java.lang.ExceptionInInitializerError
+ at org.apache.cassandra.locator.Ec2Snitch.<init>(Ec2Snitch.java:65)
+ ... 15 more
+Caused by: java.lang.RuntimeException: Unable to read cassandra-rackdc.properties
+ at org.apache.cassandra.locator.SnitchProperties.<clinit>(SnitchProperties.java:39)
+ ... 16 more
+Caused by: java.lang.NullPointerException
+ at java.util.Properties$LineReader.readLine(Properties.java:435)
+ at java.util.Properties.load0(Properties.java:354)
+ at java.util.Properties.load(Properties.java:342)
+ at org.apache.cassandra.locator.SnitchProperties.<clinit>(SnitchProperties.java:35)
+ ... 16 more
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Vijay
+Reporter:
+Jared Biel
+Create date:
+31/Jan/13 21:37
+Update date:
+16/Apr/19 09:32
+Resolved date:
+01/Feb/13 20:38

@@ -1,0 +1,46 @@
+Summary:
+Compiling with static-linked Flex 3.5 automation tools causes memory leak on TextInput controls
+Description:
+To reproduce:
+I've attached an example application that demonstrates the leak. I use a weak-keyed dictionary to generate an object instance list on some runtime-created title windows, each with a single TextInput as a child (this seems to be key). As the windows close, a strong-reference event listener is removed, allowing the weak key to be cleaned up, and the object list is updated to show which objects have yet to be GC'd.
+If you compile without the automation libraries, everything GC's correctly.
+If you compile WITH the automation libraries (specifically the automation.swc and automation-agent.swc libraries), the windows are never cleaned up.
+1. Using the attached flex project, compile first with the default .actionScriptProperties file to see the correct behavior
+2. Click the "Popup" button to generate TitleWindows. You'll see it added to the list in the background
+3. As you close the title windows (click the "X"), the list in the background will update, removing the object that was removed.
+4. Now compile with the default automation.actionScriptProperties (contains the statically linked automation libraries)
+5. Follow steps 2 & 3. You'll notice the title window instances can never be GC'd. Profiling the
+Expected Results:
+Automation libs should not interfere with garbage collection
+Actual Results:
+Automation libs prevents GC on IFocusManagerComponents
+Notes:
+I believe this is due to a strong-ref event listener in TextFieldAutomationHelper.as on line 94. Changing this to weak allows the objects to GC correctly, but I haven't had a chance to test playback automation with it yet. I've also attached this diff as a patch.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Incomplete
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Active Screen
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+15/May/10 00:17
+Update date:
+11/Aug/11 02:13
+Resolved date:
+29/Jan/12 09:52

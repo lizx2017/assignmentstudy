@@ -1,0 +1,65 @@
+Summary:
+Log splitting doesn't prevent RS creating new hlog file
+Description:
+Here is something weird happened to my cluster. When the master recovered, it thought RS was dead by mistake and SSH processed it. Four hlog files were split and 4 regions were reassigned.
+Later on when the RS tried to report status, it got YouAreDeadException from master. Master tried to recover it again. Now SSH split one more hlog file, assigned 0 more extra region.
+Now the question is how come is the extra log file? I think it caused a data loss (one row) in my case. How can we prevent it? I can add a checking in the master to make sure a RS is really dead before marking it dead during recovery since it may be slow in reporting to the new master. But this is not a proper fix. A proper fix should be in the RS side, not creating the extra hlog file. Is this doable?
+Here is the related master log. The RS log does not have much thing interested.
+2013-10-20 17:40:33,025 INFO  [master:e1119:36000] master.MasterFileSystem: Log folder hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312 doesn't belong to a known region server, splitting
+2013-10-20 17:40:33,432 INFO  [MASTER_SERVER_OPERATIONS-e1119:36000-0] handler.ServerShutdownHandler: Splitting logs for e1521.halxg.cloudera.com,36020,1382314725312 before assignment.
+2013-10-20 17:40:33,461 DEBUG [MASTER_SERVER_OPERATIONS-e1119:36000-0] master.MasterFileSystem: Renamed region directory: hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312-splitting
+2013-10-20 17:40:33,462 INFO  [MASTER_SERVER_OPERATIONS-e1119:36000-0] master.SplitLogManager: dead splitlog workers [e1521.halxg.cloudera.com,36020,1382314725312]
+2013-10-20 17:40:33,467 INFO  [MASTER_SERVER_OPERATIONS-e1119:36000-0] master.SplitLogManager: started splitting 3 logs in [hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312-splitting]
+2013-10-20 17:40:36,157 DEBUG [main-EventThread] wal.HLogSplitter: Archived processed log hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312-splitting/e1521.halxg.cloudera.com%2C36020%2C1382314725312.1382315954499 to hdfs://e1119.halxg.cloudera.com:35802/hbase/oldWALs/e1521.halxg.cloudera.com%2C36020%2C1382314725312.1382315954499
+2013-10-20 17:40:37,357 DEBUG [main-EventThread] wal.HLogSplitter: Archived processed log hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312-splitting/e1521.halxg.cloudera.com%2C36020%2C1382314725312.1382315934942 to hdfs://e1119.halxg.cloudera.com:35802/hbase/oldWALs/e1521.halxg.cloudera.com%2C36020%2C1382314725312.1382315934942
+2013-10-20 17:40:38,889 DEBUG [main-EventThread] wal.HLogSplitter: Archived processed log hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312-splitting/e1521.halxg.cloudera.com%2C36020%2C1382314725312.1382315971393 to hdfs://e1119.halxg.cloudera.com:35802/hbase/oldWALs/e1521.halxg.cloudera.com%2C36020%2C1382314725312.1382315971393
+2013-10-20 17:40:38,906 INFO  [MASTER_SERVER_OPERATIONS-e1119:36000-0] master.SplitLogManager: finished splitting (more than or equal to) 255322969 bytes in 3 log files in [hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312-splitting] in 5439ms
+2013-10-20 17:40:38,907 INFO  [MASTER_SERVER_OPERATIONS-e1119:36000-0] handler.ServerShutdownHandler: Reassigning 4 region(s) that e1521.halxg.cloudera.com,36020,1382314725312 was carrying (and 0 regions(s) that were opening on this server)
+2013-10-20 17:40:39,269 DEBUG [MASTER_SERVER_OPERATIONS-e1119:36000-0] master.DeadServer: Finished processing e1521.halxg.cloudera.com,36020,1382314725312
+2013-10-20 17:40:39,269 INFO  [MASTER_SERVER_OPERATIONS-e1119:36000-0] handler.ServerShutdownHandler: Finished processing of shutdown of e1521.halxg.cloudera.com,36020,1382314725312
+2013-10-20 17:40:46,764 DEBUG [FifoRpcScheduler.handler1-thread-11] master.ServerManager: Server REPORT rejected; currently processing e1521.halxg.cloudera.com,36020,1382314725312 as dead server
+2013-10-20 17:40:46,871 ERROR [FifoRpcScheduler.handler1-thread-13] master.HMaster: Region server e1521.halxg.cloudera.com,36020,1382314725312 reported a fatal error:
+ABORTING region server e1521.halxg.cloudera.com,36020,1382314725312: org.apache.hadoop.hbase.YouAreDeadException: Server REPORT rejected; currently processing e1521.halxg.cloudera.com,36020,1382314725312 as dead server
+org.apache.hadoop.hbase.YouAreDeadException: org.apache.hadoop.hbase.YouAreDeadException: Server REPORT rejected; currently processing e1521.halxg.cloudera.com,36020,1382314725312 as dead server
+Caused by: org.apache.hadoop.hbase.ipc.RemoteWithExtrasException(org.apache.hadoop.hbase.YouAreDeadException): org.apache.hadoop.hbase.YouAreDeadException: Server REPORT rejected; currently processing e1521.halxg.cloudera.com,36020,1382314725312 as dead server
+2013-10-20 17:40:46,872 ERROR [FifoRpcScheduler.handler1-thread-14] master.HMaster: Region server e1521.halxg.cloudera.com,36020,1382314725312 reported a fatal error:
+ABORTING region server e1521.halxg.cloudera.com,36020,1382314725312: IOE in log roller
+java.io.FileNotFoundException: File does not exist: hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312/e1521.halxg.cloudera.com%2C36020%2C1382314725312.1382315971393
+2013-10-20 17:40:48,075 ERROR [FifoRpcScheduler.handler1-thread-15] master.HMaster: Region server e1521.halxg.cloudera.com,36020,1382314725312 reported a fatal error:
+ABORTING region server e1521.halxg.cloudera.com,36020,1382314725312: regionserver:36020-0x1419fea35edda89 regionserver:36020-0x1419fea35edda89 received expired from ZooKeeper, aborting
+2013-10-20 17:53:15,272 INFO  [master:e1119:36000] master.MasterFileSystem: Log folder hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312 doesn't belong to a known region server, splitting
+2013-10-20 17:53:15,806 INFO  [MASTER_SERVER_OPERATIONS-e1119:36000-0] handler.ServerShutdownHandler: Splitting logs for e1521.halxg.cloudera.com,36020,1382314725312 before assignment.
+2013-10-20 17:53:15,825 DEBUG [MASTER_SERVER_OPERATIONS-e1119:36000-0] master.MasterFileSystem: Renamed region directory: hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312-splitting
+2013-10-20 17:53:15,825 INFO  [MASTER_SERVER_OPERATIONS-e1119:36000-0] master.SplitLogManager: dead splitlog workers [e1521.halxg.cloudera.com,36020,1382314725312]
+2013-10-20 17:53:15,831 INFO  [MASTER_SERVER_OPERATIONS-e1119:36000-0] master.SplitLogManager: started splitting 1 logs in [hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312-splitting]
+2013-10-20 17:53:15,998 DEBUG [main-EventThread] wal.HLogSplitter: Archived processed log hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312-splitting/e1521.halxg.cloudera.com%2C36020%2C1382314725312.1382316046805 to hdfs://e1119.halxg.cloudera.com:35802/hbase/oldWALs/e1521.halxg.cloudera.com%2C36020%2C1382314725312.1382316046805
+2013-10-20 17:53:16,014 INFO  [MASTER_SERVER_OPERATIONS-e1119:36000-0] master.SplitLogManager: finished splitting (more than or equal to) 15 bytes in 1 log files in [hdfs://e1119.halxg.cloudera.com:35802/hbase/WALs/e1521.halxg.cloudera.com,36020,1382314725312-splitting] in 183ms
+2013-10-20 17:53:16,015 INFO  [MASTER_SERVER_OPERATIONS-e1119:36000-0] handler.ServerShutdownHandler: Reassigning 0 region(s) that e1521.halxg.cloudera.com,36020,1382314725312 was carrying (and 0 regions(s) that were opening on this server)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.96.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Jimmy Xiang
+Create date:
+21/Oct/13 21:18
+Update date:
+16/Dec/13 18:46
+Resolved date:
+22/Oct/13 21:24

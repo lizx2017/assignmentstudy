@@ -1,0 +1,59 @@
+Summary:
+Unicode characters displayed with wrong glyps because of interpretation as 8 bit strings
+Description:
+the file Characters_Arial.pdf shows that some unicode values are displayed with wrong glyphs, for example the u2020 which is displayed as two spaces. Another Issue is that invalid unicode characters are not handled correctly. They should display
+the invalid character box or something like that. This is demonstrated with a modified version
+of the file.
+The method processEncodedText is called when the texts of the document are printed
+int codeLength = 1;
+for( int i=0; i<string.length; i+=codeLength)
+{
+// Decode the value to a Unicode character
+codeLength = 1;
+String c = font.encode( string, i, codeLength );
+if( c == null && i+1<string.length)
+{ //maybe a multibyte encoding codeLength++; c = font.encode( string, i, codeLength ); }
+This code tries to determine if the values in variable 'string' are 8 or 16 bit values or even a mixture of both types of values <lol>.
+Everything works fine when variable 'string' contains 8 bit values, in most cases. If there is an invalid 8 bit value this character may be dropped together with the following character.
+The real problem occurs when the data in variable 'string' is encoded as 16 bit values. For many characters this works fine as the first byte is usually not a valid character:
+for example u0041 is first tried as char 00 with codeLength=1 an as there is no entry for unicode 0 in the font it will be re-tried with codeLength=2 and then interpreted as u0041.
+But what happens if the first byte of the 16 bit code is also a valid character code?
+to check this I created the file Characters_Arial_Changed.pdf where I simply changed the 16-bit string <0041> which displays 'A' to <4141> which is an invalid character in this font. I Also changed a 8-bit string nearby from (0041) to the value <4141>.
+Note that there are now two strings with the same value <4141> which have to be displayed in a different way.
+Acrobat Reader then shows the invalid character box for the 16 bit string and 'AA' for the 8 bit string above. PDFBox shows 'AA' for both strings.
+Problems are occuring with valid unicode character codes too: Unicode u2020 will be shown as two nice spaces in PDFBox where Adobe Reader shows the correct character.
+To guess that it is a 16 bit character when the first byte is an invalid character in the current font is the wrong way to handle the string values. If the variable 'string' contains 8 or 16 bit values can't be detected by analysing the values as the example shows.
+processEncodedText has to handle the data in variable 'string' as 16 bit values when the font which is used has an (unicode-)encoding which uses more than 256 characters, in all other cases it should be interpreted as 8 bit values!!!
+With an Unicode Font <4343> or (CC) should show the invalid character box, with an 8 bit font both values should show the text 'CC'. I have included this example in the file too.
+The Adobe documentation says about 8 or 16 bit values in strings for example:
+"When the current font is a Type 0 font whose Encoding entry is Identity-H or Identity-V, the string to be shown shall contain pairs of bytes representing CIDs, high-order byte first. When the current font is a CIDFont, the string to be shown shall contain pairs of bytes representing CIDs, high-order byte first. When the current font is a Type 2 CIDFont in which the CIDToGIDMap entry is Identity and if the TrueType font is embedded in the PDF file, the 2-byte CID values shall be identical glyph indices for the glyph descriptions in the TrueType font program."
+I guess depending on this information it has to be determined if the string is 8 or 16 bits!
+In my example pdf files the type 0 font has always the Indentity-H set as encoding and so the strings have to be en-/decoded as pure 16 bit strings.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.6.0
+Fix_version:
+2.0.0
+Component:
+Swing GUI
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Daniel Schwinn
+Create date:
+06/Apr/12 21:51
+Update date:
+17/Mar/16 19:07
+Resolved date:
+04/Aug/13 12:48

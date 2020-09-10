@@ -1,0 +1,54 @@
+Summary:
+ArrayIndexOutOfBoundsException in PagedBytes$Reader.fill
+Description:
+With a very large index (in our case > 10G), we are seeing exceptions like:
+java.lang.ArrayIndexOutOfBoundsException: -62400
+at org.apache.lucene.util.PagedBytes$Reader.fill(PagedBytes.java:116)
+at org.apache.lucene.search.FieldCacheImpl$BinaryDocValuesImpl$1.get(FieldCacheImpl.java:1342)
+at org.apache.lucene.search.join.TermsCollector$SV.collect(TermsCollector.java:106)
+at org.apache.lucene.search.Weight$DefaultBulkScorer.scoreAll(Weight.java:193)
+at org.apache.lucene.search.Weight$DefaultBulkScorer.score(Weight.java:163)
+at org.apache.lucene.search.BulkScorer.score(BulkScorer.java:35)
+at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:621)
+at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:309)
+The code in question is trying to allocate an array with a negative size. We believe the source of the error is in org.apache.lucene.search.FieldCacheImpl$BinaryDocValuesImpl$1.get where the following code occurs:
+final int pointer = (int) docToOffset.get(docID);
+if (pointer == 0)
+{ term.length = 0; } else { bytes.fill(term, pointer); }
+
+The cast to int will break if the (long) result of docToOffset.get is too large, and is unnecessary in the first place since bytes.fill takes a long as its second parameter.
+
+Proposed fix:
+
+final long pointer = docToOffset.get(docID);
+if (pointer == 0) { term.length = 0; }
+else
+{ bytes.fill(term, pointer); }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+4.10.4
+Fix_version:
+5.4.1, 5.5, 6.0
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Christine Poerschke
+Reporter:
+Michael Lawley
+Create date:
+24/Dec/15 00:52
+Update date:
+09/May/16 18:32
+Resolved date:
+11/Jan/16 15:29

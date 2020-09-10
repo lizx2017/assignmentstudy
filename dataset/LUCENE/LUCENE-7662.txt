@@ -1,0 +1,59 @@
+Summary:
+Index with missing files should throw CorruptIndexException
+Description:
+Similar to what we did in LUCENE-7592 for EOF, we should catch missing files and rethrow those as CorruptIndexException.
+If a particular codec can handle missing files, it should be proactive check for those optional files and not throw anything, so I think we can safely do this at SegmentReader or SegmentCoreReaders level.
+Stack trace copied from SOLR-10006:
+Caused by: java.nio.file.NoSuchFileException: /Users/Erick/apache/solrVersions/trunk/solr/example/cloud/node3/solr/eoe_shard1_replica1/data/index/_1_Lucene50_0.doc
+ at sun.nio.fs.UnixException.translateToIOException(UnixException.java:86)
+ at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:102)
+ at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:107)
+ at sun.nio.fs.UnixFileSystemProvider.newFileChannel(UnixFileSystemProvider.java:177)
+ at java.nio.channels.FileChannel.open(FileChannel.java:287)
+ at java.nio.channels.FileChannel.open(FileChannel.java:335)
+ at org.apache.lucene.store.MMapDirectory.openInput(MMapDirectory.java:238)
+ at org.apache.lucene.store.NRTCachingDirectory.openInput(NRTCachingDirectory.java:192)
+ at org.apache.solr.core.MetricsDirectoryFactory$MetricsDirectory.openInput(MetricsDirectoryFactory.java:334)
+ at org.apache.lucene.codecs.lucene50.Lucene50PostingsReader.<init>(Lucene50PostingsReader.java:81)
+ at org.apache.lucene.codecs.lucene50.Lucene50PostingsFormat.fieldsProducer(Lucene50PostingsFormat.java:442)
+ at org.apache.lucene.codecs.perfield.PerFieldPostingsFormat$FieldsReader.<init>(PerFieldPostingsFormat.java:292)
+ at org.apache.lucene.codecs.perfield.PerFieldPostingsFormat.fieldsProducer(PerFieldPostingsFormat.java:372)
+ at org.apache.lucene.index.SegmentCoreReaders.<init>(SegmentCoreReaders.java:109)
+ at org.apache.lucene.index.SegmentReader.<init>(SegmentReader.java:74)
+ at org.apache.lucene.index.ReadersAndUpdates.getReader(ReadersAndUpdates.java:143)
+ at org.apache.lucene.index.ReadersAndUpdates.getReadOnlyClone(ReadersAndUpdates.java:195)
+ at org.apache.lucene.index.StandardDirectoryReader.open(StandardDirectoryReader.java:103)
+ at org.apache.lucene.index.IndexWriter.getReader(IndexWriter.java:473)
+ at org.apache.lucene.index.DirectoryReader.open(DirectoryReader.java:103)
+ at org.apache.lucene.index.DirectoryReader.open(DirectoryReader.java:79)
+ at org.apache.solr.core.StandardIndexReaderFactory.newReader(StandardIndexReaderFactory.java:39)
+ at org.apache.solr.core.SolrCore.openNewSearcher(SolrCore.java:1958)
+ ... 12 more
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+6.4
+Fix_version:
+6.5, 7.0
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Mike Drob
+Create date:
+27/Jan/17 17:57
+Update date:
+22/May/17 18:03
+Resolved date:
+11/Feb/17 01:26

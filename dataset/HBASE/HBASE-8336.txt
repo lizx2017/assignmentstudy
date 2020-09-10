@@ -1,0 +1,38 @@
+Summary:
+PooledHTable may be returned multiple times to the same pool
+Description:
+I have recently observed a very strange issue with an application using HBase and HTablePool. After an investigation I have found that the root cause was the piece of code that was calling close() twice on the same HTableInterface instance retrieved from HTablePool (created with default policy).
+A closer look at the code revealed that PooledHTable.close() calls returnTable(), which, in turn, places the table back into the QUEUE of the pooled tables. No checking of any kind is done so it is possible to call it multiple times and place multiple references to the same HTable into the same pool.
+This creates a number of negative effects:
+pool grows on each close() call and eventually gets filled up with the references to the same HTable. From this moment the pool stops working as pool.
+multiple callers will get the same instance of HTable while expecting to have unique instances
+once the pool is full, next call to close() will result to the call to the real close() method of HTable. This will make HTable unusable as close() call may shutdown() the internal thread pool. From this moment other attempts to use this HTable will fail with RejectedExecutionException. And since the HTablePool will have additional references to that HTable, other users of the pool will just start failing on any call that leads to flushCommits()
+The problem was, obviously, triggered by bad code on our side. But I think the pool has to be protected. Probably the best way to fix it would be to implement a flag in PooledHTable that represent its state (leased/returned) and once close() is called, it would be "returned". From this moment any operations on this PooledHTable would result in something like IllegalStateException.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.95.0
+Fix_version:
+0.98.0, 0.95.1
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+samar
+Reporter:
+Nikolai Grigoriev
+Create date:
+12/Apr/13 16:04
+Update date:
+23/Sep/13 19:08
+Resolved date:
+22/May/13 20:24

@@ -1,0 +1,71 @@
+Summary:
+QueryNode#cloneTree produces a new tree where parents are not correctly set
+Description:
+The following unit test performs a sanity check on the QueryNode tree, checking that each node has the parent set to the same node it was retrieved from. After calling cloneTree, this check fails on the returned node, as the parents in the cloned node still point back into the original tree.
+import java.util.Arrays;
+import java.util.List;
+
+import org.apache.lucene.queryparser.flexible.core.nodes.BooleanQueryNode;
+import org.apache.lucene.queryparser.flexible.core.nodes.FieldQueryNode;
+import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
+import org.junit.Test;
+
+public class TestCloneTree {
+    @Test
+    public void testCloneTree() throws Exception {
+        QueryNode original = new BooleanQueryNode(Arrays.asList(
+                new FieldQueryNode(null, "a", 0, 0),
+                new FieldQueryNode(null, "b", 0, 0)));
+
+        sanityCheckQueryTree(original);
+
+        QueryNode cloned = original.cloneTree();
+
+        sanityCheckQueryTree(cloned);
+    }
+
+    private void sanityCheckQueryTree(QueryNode node) {
+        List<QueryNode> children = node.getChildren();
+        if (children != null) {
+            for (QueryNode child : children) {
+                // Matching what Lucene is using in QueryNodeImpl itself.
+                //noinspection ObjectEquality
+                if (child.getParent() != node) {
+                    throw new IllegalStateException("Sanity check failed for child: " + child + '\n' +
+                                                    "  Parent is: " + child.getParent() + '\n' +
+                                                    "  But we got to it via: " + node);
+                }
+
+                sanityCheckQueryTree(child);
+            }
+        }
+    }
+}
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+5.4.1
+Fix_version:
+None
+Component:
+modules/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Trejkaz
+Create date:
+29/Apr/16 01:01
+Update date:
+29/Apr/16 01:02
+Resolved date:
+

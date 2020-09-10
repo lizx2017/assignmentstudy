@@ -1,0 +1,78 @@
+Summary:
+FileStream position is updated incorrectly in FileMode.APPEND mode
+Description:
+When writing to a FileStream so that the new position would be a multiple of 4096, the position is increased twice (writing a byte advances from 4095 to 4097, writing 512 bytes advances from 3584 to 4608).
+Sample code:
+var cnt: int;
+var logfile: File=new File("c:/demo.txt");
+var logstream: FileStream=new FileStream();
+logstream.open(logfile, FileMode.WRITE);
+logstream.close();
+logstream.open(logfile, FileMode.APPEND);
+for (cnt=0; cnt<4096-2; cnt++)
+logstream.writeByte(0x41);
+trace(logstream.position);
+logstream.writeByte(0x42);
+trace(logstream.position);
+logstream.writeByte(0x43);
+trace(logstream.position);
+logstream.writeByte(0x44);
+trace(logstream.position);
+logstream.close();
+var x512: ByteArray=new ByteArray();
+for (cnt=0; cnt<512; cnt++)
+x512.writeByte(0x41);
+x512.position=0;
+logstream.open(logfile, FileMode.WRITE);
+logstream.close();
+logstream.open(logfile, FileMode.APPEND);
+for (cnt=0; cnt<7; cnt++)
+logstream.writeBytes(x512);
+trace(logstream.position); //now at 4096-512
+logstream.writeBytes(x512);
+trace(logstream.position); //now at 4096+512
+logstream.close();
+Actual output:
+4094
+4095
+4097
+4098
+—
+3584
+4608
+Expected output:
+4094
+4095
+4096
+4097
+—
+3584
+4096
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+Adobe Flex SDK 3.6 (
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+1. in debugger of FlexBuilder 3
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Milan Vandrovec
+Create date:
+15/May/13 18:02
+Update date:
+16/May/13 02:41
+Resolved date:
+16/May/13 02:41

@@ -1,0 +1,59 @@
+Summary:
+batch_mutate operations with CL=LOCAL_QUORUM throw TimeOutException when there aren't sufficient live nodes
+Description:
+We have a 2 DC setup with RF = 4. There are 2 nodes in each DC. Following is the keyspace definition:
+<snip>
+keyspaces:
+name: KeyspaceMetadata
+replica_placement_strategy: org.apache.cassandra.locator.NetworkTopologyStrategy
+strategy_options:
+DC1 : 2
+DC2 : 2
+replication_factor: 4
+</snip>
+I shutdown all except one node and waited for the live node to recognize that other nodes are dead. Following is the nodetool ring output on the live node:
+Address Status State Load Owns Token
+169579575332184635438912517119426957796
+10.17.221.19 Down Normal ? 29.20% 49117425183422571410176530597442406739
+10.17.221.17 Up Normal 81.64 KB 4.41% 56615248844645582918169246064691229930
+10.16.80.54 Down Normal ? 21.13% 92563519227261352488017033924602789201
+10.17.221.18 Down Normal ? 45.27% 169579575332184635438912517119426957796
+I expect UnavailableException when I send batch_mutate request to node that is up. However, it returned TimeOutException:
+TimedOutException()
+at org.apache.cassandra.thrift.Cassandra$batch_mutate_result.read(Cassandra.java:16493)
+at org.apache.cassandra.thrift.Cassandra$Client.recv_batch_mutate(Cassandra.java:916)
+at org.apache.cassandra.thrift.Cassandra$Client.batch_mutate(Cassandra.java:890)
+Following is the cassandra-topology.properties
+Cassandra Node IP=Data Center:Rack
+10.17.221.17=DC1:RAC1
+10.17.221.19=DC1:RAC2
+10.17.221.18=DC2:RAC1
+10.16.80.54=DC2:RAC2
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.5
+Component:
+None
+Label:
+None
+Environment:
+redhat
+Attachment number:
+0
+Assignee:
+Narendra Sharma
+Reporter:
+Narendra Sharma
+Create date:
+20/Apr/11 00:29
+Update date:
+16/Apr/19 09:33
+Resolved date:
+20/Apr/11 18:16

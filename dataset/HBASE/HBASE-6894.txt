@@ -1,0 +1,45 @@
+Summary:
+Adding metadata to a table in the shell is both arcane and painful
+Description:
+In production we have hundreds of tables w/ whack names like 'aliaserv', 'ashish_bulk', 'age_gender_topics', etc. It be grand if you could look in master UI and see stuff like owner, eng group responsible, miscellaneous description, etc.
+Now, HTD has support for this; each carries a dictionary. Whats a PITA though is adding attributes to the dictionary. Here is what seems to work on trunk (though I do not trust it is doing the right thing):
+hbase> create 'SOME_TABLENAME', {NAME => 'd', VERSION => 1, COMPRESSION => 'LZO'}
+hbase> # Here is how I added metadata
+hbase> disable 'SOME_TABLENAME'
+hbase> alter 'SOME_TABLENAME', METHOD => 'table_att', OWNER => 'SOMEON', CONFIG => {'ENVIRONMENT' => 'BLAH BLAH', 'SIZING' => 'The size should be between 0-10K most of the time with new URLs coming in and getting removed as they are processed unless the pipeline has fallen behind', 'MISCELLANEOUS' => 'Holds the list of URLs waiting to be processed in the parked page detection analyzer in ingestion pipeline.'}
+...
+describe...
+enable...
+The above doesn't work in 0.94. Complains about the CONFIG, the keyword we are using for the HTD dictionary.
+It works in 0.96 though I'd have to poke around some more to ensure it is doing the right thing.
+But this METHOD => 'table_att' stuff is really ugly.... can we fix it?
+And I can't add table attributes on table create seemingly.
+A little bit of thought and a bit of ruby could clean this all up.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.95.0
+Component:
+shell
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergey Shelukhin
+Reporter:
+stack
+Create date:
+28/Sep/12 05:14
+Update date:
+05/Aug/14 20:11
+Resolved date:
+07/Nov/12 21:04

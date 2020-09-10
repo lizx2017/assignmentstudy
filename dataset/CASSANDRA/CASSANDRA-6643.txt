@@ -1,0 +1,43 @@
+Summary:
+Limit user types to the keyspace they are defined in
+Description:
+I'm not 100% certain this is a bug.
+The current syntax for "alter type rename" requires the keyspace on the old and new table name (if a keyspace is not active). So, to rename the type 'foo' to 'bar', you have to issue this statement:
+ALTER TYPE ks.foo rename to ks.bar .
+As a result, this syntax will also allow renaming the type into another existing keyspace, which updates the metadata in system.schema_usertypes.
+I'm wondering if perhaps we can omit the second keyspace prefix and implicitly rename into the same keyspace.
+To reproduce:
+cqlsh> create keyspace user_types with replication = {'class':'SimpleStrategy', 'replication_factor':3} ;
+cqlsh> create keyspace user_types2 with replication = {'class':'SimpleStrategy', 'replication_factor':3} ;
+cqlsh> CREATE TYPE user_types.simple_type (user_number int);
+cqlsh> alter type user_types.simple_type rename to user_types2.simple_type;
+Renaming to another keyspace is also possible when a keyspace is active, like so:
+cqlsh:user_types> alter type simple_type rename to user_types2.simple_type;
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc1
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+java 1.7
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Russ Hatch
+Create date:
+31/Jan/14 01:29
+Update date:
+16/Apr/19 09:31
+Resolved date:
+16/May/14 13:57

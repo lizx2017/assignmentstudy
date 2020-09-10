@@ -1,0 +1,40 @@
+Summary:
+CQL3 don't validate that collections haven't more than 64K elements
+Description:
+This is somewhat similar to CASSANDRA-5355 but with a twist. When we serialize collections, not only does the size of the elements is limited to 64K, but the number of elements is too because it is also an unsigned short.
+Now the same argument than in CASSANDRA-5355 that collections are "places to denormalize small amounts of data" is true here too. So the fact that collections are limited to 64K elements is something I could live with. However, we don't validate that no more than 64K elements are inserted. And in fact, we can't validate it if the elements are added one by one.
+So in practice, you can insert more than 64K elements, but if you try to read it, you will only get back some subset of the collection. And the number of elements returned will correspond to the 2 last bytes of the real size (so a collection of 65536 elements will be returned as 1 element). Imo, that's more problematic.
+So since unfortunately we can't validate this at insertion, I suggest that as a first step we:
+document that limitation (in http://cassandra.apache.org/doc/cql3/CQL.html typically)
+when we read a collection that has > 64K elements, we detect it and when serializing that for the client, we:
+return as much as we can, i.e. the 64K first ones
+log a warning that something is wrong
+On the longer term, for 2.0, maybe we should just change the serialization format and use an int for the collection size, using an unsigned short was probably misguided. Of course that changes said serialization format so we have to bump the native protocol version for that (and thus can't do that in 1.2).
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.13
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+05/Apr/13 10:56
+Update date:
+16/Apr/19 09:32
+Resolved date:
+03/Dec/13 13:56

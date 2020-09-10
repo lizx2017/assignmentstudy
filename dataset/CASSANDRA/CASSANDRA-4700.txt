@@ -1,0 +1,64 @@
+Summary:
+cql 2 counter validations need to use default consistencylevel if none is explicitly given
+Description:
+i was trying to run cql 2 query
+cqlsh:stats> UPDATE Minutewise_Product_Stats SET '2LX:OQ:XYZ.com:664230591:1:totalView'='2LX:SOQ:XYZ.com:664230591:1:totalView'+1, '2LX:OQ:XYZ.com:664230591:1:keywordClick'='2LX:SOQ:xyz.com:664230591:1:keywordClick'+1 WHERE KEY='2017:4' ;
+WHEN I GOT this error
+ERROR 20:38:46,220 Error occurred during processing of message.
+java.lang.NullPointerException
+at org.apache.cassandra.cql.UpdateStatement.prepareRowMutations(UpdateStatement.java:151)
+at org.apache.cassandra.cql.UpdateStatement.prepareRowMutations(UpdateStatement.java:128)
+at org.apache.cassandra.cql.QueryProcessor.batchUpdate(QueryProcessor.java:245)
+at org.apache.cassandra.cql.QueryProcessor.processStatement(QueryProcessor.java:563)
+at org.apache.cassandra.cql.QueryProcessor.process(QueryProcessor.java:817)
+at org.apache.cassandra.thrift.CassandraServer.execute_cql_query(CassandraServer.java:1675)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3721)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:1)
+at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:184)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:722)
+attached is the patch file to fix this bug
+CQL2fix.patch
+diff --git a/src/java/org/apache/cassandra/cql/UpdateStatement.java b/src/java/org/apache/cassandra/cql/UpdateStatement.java
+index 3a47712..0caa61b 100644
+— a/src/java/org/apache/cassandra/cql/UpdateStatement.java
++++ b/src/java/org/apache/cassandra/cql/UpdateStatement.java
+@@ -146,8 +146,11 @@ public class UpdateStatement extends AbstractModification
+}
+CFMetaData metadata = validateColumnFamily(keyspace, columnFamily, hasCommutativeOperation);
+if (hasCommutativeOperation)
+cLevel.validateCounterForWrite(metadata);
++
++ if (hasCommutativeOperation) { + ConsistencyLevel currentCLevel = getConsistencyLevel(); + currentCLevel.validateCounterForWrite(metadata); + }
+QueryProcessor.validateKeyAlias(metadata, keyName);
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.6
+Component:
+None
+Label:
+None
+Environment:
+java
+Attachment number:
+0
+Assignee:
+Nitesh Kumar
+Reporter:
+Nitesh Kumar
+Create date:
+21/Sep/12 21:05
+Update date:
+16/Apr/19 09:32
+Resolved date:
+24/Sep/12 17:47

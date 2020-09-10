@@ -1,0 +1,70 @@
+Summary:
+The total number of regions was more than the actual region count after the hbck fix
+Description:
+1. I found the problem(some regions were multiply assigned) while running hbck to check the cluster's health. Here's the result:
+ERROR: Region test1,230778,1311216270050.fff783529fcd983043610eaa1cc5c2fe. is listed in META on region server 158-1-91-101:20020 but is multiply assigned to region servers 158-1-91-101:20020, 158-1-91-105:20020 
+ERROR: Region test1,252103,1311216293671.fff9ed2cb69bdce535451a07686c0db5. is listed in META on region server 158-1-91-101:20020 but is multiply assigned to region servers 158-1-91-101:20020, 158-1-91-105:20020 
+ERROR: Region test1,282187,1311216322104.ffff52782c0241a598b3e37ca8729da0. is listed in META on region server 158-1-91-103:20020 but is multiply assigned to region servers 158-1-91-103:20020, 158-1-91-105:20020 
+Summary: 
+  -ROOT- is okay. 
+    Number of regions: 1 
+    Deployed on: 158-1-91-105:20020 
+  .META. is okay. 
+    Number of regions: 1 
+    Deployed on: 158-1-91-103:20020 
+  test1 is okay. 
+    Number of regions: 25297 
+    Deployed on: 158-1-91-101:20020 158-1-91-103:20020 158-1-91-105:20020 
+14829 inconsistencies detected. 
+Status: INCONSISTENT 
+2. Then I tried to use "hbck -fix" to fix the problem. Everything seemed ok. But I found that the total number of regions reported by load balancer (35029) was more than the actual region count(25299) after the fixing.
+Here's the related logs snippet:
+2011-07-22 02:19:02,866 INFO org.apache.hadoop.hbase.master.LoadBalancer: Skipping load balancing.  servers=3 regions=25299 average=8433.0 mostloaded=8433 
+2011-07-22 03:06:11,832 INFO org.apache.hadoop.hbase.master.LoadBalancer: Skipping load balancing.  servers=3 regions=35029 average=11676.333 mostloaded=11677 leastloaded=11676
+3. I tracked one region's behavior during the time. Taking the region of "test1,282187,1311216322104.ffff52782c0241a598b3e37ca8729da0." as example:
+(1) It was assigned to "158-1-91-101" at first.
+(2) HBCK sent closing request to RegionServer. And RegionServer closed it silently without notice to HMaster.
+(3) The region was still carried by RS "158-1-91-103" which was known to HMaster.
+(4) HBCK will trigger a new assignment.
+The fact is, the region was assigned again, but the old assignment information still remained in AM#regions,AM#servers.
+That's why the problem of "region count was larger than the actual number" occurred.
+Line 178967: 2011-07-22 02:47:51,247 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling new unassigned node: /hbase/unassigned/ffff52782c0241a598b3e37ca8729da0 (region=test1,282187,1311216322104.ffff52782c0241a598b3e37ca8729da0., server=HBCKServerName, state=M_ZK_REGION_OFFLINE)
+Line 178968: 2011-07-22 02:47:51,247 INFO org.apache.hadoop.hbase.master.AssignmentManager: Handling HBCK triggered transition=M_ZK_REGION_OFFLINE, server=HBCKServerName, region=ffff52782c0241a598b3e37ca8729da0
+Line 178969: 2011-07-22 02:47:51,248 INFO org.apache.hadoop.hbase.master.AssignmentManager: HBCK repair is triggering assignment of region=test1,282187,1311216322104.ffff52782c0241a598b3e37ca8729da0.
+Line 178970: 2011-07-22 02:47:51,248 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan was found (or we are ignoring an existing plan) for test1,282187,1311216322104.ffff52782c0241a598b3e37ca8729da0. so generated a random one; hri=test1,282187,1311216322104.ffff52782c0241a598b3e37ca8729da0., src=, dest=158-1-91-101,20020,1311231878544; 3 (online=3, exclude=null) available servers
+Line 178971: 2011-07-22 02:47:51,248 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region test1,282187,1311216322104.ffff52782c0241a598b3e37ca8729da0. to 158-1-91-101,20020,1311231878544
+Line 178983: 2011-07-22 02:47:51,285 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=158-1-91-101,20020,1311231878544, region=ffff52782c0241a598b3e37ca8729da0
+Line 179001: 2011-07-22 02:47:51,318 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=158-1-91-101,20020,1311231878544, region=ffff52782c0241a598b3e37ca8729da0
+Line 179002: 2011-07-22 02:47:51,319 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Handling OPENED event for ffff52782c0241a598b3e37ca8729da0; deleting unassigned node
+Line 179003: 2011-07-22 02:47:51,319 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:20000-0x1314ac5addb0042-0x1314ac5addb0042 Deleting existing unassigned node for ffff52782c0241a598b3e37ca8729da0 that is in expected state RS_ZK_REGION_OPENED
+Line 179007: 2011-07-22 02:47:51,326 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:20000-0x1314ac5addb0042-0x1314ac5addb0042 Successfully deleted unassigned node for region ffff52782c0241a598b3e37ca8729da0 in expected state RS_ZK_REGION_OPENED
+Line 179011: 2011-07-22 02:47:51,335 WARN org.apache.hadoop.hbase.master.AssignmentManager: Overwriting ffff52782c0241a598b3e37ca8729da0 on serverName=158-1-91-103,20020,1311232056655, load=(requests=0, regions=0, usedHeap=0, maxHeap=0)
+Line 179012: 2011-07-22 02:47:51,335 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Opened region test1,282187,1311216322104.ffff52782c0241a598b3e37ca8729da0. on 158-1-91-101,20020,1311231878544
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+0.90.3
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+feng xu
+Create date:
+25/Jul/11 01:05
+Update date:
+16/Nov/16 20:36
+Resolved date:
+16/Nov/16 20:36

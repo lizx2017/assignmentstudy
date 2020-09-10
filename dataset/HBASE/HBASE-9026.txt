@@ -1,0 +1,62 @@
+Summary:
+RestartRsHoldingRoot action in org.apache.hadoop.hbase.util.ChaosMonkey restarting the server holding .META. instead of -ROOT-
+Description:
+In ChaosMonkey instead of restarting Root holded regionServer it is restarting META holded regionServer.
+public static class RestartRsHoldingRoot extends RestartRandomRs {
+    public RestartRsHoldingRoot(long sleepTime) {
+      super(sleepTime);
+    }
+    @Override
+    void perform() throws Exception {
+      LOG.info("Performing action: Restart region server holding ROOT");
+      ServerName server = cluster.getServerHoldingMeta();
+      if (server == null) {
+        LOG.warn("No server is holding -ROOT- right now.");
+        return;
+      }
+      restartRs(server, sleepTime);
+    }
+  }
+13/07/23 17:03:54 INFO util.ChaosMonkey: Performing action: Restart region server holding ROOT
+13/07/23 17:03:54 DEBUG client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@52b57e9a; serverName=ocean06,60020,1374569995361
+13/07/23 17:03:54 DEBUG client.HConnectionManager$HConnectionImplementation: Removed .META.,,1.1028785192 for tableName=.META. from cache because of 
+13/07/23 17:03:54 DEBUG client.HConnectionManager$HConnectionImplementation: Cached location for .META.,,1.1028785192 is ocean06:60020
+13/07/23 17:03:54 INFO util.ChaosMonkey: Killing region server:ocean06,60020,1374569995361
+13/07/23 17:03:54 INFO hbase.HBaseCluster: Aborting RS: ocean06,60020,1374569995361
+13/07/23 17:03:54 INFO hbase.ClusterManager: Executing remote command: ps ux | grep regionserver  | grep hbase | grep -v grep | tr -s ' ' | cut -d ' ' -f2 | xargs kill -s SIGKILL , hostname:ocean06
+13/07/23 17:03:54 INFO util.Shell: Executing full command [/usr/bin/ssh  ocean06 "ps ux | grep regionserver  | grep hbase | grep -v grep | tr -s ' ' | cut -d ' ' -f2 | xargs kill -s SIGKILL"]
+13/07/23 17:03:54 INFO hbase.ClusterManager: Executed remote command, exit code:0 , output:
+13/07/23 17:03:54 INFO hbase.HBaseCluster: Waiting service:regionserver to stop: ocean06,60020,1374569995361
+13/07/23 17:03:54 INFO hbase.ClusterManager: Executing remote command: ps ux | grep regionserver  | grep hbase | grep -v grep | tr -s ' ' | cut -d ' ' -f2 , hostname:ocean06
+13/07/23 17:03:54 INFO util.Shell: Executing full command [/usr/bin/ssh  ocean06 "ps ux | grep regionserver  | grep hbase | grep -v grep | tr -s ' ' | cut -d ' ' -f2"]
+13/07/23 17:03:55 INFO hbase.ClusterManager: Executed remote command, exit code:0 , output:
+13/07/23 17:03:55 INFO util.ChaosMonkey: Killed region server:ocean06,60020,1374569995361. Reported num of rs:2
+This is only in 0.94.X
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.8
+Fix_version:
+0.94.11
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Y. SREENIVASULU REDDY
+Reporter:
+Y. SREENIVASULU REDDY
+Create date:
+23/Jul/13 09:56
+Update date:
+21/Aug/13 00:08
+Resolved date:
+25/Jul/13 02:54

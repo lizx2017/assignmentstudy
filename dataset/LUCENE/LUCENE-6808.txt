@@ -1,0 +1,35 @@
+Summary:
+Term(Ord)ValComparator.value return BytesRefs that are re-used internally
+Description:
+While working on SOLR-6168, which involves some non-trivial usage of FieldComparator, I discovered some weird bugs anytime I was using TermOrdValComparator. I ultimately tracked this down to the fact that the BytesRef instances returned by TermOrdValComparator.value(int slot) are backed by BytesRefBuilder instances that the Comparator hangs on to and re-uses – so the values a caller gets back from FieldComparator.value(slot) might be changed out from under it before it has a chance to use that value in something like FieldComparator.compareValues(first,second).
+The general approach when dealing with BytesRef instances (as i understand it) is that the caller is responsible for making a copy if it wants to hang on to it – but in this case that would violate the generic API of FieldComparator – callers would have to pay attention to when a FieldComparator is a
+FieldComparator<BytesRef> and do casting to copy the BytesRef.
+It seems like the right solution is for TermOrdValComparator.value(slot) (and TermValComparator.value(slot) which has a similar BytesRef usage) to return BytesRef.deepCopyOf(values[slot])
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Hoss Man
+Create date:
+17/Sep/15 20:30
+Update date:
+22/Sep/15 01:42
+Resolved date:
+

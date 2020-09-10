@@ -1,0 +1,49 @@
+Summary:
+FunctionQuery ValueSource value computed twice per document
+Description:
+I was working on a custom ValueSource and did some basic profiling and debugging to see if it was being used optimally. To my surprise, the value was being fetched twice per document in a row. This computation isn't exactly cheap to calculate so this is a big problem. I was able to work-around this problem trivially on my end by caching the last value with corresponding docid in my FunctionValues implementation.
+Here is an excerpt of the code path to the first execution:
+   at org.apache.lucene.queries.function.docvalues.DoubleDocValues.floatVal(DoubleDocValues.java:48)
+   at org.apache.lucene.queries.function.FunctionQuery$AllScorer.score(FunctionQuery.java:153)
+   at org.apache.lucene.search.TopFieldCollector$OneComparatorScoringMaxScoreCollector.collect(TopFieldCollector.java:291)
+   at org.apache.lucene.search.Scorer.score(Scorer.java:62)
+   at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:588)
+   at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:280)
+And here is the 2nd call:
+   at org.apache.lucene.queries.function.docvalues.DoubleDocValues.floatVal(DoubleDocValues.java:48)
+   at org.apache.lucene.queries.function.FunctionQuery$AllScorer.score(FunctionQuery.java:153)
+   at org.apache.lucene.search.ScoreCachingWrappingScorer.score(ScoreCachingWrappingScorer.java:56)
+   at org.apache.lucene.search.FieldComparator$RelevanceComparator.copy(FieldComparator.java:951)
+   at org.apache.lucene.search.TopFieldCollector$OneComparatorScoringMaxScoreCollector.collect(TopFieldCollector.java:312)
+   at org.apache.lucene.search.Scorer.score(Scorer.java:62)
+   at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:588)
+   at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:280)
+The 2nd call appears to use some score caching mechanism, which is all well and good, but that same mechanism wasn't used in the first call so there's no cached value to retrieve.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+4.0, 4.1
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+David Smiley
+Reporter:
+David Smiley
+Create date:
+25/Nov/12 07:32
+Update date:
+09/Aug/18 01:01
+Resolved date:
+

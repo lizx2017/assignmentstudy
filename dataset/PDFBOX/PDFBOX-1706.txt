@@ -1,0 +1,122 @@
+Summary:
+Reading PDF documents that contain special characters (e.g. €) cause warning and invalid parse result
+Description:
+When trying to call stripper.getText on the PDF file http://www.edi-energy.de/files2/EDI@Energy%20UTILMD%205.1_20130401.pdf, PDFBox 1.8.2 emits the following warning:
+08:48:20,222 WARN PDFStreamEngine:567 - java.io.IOException: Error: Could not find font(COSName
+{F7}) in map={F1=org.apache.pdfbox.pdmodel.font.PDTrueTypeFont@676825b5, F2=org.apache.pdfbox.pdmodel.font.PDTrueTypeFont@547e97d8}
+java.io.IOException: Error: Could not find font(COSName{F7}
+) in map=
+{F1=org.apache.pdfbox.pdmodel.font.PDTrueTypeFont@676825b5, F2=org.apache.pdfbox.pdmodel.font.PDTrueTypeFont@547e97d8}
+at org.apache.pdfbox.util.operator.SetTextFont.process(SetTextFont.java:57)
+at org.apache.pdfbox.util.PDFStreamEngine.processOperator(PDFStreamEngine.java:554)
+at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:268)
+at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:235)
+at org.apache.pdfbox.util.PDFStreamEngine.processStream(PDFStreamEngine.java:215)
+at org.apache.pdfbox.util.PDFTextStripper.processPage(PDFTextStripper.java:455)
+at org.apache.pdfbox.util.PDFTextStripper.processPages(PDFTextStripper.java:379)
+at org.apache.pdfbox.util.PDFTextStripper.writeText(PDFTextStripper.java:335)
+at org.apache.pdfbox.util.PDFTextStripper.getText(PDFTextStripper.java:254)
+Interestingly, PDFBox 2.0 emits a different warning that calls out the problem more precisely:
+Aug 27, 2013 9:35:30 AM org.apache.pdfbox.pdmodel.font.PDSimpleFont extractToUnicodeEncoding
+SEVERE: Error: Could not load embedded ToUnicode CMap
+Aug 27, 2013 9:35:30 AM org.apache.pdfbox.pdmodel.font.PDSimpleFont getSpaceWidth
+SEVERE: Can't determine the width of the space character using 250 as default
+java.lang.NullPointerException
+at org.apache.pdfbox.pdmodel.font.PDSimpleFont.getSpaceWidth(PDSimpleFont.java:406)
+at org.apache.pdfbox.util.PDFStreamEngine.processEncodedText(PDFStreamEngine.java:343)
+at org.apache.pdfbox.util.operator.ShowTextGlyph.process(ShowTextGlyph.java:62)
+at org.apache.pdfbox.util.PDFStreamEngine.processOperator(PDFStreamEngine.java:529)
+at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:258)
+at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:225)
+at org.apache.pdfbox.util.PDFStreamEngine.processStream(PDFStreamEngine.java:205)
+at org.apache.pdfbox.util.PDFTextStripper.processPage(PDFTextStripper.java:455)
+at org.apache.pdfbox.util.PDFTextStripper.processPages(PDFTextStripper.java:379)
+at org.apache.pdfbox.util.PDFTextStripper.writeText(PDFTextStripper.java:335)
+at org.apache.pdfbox.util.PDFTextStripper.getText(PDFTextStripper.java:254)
+We could trace the problem down to reading pages that contain special characters (e.g. €). In the referenced PDF document, pages that do not contain special characters (e.g. €) do not cause the above mentioned warning. The text parts in the document that cause the warning do not get parsed correctly. The parse result contains byte rubbish.
+Adobe reader displays the entire document correctly.
+The following snippet should serve as a repro:
+package com.regiocom.bpo.mig;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.List;
+import org.apache.pdfbox.pdfparser.PDFParser;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.util.PDFTextStripper;
+import org.apache.pdfbox.util.Splitter;
+public class Repro {
+public Repro() {
+try
+{ stripper = new PDFTextStripper(); }
+catch (IOException e)
+{ e.printStackTrace(); }
+}
+
+// use this PDF as input: http://www.edi-energy.de/files2/EDI@Energy%20UTILMD%205.1_20130401.pdf
+public void run(String pdfFile) {
+
+PDDocument[] documents = loadAndSplitFile(pdfFile, 1);
+
+for(PDDocument document : documents) { parse(document); }
+}
+
+private PDDocument[] loadAndSplitFile(String pdfFile, int splitPage) {
+
+List<PDDocument> documents;
+Splitter splitter = new Splitter();
+PDFParser parser;
+
+try {
+parser = new PDFParser(new FileInputStream(new File(pdfFile)));
+parser.parse();
+
+PDDocument doc = parser.getPDDocument();
+
+splitter.setSplitAtPage(splitPage);
+
+documents = splitter.split(doc);
+
+doc.close();
+
+return documents.toArray(new PDDocument[]{});
+} catch (FileNotFoundException e) { e.printStackTrace(); } catch (IOException e) { e.printStackTrace(); }
+return null;
+}
+private void parse(PDDocument pdfFile) {
+try
+{ stripper.getText(pdfFile); }
+catch (IOException e)
+{ e.printStackTrace(); }
+}
+private PDFTextStripper stripper;
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+1.8.2, 2.0.0
+Fix_version:
+None
+Component:
+Text extraction
+Label:
+patch
+Environment:
+windows
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Robert Neumann
+Create date:
+27/Aug/13 08:16
+Update date:
+18/Dec/14 11:02
+Resolved date:
+18/Dec/14 11:02

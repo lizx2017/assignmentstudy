@@ -1,0 +1,48 @@
+Summary:
+IllegalStateException when upgrading schema
+Description:
+I am upgrading a cluster from 1.1.2 to 1.1.6. When restarting a node with new code, I am seeing this exception repeat in the logs:
+ERROR [InternalResponseStage:21] 2012-10-19 00:41:26,794 AbstractCassandraDaemon.java (line 135) Exception in thread Thread[InternalResponseStage:21,5,main]
+java.lang.IllegalStateException: One row required, 0 found
+        at org.apache.cassandra.cql3.UntypedResultSet.one(UntypedResultSet.java:50)
+        at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:258)
+        at org.apache.cassandra.db.DefsTable.mergeKeyspaces(DefsTable.java:406)
+        at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:355)
+        at org.apache.cassandra.db.DefsTable.mergeRemoteSchema(DefsTable.java:329)
+        at org.apache.cassandra.service.MigrationManager$MigrationTask$1.response(MigrationManager.java:449)
+        at org.apache.cassandra.net.ResponseVerbHandler.doVerb(ResponseVerbHandler.java:45)
+        at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:59)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+I added in some debugging logging to see what Row it was trying to load, and I see this:
+Unable to load keyspace schema: Row(key=DecoratedKey(112573196966143652100562749464385838776, 5365676d656e7473496e746567726174696f6e54657374), cf=ColumnFamily(schema_keyspaces -deleted at 1350665377628000- []))
+The hex key translates to a schema that exists in schema_keyspaces when I query on the rest of the cluster. I tried restarting one of the other nodes without upgrading the jar and it restarted without exceptions.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Wade Simmons
+Create date:
+19/Oct/12 18:49
+Update date:
+16/Apr/19 09:32
+Resolved date:
+16/Nov/12 23:54

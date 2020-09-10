@@ -1,0 +1,300 @@
+Summary:
+HintedHandoff in pending state forever after upgrading to 2.0.14 from 2.0.11 and 2.0.12
+Description:
+Upgrading from Cassandra 2.0.11 or 2.0.12 to 2.0.14 I am seeing a pending hinted hand off that never clears. New hinted hand offs that go into pending waiting for a node to come up clear as expected. But 1 always remains.
+I through the following steps.
+1) stop cassandra
+2) Upgrade cassandra to 2.0.14
+3) Start cassandra
+4) nodetool tpstats
+There are no errors in the logs, to help with this issue. I ran a few nodetool commands to get some data and pasted them below:
+Below is what is shown after running nodetool status on each node in the ring
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address       Load       Tokens  Owns   Host ID   Rack
+UN  <NODE1>  279.8 MB   256     34.9%  <HOSTID>       rack1
+UN  <NODE2>  279.79 MB  256     33.0%  <HOSTID>       rack1
+UN  <NODE3>  279.87 MB  256     32.1%  <HOSTID>       rack1
+Below is what is shown after running nodetool tpstats on each node in the ring showing a single HintedHandoff in pending status that never clears
+Pool Name                    Active   Pending      Completed   Blocked  All time blocked
+ReadStage                         0         0          14550         0                 0
+RequestResponseStage              0         0         113040         0                 0
+MutationStage                     0         0         168873         0                 0
+ReadRepairStage                   0         0           1147         0                 0
+ReplicateOnWriteStage             0         0              0         0                 0
+GossipStage                       0         0         232112         0                 0
+CacheCleanupExecutor              0         0              0         0                 0
+MigrationStage                    0         0              0         0                 0
+MemoryMeter                       0         0              6         0                 0
+FlushWriter                       0         0             38         0                 0
+ValidationExecutor                0         0              0         0                 0
+InternalResponseStage             0         0              0         0                 0
+AntiEntropyStage                  0         0              0         0                 0
+MemtablePostFlusher               0         0           1333         0                 0
+MiscStage                         0         0              0         0                 0
+PendingRangeCalculator            0         0              6         0                 0
+CompactionExecutor                0         0            178         0                 0
+commitlog_archiver                0         0              0         0                 0
+HintedHandoff                     0         1            133         0                 0
+
+Message type           Dropped
+RANGE_SLICE                  0
+READ_REPAIR                  0
+PAGED_RANGE                  0
+BINARY                       0
+READ                         0
+MUTATION                     0
+_TRACE                       0
+REQUEST_RESPONSE             0
+COUNTER_MUTATION             0
+Below is what is shown after running nodetool cfstats system.hints on all 3 nodes.
+Keyspace: system
+ Read Count: 0
+ Read Latency: NaN ms.
+ Write Count: 0
+ Write Latency: NaN ms.
+ Pending Tasks: 0
+  Table: hints
+  SSTable count: 0
+  Space used (live), bytes: 0
+  Space used (total), bytes: 0
+  Off heap memory used (total), bytes: 0
+  SSTable Compression Ratio: 0.0
+  Number of keys (estimate): 0
+  Memtable cell count: 0
+  Memtable data size, bytes: 0
+  Memtable switch count: 0
+  Local read count: 0
+  Local read latency: 0.000 ms
+  Local write count: 0
+  Local write latency: 0.000 ms
+  Pending tasks: 0
+  Bloom filter false positives: 0
+  Bloom filter false ratio: 0.00000
+  Bloom filter space used, bytes: 0
+  Bloom filter off heap memory used, bytes: 0
+  Index summary off heap memory used, bytes: 0
+  Compression metadata off heap memory used, bytes: 0
+  Compacted partition minimum bytes: 0
+  Compacted partition maximum bytes: 0
+  Compacted partition mean bytes: 0
+  Average live cells per slice (last five minutes): 0.0
+  Average tombstones per slice (last five minutes): 0.0
+
+----------------
+Below is what is shown after running nodetool gossipinfo
+/<NODE1>
+  generation:1428349617
+  heartbeat:238170
+  HOST_ID:<NODE1ID>
+  RELEASE_VERSION:2.0.14
+  DC:<DCNAME>
+  RPC_ADDRESS:<NODE1IP>
+  SCHEMA:132878b7-a33b-3ca3-b83d-3cacf7fc2138
+  STATUS:NORMAL,-1399780091502863826
+  RACK:rack1
+  SEVERITY:0.0
+  LOAD:2.93383711E8
+  NET_VERSION:7
+/<NODE2>
+  generation:1428349784
+  heartbeat:237665
+  HOST_ID:<NODE2ID>
+  RELEASE_VERSION:2.0.14
+  DC:app3-profiledata
+  RPC_ADDRESS:<NODE2>
+  SCHEMA:132878b7-a33b-3ca3-b83d-3cacf7fc2138
+  STATUS:NORMAL,-1019261967377984057
+  RACK:rack1
+  SEVERITY:0.0
+  LOAD:2.93393487E8
+  NET_VERSION:7
+/<NODE3>
+  generation:1428348889
+  heartbeat:240384
+  HOST_ID:<NODE3ID>
+  RELEASE_VERSION:2.0.14
+  DC:app3-profiledata
+  RPC_ADDRESS:<NODE3IP>
+  SCHEMA:132878b7-a33b-3ca3-b83d-3cacf7fc2138
+  STATUS:NORMAL,-1060333141359417961
+  RACK:rack1
+  SEVERITY:0.0
+  LOAD:2.9345286E8
+  NET_VERSION:7
+Below is cassandra.yaml
+cluster_name: '<Cluster Name>'
+
+num_tokens: 256
+
+auto_bootstrap: true
+
+hinted_handoff_enabled: true
+
+max_hint_window_in_ms: 345600000
+
+hinted_handoff_throttle_in_kb: 1024
+
+max_hints_delivery_threads: 2
+
+authenticator: AllowAllAuthenticator
+
+authorizer: AllowAllAuthorizer
+
+permissions_validity_in_ms: 2000
+
+partitioner: org.apache.cassandra.dht.Murmur3Partitioner
+
+data_file_directories:
+    - /mnt/cassandra/data
+
+commitlog_directory: /mnt/cassandra/commitlog
+
+disk_failure_policy: stop
+
+key_cache_size_in_mb:
+
+key_cache_save_period: 14400
+
+row_cache_size_in_mb: 0
+
+row_cache_save_period: 0
+
+saved_caches_directory: /mnt/cassandra/saved_caches
+
+commitlog_sync: batch
+
+commitlog_sync_batch_window_in_ms: 50
+
+commitlog_segment_size_in_mb: 32
+
+seed_provider:
+    - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+      parameters:
+          - seeds: "<NODE1>,<NODE2>,<NODE3>"
+
+concurrent_reads: 32
+
+concurrent_writes: 32
+
+memtable_total_space_in_mb: 512
+
+memtable_flush_queue_size: 4
+
+trickle_fsync: false
+
+trickle_fsync_interval_in_kb: 10240
+
+storage_port: 7000
+
+ssl_storage_port: 7001
+
+listen_address: <LOCALIP>
+
+start_native_transport: true
+
+native_transport_port: 9042
+
+start_rpc: true
+
+rpc_address: <LOCALIP>
+
+rpc_port: 9160
+
+rpc_keepalive: true
+
+rpc_server_type: hsha
+
+rpc_min_threads: 16
+
+rpc_max_threads: 256
+
+thrift_framed_transport_size_in_mb: 15
+
+incremental_backups: false
+
+snapshot_before_compaction: false
+
+auto_snapshot: true
+
+column_index_size_in_kb: 64
+
+in_memory_compaction_limit_in_mb: 64
+
+multithreaded_compaction: false
+
+compaction_throughput_mb_per_sec: 128
+
+compaction_preheat_key_cache: true
+
+read_request_timeout_in_ms: 10000
+
+range_request_timeout_in_ms: 10000
+
+write_request_timeout_in_ms: 10000
+
+truncate_request_timeout_in_ms: 60000
+
+request_timeout_in_ms: 10000
+
+cross_node_timeout: false
+
+phi_convict_threshold: 12
+
+endpoint_snitch: PropertyFileSnitch
+
+dynamic_snitch_update_interval_in_ms: 100
+
+dynamic_snitch_reset_interval_in_ms: 600000
+
+dynamic_snitch_badness_threshold: 0.2
+
+request_scheduler: org.apache.cassandra.scheduler.NoScheduler
+
+index_interval: 512
+
+server_encryption_options:
+    internode_encryption: none
+    keystore: conf/.keystore
+    keystore_password: cassandra
+    truststore: conf/.truststore
+    truststore_password: cassandra
+
+client_encryption_options:
+    enabled: false
+    keystore: conf/.keystore
+    keystore_password: cassandra
+
+internode_compression: all
+
+inter_dc_tcp_nodelay: true
+I have stopped upgrading my other cassandra clusters until cause for this behavior is found.
+Please let me know if more information is needed.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.17, 2.1.9
+Component:
+Legacy/Observability
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Russ Lavoie
+Create date:
+07/Apr/15 18:16
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Aug/15 15:46

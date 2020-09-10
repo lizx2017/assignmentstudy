@@ -1,0 +1,46 @@
+Summary:
+Master crash when splitting hlog may cause data loss
+Description:
+Let's see the code of HlogSplitter#splitLog(final FileStatus[] logfiles)
+private List<Path> splitLog(final FileStatus[] logfiles) throws IOException {
+ try {
+  for (FileStatus log : logfiles) {
+  parseHLog(in, logPath, entryBuffers, fs, conf, skipErrors);
+ }
+ archiveLogs(srcDir, corruptedLogs, processedLogs, oldLogDir, fs, conf);
+ } finally {
+      status.setStatus("Finishing writing output logs and closing down.");
+      splits = outputSink.finishWritingAndClose();
+    }
+}
+If master is killed, after finishing archiveLogs(srcDir, corruptedLogs, processedLogs, oldLogDir, fs, conf),
+but before finishing splits = outputSink.finishWritingAndClose();
+Log date would loss!
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+27/Nov/11 06:54
+Update date:
+12/Oct/12 05:34
+Resolved date:
+29/Nov/11 00:29

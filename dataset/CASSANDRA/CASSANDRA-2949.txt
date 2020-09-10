@@ -1,0 +1,53 @@
+Summary:
+Batch mutation of counters in multiple supercolumns throws an exception during replication.
+Description:
+Steps to reproduce:
+Perform a batch mutation of more than one counter in more than one super-column in the same column-family.
+The following exception is thrown during replication:
+DEBUG [MutationStage:63] 2011-07-26 17:05:12,653 CounterMutationVerbHandler.java (line 52) Applying forwarded CounterMutation(RowMutation(keyspace='ks1', key='4ae71336e44bf9bf', modifications=[ColumnFamily(cf1 [SuperColumn(302c7375706572636f6c30 [302c636f6c30:false:8@1311696312648,]),SuperColumn(302c7375706572636f6c31 [302c636f6c30:false:8@1311696312648,]),])]), QUORUM)
+DEBUG [MutationStage:63] 2011-07-26 17:05:12,653 StorageProxy.java (line 432) insert writing local & replicate CounterMutation(RowMutation(keyspace='ks1', key='4ae71336e44bf9bf', modifications=[cf1]), QUORUM)
+DEBUG [MutationStage:63] 2011-07-26 17:05:12,654 Table.java (line 398) applying mutation of row 4ae71336e44bf9bf
+ERROR [ReplicateOnWriteStage:125] 2011-07-26 17:05:12,655 AbstractCassandraDaemon.java (line 139) Fatal exception in thread Thread[ReplicateOnWriteStage:125,5,main]
+java.lang.RuntimeException: java.lang.IllegalArgumentException: ColumnFamily ColumnFamily(cf1 [SuperColumn(302c7375706572636f6c31 [302c636f6c30:false:[
+{cad93dc0-b7a0-11e0-0000-123f813dd5df, 3, 3}*]@1311696312648!-9223372036854775808,]),]) already has modifications in this mutation: ColumnFamily(cf1 [SuperColumn(302c7375706572636f6c30 [302c636f6c30:false:[{cad93dc0-b7a0-11e0-0000-123f813dd5df, 3, 3}
+*]@1311696312648!-9223372036854775808,]),])
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:636)
+Caused by: java.lang.IllegalArgumentException: ColumnFamily ColumnFamily(cf1 [SuperColumn(302c7375706572636f6c31 [302c636f6c30:false:[
+{cad93dc0-b7a0-11e0-0000-123f813dd5df, 3, 3}*]@1311696312648!-9223372036854775808,]),]) already has modifications in this mutation: ColumnFamily(cf1 [SuperColumn(302c7375706572636f6c30 [302c636f6c30:false:[{cad93dc0-b7a0-11e0-0000-123f813dd5df, 3, 3}
+*]@1311696312648!-9223372036854775808,]),])
+at org.apache.cassandra.db.RowMutation.add(RowMutation.java:123)
+at org.apache.cassandra.db.CounterMutation.makeReplicationMutation(CounterMutation.java:120)
+at org.apache.cassandra.service.StorageProxy$5$1.runMayThrow(StorageProxy.java:455)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+... 3 more
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.3
+Component:
+None
+Label:
+batch_mutate counter
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sam Overton
+Create date:
+26/Jul/11 16:19
+Update date:
+16/Apr/19 09:32
+Resolved date:
+01/Aug/11 15:13

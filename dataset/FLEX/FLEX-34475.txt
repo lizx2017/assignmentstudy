@@ -1,0 +1,49 @@
+Summary:
+HTTPService requestTimeout permanently clamps to a default value
+Description:
+https://bugbase.adobe.com/index.cfm?event=bug&id=3691973
+Problem Description:
+HTTPService's requestTimeout property can set the requestTimeout and idleTimeout of the underlying URLRequest. However, it is possible to permanently (until application termination) clamp the idleTimeout to the first request's idleTimeout value (internally propagated from requestTimeout).
+Steps to Reproduce:
+Create at least two HTTPService objects. Set a short timeout (e.g., 10 seconds) and a long timeout (e.g., 120 seconds) for each request, respectively via the requestTimeout property. Call the short timeout service's send() first.
+Actual Result:
+Subsequent requests always throw a #2032 stream error fault before the specified requestTimeout, exactly when the first request's requestTimeout expires. The first request need not complete before the second is send()t; the result is the same.
+This condition is not recoverable without restarting the application. The first HTTPService requestTimeout becomes the global maximum.
+Expected Result:
+Each HTTPService faults only when its specified requestTimeout has expired.
+Any Workarounds:
+Send an HTTPService request with a requestTimeout equal to or greater than the application's maximum requestTimeout. It need not succeed in order to set the runtime state to a predictable one. In fact it can be cancel()ed and still achieve the desired effect.
+—
+NetworkTester.mxml is a thrown-together (5 minute) example. If "ping" is sent first, then subsequent "send" presses with result in a fault after 15 seconds if the delay is >= 15. test.php just sleep()s for the delay period and echos a string back.
+If "send" is pressed first, then any subsequent sequences of "ping" or "send," in any order, will properly fault at their specified requestTimeout expiration time.
+Additional note:
+The observed platform default timeout is 30 seconds. If the workaround in lines 26-32 is enabled, the effect will persist until the machine is rebooted (after recompiling with the comments restored). If ping is pressed, the undesired effect outlined above occurs exactly as before.
+Setting URLRequestDefaults.idleTimeout before each request does not have the desired effect the workaround does.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+Apache Flex 4.12.1
+Fix_version:
+None
+Component:
+RPC: HTTPService
+Label:
+easytest
+Environment:
+Microsoft Windows 7, AIR 13.0
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jesse Crews
+Create date:
+20/Aug/14 22:46
+Update date:
+20/Aug/14 23:55
+Resolved date:
+

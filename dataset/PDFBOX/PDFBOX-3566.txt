@@ -1,0 +1,84 @@
+Summary:
+ClassCastException in JPEGFactory.createFromImage()
+Description:
+I was trying to save all the pages from a PDF as images and adding them to a newly created PDF.
+PDDocument newDoc = new PDDocument();
+
+PDFRenderer pdfRenderer = new PDFRenderer(oldDoc);
+
+floag width = ...
+float height = ...
+
+page.setMediaBox(new PDRectangle(width, height));
+
+newDoc.addPage(page);
+
+PDPageContentStream contents = new PDPageContentStream(newDoc, page);
+
+BufferedImage bufferedImage = pdfRenderer.renderImageWithDPI(0, 200, ImageType.RGB);
+
+PDImageXObject imageXObject = JPEGFactory.createFromImage(newDoc, bufferedImage, 0.75);
+
+contents.drawImage(imageXObject, 0, 0, width, height);
+
+contents.close();
+
+...
+Sometimes it's working just fine, sometimes it's trowing a ClassCastException in JPEGFactory.createFromImage:
+java.lang.ClassCastException: com.sun.media.imageioimpl.plugins.jpeg.CLibJPEGImageWriteParam cannot be cast to javax.imageio.plugins.jpeg.JPEGImageWriteParam
+ at org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory.encodeImageToJPEGStream(JPEGFactory.java:244)
+ at org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory.createJPEG(JPEGFactory.java:212)
+ at org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory.createFromImage(JPEGFactory.java:175)
+ at org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory.createFromImage(JPEGFactory.java:160)
+ at com.mimecast.ttpservice.app.jpati.ConvertPDF.saveDoc(ConvertPDF.java:1390)
+This is happening in the following code of above mentioned class:
+imageWriter = ImageIO.getImageWritersBySuffix("jpeg").next();
+...
+JPEGImageWriteParam jpegParam = (JPEGImageWriteParam)imageWriter.getDefaultWriteParam();
+In my case I can get more than one ImageWritter when calling ImageIO.getImageWritersBySuffix("jpeg") as follows:
+com.sun.imageio.plugins.jpeg.JPEGImageWriter
+com.sun.media.imageioimpl.plugins.jpeg.CLibJPEGImageWriter
+I suspect that sometimes the CLibJPEGImageWriter is returned before JPEGImageWriter, which produces the ClassCastException a bit later.
+As I need to keep the JAI installed, is it possible to change the above code to loop through all ImageWriters found in order to pick the one needed by PdfBox?
+I would recommend doing something like this:
+Iterator<ImageWriter> iterator = ImageIO.getImageWritersBySuffix("jpeg");
+while (iterator.hasNext()) {
+    ImageWriter foundWriter = iterator.next();
+
+    if (foundWriter instanceof JPEGImageWriter) {
+        imageWriter = foundWriter;
+        break;
+    }
+}
+
+if (imageWriter == null) {
+    throw new InvalidStateException("No image writer found of JPEGImageWriter type");
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.3
+Fix_version:
+2.0.4, 3.0.0 PDFBox
+Component:
+None
+Label:
+None
+Environment:
+linux, java 1.8
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+ceakki
+Create date:
+11/Nov/16 09:39
+Update date:
+25/Mar/17 18:13
+Resolved date:
+11/Nov/16 17:06

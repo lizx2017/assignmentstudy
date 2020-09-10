@@ -1,0 +1,88 @@
+Summary:
+[hbase] Inexplicable ArrayIndexOutOfBounds in BloomFilter appending data
+Description:
+From the list this morning from Josh Wills:
+Date: Mon, 22 Oct 2007 12:04:01 -0500
+From: "Josh Wills" ....
+To: hadoop-user@lucene.apache.org
+Subject: Re: A basic question on HBase
+
+...
+
+> >
+> > 2)  I was running one of these batch-style uploads last night on an
+> > HTable that I configured w/BloomFilters on a couple of my column
+> > families.  During one of the compaction operations, I got the
+> > following exception--
+> >
+> > FATAL org.apache.hadoop.hbase.HRegionServer: Set stop flag in
+> > regionserver/0:0:0:0:0:0:0:0:60020.splitOrCompactChecker
+> > java.lang.ArrayIndexOutOfBoundsException
+> >         at java.lang.System.arraycopy(Native Method)
+> >         at sun.security.provider.DigestBase.engineUpdate(DigestBase.jav=
+a:102)
+> >         at sun.security.provider.SHA.implDigest(SHA.java:94)
+> >         at sun.security.provider.DigestBase.engineDigest(DigestBase.jav=
+a:161)
+> >         at sun.security.provider.DigestBase.engineDigest(DigestBase.jav=
+a:140)
+> >         at java.security.MessageDigest$Delegate.engineDigest(MessageDig=
+est.java:531)
+> >         at java.security.MessageDigest.digest(MessageDigest.java:309)
+> >         at org.onelab.filter.HashFunction.hash(HashFunction.java:125)
+> >         at org.onelab.filter.BloomFilter.add(BloomFilter.java:99)
+> >         at org.apache.hadoop.hbase.HStoreFile$BloomFilterMapFile$Writer=
+.append(HStoreFile.java:895)
+> >         at org.apache.hadoop.hbase.HStore.compact(HStore.java:899)
+> >         at org.apache.hadoop.hbase.HStore.compact(HStore.java:728)
+> >         at org.apache.hadoop.hbase.HStore.compactHelper(HStore.java:632=
+)
+> >         at org.apache.hadoop.hbase.HStore.compactHelper(HStore.java:564=
+)
+> >         at org.apache.hadoop.hbase.HStore.compact(HStore.java:559)
+> >         at org.apache.hadoop.hbase.HRegion.compactStores(HRegion.java:7=
+17)
+> >         at org.apache.hadoop.hbase.HRegionServer$SplitOrCompactChecker.=
+checkForSplitsOrCompactions(HRegionServer.java:198)
+> >         at org.apache.hadoop.hbase.HRegionServer$SplitOrCompactChecker.=
+chore(HRegionServer.java:188)
+> >         at org.apache.hadoop.hbase.Chore.run(Chore.java:58)
+> >
+> > Note that this wasn't the first compaction that was run (there were
+> > others before it that ran successfully) and that the region hadn't
+> > been split at this point.  I defined the BloomFilterType.BLOOMFILTER
+> > on a couple of the columnfamilies, w/the largest one having ~100000
+> > distinct entries.  I don't know which of these caused the failure, but
+> > I noticed that 100000 is quite a bit larger than the # of entries used
+> > in the testcases, so I'm wondering if that might be the problem.
+...
+Poking around, could be a concurrency issue – see http://forum.java.sun.com/thread.jspa?threadID=700440&messageID=4117706 – but Jim and I chatting can't figure how since there should be one thread only running at compaction time....
+Plan is to try and reproduce on local cluster....
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+22/Oct/07 21:24
+Update date:
+04/Feb/08 18:40
+Resolved date:
+13/Dec/07 00:03

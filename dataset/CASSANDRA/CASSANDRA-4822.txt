@@ -1,0 +1,45 @@
+Summary:
+CQL3: Allow renaming PK columns to ease upgrade from thrift
+Description:
+Say you have a clicks CF in thrift storing for each user a timeline of which links it clicked on. It may have a definition like:
+create column family clicks with key_validation_class = UUIDType and comparator = TimeUUIDType and default_validation_class = UTF8Type
+In CQL3, you can access that thrift created CF as if it had been defined by:
+CREATE TABLE clicks (
+  key uuid,
+  column timeuuid,
+  value text,
+  PRIMARY KEY (key, column)
+) WITH COMPACT STORAGE
+In other words, CQL3 will pick default names for the key_alias, column_aliases and value_alias metadata. It's ok but it would be more user friendly to use if the user could rename those to something better. Today, the only solution would be to remove the schema and re-create the table in CQL3. We can make that simpler by adding support for:
+ALTER TABLE clicks RENAME key to user_id;
+ALTER TABLE clicks RENAME column to insertion_time;
+ALTER TABLE clicks RENAME value to url_clicked; 
+Of course such rename statement won't be applicable to all columns. Namely, we can only allow renaming PK columns and in some compact storage cases the value. But that's probably still worth adding.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 2
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+17/Oct/12 07:56
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Oct/12 16:00

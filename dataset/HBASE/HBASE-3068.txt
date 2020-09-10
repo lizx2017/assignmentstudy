@@ -1,0 +1,44 @@
+Summary:
+IllegalStateException when new server comes online, is given 200 regions to open and 200th region gets timed out of regions in transition
+Description:
+Yesterday we committed a change that makes it so the master will crash is a zk transition that is unexpected. Its extreme but good for highlighting bad state changes (we also started marking these as illegalstateexceptions yesterday too).
+So, testing new master I brought up a new server. Balancer tried to give new server 256 regions.
+2010-10-01 16:01:42,972 INFO org.apache.hadoop.hbase.master.LoadBalancer: Calculated a load balance in 0ms. Moving 256 regions off of 7 overloaded servers onto 1 less loaded servers
+Turns out we failed complete open of all 256 servers within the regions-in-transition timeout period so we tried to reassign. The master aborted because region was in the PENDING_OPEN state when we went about assigning.
+2010-10-01 16:02:28,809 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out:  usertable,user1128734802,1285701924906.006696a9bf346f8593df66728e18e029. state=PENDING_OPEN, ts=1285948921051
+2010-10-01 16:02:28,809 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_OPEN or OPENING for too long, reassigning region=usertable,user1128734802,1285701924906.006696a9bf346f8593df66728e18e029.
+2010-10-01 16:02:28,811 FATAL org.apache.hadoop.hbase.master.HMaster: Unexpected state trying to OFFLINE; usertable,user1128734802,1285701924906.006696a9bf346f8593df66728e18e029. state=PENDING_OPEN, ts=1285948921051
+java.lang.IllegalStateException
+    at org.apache.hadoop.hbase.master.AssignmentManager.setOfflineInZooKeeper(AssignmentManager.java:662)
+    at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:632)
+    at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:560)
+    at org.apache.hadoop.hbase.master.AssignmentManager$TimeoutMonitor.chore(AssignmentManager.java:1102)
+    at org.apache.hadoop.hbase.Chore.run(Chore.java:66)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+01/Oct/10 20:51
+Update date:
+20/Nov/15 12:41
+Resolved date:
+01/Oct/10 23:02

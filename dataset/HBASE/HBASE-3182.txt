@@ -1,0 +1,51 @@
+Summary:
+If server hosting META dies or is stopping while processing another server shutdown, IOE accessing META stop shutdown handler from finishing
+Description:
+In TestRollingRestart, there is a test which kills server hosting ROOT then immediately kills server hosting META. In a recent run this turned up a small race condition if the server hosting META is closing while we process shutdown of server hosting ROOT.
+2010-10-31 20:41:34,621 ERROR [MASTER_META_SERVER_OPERATIONS-dev692.sf2p.facebook.com:54989-0] executor.EventHandler(154): Caught throwable while processing event M_META_SERVER_SHUTDOWN
+org.apache.hadoop.ipc.RemoteException: java.io.IOException: Server not running
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.checkOpen(HRegionServer.java:2216)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.openScanner(HRegionServer.java:1652)
+        at sun.reflect.GeneratedMethodAccessor19.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:561)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1025)
+
+        at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:749)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:255)
+        at $Proxy8.openScanner(Unknown Source)
+        at org.apache.hadoop.hbase.catalog.MetaReader.getServerUserRegions(MetaReader.java:495)
+        at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.process(ServerShutdownHandler.java:125)
+        at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:151)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:885)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:907)
+        at java.lang.Thread.run(Thread.java:619)
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+Jonathan Gray
+Create date:
+01/Nov/10 04:04
+Update date:
+20/Nov/15 12:41
+Resolved date:
+02/Nov/10 02:06

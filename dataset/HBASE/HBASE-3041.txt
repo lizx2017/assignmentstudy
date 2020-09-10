@@ -1,0 +1,34 @@
+Summary:
+[replication] ReplicationSink shouldn't kill the whole RS when it fails to replicate
+Description:
+This is kind of a funny bug, as long as you don't run into it. I thought I'd be a good idea to kill the region servers that act as sinks when they can't replicate edits on their own cluster (this is often something we do in face of fatal errors throughout the code), but not so much.
+So, last friday while I was using CopyTable to replicate data from a master to a slave cluster while the new data was being replicated, one table got really slow and took too long to split which tripped RetriesExhaustedException coming out of HTable in ReplicationSink. This killed a first region server, which was itself hosting regions. Splitting the logs took a bit longer since the cluster was under high insert load, so this triggered other exceptions in the other region servers, to a point where they were all down. I restarted the cluster, the master splits all the logs that were remaining and begins assigning regions. Some of them took too long to open because each region server had a few regions to recover each and the last ones in the queue were minutes from being opened. Since the master cluster was already pushing edits to the slave, the region servers all got RetriesExhausted and all went down again. I changed the client pause from 1 to 3 and restarted, same happened. I changed it to 5, and finally was able to keep the cluster up. Fortunately, the master cluster was queueing up the HLogs so we didn't lose any data and the backlog was replicated in a few minutes.
+So, instead of killing the region server, any exception coming out of HTable should just be treated as a failure to apply and the source cluster should retry later.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.89.20100924
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+27/Sep/10 17:15
+Update date:
+12/Oct/12 06:17
+Resolved date:
+15/Oct/10 00:21

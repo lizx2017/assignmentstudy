@@ -1,0 +1,43 @@
+Summary:
+MultiTermQuery are sometimes rewritten into an empty boolean query
+Description:
+MultiTermQuery are sometimes rewritten to an empty boolean query (depending on the rewrite method), it can happen when no expansions are found on a fuzzy query for instance.
+It can be problematic when the multi term query is boosted.
+For instance consider the following query:
+`((title:bar~1)^100 text:bar)`
+This is a boolean query with two optional clauses. The first one is a fuzzy query on the field title with a boost of 100.
+If there is no expansion for "title:bar~1" the query is rewritten into:
+`(()^100 text:bar)`
+... and when expansions are found:
+`((title:bars | title:bar)^100 text:bar)`
+The scoring of those two queries will differ because the normalization factor and the norm for the first query will be equal to 1 (the boost is ignored because the empty boolean query is not taken into account for the computation of the normalization factor) whereas the second query will have a normalization factor of 10,000 (100*100) and a norm equal to 0.01.
+This kind of discrepancy can happen in a single index because the expansions for the fuzzy query are done at the segment level. It can also happen when multiple indices are requested (Solr/ElasticSearch case).
+A simple fix would be to replace the empty boolean query produced by the multi term query with a MatchNoDocsQuery but I am not sure that it's the best way to fix. WDYT ?
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.2, 7.0
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jim Ferenczi
+Create date:
+13/Jun/16 15:59
+Update date:
+26/Aug/16 13:58
+Resolved date:
+21/Jun/16 16:09

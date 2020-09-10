@@ -1,0 +1,55 @@
+Summary:
+for-each loops cross-compile incorrectly
+Description:
+When you write a for-each loop, the iterable gets re-evaluated on every iteration.
+Example code:
+for each (var item:Object in Test.getItems()) {
+ Test.doSomething(item);
+}
+Cross-compiled:
+  for (var foreachiter0 in Test.getItems()) 
+  {
+  var item = Test.getItems()[foreachiter0];
+  {
+    Test.doSomething(item);
+  }}
+It should not call Test.getItems() on every loop iteration. Instead, it should generate a new local variable prior to entering the loop to store the result:
+var foreachiter0_target = Test.getItems();
+for (var foreachiter0 in foreachiter0_target)
+{
+    var item = foreachiter0_target[foreachiter0];
+    Test.doSomething(item);
+}
+I can see problematic code in three places:
+JSGeneratingReducer.java: https://github.com/apache/flex-falcon/blob/develop/compiler.js/src/org/apache/flex/compiler/internal/as/codegen/JSGeneratingReducer.java#L3426
+ForEachEmitter.java: https://github.com/apache/flex-falcon/blob/develop/compiler.jx/src/org/apache/flex/compiler/internal/codegen/js/jx/ForEachEmitter.java
+JSVF2JSEmitter.java: https://github.com/apache/flex-falcon/blob/develop/compiler.jx/src/org/apache/flex/compiler/internal/codegen/js/vf2js/JSVF2JSEmitter.java#L1708
+Another solution would be to use a for...of loop, Standard in ES6, though that won't work in Internet Explorer: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...of
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Apache FlexJS 0.5.0
+Fix_version:
+Apache FalconJX 0.6.
+Component:
+Falcon, FlexJS
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Harui
+Reporter:
+Andy Dufilie
+Create date:
+11/Dec/15 05:09
+Update date:
+03/May/16 06:31
+Resolved date:
+11/Dec/15 20:13

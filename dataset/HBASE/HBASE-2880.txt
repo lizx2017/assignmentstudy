@@ -1,0 +1,56 @@
+Summary:
+Hung cluster because master is hung because Get inside synchronize on RegionManager never returned
+Description:
+I just ran into this testing 0.89 RC candidate.
+So, Master is hung up because all threads are locked out because one thread is stuck inside a block that is synchronized on RegionManager (0x00007fe1f94777d0 in the below):
+3277 "IPC Server handler 9 on 60000" daemon prio=10 tid=0x00007fe1dc00f000 nid=0x409d in Object.wait() [0x00007fe1e9200000]
+3278    java.lang.Thread.State: WAITING (on object monitor)
+3279         at java.lang.Object.wait(Native Method)
+3280         at java.lang.Object.wait(Object.java:485)
+3281         at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:732)
+3282         - locked <0x00007fe1f8672818> (a org.apache.hadoop.hbase.ipc.HBaseClient$Call)
+3283         at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:252)
+3284         at $Proxy1.get(Unknown Source)
+3285         at org.apache.hadoop.hbase.master.ServerManager.assignSplitDaughter(ServerManager.java:550)
+3286         at org.apache.hadoop.hbase.master.ServerManager.processSplitRegion(ServerManager.java:525)
+3287         - locked <0x00007fe1f94777d0> (a org.apache.hadoop.hbase.master.RegionManager)
+3288         at org.apache.hadoop.hbase.master.ServerManager.processMsgs(ServerManager.java:476)
+3289         at org.apache.hadoop.hbase.master.ServerManager.processRegionServerAllsWell(ServerManager.java:425)
+3290         at org.apache.hadoop.hbase.master.ServerManager.regionServerReport(ServerManager.java:335)
+3291         at org.apache.hadoop.hbase.master.HMaster.regionServerReport(HMaster.java:738)
+3292         at sun.reflect.GeneratedMethodAccessor4.invoke(Unknown Source)
+3293         at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+3294         at java.lang.reflect.Method.invoke(Method.java:597)
+3295         at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:576)
+3296         at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:919)
+The above code is not returning because Call#callComplete is never going to be called on the outstanding Get. The target RS OOME'd. Something in the way an OOME is being processed made it so this connection is not ever going to be cleaned up/notified.
+We're stuck here.
+I'm trying to figure why the clean up is not happening.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+26/Jul/10 23:45
+Update date:
+20/Nov/15 12:41
+Resolved date:
+01/Sep/10 05:28

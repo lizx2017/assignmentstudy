@@ -1,0 +1,62 @@
+Summary:
+Not all data is loaded to Pig using CqlNativeStorage
+Description:
+Not all the data from Cassandra table is loaded into Pig using CqlNativeStorage function.
+Steps to reproduce:
+cql3 create table statement:
+CREATE TABLE time_bucket_step (
+key varchar,
+object_id varchar,
+value varchar,
+PRIMARY KEY (key, object_id)
+);
+Loading and saving data to Cassandra ("sorted" file is in the attachment):
+time_bucket_step = load 'sorted' using PigStorage('\t') as (key:chararray, object_id:chararray, value:chararray);
+records = foreach time_bucket_step
+generate
+TOTUPLE(TOTUPLE('key', key),TOTUPLE('object_id', object_id)),
+TOTUPLE(value);
+store records into 'cql://socialdata/time_bucket_step?output_query=UPDATE+socialdata.time_bucket_step+set+value+%3D+%3F' using org.apache.cassandra.hadoop.pig.CqlNativeStorage();
+Results:
+Input(s):
+Successfully read 139026 records (11115817 bytes) from: "hdfs://.../sorted"
+Output(s):
+Successfully stored 139026 records in: "cql://socialdata/time_bucket_step?output_query=UPDATE+socialdata.time_bucket_step+set+value+%3D+%3F"
+Loading data from Cassandra: (note that not all data are read)
+time_bucket_step_cass = load 'cql://socialdata/time_bucket_step' using org.apache.cassandra.hadoop.pig.CqlNativeStorage();
+store time_bucket_step_cass into 'time_bucket_step_cass' using PigStorage('\t','-schema');
+Results:
+Input(s):
+Successfully read 80727 records (20068 bytes) from: "cql://socialdata/time_bucket_step"
+Output(s):
+Successfully stored 80727 records (2098178 bytes) in: "hdfs://..../time_bucket_step_cass"
+Actual: only 80727 of 139026 records were loaded
+Expected: All data should be loaded
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.12, 2.1.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Liu
+Reporter:
+Oksana Danylyshyn
+Create date:
+22/Oct/14 17:31
+Update date:
+16/Apr/19 09:31
+Resolved date:
+23/Oct/14 17:00

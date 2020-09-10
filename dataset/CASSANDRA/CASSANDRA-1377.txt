@@ -1,0 +1,49 @@
+Summary:
+NPE aborts streaming operations for keyspaces with hyphens ('-') in their names
+Description:
+When streaming starts for operations such as repair or bootstrap, it will fail due to an NPE if they rows are in a keyspace that has a hyphen in its name. One workaround for this issue would be to not use keyspace names containing hyphens. It would be even nicer if streaming worked for keyspace names with hyphens, since keyspaces named like that seem to be fine in all other ways.
+To reproduce:
+1. With a multi-node ring, load up a keyspace with a hyphen in its name
+2. Add some data to that keyspace
+3. nodetool repair
+Expected results:
+Repair operations complete normally
+Actual results:
+Repair operations don't complete normally. The stacktrace below is correlated with the repair request.
+INFO [AE-SERVICE-STAGE:1] 2010-06-30 14:11:29,744 AntiEntropyService.java (line 619) Performing streaming repair of 1 ranges to /10.255.0.20 for (my-keyspace,AColumnFamily)
+ERROR [MESSAGE-DESERIALIZER-POOL:1] 2010-06-30 14:11:30,034 DebuggableThreadPoolExecutor.java (line 101) Error in ThreadPoolExecutor
+java.lang.NullPointerException
+at org.apache.cassandra.streaming.StreamInitiateVerbHandler.getNewNames(StreamInitiateVerbHandler.java:154)
+at org.apache.cassandra.streaming.StreamInitiateVerbHandler.doVerb(StreamInitiateVerbHandler.java:76)
+at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:40)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.5, 0.7 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+Ben Hoyt
+Create date:
+11/Aug/10 14:54
+Update date:
+16/Apr/19 09:33
+Resolved date:
+12/Aug/10 21:40

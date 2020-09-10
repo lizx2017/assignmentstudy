@@ -1,0 +1,58 @@
+Summary:
+NPE in BoostQueryNodeBuilder.build
+Description:
+  public Query build(QueryNode queryNode) throws QueryNodeException {
+    BoostQueryNode boostNode = (BoostQueryNode) queryNode;
+    QueryNode child = boostNode.getChild();
+
+    if (child == null) {
+      return null;
+    }
+
+    Query query = (Query) child
+        .getTag(QueryTreeBuilder.QUERY_TREE_BUILDER_TAGID);
+    query.setBoost(boostNode.getValue());
+
+    return query;
+
+  }
+In BoostQueryNodeBuilder.build, the return variable, "query" can be null, but there is no error handling code for the return variable. I think there should be a null checker for query like for child.
+<Test Case>
+public void test1() throws Throwable {
+     BoostQueryNodeBuilder builder = new BoostQueryNodeBuilder();
+     QuotedFieldQueryNode quotedNode = new QuotedFieldQueryNode((java.lang.CharSequence)"hi!", (java.lang.CharSequence)"", 10, 100);
+     BoostQueryNode node = new BoostQueryNode((QueryNode)quotedNode, 2.0f);
+     builder.build((QueryNode)node);
+}
+<Stack Trace>
+1) test1(Test0)java.lang.NullPointerException
+        at org.apache.lucene.queryparser.flexible.standard.builders.BoostQueryNodeBuilder.build(BoostQueryNodeBuilder.java:49)
+        at Test0.test1(Test0.java:4809)
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+4.9
+Fix_version:
+None
+Component:
+core/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+M Kim
+Create date:
+07/Aug/14 17:39
+Update date:
+16/Feb/15 18:36
+Resolved date:
+

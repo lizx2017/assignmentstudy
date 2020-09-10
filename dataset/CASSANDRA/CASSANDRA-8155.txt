@@ -1,0 +1,44 @@
+Summary:
+confusing error when erroneously querying map secondary index
+Description:
+With a secondary index on values, attempting to query by key returns an error message of "list index out of range".
+This is kinda a similar issue to CASSANDRA-8147 (but that scenario results in no error when there probably should be one).
+To repro:
+cqlsh:test> CREATE TABLE test.foo (
+        ...     id1 text,
+        ...     id2 text,
+        ...     categories map<text, text>,
+        ...     PRIMARY KEY (id1, id2));
+cqlsh:test> CREATE INDEX foo_categories_idx ON test.foo (categories);
+cqlsh:test> insert into foo (id1, id2, categories) values ('foo', 'bar', {'firstkey':'one', 'secondkey':'two'});
+Now try to query the existing values index by key:
+cqlsh:test> select * from foo where categories contains key 'firstkey';
+list index out of range
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+2.1.2
+Component:
+Feature/2i Index
+Label:
+cqlsh lhf
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Russ Hatch
+Create date:
+20/Oct/14 21:55
+Update date:
+16/Apr/19 09:31
+Resolved date:
+23/Oct/14 15:54

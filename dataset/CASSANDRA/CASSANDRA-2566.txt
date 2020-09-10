@@ -1,0 +1,68 @@
+Summary:
+CQL: Batch Updates: some consistency levels not working
+Description:
+Testing the batch updates, and running into some issues with different consistency levels
+Summary
+UNTESTED: CONSISTENCY ANY
+PASS: CONSISTENCY ONE
+PASS: CONSISTENCY QUORUM
+PASS: CONSISTENCY ALL
+CQL ERROR: CONSISTENCY LOCAL_QUORUM
+CQL ERROR: CONSISTENCY EACH_QUORUM
+Test Setup
+CREATE KEYSPACE cqldb with strategy_class =  'org.apache.cassandra.locator.SimpleStrategy'  
+and strategy_options:replication_factor=1;
+
+use cqldb;
+
+CREATE COLUMNFAMILY users (KEY varchar PRIMARY KEY, password varchar, gender varchar, 
+session_token varchar, state varchar, birth_year bigint);
+
+INSERT INTO users (KEY, password, gender, state, birth_year) VALUES ('user1', 'ch@ngem3', 'f', 'CA', '1971');
+INSERT INTO users (KEY, password, gender, state, birth_year) VALUES ('user2', 'ch@ngem3', 'f', 'CA', '1972');
+INSERT INTO users (KEY, password, gender, state, birth_year) VALUES ('user3', 'ch@ngem3', 'f', 'CA', '1973');
+Bug Details
+CONSISTENCY LOCAL_QUORUM
+BEGIN BATCH USING CONSISTENCY  LOCAL_QUORUM
+UPDATE users SET state = 'UT' WHERE KEY = 'user1';
+UPDATE users SET state = 'UT' WHERE KEY = 'user2';
+UPDATE users SET state = 'UT' WHERE KEY = 'user3';
+APPLY BATCH
+
+cqlsh>  Bad Request: line 1:31 mismatched input 'LOCAL_QUORUM' expecting K_LEVEL
+CONSISTENCY EACH_QUORUM
+BEGIN BATCH USING CONSISTENCY  EACH_QUORUM
+UPDATE users SET state = 'TX' WHERE KEY = 'user1';
+UPDATE users SET state = 'TX' WHERE KEY = 'user2';
+UPDATE users SET state = 'TX' WHERE KEY = 'user3';
+APPLY BATCH
+
+cqlsh> Bad Request: line 1:31 mismatched input 'EACH_QUORUM' expecting K_LEVEL
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.0
+Component:
+Legacy/CQL
+Label:
+cql
+Environment:
+
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Cathy Daw
+Create date:
+26/Apr/11 20:00
+Update date:
+16/Apr/19 09:33
+Resolved date:
+16/May/11 22:01

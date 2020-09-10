@@ -1,0 +1,70 @@
+Summary:
+Cassandra upgrade to 1.1.1 resulted in slow query issue
+Description:
+We have recently introduced Cassandra at the Globe and Mail here in Toronto, Canada. We are processing and storing the North American stock-market feed. We have found it to work very quickly and things have been looking very good.
+Recently we upgraded to version 1.1.1 and then we have noticed some issues occurring.
+I will try to describe it for you here. Basically one operation that we very often perform and is very critical is the ability to 'get the latest quote'. This would return to you the latest Quote adjusted against exchange delay rules. With Cassandra version 1.0.3 we could get a Quote in around 2ms. After update we are looking at time of at least 2-3 seconds.
+The way we query the quote is using a REVERSED SuperSliceQuery with start=now, end=00:00:00.000 (beginning of day) LIMITED to 1.
+Our investigation leads us to suspect that, since upgrade, Cassandra seems to be reading the sstable from disk even when we request a small range of day only 5 seconds back. If you look at the output below you can see that the query does NOT get slower as the lookback increases from 5 sec, 60 sec, 15 min, 60 min, and 24 hours.
+We also noticed that the query was very fast for the first five minutes of trading, apparently until the first sstable was flushed to disk. After that we go into query times of 1-2 seconds or so.
+Query time[lookback=5]:[1711ms]
+Query time[lookback=60]:[1592ms]
+Query time[lookback=900]:[1520ms]
+Query time[lookback=3600]:[1294ms]
+Query time[lookback=86400]:[1391ms]
+We would really appreciate input or help on this.
+Cassandra version: 1.1.1
+Hector version: 1.0-1
+—
+public void testCassandraIssue() {
+try {
+int[] seconds = new int[]
+{ 5, 60, 60 * 15, 60 * 60, 60 * 60 * 24}
+;
+for(int sec : seconds)
+{ DateTime start = new DateTime(); SuperSliceQuery<String, String, String, String> superSliceQuery = HFactory.createSuperSliceQuery(keyspaceOperator, StringSerializer.get(), StringSerializer.get(), StringSerializer.get(), StringSerializer.get()); superSliceQuery.setKey("101390" + "." + testFormatter.print(start)); superSliceQuery.setColumnFamily("Quotes"); superSliceQuery.setRange(superKeyFormatter.print(start), superKeyFormatter.print(start.minusSeconds(sec)), true, 1); long theStart = System.currentTimeMillis(); QueryResult<SuperSlice<String, String, String>> result = superSliceQuery.execute(); long end = System.currentTimeMillis(); System.out.println("Query time[lookback=" + sec + "]:[" + (end - theStart) + "ms]"); }
+} catch(Exception e)
+{ e.printStackTrace(); fail(e.getMessage()); }
+}
+—
+create column family Quotes
+with column_type = Super
+and comparator = BytesType
+and subcomparator = BytesType
+and keys_cached = 7000
+and rows_cached = 0
+and row_cache_save_period = 0
+and key_cache_save_period = 3600
+and memtable_throughput = 255
+and memtable_operations = 0.29
+AND compression_options=
+{sstable_compression:SnappyCompressor, chunk_length_kb:64}
+;
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+1.1.3
+Component:
+None
+Label:
+None
+Environment:
+ubuntu, java 1.7, hector
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Ivan Ganza
+Create date:
+14/Jun/12 14:06
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Jul/12 13:17

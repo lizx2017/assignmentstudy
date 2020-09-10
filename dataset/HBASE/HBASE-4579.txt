@@ -1,0 +1,60 @@
+Summary:
+CST.requestCompaction semantics changed, logs are now spammed when too many store files
+Description:
+Another bug I'm not so sure what's going on. I see this in my log:
+2011-10-12 00:23:43,435 DEBUG org.apache.hadoop.hbase.regionserver.Store: info: no store files to compact
+2011-10-12 00:23:44,335 DEBUG org.apache.hadoop.hbase.regionserver.Store: info: no store files to compact
+2011-10-12 00:23:45,236 DEBUG org.apache.hadoop.hbase.regionserver.Store: info: no store files to compact
+2011-10-12 00:23:46,136 DEBUG org.apache.hadoop.hbase.regionserver.Store: info: no store files to compact
+2011-10-12 00:23:47,036 DEBUG org.apache.hadoop.hbase.regionserver.Store: info: no store files to compact
+2011-10-12 00:23:47,936 DEBUG org.apache.hadoop.hbase.regionserver.Store: info: no store files to compact
+It spams for a while, and a little later instead I get:
+2011-10-12 00:26:52,139 DEBUG org.apache.hadoop.hbase.regionserver.Store: Skipped compaction of info. Only 2 file(s) of size 176.4m have met compaction criteria.
+2011-10-12 00:26:53,040 DEBUG org.apache.hadoop.hbase.regionserver.Store: Skipped compaction of info. Only 2 file(s) of size 176.4m have met compaction criteria.
+2011-10-12 00:26:53,940 DEBUG org.apache.hadoop.hbase.regionserver.Store: Skipped compaction of info. Only 2 file(s) of size 176.4m have met compaction criteria.
+2011-10-12 00:26:54,840 DEBUG org.apache.hadoop.hbase.regionserver.Store: Skipped compaction of info. Only 2 file(s) of size 176.4m have met compaction criteria.
+2011-10-12 00:26:55,741 DEBUG org.apache.hadoop.hbase.regionserver.Store: Skipped compaction of info. Only 2 file(s) of size 176.4m have met compaction criteria.
+2011-10-12 00:26:56,641 DEBUG org.apache.hadoop.hbase.regionserver.Store: Skipped compaction of info. Only 2 file(s) of size 176.4m have met compaction criteria.
+I believe I also saw something like that for flushes, but the region was closing so at least I know why it was spamming (would be nice if it just unrequested the flush):
+2011-10-12 00:26:40,693 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Flush requested on TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5.
+2011-10-12 00:26:40,694 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: NOT flushing memstore for region TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5., flushing=false, writesEnabled=false
+2011-10-12 00:26:40,733 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Flush requested on TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5.
+2011-10-12 00:26:40,733 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: NOT flushing memstore for region TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5., flushing=false, writesEnabled=false
+2011-10-12 00:26:40,873 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Flush requested on TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5.
+2011-10-12 00:26:40,873 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: NOT flushing memstore for region TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5., flushing=false, writesEnabled=false
+2011-10-12 00:26:40,873 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Flush requested on TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5.
+2011-10-12 00:26:40,873 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: NOT flushing memstore for region TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5., flushing=false, writesEnabled=false
+2011-10-12 00:26:40,921 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Flush requested on TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5.
+2011-10-12 00:26:40,922 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: NOT flushing memstore for region TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5., flushing=false, writesEnabled=false
+2011-10-12 00:26:40,923 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Flush requested on TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5.
+2011-10-12 00:26:40,923 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: NOT flushing memstore for region TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5., flushing=false, writesEnabled=false
+2011-10-12 00:26:40,923 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Flush requested on TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5.
+2011-10-12 00:26:40,923 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: NOT flushing memstore for region TestTable,0038168581,1318378894213.2beb8a1e29382a8d3e90a88b9662e5f5., flushing=false, writesEnabled=false
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+12/Oct/11 00:36
+Update date:
+20/Nov/15 11:54
+Resolved date:
+17/Oct/11 18:22

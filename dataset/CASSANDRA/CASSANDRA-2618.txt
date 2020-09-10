@@ -1,0 +1,62 @@
+Summary:
+DynamicSnitch race in adding latencies
+Description:
+ERROR 15:33:48,614 Fatal exception in thread Thread[ReadStage:264,5,main]
+java.lang.RuntimeException: java.util.NoSuchElementException
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:680)
+Caused by: java.util.NoSuchElementException
+at java.util.concurrent.LinkedBlockingDeque.removeFirst(LinkedBlockingDeque.java:401)
+at java.util.concurrent.LinkedBlockingDeque.remove(LinkedBlockingDeque.java:621)
+at org.apache.cassandra.locator.AdaptiveLatencyTracker.add(DynamicEndpointSnitch.java:288)
+at org.apache.cassandra.locator.DynamicEndpointSnitch.receiveTiming(DynamicEndpointSnitch.java:202)
+at org.apache.cassandra.net.MessagingService.addLatency(MessagingService.java:152)
+at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:642)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+... 3 more
+ERROR 15:33:48,615 Fatal exception in thread Thread[ReadStage:264,5,main]
+java.lang.RuntimeException: java.util.NoSuchElementException
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:680)
+Caused by: java.util.NoSuchElementException
+at java.util.concurrent.LinkedBlockingDeque.removeFirst(LinkedBlockingDeque.java:401)
+at java.util.concurrent.LinkedBlockingDeque.remove(LinkedBlockingDeque.java:621)
+at org.apache.cassandra.locator.AdaptiveLatencyTracker.add(DynamicEndpointSnitch.java:288)
+at org.apache.cassandra.locator.DynamicEndpointSnitch.receiveTiming(DynamicEndpointSnitch.java:202)
+at org.apache.cassandra.net.MessagingService.addLatency(MessagingService.java:152)
+at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:642)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+... 3 more
+What is happening that AdaptiveLatencyTracker.add is trying to add a latency, but the deque is full, so it makes a second effort to remove an entry from the deque and then try to add again. However, when it tries to remove, the deque has already been emptied by DES.reset call clear() on all the ALTs. This bug has existed for a long time, but it's very rare and difficult to trigger.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Brandon Williams
+Create date:
+06/May/11 22:27
+Update date:
+16/Apr/19 09:32
+Resolved date:
+07/May/11 01:43

@@ -1,0 +1,40 @@
+Summary:
+disablethrift results in unclosed file descriptors
+Description:
+Disabling thrift results in unclosed thrift sockets being left around.
+Steps to reproduce and observe:
+1. Have a handful of clients connect via thrift.
+2. Disable thrift.
+3. Enable thrift, have the clients reconnect.
+4. Observe netstat or lsof, and you'll find a lot of thrift sockets in CLOSE_WAIT state, and they'll never go away.
+Also verifiable from org.apache.cassandra.metrics:type=Client,name=connectedThriftClients MBean.
+What's extra fun about this is the leaked sockets still count towards your maximum RPC thread count. As a result, toggling thrift enough times will result in an rpc_max_threads number of CLOSED_WAIT sockets, with no new clients able to connect.
+This was reproduced with HSHA. I haven't tried it in sync yet.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.17, 2.0.8, 2.1 rc1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mikhail Stepura
+Reporter:
+Jason Harvey
+Create date:
+03/Jan/14 13:23
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/May/14 22:25

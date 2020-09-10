@@ -1,0 +1,56 @@
+Summary:
+Split document issue
+Description:
+I've seen a bug trying to split pages of a pdf document.
+For example, I got a 5 pages pdf document and I try to create a document with pages 4 to 5.
+I set startPage to 3 and endPage to 5 (also tried to set page number to 3) but it creates a document with pages 3 to 4 and a other one with page 5.
+I analysed a little bit the problem and it looks like it comes from the value of pageNumber variable in Splitter.class.
+This is how I solved it (rewriting 3 methods) :
+@Override
+protected void processPages(List pages) throws IOException {
+Iterator iter = pages.iterator();
+while( iter.hasNext() ) {
+PDPage page = (PDPage)iter.next();
+pageNumber++;
+if (pageNumber >= getStartPage() && pageNumber <= getEndPage())
+{ processNextPage( page ); }
+else {
+if (pageNumber > getEndPage())
+{ break; }
+}
+}
+}
+@Override
+protected void processNextPage( PDPage page ) throws IOException
+{ createNewDocumentIfNecessary(); PDPage imported = currentDocument.importPage( page ); imported.setCropBox( page.findCropBox() ); imported.setMediaBox( page.findMediaBox() ); // only the resources of the page will be copied imported.setResources( page.getResources() ); imported.setRotation( page.findRotation() ); }
+@Override
+protected boolean isNewDocNecessary()
+{ return (pageNumber % getSplitAtPage() == 0 && pageNumber != getEndPage()) || currentDocument == null; }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.7.1
+Fix_version:
+1.8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Duarte Alexandre
+Create date:
+30/Jan/13 16:00
+Update date:
+02/May/13 02:30
+Resolved date:
+09/Mar/13 15:45

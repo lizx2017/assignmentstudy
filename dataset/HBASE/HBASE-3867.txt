@@ -1,0 +1,89 @@
+Summary:
+when cluster is stopped and server which hosted meta region is removed from cluster, master breaks down after restarting cluster.
+Description:
+When cluster stopped and romove server from cluster which contains meta region, then restart cluster,
+From the following code throws "NoRouteToHostException"
+package org.apache.hadoop.hbase.catalog;
+public class CatalogTracker
+private HRegionInterface getMetaServerConnection(boolean refresh)
+throws IOException, InterruptedException {
+synchronized (metaAvailable) {
+if (metaAvailable.get()) {
+HRegionInterface current = getCachedConnection(metaLocation);
+if (!refresh)
+{ return current; }
+if (verifyRegionLocation(current, this.metaLocation, META_REGION)) { return current; }
+resetMetaLocation();
+}
+HRegionInterface rootConnection = getRootServerConnection();
+if (rootConnection == null)
+{ return null; }
+HServerAddress newLocation = MetaReader.readMetaLocation(rootConnection);
+if (newLocation == null) { return null; }
+////////the following line throws the exception
+HRegionInterface newConnection = getCachedConnection(newLocation);
+if (verifyRegionLocation(newConnection, this.metaLocation, META_REGION))
+{ setMetaLocation(newLocation); return newConnection; }
+return null;
+}
+}
+/////////////the following method don't handle the exception.
+public class CatalogTracker
+public boolean verifyMetaRegionLocation(final long timeout)
+throws InterruptedException, IOException
+{ return getMetaServerConnection(true) != null; }
+//////////////////master call the CatalogTracker's method and don't handle the problem too.
+package org.apache.hadoop.hbase.master;
+public class HMaster
+int assignRootAndMeta()
+throws InterruptedException, IOException, KeeperException {
+int assigned = 0;
+long timeout = this.conf.getLong("hbase.catalog.verification.timeout", 1000);
+// Work on ROOT region. Is it in zk in transition?
+boolean rit = this.assignmentManager.
+processRegionInTransitionAndBlockUntilAssigned(HRegionInfo.ROOT_REGIONINFO);
+if (!catalogTracker.verifyRootRegionLocation(timeout))
+{ this.assignmentManager.assignRoot(); this.catalogTracker.waitForRoot(); assigned++; }
+LOG.info("ROOT assigned=" + assigned + ", rit=" + rit +
+", location=" + catalogTracker.getRootLocation());
+// Work on meta region
+rit = this.assignmentManager.
+processRegionInTransitionAndBlockUntilAssigned(HRegionInfo.FIRST_META_REGIONINFO);
+///////////////////////////////
+when restart cluster master break down here.
+////////////////////////////////
+if (!this.catalogTracker.verifyMetaRegionLocation(timeout))
+{ this.assignmentManager.assignMeta(); this.catalogTracker.waitForMeta(); // Above check waits for general meta availability but this does not // guarantee that the transition has completed this.assignmentManager.waitForAssignment(HRegionInfo.FIRST_META_REGIONINFO); assigned++; }
+LOG.info(".META. assigned=" + assigned + ", rit=" + rit +
+", location=" + catalogTracker.getMetaLocation());
+return assigned;
+}
+Thanks to JunQiang Yuan in www.alipay.com for providing information about this bug.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.1, 0.90.2
+Fix_version:
+0.90.4
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Liu Jia
+Create date:
+09/May/11 02:24
+Update date:
+20/Nov/15 12:43
+Resolved date:
+20/Jul/11 07:13

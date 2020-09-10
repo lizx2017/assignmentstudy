@@ -1,0 +1,59 @@
+Summary:
+Malformed document causes NPE in PDNameTreeNode.getValue
+Description:
+If a NameTreeNode has neither a Names or Kids item, then getValue crashes with a Null Pointer Exception.
+Fix:
+Eclipse Workspace Patch 1.0
+#P pdfbox
+Index: pdfbox/src/main/java/org/apache/pdfbox/pdmodel/common/PDNameTreeNode.java
+===================================================================
+pdfbox/src/main/java/org/apache/pdfbox/pdmodel/common/PDNameTreeNode.java (revision 1026306)
++++ pdfbox/src/main/java/org/apache/pdfbox/pdmodel/common/PDNameTreeNode.java (working copy)
+@@ -147,13 +147,15 @@
+else
+{
+List kids = getKids();
+for( int i=0; i<kids.size() && retval == null; i++ )
+{
+PDNameTreeNode childNode = (PDNameTreeNode)kids.get( i );
+if( childNode.getLowerLimit().compareTo( name ) <= 0 &&
+childNode.getUpperLimit().compareTo( name ) >= 0 )
++ if (kids != null) {
++ for( int i=0; i<kids.size() && retval == null; i++ )
+{
+retval = childNode.getValue( name );
++ PDNameTreeNode childNode = (PDNameTreeNode)kids.get( i );
++ if( childNode.getLowerLimit().compareTo( name ) <= 0 &&
++ childNode.getUpperLimit().compareTo( name ) >= 0 )
++ { + retval = childNode.getValue( name ); + }
+}
+}
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.3.1
+Fix_version:
+1.4.0
+Component:
+PDModel
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adam Nichols
+Reporter:
+Kevin Jackson
+Create date:
+11/Nov/10 03:14
+Update date:
+24/Mar/13 14:44
+Resolved date:
+19/Nov/10 22:43

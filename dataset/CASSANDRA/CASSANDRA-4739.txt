@@ -1,0 +1,50 @@
+Summary:
+Prepared Statements don't support collections
+Description:
+I'm putting a collection onto the wire in an EXECUTE request with exactly the same bytes that Cassandra encodes the same data in a response:
+"Can't apply operation on column with org.apache.cassandra.db.marshal.SetType(org.apache.cassandra.db.marshal.UTF8Type) type"
+Here's the full trace log from cassandra:
+DEBUG 19:24:15,414 Received: PREPARE INSERT INTO things (id, set_text) VALUES (?, ?);
+TRACE 19:24:15,414 CQL QUERY: INSERT INTO things (id, set_text) VALUES (?, ?);
+TRACE 19:24:15,415 Stored prepared statement #413587006 with 2 bind markers
+DEBUG 19:24:15,415 Responding: RESULT PREPARED 413587006 [id(gocql_collections, things), org.apache.cassandra.db.marshal.TimeUUIDType][set_text(gocql_collections, things), org.apache.cassandra.db.marshal.SetType(org.apache.cassandra.db.marshal.UTF8Type)]
+DEBUG 19:24:15,416 Received: EXECUTE 413587006 with 2 values
+TRACE 19:24:15,416 [1] 'java.nio.HeapByteBuffer[pos=18 lim=34 cap=53]'
+TRACE 19:24:15,416 [2] 'java.nio.HeapByteBuffer[pos=38 lim=51 cap=53]'
+DEBUG 19:24:15,417 Responding: ERROR INVALID: Can't apply operation on column with org.apache.cassandra.db.marshal.SetType(org.apache.cassandra.db.marshal.UTF8Type) type.
+The prepared statement is:
+INSERT INTO things (id, set_text) VALUES (?, ?);
+and the collection value (
+{'asdf', 'sdf'}
+) is encoded as:
+00 02 00 04 61 73 64 66 00 03 73 64 66
+which is byte-for-byte exactly the same as what I get from Cassandra off the wire when I do a query for the same data.
+I already have the driver working with other queries/inserts with all other types, so this is just a collection encoding problem.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Jonathan Rudenberg
+Create date:
+01/Oct/12 16:32
+Update date:
+16/Apr/19 09:32
+Resolved date:
+05/Oct/12 07:33

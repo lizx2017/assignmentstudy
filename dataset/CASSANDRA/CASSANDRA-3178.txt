@@ -1,0 +1,33 @@
+Summary:
+Counter shard merging is not thread safe
+Description:
+The first part of the counter shard merging process is done during counter replication. This was done there because it requires that all replica are made aware of the merging (we could only rely on nodetool repair for that but that seems much too fragile, it's better as just a safety net). However this part isn't thread safe as multiple threads can do the merging for the same shard at the same time (which shouldn't really "corrupt" the counter value per se, but result in an incorrect context).
+Synchronizing that part of the code would be very costly in term of performance, so instance I propose to move the part of the shard merging done during replication to compaction. It's a better place anyway. The only downside is that it means compaction will sometime send mutations to other node as a side effect, which doesn't feel very clean but is probably not a big deal either.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.8, 1.0.3
+Component:
+None
+Label:
+counters
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+12/Sep/11 14:58
+Update date:
+16/Apr/19 09:32
+Resolved date:
+07/Nov/11 15:38

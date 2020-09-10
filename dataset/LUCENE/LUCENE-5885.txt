@@ -1,0 +1,34 @@
+Summary:
+MergeScheduler should not implement Closeable
+Description:
+MergeScheduler implements Closeable and IndexWriter calls ms.close() when it's closed. But MergeScheduler can be shared between several writers, which means closing it by any particular writer is wrong. We should rather implement some ref-counting logic such that each IW will call incRef() in the ctor, and decRef() on close(), and MergeScheduler will truly close when the ref-count hits 0.
+As it is now, if you share a MergeScheduler between writers and close() does something terminating, I doubt if it really works.
+Also, when I look at ConcurrentMergeScheduler.close(), it calls sync() which joins all MergeThreads. But if that CMS instance is shared between few IWs, doesn't it mean that a single IW calling close() waits on MergeThreads that execute merges of other IWs!?!? This seems ... wrong?
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Shai Erera
+Create date:
+14/Aug/14 12:18
+Update date:
+14/Aug/14 18:56
+Resolved date:
+

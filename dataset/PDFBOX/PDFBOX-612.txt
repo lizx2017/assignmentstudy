@@ -1,0 +1,66 @@
+Summary:
+Unknown encoding for 'GBK-EUC-H'
+Description:
+Unknown encoding for 'GBK-EUC-H' for chinese pdf document. To fix it.
+1.add method to org.apache.pdfbox.pdmodel.font.PDFont.java
+public String getEncodingName() {
+COSBase encoding = font.getDictionaryObject(COSName.ENCODING);
+if (encoding != null) {
+if (encoding instanceof COSName)
+{ return ((COSName) encoding).getName(); }
+}
+return null;
+}
+2.modify encode method.
+from
+if( retval == null && cmap != null )
+{ retval = cmap.lookup( c, offset, length ); }
+//if we havn't found a value yet and
+//we are still on the first byte and
+//there is no cmap or the cmap does not have 2 byte mappings then try to encode
+//using fallback methods.
+to
+if( retval == null && cmap != null )
+{
+String encodingStr = getEncodingName();
+if (encodingStr != null) {
+EncodingConverter converter = EncodingConversionManager.getConverter(encodingStr);
+if (converter != null)
+{ if (length == 1) return null; retval = converter.convertBytes(c, offset, length, cmap); }
+else
+{ retval = cmap.lookup( c, offset, length ); }
+} else
+{ retval = cmap.lookup( c, offset, length ); }
+}
+//if we havn't found a value yet and
+//we are still on the first byte and
+//there is no cmap or the cmap does not have 2 byte mappings then try to encode
+//using fallback methods.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.8.0-incubator
+Fix_version:
+1.5.0
+Component:
+PDModel
+Label:
+encoding
+Environment:
+windows
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Gang Luo
+Create date:
+08/Feb/10 00:34
+Update date:
+18/May/12 15:31
+Resolved date:
+18/May/12 15:31

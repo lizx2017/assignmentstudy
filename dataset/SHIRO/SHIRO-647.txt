@@ -1,0 +1,94 @@
+Summary:
+SubjectBuilder doesn't fill principals when principals and sessionId is specified
+Description:
+Hello. 
+I'm trying to implement one role at a time scenario. 
+It this case first I'm signing user with 
+//Kotlin
+val token = UsernamePasswordToken(credentials.name, credentials.password) 
+SecurityUtils.getSubject().login(token) 
+then, when the user select role I create session: 
+val sessionId = SecurityUtils.getSubject().session.id as String 
+val mySession = MySession(sessionId, selectedRoleId) 
+then when the user wants to execute request I restore Subject from this sessionId 
+val subject = Subject.Builder() 
+       .sessionId(mySession.sessionId) 
+       .buildSubject() 
+and everything goes fine, in the doGetAuthorizationInfo method I'm able to identify the Subject from principalCollection since there is his id (eg. 2). 
+fun doGetAuthorizationInfo(principals: PrincipalCollection) { 
+    val subjectId : Long = principals.fromRealm(name).iterator().next() as Long 
+    ... 
+but the problem is when I want to be aware of selected role in the doGetAuthorizationInfo method. I tried to pass another principal with selected roleId but 
+val rolePrincipal = RolePrincipal(mySession.roleId) 
+val principals = SimplePrincipalCollection(listOf(rolePrincipal, mySession.id), realm.name) 
+
+val subject = Subject.Builder() 
+      .principals(principals) 
+      .sessionId(mySession.id) 
+      .buildSubject() 
+then the session is not being resolved and in the doGetAuthorizationInfo method, I'm only getting raw mySession.id(eg. "36fa4f4a-d55e-47df-8170-13bcdf6f2aa6") instead of mine subjectId(eg. 2). 
+In other words 
+                 .principals(principals) 
+and 
+                 .sessionId(mySession.id) 
+seems to not work together, the .principals is blocking .sessionId from being resolved to subjectId. 
+    EDIT:
+It's not elegant but I found workaround:
+    val subject = Subject.Builder()
+        .sessionId(mySession.id)
+        .buildSubject()
+
+// Recreate Subject with additional rolePrincipal
+val rolePrincipal = RolePrincipal(mySession.roleId)
+val principals = listOf(subject.principal, rolePrincipal)
+
+val subjectContext = DefaultSubjectContext()
+subjectContext.session = subject.session
+subjectContext.isAuthenticated = subject.isAuthenticated
+subjectContext.principals = SimplePrincipalCollection(principals, realm.name)
+val subjectRecreated = DefaultSubjectFactory().createSubject(subjectContext)
+
+if (!subjectRecreated.isAuthenticated)
+    throw AuthorizationException("Restored session is not authenticated")
+
+subjectRecreated.checkPermission("user:read:*")
+   and then in my doGethAuthorizationInfo I'm easly getting both subjectId and selected roleId
+  override fun doGetAuthorizationInfo(principals: PrincipalCollection){
+    var subjectId: Long = -1L
+    var roleId: Long = -1L
+
+    for (principal in principals.fromRealm(name).iterator())
+        when (principal) {
+            is Long -> subjectId = principal
+            is RolePrincipal -> roleId = principal.roleId
+        }
+But I'm sure there is better approach to do so.
+ 
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+1.3.2
+Fix_version:
+None
+Component:
+Authentication (log-in)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Stanisław Barański
+Create date:
+19/May/18 00:45
+Update date:
+19/May/18 07:58
+Resolved date:
+

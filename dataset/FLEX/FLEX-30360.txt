@@ -1,0 +1,55 @@
+Summary:
+Slider can not be set to minimum or maximum value
+Description:
+Steps to reproduce:
+1. use the automation for replaying with the attached file (SliderT.mxml).
+2. Replay Slider.Change(50) to set the vertical slider to its minimum value 50.
+Actual Results:
+The Slider is set to 51
+Expected Results:
+The Slider is set to 50
+--------------------------------------------
+Technical backgroundinformation:
+In the function "SparkSliderBaseAutomationImpl.vSliderValueToPoint" the variables adjustedY and adjustedX are set to decimal values (i.e. since the thumb size is 11, "thumbW/2" calculates to 5.5 ):
+private function vSliderValueToPoint(value:Number):Point
+{ // we are doing the reverse conversion od the pointToValue in the VSlider // we even consider the modiifcation done in the mouseDownHanlder for the track in the slider var thumbRange:Number = slider.track.getLayoutBoundsHeight() - slider.thumb.getLayoutBoundsHeight(); var range:Number = slider.maximum - slider.minimum; var localY:Number = thumbRange - ( (Number(value -slider.minimum) / range)* thumbRange) var thumbW:Number = (slider.thumb) ? slider.thumb.width : 0; var thumbH:Number = (slider.thumb) ? slider.thumb.height : 0; var adjustedY:Number = localY + (thumbH / 2); var adjustedX:Number = thumbW/2; return new Point(adjustedX,adjustedY); }
+The above values are passed to the function "AutomationManager.replayClick", where they are assigned to the integers "localX" and "localY" (i.e. the value 5.5 is now 5):
+public function replayClick(to:IEventDispatcher, sourceEvent:MouseEvent = null):Boolean
+{
+sourceEvent = sourceEvent || new MouseEvent(MouseEvent.CLICK);
+pushMouseSimulator(to, sourceEvent);
+map(function(type:String):void
+{ var localX:int = sourceEvent && !isNaN(sourceEvent.localX) ? sourceEvent.localX : 2; var localY:int = sourceEvent && !isNaN(sourceEvent.localY) ? sourceEvent.localY : 2; var event:MouseEvent = new MouseEvent(type, true, false, localX, localY); event.ctrlKey = sourceEvent.ctrlKey; event.shiftKey = sourceEvent.shiftKey; event.altKey = sourceEvent.altKey; event.buttonDown = (type == MouseEvent.MOUSE_DOWN); replayMouseEventInternal(to, event); }
+,
+MOUSE_CLICK_TYPES);
+popMouseSimulator();
+return true;
+}
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Spark Components
+Label:
+easytest
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+29/Nov/10 08:00
+Update date:
+23/May/13 09:46
+Resolved date:
+

@@ -1,0 +1,56 @@
+Summary:
+PrintImageLocations doesn't print images inside PDXObjectForm objects
+Description:
+Some pdf store images inside forms to reuse them throughout the document. PrintImageLocations misses such images.
+A workaround that works for some documents:
+if (xobject instanceof PDXObjectForm) {
+Map images = ((PDXObjectForm) xobject).getResources()
+.getImages();
+if (images != null) {
+Iterator imageIter = images.keySet().iterator();
+while (imageIter.hasNext()) {
+String key = (String) imageIter.next();
+PDXObjectImage image = (PDXObjectImage) images.get(key);
+String name = key;
+//System.out.println("Writing image:" + name);
+//image.write2file(name);
+try
+{ PDPage page = getCurrentPage(); Matrix ctm = getGraphicsState() .getCurrentTransformationMatrix(); double rotationInRadians = (page.findRotation() * Math.PI) / 180; AffineTransform rotation = new AffineTransform(); rotation.setToRotation(rotationInRadians); AffineTransform rotationInverse = rotation.createInverse(); Matrix rotationInverseMatrix = new Matrix(); rotationInverseMatrix .setFromAffineTransform(rotationInverse); Matrix rotationMatrix = new Matrix(); rotationMatrix.setFromAffineTransform(rotation); Matrix unrotatedCTM = ctm.multiply(rotationInverseMatrix); float xScale = unrotatedCTM.getXScale(); float yScale = unrotatedCTM.getYScale(); imagesInformation.add(new ImageInformation(name, unrotatedCTM.getXPosition(), unrotatedCTM.getYPosition(), xScale / 100f * image.getWidth(), yScale / 100f * image.getHeight())); }
+catch (NoninvertibleTransformException e)
+{ throw new WrappedIOException(e); }
+}
+}
+}
+if (xobject instanceof PDXObjectImage) {
+try
+{ PDXObjectImage image = (PDXObjectImage) xobject; PDPage page = getCurrentPage(); Matrix ctm = getGraphicsState() .getCurrentTransformationMatrix(); double rotationInRadians = (page.findRotation() * Math.PI) / 180; AffineTransform rotation = new AffineTransform(); rotation.setToRotation(rotationInRadians); AffineTransform rotationInverse = rotation.createInverse(); Matrix rotationInverseMatrix = new Matrix(); rotationInverseMatrix .setFromAffineTransform(rotationInverse); Matrix rotationMatrix = new Matrix(); rotationMatrix.setFromAffineTransform(rotation); Matrix unrotatedCTM = ctm.multiply(rotationInverseMatrix); float xScale = unrotatedCTM.getXScale(); float yScale = unrotatedCTM.getYScale(); imagesInformation.add(new ImageInformation(objectName.getName(), unrotatedCTM.getXPosition(), unrotatedCTM.getYPosition(), xScale / 100f * image.getWidth(), yScale / 100f * image.getHeight())); }
+catch (NoninvertibleTransformException e)
+{ throw new WrappedIOException(e); }
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Duplicate
+Affects_version:
+1.6.0
+Fix_version:
+None
+Component:
+Utilities
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Ilija Pavlic
+Create date:
+05/Jan/12 12:04
+Update date:
+05/Jan/12 16:54
+Resolved date:
+05/Jan/12 16:54

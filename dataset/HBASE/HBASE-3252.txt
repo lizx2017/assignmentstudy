@@ -1,0 +1,46 @@
+Summary:
+TestZooKeeperNodeTracker sometimes fails due to a race condition in test notification
+Description:
+TestZooKeeperNodeTracker sometimes fails with errors like the following:
+Tests run: 2, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.738 sec <<< FAILURE!
+testNodeTracker(org.apache.hadoop.hbase.zookeeper.TestZooKeeperNodeTracker)  Time elapsed: 0.17 sec  <<< FAILURE!
+java.lang.AssertionError: 
+        at org.junit.Assert.fail(Assert.java:91)
+        at org.junit.Assert.assertTrue(Assert.java:43)
+        at org.junit.Assert.assertTrue(Assert.java:54)
+        at org.apache.hadoop.hbase.zookeeper.TestZooKeeperNodeTracker.testNodeTracker(TestZooKeeperNodeTracker.java:203)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+Running the test locally this can happen as much as 25-50% of the time.
+It looks like this is due to a basic race condition in the way the test is structured. The test code uses:
+    // Wait for zk event to be processed
+    zkListener.waitForDataChange();
+But, since zkListener is instantiated (and registered with ZooKeeperWatcher) prior to secondTracker (which is always the source of the failure), zkListener will be notified first of the change and there is a race condition between the subsequent test assertions and the secondTracker notification.
+Attaching a patch with a simple fix of just instantiating secondTracker prior to zkListener so that it's registered (and notified) first.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Gary Helmling
+Create date:
+19/Nov/10 20:31
+Update date:
+20/Nov/15 12:41
+Resolved date:
+19/Nov/10 20:37

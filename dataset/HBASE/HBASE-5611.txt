@@ -1,0 +1,42 @@
+Summary:
+Replayed edits from regions that failed to open during recovery aren't removed from the global MemStore size
+Description:
+This bug is rather easy to get if the TimeoutMonitor is on, else I think it's still possible to hit it if a region fails to open for more obscure reasons like HDFS errors.
+Consider a region that just went through distributed splitting and that's now being opened by a new RS. The first thing it does is to read the recovery files and put the edits in the MemStores. If this process takes a long time, the master will move that region away. At that point the edits are still accounted for in the global MemStore size but they are dropped when the HRegion gets cleaned up. It's completely invisible until the MemStoreFlusher needs to force flush a region and that none of them have edits:
+2012-03-21 00:33:39,303 DEBUG org.apache.hadoop.hbase.regionserver.MemStoreFlusher: Flush thread woke up because memory above low water=5.9g
+2012-03-21 00:33:39,303 ERROR org.apache.hadoop.hbase.regionserver.MemStoreFlusher: Cache flusher failed for entry null
+java.lang.IllegalStateException
+        at com.google.common.base.Preconditions.checkState(Preconditions.java:129)
+        at org.apache.hadoop.hbase.regionserver.MemStoreFlusher.flushOneForGlobalPressure(MemStoreFlusher.java:199)
+        at org.apache.hadoop.hbase.regionserver.MemStoreFlusher.run(MemStoreFlusher.java:223)
+        at java.lang.Thread.run(Thread.java:662)
+The null here is a region. In my case I had so many edits in the MemStore during recovery that I'm over the low barrier although in fact I'm at 0. It happened yesterday and it still printing this out.
+To fix this we need to be able to decrease the global MemStore size when the region can't open.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.6
+Fix_version:
+0.92.2, (2)
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jieshan Bean
+Reporter:
+Jean-Daniel Cryans
+Create date:
+21/Mar/12 18:38
+Update date:
+18/Sep/13 22:13
+Resolved date:
+30/Apr/12 20:34

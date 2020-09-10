@@ -1,0 +1,80 @@
+Summary:
+High memory consumption while building font cache
+Description:
+When the font cache is build there is a very high memory consumption.
+For this small program
+    public static void main(String[] args)
+    {
+        PDFont font = PDType1Font.HELVETICA;
+        try
+        {
+            System.in.read();
+        }
+        catch (IOException e)
+        {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+I need to set -Xmx1512M in order to avoid an OOM
+Smaller memory settings will bring this
+$ java -Xmx1256M -jar Test.jar 
+Nov 03, 2015 2:48:32 AM org.apache.pdfbox.pdmodel.font.FileSystemFontProvider loadCache
+WARNUNG: New fonts found, font cache will be re-built
+Nov 03, 2015 2:48:32 AM org.apache.pdfbox.pdmodel.font.FileSystemFontProvider <init>
+WARNUNG: Building font cache, this may take a while
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+ at org.apache.fontbox.cff.IndexData.initData(IndexData.java:95)
+ at org.apache.fontbox.cff.CFFParser.readIndexData(CFFParser.java:163)
+ at org.apache.fontbox.cff.CFFParser.parseFont(CFFParser.java:393)
+ at org.apache.fontbox.cff.CFFParser.parse(CFFParser.java:115)
+ at org.apache.fontbox.ttf.CFFTable.read(CFFTable.java:53)
+ at org.apache.fontbox.ttf.TrueTypeFont.readTable(TrueTypeFont.java:377)
+ at org.apache.fontbox.ttf.OpenTypeFont.getCFF(OpenTypeFont.java:61)
+ at org.apache.pdfbox.pdmodel.font.FileSystemFontProvider.addTrueTypeFontImpl(FileSystemFontProvider.java:432)
+ at org.apache.pdfbox.pdmodel.font.FileSystemFontProvider.addTrueTypeCollection(FileSystemFontProvider.java:344)
+ at org.apache.pdfbox.pdmodel.font.FileSystemFontProvider.scanFonts(FileSystemFontProvider.java:243)
+ at org.apache.pdfbox.pdmodel.font.FileSystemFontProvider.<init>(FileSystemFontProvider.java:224)
+ at org.apache.pdfbox.pdmodel.font.FontMapperImpl$DefaultFontProvider.<clinit>(FontMapperImpl.java:132)
+ at org.apache.pdfbox.pdmodel.font.FontMapperImpl.getProvider(FontMapperImpl.java:151)
+ at org.apache.pdfbox.pdmodel.font.FontMapperImpl.findFont(FontMapperImpl.java:415)
+ at org.apache.pdfbox.pdmodel.font.FontMapperImpl.findFontBoxFont(FontMapperImpl.java:378)
+ at org.apache.pdfbox.pdmodel.font.FontMapperImpl.getFontBoxFont(FontMapperImpl.java:352)
+ at org.apache.pdfbox.pdmodel.font.PDType1Font.<init>(PDType1Font.java:114)
+ at org.apache.pdfbox.pdmodel.font.PDType1Font.<clinit>(PDType1Font.java:76)
+ at PDFontTest.main(PDFontTest.java:11)
+Possible cause is a large number of fonts on my system
+Nov 03, 2015 2:56:01 AM org.apache.pdfbox.pdmodel.font.FileSystemFontProvider loadCache
+WARNUNG: New fonts found, font cache will be re-built
+Nov 03, 2015 2:56:01 AM org.apache.pdfbox.pdmodel.font.FileSystemFontProvider <init>
+WARNUNG: Building font cache, this may take a while
+Nov 03, 2015 2:56:22 AM org.apache.pdfbox.pdmodel.font.FileSystemFontProvider saveCache
+WARNUNG: Finished building font cache, found 876 fonts
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+PDModel
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Maruan Sahyoun
+Create date:
+03/Nov/15 01:58
+Update date:
+17/Mar/16 19:08
+Resolved date:
+18/Nov/15 17:31

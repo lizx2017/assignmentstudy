@@ -1,0 +1,39 @@
+Summary:
+Master can fail if ZooKeeper session expires
+Description:
+There is a retry mechanism in RecoverableZooKeeper, but when the session expires, the whole ZooKeeperWatcher is recreated, hence the retry mechanism does not work in this case. This is why a sleep is needed in TestZooKeeper#testMasterSessionExpired: we need to wait for ZooKeeperWatcher to be recreated before using the connection.
+This can happen in real life, it can happen when:
+master & zookeeper starts
+zookeeper connection is cut
+master enters the retry loop
+in the meantime the session expires
+the network comes back, the session is recreated
+the retries continues, but on the wrong object, hence fails.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.94.2
+Component:
+master, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Nicolas Liochon
+Create date:
+09/Mar/12 12:19
+Update date:
+07/Apr/13 04:34
+Resolved date:
+16/Mar/12 21:40

@@ -1,0 +1,57 @@
+Summary:
+SELECT on tuple relations are broken for mixed ASC/DESC clustering order
+Description:
+As noted on CASSANDRA-6875, the tuple notation is broken when the clustering order mixes ASC and DESC directives because the range of data they describe don't correspond to a single continuous slice internally. To copy the example from CASSANDRA-6875:
+cqlsh:ks> create table foo (a int, b int, c int, PRIMARY KEY (a, b, c)) WITH CLUSTERING ORDER BY (b DESC, c ASC);
+cqlsh:ks> INSERT INTO foo (a, b, c) VALUES (0, 2, 0);
+cqlsh:ks> INSERT INTO foo (a, b, c) VALUES (0, 1, 0);
+cqlsh:ks> INSERT INTO foo (a, b, c) VALUES (0, 1, 1);
+cqlsh:ks> INSERT INTO foo (a, b, c) VALUES (0, 0, 0);
+cqlsh:ks> SELECT * FROM foo WHERE a=0;
+
+ a | b | c
+---+---+---
+ 0 | 2 | 0
+ 0 | 1 | 0
+ 0 | 1 | 1
+ 0 | 0 | 0
+
+(4 rows)
+
+cqlsh:ks> SELECT * FROM foo WHERE a=0 AND (b, c) > (1, 0);
+
+ a | b | c
+---+---+---
+ 0 | 2 | 0
+
+(1 rows)
+The last query should really return (0, 2, 0) and (0, 1, 1).
+For that specific example we should generate 2 internal slices, but I believe that with more clustering columns we may have more slices.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.6, 3.0.4, 3.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcin Szymaniuk
+Reporter:
+Sylvain Lebresne
+Create date:
+21/May/14 17:22
+Update date:
+16/Apr/19 09:31
+Resolved date:
+11/Feb/16 09:52

@@ -1,0 +1,57 @@
+Summary:
+wrong IllegalArgumentException thrown when creating an 'HServerAddress' with an un-reachable hostname
+Description:
+When trying to build an 'HServerAddress' object with an unresolvable hostname:
+e.g. new HServerAddress("www.IAMUNREACHABLE.com:80")
+a call to 'getResolvedAddress' would cause the 'InetSocketAddress' c'tor to throw an IllegalArgumentException because it is called with a null 'hostname' parameter.
+This happens because there is no null-check after the static 'getBindAddressInternal' method returns a null value when the hostname is unresolved.
+This is a trivial bug because the code HServerAddress is expected to throw this kind of exception when this error occurs, but it is thrown "for the wrong reason". The method 'checkBindAddressCanBeResolved' should be the one throwing the exception (and give a slightly different reason). Because of this reason the method call itself becomes redundent as it will always succeed in the current flow, because the case it checks is already "checked" for by the previous "getResolvedAddress" method.
+In short:
+an IllegalArgumentException is thrown with reason: "hostname can't be null" from the InetSocketAddress c'tor
+INSTEAD OF
+an IllegalArgumentException with reason: "Could not resolve the DNS name of [BADHOSTNAME]:[PORT]" from HServerAddress's checkBindCanBeResolved method.
+Stack trace:
+java.lang.IllegalArgumentException: hostname can't be null
+at java.net.InetSocketAddress.<init>(InetSocketAddress.java:139) ~[na:1.7.0_02]
+at org.apache.hadoop.hbase.HServerAddress.getResolvedAddress(HServerAddress.java:108) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.HServerAddress.<init>(HServerAddress.java:64) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.zookeeper.RootRegionTracker.dataToHServerAddress(RootRegionTracker.java:82) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.zookeeper.RootRegionTracker.waitRootRegionLocation(RootRegionTracker.java:73) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:579) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:559) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:688) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:590) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:559) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:688) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:594) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:559) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:173) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:147) ~[hbase-0.90.4.jar:0.90.4]
+Status:
+RESOLVED
+Priority:
+Trivial
+Resolution:
+Invalid
+Affects_version:
+0.90.4
+Fix_version:
+None
+Component:
+util
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Eran Hirsch
+Create date:
+18/Dec/11 14:23
+Update date:
+05/Sep/12 22:57
+Resolved date:
+05/Sep/12 22:57

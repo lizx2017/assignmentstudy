@@ -1,0 +1,49 @@
+Summary:
+Failed log split not retried
+Description:
+Found this running TestReplication:
+2010-12-15 17:58:33,639 DEBUG [MASTER_SERVER_OPERATIONS-h17.sfo.stumble.net:58644-0] wal.HLogSplitter(299)
+: Closed hdfs://localhost:58631/user/jdcryans/test/211477a0a924abda419b5579c7a83452/recovered.edits/0000000000000000002
+2010-12-15 17:58:33,642 ERROR [MASTER_SERVER_OPERATIONS-h17.sfo.stumble.net:58644-0] master.MasterFileSystem(197):
+ Failed splitting hdfs://localhost:58631/user/jdcryans/.logs/h17.sfo.stumble.net,58647,1292464631034
+java.io.IOException: Discovered orphan hlog after split. Maybe HRegionServer was not dead when we started
+        at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.splitLog(HLogSplitter.java:290)
+        at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.splitLog(HLogSplitter.java:151)
+        at org.apache.hadoop.hbase.master.MasterFileSystem.splitLog(MasterFileSystem.java:193)
+        at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.process(ServerShutdownHandler.java:96)
+        at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:151)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:680)
+2010-12-15 17:58:33,686 INFO  [MASTER_SERVER_OPERATIONS-h17.sfo.stumble.net:58644-0] handler.ServerShutdownHandler(144):
+ Reassigning 8 region(s) that h17.sfo.stumble.net,58647,1292464631034 was carrying (skipping 0 regions(s) that are already in transition)
+What I see is that there was an orphan HLog, but the exception was eaten in MasterFileSystem.splitLog (it just logs as an error) and then it proceeds to reassign the regions. There is potential data loss.
+Another bad side effect is that those HLogs never get archived, and stay in .logs
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jean-Daniel Cryans
+Create date:
+16/Dec/10 05:43
+Update date:
+20/Nov/15 12:41
+Resolved date:
+18/Dec/10 00:17

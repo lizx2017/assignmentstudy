@@ -1,0 +1,56 @@
+Summary:
+Store AccessLevels externally to IAuthenticator
+Description:
+Currently, the concept of authentication (proving the identity of a user) is mixed up with permissions (determining whether a user is able to create/read/write databases). Rather than determining the permissions that a user has, the IAuthenticator should only be capable of authenticating a user, and permissions (specifically, an AccessLevel) should be stored consistently by Cassandra.
+EDIT: Adding summary
+In summary, there appear to be 3 distinct options for how to move forward with authorization. Remember that this ticket is about disconnecting authorization (permissions) from authentication (user/group identification), and its goal is to leave authentication pluggable.
+Options:
+Leave authentication and authorization in the same interface. If we choose this option, this ticket is invalid, and CASSANDRA-1271 and CASSANDRA-1320 will add-to/improve IAuthenticator
+Pros:
+Least change
+Cons:
+Very little actually implemented by Cassandra: burden is on the backend implementors
+Each combination of authz and authc backends would require a new implementation (PAM for authc + permissions keyspace for authz, for instance), causing an explosion of implementations
+Separate out a pluggable IAuthority interface to implement authorization
+IAuthenticator interface would be called at login time to determine user/groups membership
+IAuthority would be called at operation time with the user/groups determined earlier, and the required permission for the operation
+Pros:
+Provides the cleanest separation of concerns
+Allows plugability for permissions
+Cons:
+Pluggability of permissions gains limited benefit
+IAuthority would need to support callbacks for keyspace/cf creation and removal to keep existing keyspaces in sync with their permissions (although technically, option 1 suffers from this as well)
+Separate authorization, but do not make it pluggable
+This option is implemented by the existing patchset by attaching permissions to metadata, but could have an alternative implementation that stores permissions in a permissions keyspace.
+Pros:
+Cassandra controls the scalability of authorization, and can ensure it does not become a bottleneck
+Cons:
+Would need to support callbacks for user creation and removal to keep existing users in sync with their permissions
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Stu Hood
+Reporter:
+Stu Hood
+Create date:
+28/Jun/10 18:29
+Update date:
+16/Apr/19 09:33
+Resolved date:
+25/Aug/10 20:43

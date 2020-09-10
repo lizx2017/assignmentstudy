@@ -1,0 +1,54 @@
+Summary:
+[0.90RC1] bin/hbase script displays "no such file" warning on target/cached_classpath.txt
+Description:
+HBase version: 0.90 release-candidate-1
+bin/hbase blindly creates "target" directory and fails to generate "target/cached_classpath.txt" if it's in the binary (pre-built) distribution.
+$ bin/hbase shell
+cat: ... /hbase-0.90.0/bin/../target/cached_classpath.txt: No such file or directory
+HBase Shell; enter 'help<RETURN>' for list of supported commands.
+bin/hbase
+112: add_maven_deps_to_classpath() {
+113:   # The maven build dir is called 'target'
+114:   target="${HBASE_HOME}/target"
+115:   if [ ! -d "${HBASE_HOME}/target" ]
+116:   then
+117:     mkdir "${target}"
+118:   fi
+119:   # Need to generate classpath from maven pom. This is costly so generate it
+120:   # and cache it. Save the file into our target dir so a mvn clean will get
+121:   # clean it up and force us create a new one.
+122:   f="${target}/cached_classpath.txt"
+123:   if [ ! -f "${f}" ]
+124:   then
+125:     ${MVN} -f "${HBASE_HOME}/pom.xml" dependency:build-classpath -Dmdep.outputFile="${f}" &> /dev/null
+126:   fi
+127:   CLASSPATH=${CLASSPATH}:`cat "${f}"`
+Maybe we can simply skip this process if "target" directory doesn't exist.
+Status:
+CLOSED
+Priority:
+Trivial
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+shell
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Tatsuya Kawano
+Create date:
+22/Dec/10 07:18
+Update date:
+20/Nov/15 12:43
+Resolved date:
+22/Dec/10 23:03

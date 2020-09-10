@@ -1,0 +1,75 @@
+Summary:
+setting a RadioButton with export values does not update the appearance
+Description:
+Setting a RadioButton with export values does not update the appearance. The attached form has two sets of RadioButtons. One called "Group1" and one called "_6_ Treatment of Program Inco_nwAbuWIn0JWsW9e68RWN8A". "Group1" is easy to set or unset. I noticed during debugging doesn't have any "ExportValues" and so the value is set in a different way than the other set of RadioButtons. "_6_ Treatment of Program Inco_nwAbuWIn0JWsW9e68RWN8A" does have ExportValues and this appears to be related to the problems with setting the value.
+For example:
+        try(PDDocument pdfDocument = PDDocument.load(new File("/Users/travis/Desktop/fdpAttachment2.pdf"))) {
+
+            final PDDocumentCatalog docCatalog = pdfDocument.getDocumentCatalog();
+            final PDAcroForm acroForm = docCatalog.getAcroForm();
+
+        final PDRadioButton group1Field = (PDRadioButton) acroForm.getField("Group1");
+            group1Field.setValue("NIH");
+
+            final PDRadioButton topiField = (PDRadioButton) acroForm.getField("_6_  Treatment of Program Inco_nwAbuWIn0JWsW9e68RWN8A");
+            topiField.setValue("Additive");
+
+
+            pdfDocument.save("/Users/travis/Desktop/fdpAttachment2-radio-buttons.pdf");
+        }
+Notice in "fdpAttachment2-radio-buttons.pdf" that "Group1" RadioButton has NIH toggled while "_6_ Treatment of Program Inco_nwAbuWIn0JWsW9e68RWN8A" is not toggled even though "Additive" is a valid value.
+The workaround for this is to set the appearance state (AS). I'm still learning the pdfbox api so I apologize if my workaround is a little strange.
+        try(PDDocument pdfDocument = PDDocument.load(new File("/Users/travis/Desktop/fdpAttachment2.pdf"))) {
+
+            final PDDocumentCatalog docCatalog = pdfDocument.getDocumentCatalog();
+            final PDAcroForm acroForm = docCatalog.getAcroForm();
+
+            final PDRadioButton group1Field = (PDRadioButton) acroForm.getField("Group1");
+            group1Field.setValue("NIH");
+
+            final PDRadioButton topiField = (PDRadioButton) acroForm.getField("_6_  Treatment of Program Inco_nwAbuWIn0JWsW9e68RWN8A");
+            topiField.setValue("Additive");
+
+            //Additive ends up being index 0.  If I add an AS with "0" it toggle the Additive radio button
+            final int idx = topiField.getExportValues().indexOf((topiField).getValue());
+
+            topiField.getWidgets().forEach(w -> {
+                PDAppearanceEntry appearanceEntry = w.getAppearance().getNormalAppearance();
+
+                if (((COSDictionary) appearanceEntry.getCOSObject()).containsKey(String.valueOf(idx))) {
+                    w.getCOSObject().setName(COSName.AS, String.valueOf(idx));
+                }
+            });
+
+
+            pdfDocument.save("/Users/travis/Desktop/fdpAttachment2-radio-buttons-workaround.pdf");
+        }
+Notice in "fdpAttachment2-radio-buttons-workaround.pdf" both sets of RadioButtons are toggled which is the desired behavior
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.5
+Fix_version:
+2.0.6, 3.0.0 PDFBox
+Component:
+AcroForm
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Maruan Sahyoun
+Reporter:
+Travis Schneeberger
+Create date:
+12/Apr/17 14:03
+Update date:
+08/Jun/17 16:25
+Resolved date:
+05/May/17 14:36

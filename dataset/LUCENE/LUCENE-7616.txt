@@ -1,0 +1,38 @@
+Summary:
+QueryNode#toQueryString says it produces a string in the syntax understood by "the query parser", but cannot possibly know how
+Description:
+(Not an implementation "bug" so much as a design error, but working within the confines of JIRA here.)
+The "flexible" query parser framework allows custom query syntaxes to be implemented on top of the existing query node, processor and builder classes.
+Now, QueryNode has a toQueryString method which ostensibly converts the node back into a string appropriate for passing back through the parser. However, in practice, this method is implemented to return a syntax only appropriate for passing back to StandardQueryParser, not the parser you got the node from. The node itself has no idea what parser it came from, so it makes sense that this method could never work as currently designed.
+I don't really know what the right way to fix this is.
+Option A: Make QueryNode aware of which parser it came from, and add methods into the parser to format queries back into a string, so that this method can be implemented correctly. Sounds fine, except programmatically creating QueryNode objects directly becomes a hassle.
+Option B: Deprecate toQueryString and introduce a new SyntaxFormatter interface which converts QueryNode to CharSequence and provide an appropriate implementation for each existing SyntaxParser. Seems sensible and the most flexible option, but requires a lot of tiny classes to be implemented.
+Are there any other options?
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+6.3
+Fix_version:
+None
+Component:
+modules/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Trejkaz
+Create date:
+03/Jan/17 02:02
+Update date:
+03/Jan/17 02:19
+Resolved date:
+

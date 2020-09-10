@@ -1,0 +1,68 @@
+Summary:
+NPE while creating security handler for decryption
+Description:
+The attached file has a NPE with the non sequential parser only:
+Exception in thread "main" java.io.IOException: Error (NullPointerException) while creating security handler for decryption
+        at org.apache.pdfbox.pdfparser.NonSequentialPDFParser.initialParse(NonSe
+quentialPDFParser.java:493)
+        at org.apache.pdfbox.pdfparser.NonSequentialPDFParser.parse(NonSequentialPDFParser.java:794)
+        at org.apache.pdfbox.pdmodel.PDDocument.loadNonSeq(PDDocument.java:1156)
+
+        at org.apache.pdfbox.pdmodel.PDDocument.loadNonSeq(PDDocument.java:1139)
+
+        at org.apache.pdfbox.tools.PDFToImage.main(PDFToImage.java:197)
+        at org.apache.pdfbox.tools.PDFBox.main(PDFBox.java:89)
+Caused by: java.lang.NullPointerException
+        at org.apache.pdfbox.pdmodel.encryption.PDEncryption.getFilter(PDEncrypt
+ion.java:159)
+        at org.apache.pdfbox.pdmodel.encryption.PDEncryption.<init>(PDEncryption.java:96)
+        at org.apache.pdfbox.pdfparser.NonSequentialPDFParser.initialParse(NonSe
+quentialPDFParser.java:464)
+The file has this:
+trailer
+<<
+/Size
+53
+/Info
+29 0 R
+/Encrypt
+null
+/Root
+35 0 R
+/Prev
+256729
+/ID
+[
+<f571e5c0c658cb76cfe7ad0662f8f6a1>
+<1c11ae9224c83622f7682d9e00bd2581>
+]
+>>
+so the encryption item is COSNull which is not the same as "null" when using getItem(). So the solution is to use getDictionaryObject() instead, because it checks for COSNull. This method is already used elsewhere in PDFBox to get /Encrypt.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.6, 1.8.7, 2.0.0
+Fix_version:
+1.8.7, 2.0.0
+Component:
+Parsing
+Label:
+Encryption
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+14/Sep/14 18:48
+Update date:
+19/Sep/14 14:40
+Resolved date:
+14/Sep/14 22:19

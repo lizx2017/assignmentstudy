@@ -1,0 +1,54 @@
+Summary:
+OrderPreservingPartitioner with type validated indexed columns causes ClassCastException
+Description:
+If OrderPreservingPartitioner is used and you have an indexed column with a type validator, using batch_mutate to insert column values (like pycassa does) on the same key and indexed column causes a ClassCastException to be thrown the second time you execute it. That is, the first batch_mutate succeeds, but the following ones fail. CollatedOrderPreservingPartitioner seems to avoid this problem. Also, it appears that the row key is being compared to the column value at some point using the validator's Comparator class (such as LongType) which is where the actual exception is thrown.
+Stack trace below:
+java.lang.RuntimeException: java.lang.ClassCastException: java.lang.String cannot be cast to [B
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:619)
+Caused by: java.lang.ClassCastException: java.lang.String cannot be cast to [B
+ at org.apache.cassandra.db.marshal.LongType.compare(LongType.java:27)
+ at org.apache.cassandra.dht.LocalToken.compareTo(LocalToken.java:45)
+ at org.apache.cassandra.db.DecoratedKey.compareTo(DecoratedKey.java:82)
+ at org.apache.cassandra.db.DecoratedKey.compareTo(DecoratedKey.java:37)
+ at java.util.concurrent.ConcurrentSkipListMap.doPut(ConcurrentSkipListMap.java:878)
+ at java.util.concurrent.ConcurrentSkipListMap.putIfAbsent(ConcurrentSkipListMap.java:1893)
+ at org.apache.cassandra.db.Memtable.resolve(Memtable.java:127)
+ at org.apache.cassandra.db.Memtable.put(Memtable.java:119)
+ at org.apache.cassandra.db.ColumnFamilyStore.apply(ColumnFamilyStore.java:508)
+ at org.apache.cassandra.db.Table.applyCF(Table.java:452)
+ at org.apache.cassandra.db.Table.apply(Table.java:409)
+ at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:196)
+ at org.apache.cassandra.service.StorageProxy$2.runMayThrow(StorageProxy.java:276)
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+ ... 3 more
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Tyler Hobbs
+Create date:
+10/Aug/10 01:28
+Update date:
+16/Apr/19 09:33
+Resolved date:
+17/Aug/10 17:06

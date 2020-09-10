@@ -1,0 +1,58 @@
+Summary:
+New Compactions Logic can silently prevent user-initiated compactions from occurring
+Description:
+There seem to be some tuning settings in which manually triggered major compactions will do nothing, including loggic
+From Store.java in the function
+List<StoreFile> compactSelection(List<StoreFile> candidates)
+When a user manually triggers a compaction, this follows the same logic as a normal compaction check. when a user manually triggers a major compaction, something similar happens. Putting this all together:
+1. If a user triggers a major compaction, this is checked against a max files threshold (hbase.hstore.compaction.max). If the number of storefiles to compact is > max files, then we downgrade to a minor compaction
+2. If we are in a minor compaction, we do the following checks:
+a. If the file is less than a minimum size (hbase.hstore.compaction.min.size) we automatically include it
+b. Otherwise, we check how the size compares to the next largest size. based on hbase.hstore.compaction.ratio.
+c. If the number of files included is less than a minimum count (hbase.hstore.compaction.min) then don't compact.
+In many of the exit strategies, we aren't seeing an error message.
+The net-net of this is that if we have a mix of very large and very small files, we may end up having too many files to do a major compact, but too few files to do a minor compact.
+I'm trying to go through and see if I'm understanding things correctly, but this seems like the bug
+To put it another way
+2012-05-02 20:09:36,389 DEBUG org.apache.hadoop.hbase.regionserver.CompactSplitThread: Large Compaction requested: regionName=str,44594594594594592,1334939064521.f7aed25b55d4d7988af763bede9ce74e., store
+Name=c, fileCount=15, fileSize=1.5g (20.2k, 362.5m, 155.3k, 3.0m, 30.7k, 361.2m, 6.9m, 4.7m, 14.7k, 363.4m, 30.9m, 3.2m, 7.3k, 362.9m, 23.5m), priority=-9, time=3175046817624398; Because: Recursive enqueue; compaction_queue=(59:0), split_queue=0
+When we had a minimum compaction size of 128M, and default settings for hbase.hstore.compaction.min,hbase.hstore.compaction.max,hbase.hstore.compaction.ratio, we were not getting a compaction to run even if we ran
+major_compact 'str,44594594594594592,1334939064521.f7aed25b55d4d7988af763bede9ce74e.' from the ruby shell. Note that we had many tiny regions (20k, 155k, 3m, 30k,..) and several large regions (362.5m,361.2m,363.4m,362.9m). I think the bimodal nature of the sizes prevented us from doing a compaction.
+I'm not 100% sure where this errored out because when I manually triggered a compaction, I did not see
+' // if we don't have enough files to compact, just wait
+if (filesToCompact.size() < this.minFilesToCompact) {
+if (LOG.isDebugEnabled())
+{ LOG.debug("Skipped compaction of " + this.storeNameStr + ". Only " + (end - start) + " file(s) of size " + StringUtils.humanReadableInt(totalSize) + " have met compaction criteria."); }
+
+'
+being printed in the logs (and I know DEBUG logging was enabled because I saw this elsewhere).
+I'd be happy with better error messages when we decide not to compact for user enabled compactions.
+I'd also like to see some override that says "user triggered major compaction always occurs", but maybe that's a bad idea for other reasons.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.92.1
+Fix_version:
+None
+Component:
+Client, (1)
+Label:
+compaction
+Environment:
+
+Attachment number:
+0
+Assignee:
+Derek Wollenstein
+Reporter:
+Derek Wollenstein
+Create date:
+02/May/12 20:14
+Update date:
+25/May/12 09:55
+Resolved date:
+18/May/12 22:23

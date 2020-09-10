@@ -1,0 +1,45 @@
+Summary:
+RTE in AdvancedDataGridBase drawItem
+Description:
+The method drawItem() (line 897 of AdvancedDataGridBase) was modified in 4.11. Line 916 was added: r.validateDisplayList();
+The issue is that r is null. In the for loop, n is the length of visible columns, while r is derived from listitems[row][i]. The listItems inner array [i] only contains custom itemrenderers and is therefore a subset of the optimumColumns (visible columns). I think an if(r) check will fix the issue. This looks like a timing issue depending on when drawItems() is called. In my app, about 50% of the time, I get the RTE when right after the advancedDataGrid is initialized. See stack below.
+var n:int = optimumColumns.length;
+for (var i:int = 0; i < n; i++)
+{ var r:IListItemRenderer = listItems[rowIndex][i]; r.validateDisplayList(); updateDisplayOfItemRenderer(r); }
+AT THIS POINT, listItems[0] (or any row for that matter) has 4 elements representing my custom item renderers only (lengh = 4) while n:int = optimumColumns.length = 16
+STACK:
+mx.controls.advancedDataGridClasses::AdvancedDataGridBase/drawItem
+mx.controls.listClasses::AdvancedListBase/http://www.adobe.com/2006/flex/mx/internal::clearHighlight
+mx.controls.advancedDataGridClasses::AdvancedDataGridBase/http://www.adobe.com/2006/flex/mx/internal::clearHighlight
+mx.controls::AdvancedDataGrid/http://www.adobe.com/2006/flex/mx/internal::clearHighlight
+mx.controls.listClasses::AdvancedListBase/mouseOutHandler
+mx.controls::AdvancedDataGridBaseEx/mouseOutHandler
+mx.controls::AdvancedDataGrid/mouseOutHandler
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Apache Flex 4.11.0
+Fix_version:
+Apache Flex 4.12.0
+Component:
+ADG:Display
+Label:
+easyfix patch
+Environment:
+Windows 7, Flashbuilder 4.7 (probably irrelev
+Attachment number:
+0
+Assignee:
+Justin Mclean
+Reporter:
+Mark Saunders
+Create date:
+11/Dec/13 14:27
+Update date:
+25/Dec/13 21:41
+Resolved date:
+25/Dec/13 21:41

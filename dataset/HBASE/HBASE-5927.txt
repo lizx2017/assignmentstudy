@@ -1,0 +1,43 @@
+Summary:
+SSH and DisableTableHandler happening together does not clear the znode of the region and RIT map.
+Description:
+A possible exception: If the related regionserver was just killed(But HMaster has not perceived that), then we will get a local exception "Connection reset by peer". If this region belongs to a disabling table. what will happen?
+ServerShutdownHandler will remove this region from AM#regions. So this region is still existing in RIT. TimeoutMonitor will take care of it after it got timeout. Then invoke unassign again. Since this region has been removed from AM#regions, it will return directly due to the below code:
+    synchronized (this.regions) {
+      // Check if this region is currently assigned
+      if (!regions.containsKey(region)) {
+        LOG.debug("Attempted to unassign region " +
+          region.getRegionNameAsString() + " but it is not " +
+          "currently assigned anywhere");
+        return;
+      }
+    }
+Then it leads to an end-less loop.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.1, (2)
+Fix_version:
+0.94.1, 0.95.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+Jieshan Bean
+Create date:
+03/May/12 15:58
+Update date:
+26/Feb/13 08:15
+Resolved date:
+22/May/12 09:15

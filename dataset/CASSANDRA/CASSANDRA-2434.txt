@@ -1,0 +1,39 @@
+Summary:
+range movements can violate consistency
+Description:
+My reading (a while ago) of the code indicates that there is no logic involved during bootstrapping that avoids consistency level violations. If I recall correctly it just grabs neighbors that are currently up.
+There are at least two issues I have with this behavior:
+If I have a cluster where I have applications relying on QUORUM with RF=3, and bootstrapping complete based on only one node, I have just violated the supposedly guaranteed consistency semantics of the cluster.
+Nodes can flap up and down at any time, so even if a human takes care to look at which nodes are up and things about it carefully before bootstrapping, there's no guarantee.
+A complication is that not only does it depend on use-case where this is an issue (if all you ever do you do at CL.ONE, it's fine); even in a cluster which is otherwise used for QUORUM operations you may wish to accept less-than-quorum nodes during bootstrap in various emergency situations.
+A potential easy fix is to have bootstrap take an argument which is the number of hosts to bootstrap from, or to assume QUORUM if none is given.
+(A related concern is bootstrapping across data centers. You may want to bootstrap to a local node and then do a repair to avoid sending loads of data across DC:s while still achieving consistency. Or even if you don't care about the consistency issues, I don't think there is currently a way to bootstrap from local nodes only.)
+Thoughts?
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 beta2
+Component:
+Legacy/Streaming and Messaging
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+T Jake Luciani
+Reporter:
+Peter Schuller
+Create date:
+07/Apr/11 17:23
+Update date:
+16/Apr/19 09:33
+Resolved date:
+01/May/14 13:52

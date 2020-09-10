@@ -1,0 +1,155 @@
+Summary:
+Index CF tombstones can cause OOM
+Description:
+My database (now at 1.0.10) is in a state in which it goes out of memory with hardly any activity at all. A key slice nothing more.
+The logs attached are this including verbose gc in stdout. I started up cassandra and waited a bit to ensure that it was unperturbed.
+Then (about 15:46) I ran this slice (using Pelops), which in this case should return NO data. My client times out and the database goes OOM.
+ConsistencyLevel cl = ConsistencyLevel.TWO;//TWO nodes in my cluster
+Selector s = new Selector(this.pool);
+List<IndexExpression> indexExpressions = new ArrayList<IndexExpression>();
+IndexExpression e = new IndexExpression(
+ByteBuffer.wrap("encryptionSettingsID".getBytes(ASCII)), IndexOperator.EQ,
+ByteBuffer.wrap(encryptionSettingsID.getBytes(Utils.ASCII)));
+indexExpressions.add(e);
+IndexClause indexClause = new IndexClause(indexExpressions,
+ByteBuffer.wrap(EMPTY_BYTE_ARRAY), 1);
+SlicePredicate predicate = new SlicePredicate();
+predicate.setColumn_names(Arrays.asList(new ByteBuffer[]
+{ ByteBuffer.wrap(COL_PAN_ENC_BYTES) }
+));
+List<KeySlice> slices = s.getKeySlices(CF_TOKEN, indexClause, predicate, cl);
+Note that “encryptionSettingsID” is an indexed column. When this is executed there should be no columns with the supplied value.
+I suppose I may have some kind of blatant error in this query but it is not obvious to me. I’m relatively new to cassandra.
+My key space is defined as follows:
+KsDef(name:TB_UNIT, strategy_class:org.apache.cassandra.locator.SimpleStrategy, strategy_options:
+{replication_factor=3}
+,
+cf_defs:[
+CfDef(keyspace:TB_UNIT, name:token, column_type:Standard, comparator_type:BytesType, column_metadata:[ColumnDef(name:70 61 6E 45 6E 63, validation_class:BytesType), ColumnDef(name:63 72 65 61 74 65 54 73, validation_class:DateType), ColumnDef(name:63 72 65 61 74 65 44 61 74 65, validation_class:DateType, index_type:KEYS, index_name:TokenCreateDate), ColumnDef(name:65 6E 63 72 79 70 74 69 6F 6E 53 65 74 74 69 6E 67 73 49 44, validation_class:UTF8Type, index_type:KEYS, index_name:EncryptionSettingsID)], caching:keys_only),
+CfDef(keyspace:TB_UNIT, name:pan_d721fd40fd9443aa81cc6f59c8e047c6, column_type:Standard, comparator_type:BytesType, caching:keys_only),
+CfDef(keyspace:TB_UNIT, name:counters, column_type:Standard, comparator_type:BytesType, column_metadata:[ColumnDef(name:75 73 65 43 6F 75 6E 74, validation_class:CounterColumnType)], default_validation_class:CounterColumnType, caching:keys_only)
+])
+tpstats show pending tasks many minutes after time out:
+[root@r610-lb6 bin]# ../cassandra/bin/nodetool -h 127.0.0.1 tpstats
+Pool Name Active Pending Completed Blocked All time blocked
+ReadStage 3 3 107 0 0
+RequestResponseStage 0 0 56 0 0
+MutationStage 0 0 6 0 0
+ReadRepairStage 0 0 0 0 0
+ReplicateOnWriteStage 0 0 0 0 0
+GossipStage 0 0 2231 0 0
+AntiEntropyStage 0 0 0 0 0
+MigrationStage 0 0 0 0 0
+MemtablePostFlusher 0 0 3 0 0
+StreamStage 0 0 0 0 0
+FlushWriter 0 0 3 0 0
+MiscStage 0 0 0 0 0
+InternalResponseStage 0 0 0 0 0
+HintedHandoff 0 0 9 0 0
+Message type Dropped
+RANGE_SLICE 0
+READ_REPAIR 0
+BINARY 0
+READ 0
+MUTATION 0
+REQUEST_RESPONSE 0
+cfstats:
+Keyspace: keyspace
+Read Count: 118
+Read Latency: 0.14722033898305084 ms.
+Write Count: 0
+Write Latency: NaN ms.
+Pending Tasks: 0
+Column Family: token
+SSTable count: 7
+Space used (live): 4745885584
+Space used (total): 4745885584
+Number of Keys (estimate): 18626048
+Memtable Columns Count: 0
+Memtable Data Size: 0
+Memtable Switch Count: 0
+Read Count: 118
+Read Latency: 0.147 ms.
+Write Count: 0
+Write Latency: NaN ms.
+Pending Tasks: 0
+Bloom Filter False Postives: 0
+Bloom Filter False Ratio: 0.00000
+Bloom Filter Space Used: 55058352
+Key cache: disabled
+Row cache: disabled
+Compacted row minimum size: 150
+Compacted row maximum size: 258
+Compacted row mean size: 201
+Column Family: pan_2fef6478b62242dd94aecaa049b9d7bb
+SSTable count: 7
+Space used (live): 1987147156
+Space used (total): 1987147156
+Number of Keys (estimate): 14955264
+Memtable Columns Count: 0
+Memtable Data Size: 0
+Memtable Switch Count: 0
+Read Count: 0
+Read Latency: NaN ms.
+Write Count: 0
+Write Latency: NaN ms.
+Pending Tasks: 0
+Bloom Filter False Postives: 0
+Bloom Filter False Ratio: 0.00000
+Bloom Filter Space Used: 28056224
+Key cache: disabled
+Row cache: disabled
+Compacted row minimum size: 104
+Compacted row maximum size: 124
+Compacted row mean size: 124
+Column Family: counters
+SSTable count: 11
+Space used (live): 3433469364
+Space used (total): 3433469364
+Number of Keys (estimate): 21475328
+Memtable Columns Count: 0
+Memtable Data Size: 0
+Memtable Switch Count: 0
+Read Count: 0
+Read Latency: NaN ms.
+Write Count: 0
+Write Latency: NaN ms.
+Pending Tasks: 0
+Bloom Filter False Postives: 0
+Bloom Filter False Ratio: 0.00000
+Bloom Filter Space Used: 40271696
+Key cache capacity: 4652
+Key cache size: 4652
+Key cache hit rate: NaN
+Row cache: disabled
+Compacted row minimum size: 125
+Compacted row maximum size: 179
+Compacted row mean size: 150
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.11, 1.1.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Wade Poziombka
+Create date:
+06/Jun/12 22:16
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Jun/12 07:26

@@ -1,0 +1,34 @@
+Summary:
+Table creation, though using "async" call to master, can actually run for a while and cause RPC timeout
+Description:
+Our create table methods in HBaseAdmin are synchronous from client POV. However, underneath, we're using an "async" create and then looping waiting for table availability. Because the create is async and we loop instead of block on RPC, we don't expect RPC timeouts.
+However, when creating a table with lots of initial regions, the "async" create can actually take a long time (more than 30 seconds in this case) which causes the client to timeout and gives impression something failed.
+We should make the create truly async so that this can't happen. And rather than doing one-off, inline assignment as it is today, we should reuse the fancy enable/disable code stack just added to make this faster and more optimal.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.92.0
+Component:
+Client, master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ming Ma
+Reporter:
+Jonathan Gray
+Create date:
+11/Nov/10 19:49
+Update date:
+20/Nov/15 12:42
+Resolved date:
+26/Aug/11 19:00

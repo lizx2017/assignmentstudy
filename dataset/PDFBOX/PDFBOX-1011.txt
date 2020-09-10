@@ -1,0 +1,40 @@
+Summary:
+Incorrect metadata for encrypted PDFs with non-ASCII characters
+Description:
+I have a document which has Author metadata = "Jırg Boettger". That second character is not an 'i', it is a dotless lower case i.
+It is also an encrypted pdf, with user password = "".
+The problem is that if I load the document, decrypt it and then try to examine the document-level metadata (such as author) I see problems with the non-ASCII chars.
+I will attach a testcase & the sample PDF that reproduces the problem for me.
+A bit of detail that may be useful: COSObject 19 0 at the end of the PDF defines the Author. It is represented as byte[] = {-95, -118, -50, 122, -127, 105, 53, 105, 50, 14, -27, 122, 120}
+SecurityHandler.encryptData() line 223 - which decrypts the string gives: J?rg Boettger. bytes = [74, -102, 114, 103, 32, 66, 111, 101, 116, 116, 103, 101, 114]
+Note the -102 in the second character.
+The second character, whose byte-value is -102 is not a displayable ASCII char (even at 256 -102 = 154) and it just gets dropped from the COSString & so we get an author of Jrg Boettger from PDDocumentInformation.
+I'm not sure what the requirements are for handling non-ASCII chars in this situation. But Adobe Reader 9, 10 & Mac OS X's Preview application all show the correct author value.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+1.5.0
+Fix_version:
+1.8.0
+Component:
+Parsing
+Label:
+None
+Environment:
+mac os x
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Neil McErlean
+Create date:
+14/May/11 18:44
+Update date:
+10/Nov/14 11:37
+Resolved date:
+10/Nov/14 11:37

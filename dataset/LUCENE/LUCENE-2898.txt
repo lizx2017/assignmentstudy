@@ -1,0 +1,37 @@
+Summary:
+CMS merge throttling is not aggressive enough
+Description:
+I hit this crab while working on the NRT benchmarker (in luceneutil).
+CMS today forcefully idles any incoming threads, when there are too many merges pending.
+This is the last line of defense that it has, since it also juggles thread priorities (and forcefully idles the biggest merges) to try to reduce the outstanding merge count.
+But when it cannot keep up it has no choice but to stall those threads responsible for making new segments.
+However, the logic is in the wrong place now – the stalling happens after pulling the next merge from IW. This is poor because it means if you have N indexing threads, you allow max + N outstanding merges.
+I have a simple fix, which is to just move the stall logic to before we pull the next merge from IW.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+3.1, 4.0-ALPHA
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+29/Jan/11 16:11
+Update date:
+30/Mar/11 15:50
+Resolved date:
+29/Jan/11 17:17

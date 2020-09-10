@@ -1,0 +1,116 @@
+Summary:
+Loaded fonts file descriptors open after closing document
+Description:
+I am experiencing problems with TTF fonts loaded for generating PDFs which eventually result in too many open files on Linux. The PDFBox version I tested last was 2.0.0-RC3.
+Basically for each PDF I create a document and load two fonts which I want to use. After the document is generated I close all the resources, but the file descriptors for both fonts remain open.
+The file descriptors should be automatically closed or an API should exist to close font resources.
+My basic code:
+import java.io.File;
+import java.io.IOException;
+import java.lang.management.ManagementFactory;
+
+import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
+
+public class FontTest
+{
+ // Run the program which will create 1 PDF document and close all resources per second for 100 seconds.
+ // The font open file descriptor count will increase all the time, until the program finishes.
+ // Command to check open files: lsof -p PID | grep ttf
+ public static void main(String[] args)
+ {
+  // should print out PID before @<hostname>
+  System.out.println("process id: " + ManagementFactory.getRuntimeMXBean().getName());
+  for (int i = 0; i < 100; i++)
+  {
+   createPDF();
+   try
+   {
+    Thread.sleep(1000);
+   }
+   catch (InterruptedException e)
+   {
+    e.printStackTrace();
+   }
+  }
+ }
+
+ private static void createPDF()
+ {
+  PDDocument doc = null;
+  PDPage page = null;
+  ByteArrayOutputStream bos = null;
+
+  try
+  {
+   doc = new PDDocument();
+   page = new PDPage(PDRectangle.A4);
+
+   doc.addPage(page);
+   // using standard font
+   PDFont font = PDType0Font.load(doc, new File("./pdf/OpenSans-Regular.ttf"));
+
+   PDPageContentStream content = new PDPageContentStream(doc, page);
+
+   content.beginText();
+   content.setFont(font, 72);
+   content.showText("OMG");
+   content.endText();
+   content.close();
+
+   bos = new ByteArrayOutputStream();
+   doc.save(bos);
+   byte[] bytes = bos.toByteArray();
+   System.out.println("create new pdf with size: " + bytes.length);
+  }
+  catch (Exception e)
+  {
+   e.printStackTrace();
+  }
+  finally
+  {
+   try
+   {
+    doc.close();
+    bos.close();
+   }
+   catch (IOException e)
+   {
+    e.printStackTrace();
+   }
+  }
+ }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.11, 2.0.0
+Fix_version:
+2.0.1, 3.0.0 PDFBox
+Component:
+FontBox
+Label:
+None
+Environment:
+tomcat, linux
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Gregor Ambrozic
+Create date:
+14/Mar/16 09:06
+Update date:
+25/Mar/17 18:13
+Resolved date:
+22/Mar/16 18:25

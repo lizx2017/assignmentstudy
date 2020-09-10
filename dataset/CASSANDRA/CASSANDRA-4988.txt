@@ -1,0 +1,37 @@
+Summary:
+Fix concurrent addition of collection columns
+Description:
+It is currently not safe to update the schema by adding multiple collection columns to the same table. The reason is that with collections, the comparator embeds a map of names->comparator for each collection columns (since different maps can have different key type for example). And when serialized on disk in the schema table, the comparator is serialized as a string with that map as one column. So if new collection columns are added concurrently, the addition may not be merged correctly.
+One option to fix this would be to stop serializing the names->comparator map of ColumnToCollectionType in toString(), and do one of:
+reconstruct that map from the information stores in the schema_columns. The downside I can see is that code-wise this may not be super clean to do.
+change ColumnToCollectionType so that instead of having it's own names->comparator map, to just store a point to the CFMetaData that contains it and when it needs to find the exact comparator for a collection column, it would use CFMetadata.column_metadata directly. The downside is that creating a dependency from a comparator to a CFMetadata feels a bit backward.
+Note sure what's the best solution of the two honestly.
+While probably more anecdotal, we also now allow to change the type of the comparator in some cases (for example updating to BytesType is always allowed), and doing so concurrently on multiple components of a composite comparator is also not safe for a similar reason. I'm not sure how to fix that one.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+23/Nov/12 11:39
+Update date:
+16/Apr/19 09:32
+Resolved date:
+03/Mar/14 10:03

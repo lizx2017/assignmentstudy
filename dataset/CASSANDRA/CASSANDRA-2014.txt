@@ -1,0 +1,57 @@
+Summary:
+Can't delete whole row from Hadoop MapReduce
+Description:
+ColumnFamilyRecordWriter.java doesn't support Mutation with Deletion without slice_predicat and super_column to delete whole row. The other way I tried is to specify SlicePredicate with empty start and finish and I got:
+java.io.IOException: InvalidRequestException(why:Deletion does not yet support SliceRange predicates.)
+        at org.apache.cassandra.hadoop.ColumnFamilyRecordWriter$RangeClient.run(ColumnFamilyRecordWriter.java:355)
+I tryied to patch the ColumnFamilyRecordWriter.java like this:
+--- a/src/java/org/apache/cassandra/hadoop/ColumnFamilyRecordWriter.java
++++ b/src/java/org/apache/cassandra/hadoop/ColumnFamilyRecordWriter.java
+@@ -166,10 +166,17 @@ implements org.apache.hadoop.mapred.RecordWriter<ByteBuffer,List<org.apache.cass
+             // deletion
+             Deletion deletion = new Deletion(amut.deletion.timestamp);
+             mutation.setDeletion(deletion);
++
+             org.apache.cassandra.avro.SlicePredicate apred = amut.deletion.predicate;
+-            if (amut.deletion.super_column != null)
++            if (apred == null && amut.deletion.super_column == null)
++            {
++                // epmty; delete whole row
++            }
++            else if (amut.deletion.super_column != null)
++            {
+                 // super column
+                 deletion.setSuper_column(copy(amut.deletion.super_column));
++            }
+             else if (apred.column_names != null)
+             {
+                 // column names
+but that didn't work as well.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.3
+Component:
+None
+Label:
+None
+Environment:
+debian
+Attachment number:
+0
+Assignee:
+Patrik Modesto
+Reporter:
+Patrik Modesto
+Create date:
+20/Jan/11 08:55
+Update date:
+16/Apr/19 09:33
+Resolved date:
+17/Feb/11 15:09

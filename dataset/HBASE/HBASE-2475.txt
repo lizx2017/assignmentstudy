@@ -1,0 +1,45 @@
+Summary:
+[stargate] Required ordering of JSON name/value pairs when performing Insert/Update
+Description:
+From Tyler Coffin up on hbase-user@
+I am using the Stargate REST interface to HBase for inserting data. When using JSON to transmit the query content, I have found that specific ordering of key/value pairs within the JSON string is required in order for the query to succeed (otherwise a response of 'HTTP/1.1 500 Row key is invalid' error is thrown if "key" and "Cell" are reversed).
+Example:
+This string receives the above error:
+{"Row":[{"Cell":[{"column":"bWVzc2FnZTptc2c=","$":"Zm9vYmFy"}],"key":"MTIzNAo="}]}
+This is the valid equivalent string:
+{"Row":[{"key":"MTIzNAo=","Cell":[{"column":"bWVzc2FnZTptc2c=","$":"Zm9vYmFy"}]}]}
+As you can see the only difference between these two instances is that the "key" and "Cell" name/value pairs have their order reversed.
+In the equivalent XML notation, the ordering is specifically required per the schema. However with JSON Objects (i.e. name/value pairs) order is not required (JSON Arrays are ordered, but not Objects). Some JSON libraries will preserve ordering of Objects but not all which is how I discovered this problem in the first place because I was using the Perl JSON library which does not guarantee order).
+I'm unsure if this is a bug in the REST implementation or an inconvenient ambiguity in the JSON specification. Regardless I thought I'd share this discovery with the community for feedback (or at the very least to document this for users' future reference).
+For reference this is the table schema for the above query:
+{NAME => 'reftrack', FAMILIES => [{NAME => 'message', COMPRESSION =>
+'NONE', VERSIONS => '1', TTL => '2147483647', BLOCKSIZE => '65536',
+IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+moved_from_0_20_5
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Andrew Purtell
+Create date:
+20/Apr/10 22:08
+Update date:
+11/May/14 11:05
+Resolved date:
+11/May/14 11:05

@@ -1,0 +1,45 @@
+Summary:
+row delete breaks read repair
+Description:
+related to CASSANDRA-2589
+Working at CL ALL can get inconsistent reads after row deletion. Reproduced on the 0.7 and 0.8 source.
+Steps to reproduce:
+two node cluster with rf 2 and HH turned off
+insert rows via cli
+flush both nodes
+shutdown node 1
+connect to node 2 via cli and delete one row
+bring up node 1
+connect to node 1 via cli and issue get with CL ALL
+first get returns the deleted row, second get returns zero rows.
+RowRepairResolver.resolveSuperSet() resolves a local CF with the old row columns, and the remote CF which is marked for deletion. CF.resolve() does not pay attention to the deletion flags and the resolved CF has both markedForDeletion set and a column with a lower timestamp. The return from resolveSuperSet() is used as the return for the read without checking if the cols are relevant.
+Also when RowRepairResolver.mabeScheduleRepairs() runs it sends two mutations. Node 1 is given the row level deletation, and Node 2 is given a mutation to write the old (and now deleted) column from node 2. I have some log traces for this if needed.
+A quick fix is to check for relevant columns in the RowRepairResolver, will attach shortly.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.7, 0.8.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+amorton
+Reporter:
+amorton
+Create date:
+02/May/11 03:44
+Update date:
+16/Apr/19 09:33
+Resolved date:
+09/Jun/11 13:51

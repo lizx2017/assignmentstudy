@@ -1,0 +1,51 @@
+Summary:
+HFile has a possible cast issue.
+Description:
+HBASE-3040 introduced this line originally in HFile.Reader#loadFileInfo(...):
+int allIndexSize = (int)(this.fileSize - this.trailer.dataIndexOffset - FixedFileTrailer.trailerSize());
+Which on trunk today, for HFile v1 is:
+int sizeToLoadOnOpen = (int) (fileSize - trailer.getLoadOnOpenDataOffset() -
+        trailer.getTrailerSize());
+This computed (and casted) integer is then used to build an array of the same size. But if fileSize is very large (>> Integer.MAX_VALUE), then there's an easy chance this can go negative at some point and spew out exceptions such as:
+java.lang.NegativeArraySizeException 
+at org.apache.hadoop.hbase.io.hfile.HFile$Reader.readAllIndex(HFile.java:805) 
+at org.apache.hadoop.hbase.io.hfile.HFile$Reader.loadFileInfo(HFile.java:832) 
+at org.apache.hadoop.hbase.regionserver.StoreFile$Reader.loadFileInfo(StoreFile.java:1003) 
+at org.apache.hadoop.hbase.regionserver.StoreFile.open(StoreFile.java:382) 
+at org.apache.hadoop.hbase.regionserver.StoreFile.createReader(StoreFile.java:438) 
+at org.apache.hadoop.hbase.regionserver.Store.loadStoreFiles(Store.java:267) 
+at org.apache.hadoop.hbase.regionserver.Store.<init>(Store.java:209) 
+at org.apache.hadoop.hbase.regionserver.HRegion.instantiateHStore(HRegion.java:2088) 
+at org.apache.hadoop.hbase.regionserver.HRegion.initialize(HRegion.java:358) 
+at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:2661) 
+at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:2647) 
+Did we accidentally limit single region sizes this way?
+(Unsure about HFile v2's structure so far, so do not know if v2 has the same issue.)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.95.0
+Component:
+HFile, io
+Label:
+hfile
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Harsh J
+Create date:
+20/Dec/11 05:13
+Update date:
+23/Sep/13 18:30
+Resolved date:
+27/Sep/12 20:04

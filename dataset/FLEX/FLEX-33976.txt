@@ -1,0 +1,100 @@
+Summary:
+closing Alert from modal TitleWindow removes blur in main app
+Description:
+Run the following application. Instructions are included when running the app. Basically, if you open a modal TitleWindow that contains an Alert, closing the Alert popup with the TitleWindow remaining present causes the main application to lose its blur.
+The desired effect is that when a modal TitleWindow is displayed, the main app should always be blurred.
+The actual effect is that the main application is NOT blurred when a modal TitleWindow is displayed in certain conditions. The condition is if the user opens an Alert from the TitleWindow and closes this Alert popup, and the TitleWindow remains after the Alert popup is closed.
+--------Here's the main app----------
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx"
+minWidth="955" minHeight="600">
+<fx:Script>
+<![CDATA[
+import mx.managers.PopUpManager;
+import spark.components.TitleWindow;
+import login_form;
+private function showLogin():void
+{ var helpWindow:TitleWindow= PopUpManager.createPopUp(this, login_form, true) as TitleWindow; PopUpManager.centerPopUp(helpWindow); }
+]]>
+</fx:Script>
+<s:VGroup width="300" height="300" paddingLeft="30" paddingTop="30">
+<s:Button label="Login" click="showLogin();"/>
+<s:Label text="Step 1: Click the Login button."/>
+<s:Label text="Step 2: Observe that this text is blurred (this is good)."/>
+<s:Label text="Step 3: In the modal TitleWindow, click the Submit button."/>
+<s:Label text="Step 4: In the Alert popup, click the "No" button."/>
+<s:Label text="Step 5: Observe that this text is NOT blurred (this is the problem)."/>
+</s:VGroup>
+</s:Application>
+--------Here's the titlewindow--------
+<?xml version="1.0"?>
+<!-- containers\spark\myComponents\MyLoginForm.mxml -->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:mx="library://ns.adobe.com/flex/mx"
+xmlns:s="library://ns.adobe.com/flex/spark">
+<s:layout>
+<s:VerticalLayout/>
+</s:layout>
+<fx:Script>
+<![CDATA[
+import mx.controls.Alert;
+import mx.events.CloseEvent;
+import mx.managers.PopUpManager;
+private function processLogin():void
+{ Alert.show("Submit Login Form?", "Question", Alert.YES|Alert.NO, this, onConfirm,null, Alert.NO); }
+private function onConfirm(evt:CloseEvent):void
+{ if (evt.detail == Alert.YES) PopUpManager.removePopUp(this); }
+]]>
+</fx:Script>
+<s:Form>
+<s:FormItem label="User Name">
+<s:TextInput id="username" width="100%"/>
+</s:FormItem>
+<s:FormItem label="Password">
+<s:TextInput id="password"
+displayAsPassword="true"
+width="100%"/>
+</s:FormItem>
+</s:Form>
+<s:HGroup>
+<s:Button label="Submit"
+click="processLogin();" />
+</s:HGroup>
+</s:TitleWindow>
+------- WORKAROUND --------
+Need to manually re-introduce blur in the main app using something like:
+var myBlurFilter:BlurFilter = new BlurFilter(1.75, 1.75, BitmapFilterQuality.MEDIUM);
+mx.core.FlexGlobals.topLevelApplication.filters=[myBlurFilter];
+which then needs to be manually removed after closing the TitleWindow using something like:
+mx.core.FlexGlobals.topLevelApplication.filters=null;
+mx.core.FlexGlobals.topLevelApplication.filters=[];
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+Apache Flex 4.13.0
+Component:
+mx: Alert, (1)
+Label:
+easytest
+Environment:
+Mac OSx 10.6, FB4.7, Apache Flex SDK 4.11
+Attachment number:
+0
+Assignee:
+Alex Harui
+Reporter:
+gkk
+Create date:
+04/Dec/13 18:30
+Update date:
+03/Nov/14 07:13
+Resolved date:
+03/Nov/14 07:13

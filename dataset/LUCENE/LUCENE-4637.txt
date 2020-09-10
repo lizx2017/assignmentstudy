@@ -1,0 +1,133 @@
+Summary:
+Using StringField for while storing becomes a regular Field when the document is retrieved - Due to this the next search cannot find the document because the value of the Field got tokenized which was not desired when it was added
+Description:
+In this case, I don't want Lucene to tokenize the value for a field that is being added to the document in the index and hence StringField is used. Once we do a search using one of the field values, we get the Document object from the searcher but the type of the field becomes Field instead of the StringField. So when I try to update the value of one of the fields in the document and then do another seacrh using the same term, the 2nd search fails to find this document.
+In order to reproduce the case, please use the code below.
+Sample class:
+/////////////
+package com.thegoldensource.demo;
+import java.io.IOException;
+import java.util.List;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.RAMDirectory;
+import org.apache.lucene.util.Version;
+/**
+*
+@author rparekh
+*
+*/
+public class SimpleTest {
+/**
+@param args
+*/
+public static void main(String[] args) {
+try
+{
+Analyzer analyzer = new WhitespaceAnalyzer(Version.LUCENE_40);
+// Store the index in memory:
+Directory directory = new RAMDirectory();
+// To store an index on disk, use this instead:
+//Directory directory = FSDirectory.open("/tmp/testindex");
+IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_30, analyzer);
+IndexWriter iwriter = new IndexWriter(directory, config);
+Document doc = new Document();
+String text = "This is the text";
+doc.add(new StringField("id", "a", Store.NO));
+doc.add(new StringField("content", text, Store.YES));
+iwriter.addDocument(doc);
+iwriter.commit();
+// Now search the index:
+DirectoryReader ireader = DirectoryReader.open(directory);
+IndexSearcher isearcher = new IndexSearcher(ireader);
+Term myTerm = new Term("id", "a");
+TermQuery query = new TermQuery(myTerm);
+TopDocs docs = isearcher.search(query, 1);
+int hits = docs.totalHits;
+System.out.println("Hits : " + hits);
+ScoreDoc[] documents = docs.scoreDocs;
+Document d = null;
+for(int i=0; i < documents.length; i++)
+{
+d = isearcher.doc(documents[i].doc);
+IndexableField contentField = d.getField("content");
+if(contentField != null)
+{ System.out.println("Content from doc : [" + contentField.stringValue() + "]"); }
+}
+// For updating the value of a field, remove the field and add it again.
+d.removeField("content");
+d.add(new StringField("content", "new content",Store.YES));
+List<IndexableField> fields = d.getFields();
+iwriter.updateDocument(myTerm, fields);
+iwriter.commit();
+iwriter.close();
+// Search the document again
+DirectoryReader newReader = DirectoryReader.open(directory);
+IndexSearcher newSeracher = new IndexSearcher(newReader);
+TermQuery newTermQuery = new TermQuery(myTerm);
+TopDocs newTopDocs = newSeracher.search(newTermQuery, 10);
+int hits1 = newTopDocs.totalHits;
+// Number of hits should be 1 but it is 0 (zero) - This is because the type of
+// Fields in the document that was retrieved changes from the original StringField to Field which is not correct
+System.out.println("Hits again : " + hits1 );
+if(hits1 > 0)
+{
+ScoreDoc[] documents1 = newTopDocs.scoreDocs;
+Document d1 = newSeracher.doc(documents1[0].doc);
+IndexableField newContent = d1.getField("content");
+if(newContent != null)
+{ System.out.println("New Content : [" + newContent.stringValue() + "]"); }
+}
+ireader.close();
+directory.close();
+}
+catch(IOException e)
+{ System.err.print(e); }
+}
+}
+/////////////
+Output:
+Hits : 1
+Content from doc : [This is the text]
+Hits again : 0
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+4.0
+Fix_version:
+6.0
+Component:
+core/index
+Label:
+None
+Environment:
+windows, java 1.6
+Attachment number:
+0
+Assignee:
+Uwe Schindler
+Reporter:
+Rahul Parekh
+Create date:
+19/Dec/12 13:34
+Update date:
+09/May/16 18:30
+Resolved date:
+19/Dec/12 13:53

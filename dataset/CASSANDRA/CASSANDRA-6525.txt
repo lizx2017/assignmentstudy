@@ -1,0 +1,77 @@
+Summary:
+Cannot select data which using "WHERE"
+Description:
+I am developing a system on my single machine using VMware Player with 1GB Ram and 1Gb HHD. When I select all data, I didn't have any problems. But when I using "WHERE" and it has just below 10 records. I have got this error in system log:
+ERROR [ReadStage:41] 2013-12-25 18:52:11,913 CassandraDaemon.java (line 187) Exception in thread Thread[ReadStage:41,5,main]
+java.io.IOError: java.io.EOFException
+        at org.apache.cassandra.db.Column$1.computeNext(Column.java:79)
+        at org.apache.cassandra.db.Column$1.computeNext(Column.java:64)
+        at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:143)
+        at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:138)
+        at org.apache.cassandra.db.columniterator.SimpleSliceReader.computeNext(SimpleSliceReader.java:88)
+        at org.apache.cassandra.db.columniterator.SimpleSliceReader.computeNext(SimpleSliceReader.java:37)
+        at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:143)
+        at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:138)
+        at org.apache.cassandra.db.columniterator.SSTableSliceIterator.hasNext(SSTableSliceIterator.java:82)
+        at org.apache.cassandra.db.filter.QueryFilter$2.getNext(QueryFilter.java:157)
+        at org.apache.cassandra.db.filter.QueryFilter$2.hasNext(QueryFilter.java:140)
+        at org.apache.cassandra.utils.MergeIterator$Candidate.advance(MergeIterator.java:144)
+        at org.apache.cassandra.utils.MergeIterator$ManyToOne.<init>(MergeIterator.java:87)
+        at org.apache.cassandra.utils.MergeIterator.get(MergeIterator.java:46)
+        at org.apache.cassandra.db.filter.QueryFilter.collateColumns(QueryFilter.java:120)
+        at org.apache.cassandra.db.filter.QueryFilter.collateOnDiskAtom(QueryFilter.java:80)
+        at org.apache.cassandra.db.filter.QueryFilter.collateOnDiskAtom(QueryFilter.java:72)
+        at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:297)
+        at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:53)
+        at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1487)
+        at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1306)
+        at org.apache.cassandra.db.Keyspace.getRow(Keyspace.java:332)
+        at org.apache.cassandra.db.SliceFromReadCommand.getRow(SliceFromReadCommand.java:65)
+        at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:1401)
+        at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1936)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+        at java.lang.Thread.run(Unknown Source)
+Caused by: java.io.EOFException
+        at java.io.RandomAccessFile.readFully(Unknown Source)
+        at java.io.RandomAccessFile.readFully(Unknown Source)
+        at org.apache.cassandra.io.util.RandomAccessReader.readBytes(RandomAccessReader.java:348)
+        at org.apache.cassandra.utils.ByteBufferUtil.read(ByteBufferUtil.java:392)
+        at org.apache.cassandra.utils.ByteBufferUtil.readWithShortLength(ByteBufferUtil.java:371)
+        at org.apache.cassandra.db.OnDiskAtom$Serializer.deserializeFromSSTable(OnDiskAtom.java:74)
+        at org.apache.cassandra.db.Column$1.computeNext(Column.java:75)
+        ... 27 more
+E.g.
+SELECT * FROM table;
+Its fine.
+SELECT * FROM table WHERE field = 'N';
+field is the partition key.
+Its said "Request did not complete within rpc_timeout." in cqlsh
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.8
+Component:
+None
+Label:
+None
+Environment:
+redhat
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Silence Chow
+Create date:
+25/Dec/13 10:59
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/May/14 09:46

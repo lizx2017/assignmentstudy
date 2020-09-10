@@ -1,0 +1,56 @@
+Summary:
+If there are locked columns, ADG is editable, and part of the last column is showing, infinite loop occurs when giving focus to the last column.
+Description:
+Attached is a simple app that will demonstrate the issue
+Steps to reproduce with example:
+When you run the example, there should be a horizontal scrollbar at the bottom of the table.
+Click on a cell in the middle of the table.
+Press the tab key to advance to the next cell.
+When you get to a point where you are tabbing to a cell that requires the horizontal scrollbar to shift, the infinite loop occurs.
+If the bug were not present, you should be able to continue tabbing to the end of the row and then continue tabbing through cells in the next row.
+I believe I have discovered a fix for this issue within the Flex DataGrid.as file, however, it is in a private method.
+I was able to try out the fix by creating copies of DataGrid.as, DataGridItemRenderer.as and DataGridHeader.as, giving them new names and updating references.
+Here is the proposed fix in DataGrid.as. It is in the scrollToEditedItem method:
+<original code>
+:
+while (colIndex > lastColIndex ||
+(colIndex == lastColIndex && colIndex > horizontalScrollPosition + lockedColumnCount &&
+partialCol))
+{ if (horizontalScrollPosition == maxHorizontalScrollPosition) break; horizontalScrollPosition = Math.min(horizontalScrollPosition + (colIndex > lastColIndex ? colIndex - lastColIndex : partialCol), maxHorizontalScrollPosition); len = (listItems && listItems[0]) ? listItems[0].length : visibleColumns.length; lastColIndex = horizontalScrollPosition + len - 1 + lockedColumnCount; partialCol = (listItems[0][len - 1].x + listItems[0][len - 1].width > listContent.width) ? 1 : 0; }
+:
+<code with fix>
+:
+var horzScrollPos:Number = horizontalScrollPosition;
+while (colIndex > lastColIndex ||
+(colIndex == lastColIndex && colIndex > horizontalScrollPosition + lockedColumnCount &&
+partialCol))
+{ if (horzScrollPos == maxHorizontalScrollPosition) break; horzScrollPos = Math.min(horzScrollPos + (colIndex > lastColIndex ? colIndex - lastColIndex : partialCol), maxHorizontalScrollPosition); len = (listItems && listItems[0]) ? listItems[0].length : visibleColumns.length; lastColIndex = horzScrollPos + len - 1 + lockedColumnCount; partialCol = (listItems[0][len - 1].x + listItems[0][len - 1].width > listContent.width) ? 1 : 0; }
+horizontalScrollPosition = horzScrollPos;
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK 3.0 (
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+09/Apr/09 06:51
+Update date:
+29/Jun/11 22:58
+Resolved date:
+15/Mar/11 02:35

@@ -1,0 +1,72 @@
+Summary:
+Error in non-upgraded node's log when upgrading another node to trunk
+Description:
+I'm upgrading a 2-node cluster from cassandra-1.1 to trunk. On node1 I flush, stop the node, upgrade it to trunk, and start it. The following error gets written once a second in the log for node2:
+ERROR [GossipStage:10] 2012-08-24 11:03:36,293 AbstractCassandraDaemon.java (line 134) Exception in thread Thread[GossipStage:10,5,main]
+java.lang.RuntimeException: java.net.UnknownHostException: addr is of illegal length
+ at org.apache.cassandra.gms.GossipDigestAckVerbHandler.doVerb(GossipDigestAckVerbHandler.java:89)
+ at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:59)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: java.net.UnknownHostException: addr is of illegal length
+ at java.net.InetAddress.getByAddress(InetAddress.java:935)
+ at java.net.InetAddress.getByAddress(InetAddress.java:1318)
+ at org.apache.cassandra.net.CompactEndpointSerializationHelper.deserialize(CompactEndpointSerializationHelper.java:39)
+ at org.apache.cassandra.gms.EndpointStatesSerializationHelper.deserialize(GossipDigestSynMessage.java:117)
+ at org.apache.cassandra.gms.GossipDigestAckMessageSerializer.deserialize(GossipDigestAckMessage.java:83)
+ at org.apache.cassandra.gms.GossipDigestAckMessageSerializer.deserialize(GossipDigestAckMessage.java:70)
+ at org.apache.cassandra.gms.GossipDigestAckVerbHandler.doVerb(GossipDigestAckVerbHandler.java:60)
+ ... 4 more
+Here is the exact code I ran to produce the error:
+from dtest import Tester, debug
+
+FROM_VERSION = 'git:cassandra-1.1'
+TO_VERSION = 'git:trunk'
+
+class TestUpgradeOneNode(Tester):
+
+    def upgrade_test(self):
+        # Start a cluster
+        cluster = self.cluster
+        cluster.partitioner = 'org.apache.cassandra.dht.RandomPartitioner'
+        cluster.set_cassandra_dir(cassandra_version=FROM_VERSION)
+        cluster.populate(2).start()
+        (node1, node2) = cluster.nodelist()
+        node1.watch_log_for('Listening for thrift clients...')
+        node2.watch_log_for('Listening for thrift clients...')
+
+        # Bring one node down and upgrade it.
+        node1.flush()
+        node1.stop(wait_other_notice=True)
+        node1.set_cassandra_dir(cassandra_version=TO_VERSION)
+        node1.start(wait_other_notice=True)
+        import pdb; pdb.set_trace()  # <-- pause here and tail -f the node2.logfilename()
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0
+Component:
+None
+Label:
+None
+Environment:
+ubuntu, ccm, dtest
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Tyler Patterson
+Create date:
+24/Aug/12 18:17
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/Sep/12 22:25

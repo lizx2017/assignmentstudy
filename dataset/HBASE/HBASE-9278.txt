@@ -1,0 +1,51 @@
+Summary:
+Reading Pre-namespace meta table edits kills the reader
+Description:
+In upgrading to 0.96, there might be some meta/root table edits. Currently, we are just killing SplitLogWorker thread in case it sees any META, or ROOT waledit, which blocks log splitting/replaying of remaining WALs.
+2013-08-20 15:45:16,998 ERROR regionserver.SplitLogWorker (SplitLogWorker.java:run(210)) - unexpected error 
+java.lang.IllegalArgumentException: .META. no longer exists. The table has been renamed to hbase:meta
+        at org.apache.hadoop.hbase.TableName.valueOf(TableName.java:269)
+        at org.apache.hadoop.hbase.TableName.valueOf(TableName.java:261)
+        at org.apache.hadoop.hbase.regionserver.wal.HLogKey.readFields(HLogKey.java:338)
+        at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1898)
+        at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1938)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.readNext(SequenceFileLogReader.java:215)
+        at org.apache.hadoop.hbase.regionserver.wal.ReaderBase.next(ReaderBase.java:98)
+        at org.apache.hadoop.hbase.regionserver.wal.ReaderBase.next(ReaderBase.java:85)
+        at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.getNextLogLine(HLogSplitter.java:582)
+        at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.splitLogFile(HLogSplitter.java:292)
+        at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.splitLogFile(HLogSplitter.java:209)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker$1.exec(SplitLogWorker.java:138)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker.grabTask(SplitLogWorker.java:358)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker.taskLoop(SplitLogWorker.java:245)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker.run(SplitLogWorker.java:205)
+        at java.lang.Thread.run(Thread.java:662)
+2013-08-20 15:45:16,999 INFO  regionserver.SplitLogWorker (SplitLogWorker.java:run(212)) - SplitLogWorker localhost,60020,1377035111898 exiting
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.98.0, 0.96.0
+Component:
+migration, wal
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Himanshu Vashishtha
+Reporter:
+Himanshu Vashishtha
+Create date:
+20/Aug/13 22:37
+Update date:
+20/Nov/15 11:54
+Resolved date:
+28/Aug/13 21:48

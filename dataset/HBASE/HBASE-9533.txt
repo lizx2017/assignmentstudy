@@ -1,0 +1,65 @@
+Summary:
+List of dependency jars for MR jobs is hard-coded and does not include netty, breaking MRv1 jobs
+Description:
+Observed behavior:
+Against trunk, using MRv1 with hadoop 1.0.4, r1393290, I am able to run MRv1 jobs (e.g. pi 2 4).
+However, when I use it to run MR over HBase jobs, they fail with the stack trace below.
+From the trace, the issue seems to be that it cannot find a class that the netty jar contains. This would make sense, given that the dependency jars that we use for the MapReduce job are hard-coded, and that the netty jar is not one of them.
+https://github.com/apache/hbase/blob/trunk/hbase-server/src/main/java/org/apache/hadoop/hbase/mapreduce/TableMapReduceUtil.java#L519
+Strangely, this is only an issue in trunk, not 0.95, even though the code hasn't changed.
+Command:
+/bin/hbase org.apache.hadoop.hbase.mapreduce.RowCounter sampletable
+TT logs (attached)
+Output from console running job:
+13/09/13 16:02:58 INFO mapred.JobClient: Task Id : attempt_201309131601_0002_m_000000_2, Status : FAILED
+java.io.IOException: Cannot create a record reader because of a previous error. Please look at the previous logs lines from the task's full log for more details.
+ at org.apache.hadoop.hbase.mapreduce.TableInputFormatBase.createRecordReader(TableInputFormatBase.java:119)
+ at org.apache.hadoop.mapred.MapTask$NewTrackingRecordReader.<init>(MapTask.java:489)
+ at org.apache.hadoop.mapred.MapTask.runNewMapper(MapTask.java:731)
+ at org.apache.hadoop.mapred.MapTask.run(MapTask.java:370)
+ at org.apache.hadoop.mapred.Child$4.run(Child.java:255)
+ at java.security.AccessController.doPrivileged(Native Method)
+ at javax.security.auth.Subject.doAs(Subject.java:396)
+ at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1149)
+ at org.apache.hadoop.mapred.Child.main(Child.java:249)
+
+13/09/13 16:03:09 INFO mapred.JobClient: Job complete: job_201309131601_0002
+13/09/13 16:03:09 INFO mapred.JobClient: Counters: 7
+13/09/13 16:03:09 INFO mapred.JobClient:   Job Counters 
+13/09/13 16:03:09 INFO mapred.JobClient:     SLOTS_MILLIS_MAPS=29913
+13/09/13 16:03:09 INFO mapred.JobClient:     Total time spent by all reduces waiting after reserving slots (ms)=0
+13/09/13 16:03:09 INFO mapred.JobClient:     Total time spent by all maps waiting after reserving slots (ms)=0
+13/09/13 16:03:09 INFO mapred.JobClient:     Launched map tasks=4
+13/09/13 16:03:09 INFO mapred.JobClient:     Data-local map tasks=4
+13/09/13 16:03:09 INFO mapred.JobClient:     SLOTS_MILLIS_REDUCES=0
+13/09/13 16:03:09 INFO mapred.JobClient:     Failed map tasks=1
+Expected behavior:
+As a stopgap, the netty jar should be included in that list. More generally, there should be a more elegant way to include the jars that are needed.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.95.2, 0.96.1
+Fix_version:
+0.98.0, 0.96.0
+Component:
+mapreduce
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Matteo Bertozzi
+Reporter:
+Aleksandr Shulman
+Create date:
+14/Sep/13 00:54
+Update date:
+20/Nov/15 11:55
+Resolved date:
+20/Sep/13 03:41

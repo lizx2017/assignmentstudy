@@ -1,0 +1,63 @@
+Summary:
+Bugs in tombstone handling in remove code
+Description:
+[copied from dev list]
+Avinash pointed out two bugs in my remove code. One is easy to fix,
+the other is tougher.
+The easy one is that my code removes tombstones (deletion markers) at
+the ColumnFamilyStore level, so when CassandraServer does read repair
+it will not know about the tombstones and they will not be replicated
+correctly. This can be fixed by simply moving the removeDeleted call
+up to just before CassandraServer's final return-to-client.
+The hard one is that tombstones are problematic on GC (that is, major
+compaction of SSTables, to use the Bigtable paper terminology).
+One failure scenario: Node A, B, and C replicate some data. C goes
+down. The data is deleted. A and B delete it and later GC it. C
+comes back up. C now has the only copy of the data so on read repair
+the stale data will be sent to A and B.
+A solution: pick a number N such that we are confident that no node
+will be down (and catch up on hinted handoffs) for longer than N days.
+(Default value: 10?) Then, no node may GC tombstones before N days
+have elapsed. Also, after N days, tombstones will no longer be read
+repaired. (This prevents a node which has not yet GC'd from sending a
+new tombstone copy to a node that has already GC'd.)
+Implementation detail: we'll need to add a 32-bit "time of tombstone"
+to ColumnFamily and SuperColumn. (For Column we can stick it in the
+byte[] value, since we already have an unambiguous way to know if the
+Column is in a deleted state.) We only need 32 bits since the time
+frame here is sufficiently granular that we don't need ms. Also, we
+will use the system clock for these values, not the client timestamp,
+since we don't know what the source of the client timestamps is.
+Admittedly this is suboptimal compared to being able to GC immediately
+but it has the virtue of being (a) easily implemented, (b) with no
+extra components such as a coordination protocol, and (c) better than
+not GCing tombstones at all (the other easy way to ensure
+correctness).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jonathan Ellis
+Create date:
+01/Apr/09 13:47
+Update date:
+16/Apr/19 09:33
+Resolved date:
+20/Apr/09 16:39

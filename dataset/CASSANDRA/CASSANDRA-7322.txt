@@ -1,0 +1,34 @@
+Summary:
+CqlPagingRecordReader returns partial or no data
+Description:
+In trying to solve the last problem with CASSANDRA-7241, this bisected to CASSANDRA-6379. On the surface of course this doesn't seem right, so I repeated the bisect (both of which were completely manual and tested by hand) and landed at the same place, and since it did touch getSplits I think it's the right candidate.
+What I see is that CPRR gets all the splits, which with vnodes are mostly empty since there's very little data in the test. Before CASSANDRA-6379 it iterates them all and succeeds by eventually finding it. When it fails, however, it only checks the first split and gives up, even if it does happen to get lucky and find one row.
+If I use data generated before CASSANDRA-6379, it works fine, but not with data generated afterward. I suspect this isn't specific to CPRR but hadoop in general, it's just been easier for me to spot with CPRR, perhaps due to the nature of the test.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Brandon Williams
+Create date:
+29/May/14 19:22
+Update date:
+16/Apr/19 09:31
+Resolved date:
+29/May/14 22:34

@@ -1,0 +1,77 @@
+Summary:
+Error in commit log allocator thread
+Description:
+The dtest counters_test.py:TestCounters.upgrade_test is intermittently failing on 2.1-HEAD because of the following error in the system.log
+ERROR [COMMIT-LOG-ALLOCATOR] 2014-12-12 14:18:07,342 StorageService.java:366 - Stopping gossiper
+WARN  [COMMIT-LOG-ALLOCATOR] 2014-12-12 14:18:07,342 StorageService.java:274 - Stopping gossip by operato
+r request
+INFO  [COMMIT-LOG-ALLOCATOR] 2014-12-12 14:18:07,342 Gossiper.java:1341 - Announcing shutdown
+ERROR [COMMIT-LOG-ALLOCATOR] 2014-12-12 14:18:09,349 CassandraDaemon.java:170 - Exception in thread Threa
+d[COMMIT-LOG-ALLOCATOR,5,main]
+java.lang.AssertionError: java.lang.InterruptedException
+        at org.apache.cassandra.net.OutboundTcpConnection.enqueue(OutboundTcpConnection.java:107) ~[main/
+:na]
+        at org.apache.cassandra.net.MessagingService.sendOneWay(MessagingService.java:682) ~[main/:na]
+        at org.apache.cassandra.net.MessagingService.sendOneWay(MessagingService.java:648) ~[main/:na]
+        at org.apache.cassandra.gms.Gossiper.stop(Gossiper.java:1345) ~[main/:na]
+        at org.apache.cassandra.service.StorageService.stopGossiping(StorageService.java:275) ~[main/:na]
+        at org.apache.cassandra.service.StorageService.stopTransports(StorageService.java:367) ~[main/:na
+]
+        at org.apache.cassandra.db.commitlog.CommitLog.handleCommitError(CommitLog.java:365) ~[main/:na]
+        at org.apache.cassandra.db.commitlog.CommitLogSegmentManager$1.runMayThrow(CommitLogSegmentManage
+r.java:164) ~[main/:na]
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28) ~[main/:na]
+        at java.lang.Thread.run(Thread.java:745) ~[na:1.7.0_67]
+Caused by: java.lang.InterruptedException: null
+        at java.util.concurrent.locks.AbstractQueuedSynchronizer.acquireInterruptibly(AbstractQueuedSynch
+ronizer.java:1219) ~[na:1.7.0_67]
+        at java.util.concurrent.locks.ReentrantLock.lockInterruptibly(ReentrantLock.java:340) ~[na:1.7.0_
+67]
+        at java.util.concurrent.LinkedBlockingQueue.put(LinkedBlockingQueue.java:338) ~[na:1.7.0_67]
+        at org.apache.cassandra.net.OutboundTcpConnection.enqueue(OutboundTcpConnection.java:103) ~[main/:na]
+        ... 9 common frames omitted
+I have attached the system.log files of both nodes used, as well as the test being run.
+I don't see this problem at all while running against 2.0-HEAD. I can reproduce this very far back into 2.1's history. With 2.1.0-rc2, I see
+ERROR [COMMIT-LOG-ALLOCATOR] 2014-12-12 15:21:04,069 CassandraDaemon.java:166 - Exception in thread Thread[COMMIT-LOG-ALLOCATOR,5,main]
+org.apache.cassandra.io.FSWriteError: java.nio.channels.ClosedByInterruptException
+        at org.apache.cassandra.db.commitlog.CommitLogSegment.<init>(CommitLogSegment.java:178) ~[main/:na]
+        at org.apache.cassandra.db.commitlog.CommitLogSegment.recycle(CommitLogSegment.java:373) ~[main/:na]
+        at org.apache.cassandra.db.commitlog.CommitLogSegmentManager$3.call(CommitLogSegmentManager.java:334) ~[main/:na]
+        at org.apache.cassandra.db.commitlog.CommitLogSegmentManager$3.call(CommitLogSegmentManager.java:331) ~[main/:na]
+        at org.apache.cassandra.db.commitlog.CommitLogSegmentManager$1.runMayThrow(CommitLogSegmentManager.java:148) ~[main/:na]
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28) ~[main/:na]
+        at java.lang.Thread.run(Thread.java:745) ~[na:1.7.0_67]
+Caused by: java.nio.channels.ClosedByInterruptException: null
+        at java.nio.channels.spi.AbstractInterruptibleChannel.end(AbstractInterruptibleChannel.java:202) ~[na:1.7.0_67]
+        at sun.nio.ch.FileChannelImpl.map(FileChannelImpl.java:919) ~[na:1.7.0_67]
+        at org.apache.cassandra.db.commitlog.CommitLogSegment.<init>(CommitLogSegment.java:167) ~[main/:na]
+        ... 6 common frames omitted
+Is there something we're doing wrong in the test?
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Philip Thompson
+Create date:
+12/Dec/14 20:37
+Update date:
+16/Apr/19 09:31
+Resolved date:
+05/Jan/15 16:22

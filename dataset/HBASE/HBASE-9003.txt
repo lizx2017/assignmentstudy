@@ -1,0 +1,32 @@
+Summary:
+TableMapReduceUtil should not rely on org.apache.hadoop.util.JarFinder#getJar
+Description:
+This is the problem: TableMapReduceUtil#addDependencyJars relies on org.apache.hadoop.util.JarFinder if available to call getJar(). However getJar() uses File.createTempFile() to create a temporary file under hadoop.tmp.dir/target/test-dir. Due HADOOP-9737 the created jar and its content is not purged after the JVM is destroyed. Since most configurations point hadoop.tmp.dir under /tmp the generated jar files get purged by tmpwatch or a similar tool, but boxes that have hadoop.tmp.dir pointing to a different location not monitored by tmpwatch will pile up a collection of jars causing all kind of issues. Since JarFinder#getJar is not a public API from Hadoop (see Alejandro Abdelnur comment on HADOOP-9737) we shouldn't use that as part of TableMapReduceUtil in order to avoid this kind of issues.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.99.2
+Component:
+mapreduce
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Esteban Gutierrez
+Reporter:
+Esteban Gutierrez
+Create date:
+19/Jul/13 20:26
+Update date:
+06/Apr/18 17:54
+Resolved date:
+31/Oct/14 04:10

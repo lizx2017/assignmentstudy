@@ -1,0 +1,56 @@
+Summary:
+global authorization may lose efficacy
+Description:
+It depends on the order of which region be opened first.
+Suppose we have one 1 regionserver and only 1 user region REGION-A on this server, acl region was on another regionserver. acl was opened a few seconds before REGION-A.
+The global authorization data read from Zookeeper was overwritten by the data read from configuration.
+  private TableAuthManager(ZooKeeperWatcher watcher, Configuration conf)
+      throws IOException {
+    this.conf = conf;
+    this.zkperms = new ZKPermissionWatcher(watcher, this, conf);
+    try {
+   // Read global authorization data from zookeeper. 
+      this.zkperms.start();
+    } catch (KeeperException ke) {
+      LOG.error("ZooKeeper initialization failed", ke);
+    }
+    // It will overwrite globalCache.
+    // initialize global permissions based on configuration
+    globalCache = initGlobal(conf);
+  }
+This issue can be easily reproduced by below steps:
+1. Start a cluster with 3 regionservers.
+2. Create a new table T1.
+3. grant a new user USER-A with global authorization.
+4. Kill 1 regionserver RS3 and switch balance off.
+5. Start regionserver RS3.
+6. Assign region T1 to RS3.
+7. Put data with user USER-A.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.6, 0.95.0, 0.95.2
+Fix_version:
+0.98.0, 0.94.7, 0.95.0
+Component:
+security
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jieshan Bean
+Reporter:
+Jieshan Bean
+Create date:
+28/Mar/13 09:39
+Update date:
+27/Apr/13 15:55
+Resolved date:
+01/Apr/13 16:34

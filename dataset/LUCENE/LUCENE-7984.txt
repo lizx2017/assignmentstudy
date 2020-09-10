@@ -1,0 +1,90 @@
+Summary:
+CLONE - SysnonymGraphFilter doesn't respect ignoreCase parameter
+Description:
+Hi, it seems that SynonymGraphFilter doesn't respect ignoreCase parameter. In particular this test doesn't pass:
+UppercaseSynonymMapTest.java
+package com.mapcity.suggest.lucene;
+
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.core.WhitespaceTokenizer;
+import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
+import org.apache.lucene.analysis.synonym.SynonymMap;
+import org.apache.lucene.util.CharsRef;
+import org.apache.lucene.util.CharsRefBuilder;
+import org.junit.Test;
+
+import java.io.IOException;
+
+import static org.apache.lucene.analysis.BaseTokenStreamTestCase.assertTokenStreamContents;
+
+/**
+ * @author Sebastian Yonekura
+ *         Created on 22-02-17
+ */
+public class UppercaseSynonymMapTest {
+
+    @Test
+    public void analyzerTest01() throws IOException {
+        // This passes
+        testAssertMapping("word", "synonym");
+        // this one not
+        testAssertMapping("word".toUpperCase(), "synonym");
+    }
+
+    private void testAssertMapping(String inputString, String outputString) throws IOException {
+        SynonymMap.Builder builder = new SynonymMap.Builder(false);
+        CharsRef input = SynonymMap.Builder.join(inputString.split(" "), new CharsRefBuilder());
+        CharsRef output = SynonymMap.Builder.join(outputString.split(" "), new CharsRefBuilder());
+        builder.add(input, output, true);
+        Analyzer analyzer = new CustomAnalyzer(builder.build());
+        TokenStream tokenStream = analyzer.tokenStream("field", inputString);
+        assertTokenStreamContents(tokenStream, new String[]{
+                outputString, inputString
+        });
+    }
+
+    static class CustomAnalyzer extends Analyzer {
+        private SynonymMap synonymMap;
+
+        CustomAnalyzer(SynonymMap synonymMap) {
+            this.synonymMap = synonymMap;
+        }
+
+        @Override
+        protected TokenStreamComponents createComponents(String s) {
+            Tokenizer tokenizer = new WhitespaceTokenizer();
+            TokenStream tokenStream = new SynonymGraphFilter(tokenizer, synonymMap, true); // Ignore case True
+            return new TokenStreamComponents(tokenizer, tokenStream);
+        }
+    }
+}
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Duplicate
+Affects_version:
+6.4.1
+Fix_version:
+6.5, 7.0
+Component:
+modules/analysis
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Tianyu Fang
+Create date:
+03/Oct/17 21:06
+Update date:
+03/Oct/17 21:09
+Resolved date:
+03/Oct/17 21:08

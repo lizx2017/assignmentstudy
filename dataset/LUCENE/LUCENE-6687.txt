@@ -1,0 +1,50 @@
+Summary:
+MLT term frequency calculation bug
+Description:
+In org.apache.lucene.queries.mlt.MoreLikeThis, there's a method retrieveTerms that receives a Map of fields, i.e. a document basically, but it doesn't have to be an existing doc.
+There are 2 for loops, one inside the other, which both loop through the same set of fields.
+That effectively doubles the term frequency for all the terms from fields that we provide in MLT QP qf parameter.
+It basically goes two times over the list of fields and accumulates the term frequencies from all fields into termFreqMap.
+The private method retrieveTerms is only called from one public method, the version of overloaded method like that receives a Map: so that private class member fieldNames is always derived from retrieveTerms's argument fields.
+Uh, I don't understand what I wrote myself, but that basically means that, by the time retrieveTerms method gets called, its parameter fields and private member fieldNames always contain the same list of fields.
+Here's the proof:
+These are the final results of the calculation:
+And this is the actual thread_id:TID0009 document, where those values were derived from (from fields title_mlt and pagetext_mlt):
+Now, let's further test this hypothesis by seeing MLT QP in action from the AdminUI.
+Let's try to find docs that are More Like doc TID0009.
+Here's the interesting part, the query:
+q={!mlt qf=pagetext_mlt,title_mlt mintf=14 mindf=2 minwl=3 maxwl=15}TID0009
+We just saw, in the last image above, that the term accumulator appears 7 times in TID0009 doc, but the accumulator's TF was calculated as 14.
+By using mintf=14, we say that, when calculating similarity, we don't want to consider terms that appear less than 14 times (when terms from fields title_mlt and pagetext_mlt are merged together) in TID0009.
+I added the term accumulator in only one other document (TID0004), where it appears only once, in the field title_mlt.
+Let's see what happens when we use mintf=15:
+I should probably mention that multiple fields (qf) work because I applied the patch: SOLR-7143.
+Bug, no?
+Status:
+PATCH AVAILABLE
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+5.2.1, 6.0
+Fix_version:
+5.2.2
+Component:
+core/query/scoring, (1)
+Label:
+None
+Environment:
+mac os x, solaris
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Marko Bonaci
+Create date:
+20/Jul/15 09:10
+Update date:
+10/Oct/18 01:25
+Resolved date:
+

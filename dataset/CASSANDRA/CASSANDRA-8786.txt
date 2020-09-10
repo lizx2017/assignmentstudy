@@ -1,0 +1,42 @@
+Summary:
+NullPointerException in ColumnDefinition.hasIndexOption
+Description:
+We have a Cassandra cluster that we've been using through many upgrades, and thus most of our column families have originally been created by Thrift. We are on Cassandra 2.1.2 now.
+We've now ported most of our code to use CQL, and our code occasionally tries to recreate tables with "IF NOT EXISTS" to work properly on development / testing environments.
+When we issue the CQL statement "CREATE INDEX IF NOT EXISTS index ON "tableName" (accountId)" (this index does exist on that table already), we get a DriverInternalError: An unexpected error occurred server side on cass_host/xx.xxx.xxx.xxx:9042: java.lang.NullPointerException
+The error on the server is:
+ java.lang.NullPointerException: null
+        at org.apache.cassandra.config.ColumnDefinition.hasIndexOption(ColumnDefinition.java:489) ~[apache-cassandra-2.1.2.jar:2.1.2]
+        at org.apache.cassandra.cql3.statements.CreateIndexStatement.validate(CreateIndexStatement.java:87) ~[apache-cassandra-2.1.2.jar:2.1.2]
+        at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:224) ~[apache-cassandra-2.1.2.jar:2.1.2]
+        at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:248) ~[apache-cassandra-2.1.2.jar:2.1.2]
+        at org.apache.cassandra.transport.messages.QueryMessage.execute(QueryMessage.java:119) ~[apache-cassandra-2.1.2.jar:2.1.2]
+This happens every time we run this CQL statement. We've tried to reproduce it in a test cassandra cluster by creating the table according to the exact "DESCRIBE TABLE" specification, but then this NullPointerException doesn't happon upon the CREATE INDEX one. So it seems that the tables on our production cluster (that were originally created through thrift) are still subtly different schema-wise then a freshly created table according to the same creation statement.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Mathijs Vogelzang
+Create date:
+11/Feb/15 15:51
+Update date:
+16/Apr/19 09:31
+Resolved date:
+10/Mar/15 21:03

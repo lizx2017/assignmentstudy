@@ -1,0 +1,34 @@
+Summary:
+NamesQueryFilters do not update SSTable read rate metrics
+Description:
+In CollationController.collectionTimeOrderedData(), we are not calling sstable.incrementReadCount(). If a table is queried exclusively with these types of queries, its read meter will never be updated. Since SizeTieredCompactionStrategy depends on the read meter for omitting cold sstables form compaction, this can result in no compactions being performed. (I believe this would require an occasional non-NamesQueryFilter query to happen, because if all of the readMeters have a rate of 0.0, compaction will proceed normally.) The IndexSummaryManager is also affected.
+A workaround for compactions not occurring is to run the following:
+ALTER TABLE <tablename> WITH compaction = {'class': 'SizeTieredCompactionStrategy', 'min_threshold': '4', 'max_threshold': '32', 'cold_reads_to_omit': 0.0};
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Tyler Hobbs
+Create date:
+31/Oct/14 23:45
+Update date:
+16/Apr/19 09:31
+Resolved date:
+04/Nov/14 15:44

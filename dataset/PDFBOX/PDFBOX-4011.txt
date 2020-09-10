@@ -1,0 +1,56 @@
+Summary:
+BBox in signature forms has wrong order
+Description:
+As pointed out by Gabriel Pessoa in the user mailing list:
+As a follow up to this question we created similar signatures with Adobe
+Reader and iText (both the latest versions, both able to print the
+signature image on Chrome) and inspected the generated PDFs.
+Looking at the AP dictionary I noticed that both write the BBox for the
+/N, /FRM and /img dictionaries different than PDFBox.
+For the /N and /FRM they both write [0, 0, width, height] the values
+being those from the rectangle where the image is set. For /img they
+calculate the scale factor relative between the image original size and
+the rectangle size.
+PDFBox uses by default for all three [100, 50, 0, 0] and that can be
+changed with PDVisibleSignDesigner.formatterRectangleParams(byte[]).
+Using that method (but passing 127 for width, because when i used 128 it
+wrote -128 on the PDF), the image was sucessfully printed from Chrome,
+although it does not fit the whole space, I believe because of the line
+"String imgFormContent    = "q " + 100 + " 0 0 50 0 0 cm /" + imageName.getName() + " Do Q\n";" 
+in
+PDVisibleSigBuilder.injectAppearanceStreams.
+And just to pinpoint the exact BBox, i downloaded PDFBox from 2.0.9
+-SNAPSHOT and changed the code so that only the BBox from
+PDFTemplateBuilder.createHolderForm receives the value set in
+formatterRectangleParams(byte[]) and I was able to print the signature
+image.
+Our code is wrong, in the specification bbox is defined as minX, minY, maxX, maxY: "An array of four numbers in the form coordinate system, giving the coordinates of the left, bottom, right, and top edges, respectively, of the form XObject's bounding box. These boundaries shall be used to clip the form XObject and to determine its size for caching."
+I'll change the code to make it more flexible and also create a method that uses an int array and deprecate the current one.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.13, 2.0.8
+Fix_version:
+1.8.14, 2.0.9, 3.0.0 PDFBox
+Component:
+Signing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+14/Nov/17 17:52
+Update date:
+24/Mar/18 09:41
+Resolved date:
+15/Nov/17 18:22

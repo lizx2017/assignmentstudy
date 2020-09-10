@@ -1,0 +1,59 @@
+Summary:
+ConcurrentModificantionException on server when multiple CQL3 read requests received on single column family simultaneously.
+Description:
+The exception below is thrown on the server when two reads are performed at the exact same time on the same column family. This causes the query to fail.
+The problem appears to be caused by the 'name' list in org.apache.cassandra.cql3.ResultSet$Metadata. The reference is passed in to the constructor and iterated without copying and without a synch block. When two of these ResultSet instances are created from the same metadata list at the same time, a ConcurrentModificationException is thrown.
+The error:
+ERROR [Thrift:860] 2013-03-25 09:27:39,467 CustomTThreadPoolServer.java (line 217) Error occurred during processing of message.
+java.util.ConcurrentModificationException
+at java.util.AbstractList$Itr.checkForComodification(AbstractList.java:372)
+at java.util.AbstractList$Itr.next(AbstractList.java:343)
+at org.apache.cassandra.cql3.ResultSet$Metadata.allInSameCF(ResultSet.java:237)
+at org.apache.cassandra.cql3.ResultSet$Metadata.<init>(ResultSet.java:219)
+at org.apache.cassandra.cql3.ResultSet.<init>(ResultSet.java:47)
+at org.apache.cassandra.cql3.statements.Selection$ResultSetBuilder.<init>(Selection.java:239)
+at org.apache.cassandra.cql3.statements.Selection$ResultSetBuilder.<init>(Selection.java:221)
+at org.apache.cassandra.cql3.statements.Selection.resultSetBuilder(Selection.java:211)
+at org.apache.cassandra.cql3.statements.SelectStatement.process(SelectStatement.java:655)
+at org.apache.cassandra.cql3.statements.SelectStatement.processResults(SelectStatement.java:147)
+at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:136)
+at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:62)
+at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:132)
+at org.apache.cassandra.cql3.QueryProcessor.processPrepared(QueryProcessor.java:254)
+at org.apache.cassandra.thrift.CassandraServer.execute_prepared_cql3_query(CassandraServer.java:1851)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_prepared_cql3_query.getResult(Cassandra.java:4166)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_prepared_cql3_query.getResult(Cassandra.java:4154)
+at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:199)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:895)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:918)
+at java.lang.Thread.run(Thread.java:662)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.4
+Component:
+None
+Label:
+None
+Environment:
+java 1.6, sles
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Jason Reber
+Create date:
+25/Mar/13 16:24
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Mar/13 10:42

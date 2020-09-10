@@ -1,0 +1,62 @@
+Summary:
+memory leak in org.apache.pdfbox.cos.COSDocument
+Description:
+org.apache.pdfbox.cos.COSDocument.close() does not close the streams and causing therefore a growing memory leak. Supposed fix:
+public void close() throws IOException {
+// if (!closed) {
+// scratchFile.close();
+// if (tmpFile != null)
+{ // tmpFile.delete(); // }
+// closed = true;
+// }
+// begin Robert Scharpf
+closed = true;
+if (scratchFile != null) {
+try
+{ scratchFile.close(); }
+catch (Exception e) {
+}
+}
+scratchFile = null;
+if (tmpFile != null) {
+try
+{ tmpFile.delete(); }
+catch (Exception e) {
+}
+}
+tmpFile = null;
+List<COSObject> list = getObjectsByType(COSName.OBJ_STM);
+if (list != null) {
+for (COSObject objStream : list)
+{ COSStream stream = (COSStream) objStream.getObject(); stream.close(); }
+}
+// end Robert Scharpf
+}
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+1.8.2
+Fix_version:
+1.8.4, 2.0.0
+Component:
+Parsing
+Label:
+patch
+Environment:
+windows 7, netbeans
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Robert Scharpf
+Create date:
+11/Nov/13 13:06
+Update date:
+31/Jan/14 06:46
+Resolved date:
+22/Dec/13 18:55

@@ -1,0 +1,41 @@
+Summary:
+WAL logs get deleted before region server can fully flush
+Description:
+To replicate the problem do the following:
+1. check /hbase/.logs/XXXX directory to see if you have WAL logs for the region server you are shutting down.
+2. executing kill <pid> (where pid is a regionserver pid)
+3. Watch the regionserver log to start flushing, you will see how many regions are left to flush:
+09:36:54,665 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Waiting on 489 regions to close
+09:56:35,779 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Waiting on 116 regions to close
+4. Check /hbase/.logs/XXXX – you will notice that it has dissapeared.
+5. Check namenode logs:
+09:26:41,607 INFO org.apache.hadoop.hdfs.server.namenode.FSNamesystem.audit: ugi=root ip=/10.101.1.5 cmd=delete src=/hbase/.logs/rdaa5.prod.imageshack.com,60020,1319749
+Note that, if you kill -9 the RS now, and it crashes on flush, you won't have any WAL logs to replay. We need to make sure that logs are deleted or moved out only when RS has fully flushed. Otherwise its possible to lose data.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.5
+Component:
+wal
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+gaojinchao
+Reporter:
+jack levin
+Create date:
+28/Oct/11 20:28
+Update date:
+20/Nov/15 11:54
+Resolved date:
+01/Nov/11 19:15

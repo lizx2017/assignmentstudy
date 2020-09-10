@@ -1,0 +1,41 @@
+Summary:
+On first cluster startup, RS aborts if root znode is not available
+Description:
+When launching a fresh new cluster, the master has to be started first, which might create race conditions for starting master and rs at the same time.
+Master startup code is smt like this:
+establish zk connection
+create root znodes in zk (/hbase)
+create ephemeral node for master /hbase/master,
+Region server start up code is smt like this:
+establish zk connection
+check whether the root znode (/hbase) is there. If not, shutdown.
+wait for the master to create znodes /hbase/master
+So, the problem is on the very first launch of the cluster, RS aborts to start since /hbase znode might not have been created yet (only the master creates it if needed). Since /hbase/ is not deleted on cluster shutdown, on subsequent cluster starts, it does not matter which order the servers are started. So this affects only first launchs.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.2, (2)
+Fix_version:
+0.92.2, 0.94.0
+Component:
+master, (2)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Enis Soztutar
+Reporter:
+Enis Soztutar
+Create date:
+21/Apr/12 01:43
+Update date:
+12/Oct/12 05:35
+Resolved date:
+25/Apr/12 05:50

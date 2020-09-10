@@ -1,0 +1,59 @@
+Summary:
+Multi concurrent flushcache() for one region could cause data loss
+Description:
+We could call HRegion#flushcache() concurrently now through HRegionServer#splitRegion or HRegionServer#flushRegion by HBaseAdmin.
+However, we find if HRegion#internalFlushcache() is called concurrently by multi thread, HRegion.memstoreSize will be calculated wrong.
+At the end of HRegion#internalFlushcache(), we will do this.addAndGetGlobalMemstoreSize(-flushsize), but the flushsize may not the actual memsize which flushed to hdfs. It cause HRegion.memstoreSize is negative and prevent next flush if we close this region.
+Logs in RS for region e9d827913a056e696c39bc569ea3
+2012-03-11 16:31:36,690 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memstore flush for writetest1,,1331454657410.e9d827913a056e696c39bc569ea3
+f99f., current region memstore size 128.0m
+2012-03-11 16:31:37,999 INFO org.apache.hadoop.hbase.regionserver.Store: Added hdfs://dw74.kgb.sqa.cm4:9700/hbase-func1/writetest1/e9d827913a056e696c39bc569e
+a3f99f/cf1/8162481165586107427, entries=153106, sequenceid=619316544, memsize=59.6m, filesize=31.2m
+2012-03-11 16:31:38,830 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memstore flush for writetest1,,1331454657410.e9d827913a056e696c39bc569ea3
+f99f., current region memstore size 134.8m
+2012-03-11 16:31:39,458 INFO org.apache.hadoop.hbase.regionserver.Store: Added hdfs://dw74.kgb.sqa.cm4:9700/hbase-func1/writetest1/e9d827913a056e696c39bc569e
+a3f99f/cf2/3425971951499794221, entries=230183, sequenceid=619316544, memsize=68.5m, filesize=26.6m
+2012-03-11 16:31:39,459 INFO org.apache.hadoop.hbase.regionserver.HRegion: Finished memstore flush of ~128.1m for region writetest1,,1331454657410.e9d827913a
+056e696c39bc569ea3f99f. in 2769ms, sequenceid=619316544, compaction requested=false
+2012-03-11 16:31:39,459 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memstore flush for writetest1,,1331454657410.e9d827913a056e696c39bc569ea3
+f99f., current region memstore size 6.8m
+2012-03-11 16:31:39,529 INFO org.apache.hadoop.hbase.regionserver.Store: Added hdfs://dw74.kgb.sqa.cm4:9700/hbase-func1/writetest1/e9d827913a056e696c39bc569e
+a3f99f/cf1/1811012969998104626, entries=8002, sequenceid=619332759, memsize=3.1m, filesize=1.6m
+2012-03-11 16:31:39,640 INFO org.apache.hadoop.hbase.regionserver.Store: Added hdfs://dw74.kgb.sqa.cm4:9700/hbase-func1/writetest1/e9d827913a056e696c39bc569e
+a3f99f/cf2/770333473623552048, entries=12231, sequenceid=619332759, memsize=3.6m, filesize=1.4m
+2012-03-11 16:31:39,641 INFO org.apache.hadoop.hbase.regionserver.HRegion: Finished memstore flush of ~134.8m for region writetest1,,1331454657410.e9d827913a
+056e696c39bc569ea3f99f. in 811ms, sequenceid=619332759, compaction requested=true
+2012-03-11 16:31:39,707 INFO org.apache.hadoop.hbase.regionserver.Store: Added hdfs://dw74.kgb.sqa.cm4:9700/hbase-func1/writetest1/e9d827913a056e696c39bc569e
+a3f99f/cf1/5656568849587368557, entries=119, sequenceid=619332979, memsize=47.4k, filesize=25.6k
+2012-03-11 16:31:39,775 INFO org.apache.hadoop.hbase.regionserver.Store: Added hdfs://dw74.kgb.sqa.cm4:9700/hbase-func1/writetest1/e9d827913a056e696c39bc569e
+a3f99f/cf2/794343845650987521, entries=157, sequenceid=619332979, memsize=47.8k, filesize=19.3k
+2012-03-11 16:31:39,777 INFO org.apache.hadoop.hbase.regionserver.HRegion: Finished memstore flush of ~6.8m for region writetest1,,1331454657410.e9d827913a05
+6e696c39bc569ea3f99f. in 318ms, sequenceid=619332979, compaction requested=true
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.0, 0.95.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+13/Mar/12 04:03
+Update date:
+26/Feb/13 08:12
+Resolved date:
+19/Mar/12 22:23

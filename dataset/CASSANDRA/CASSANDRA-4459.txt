@@ -1,0 +1,84 @@
+Summary:
+pig driver casts ints as bytearray
+Description:
+we seem to be auto-mapping C* int columns to bytearray in Pig, and farther down I can't seem to find a way to cast that to int and do an average.
+grunt> cassandra_users = LOAD 'cassandra://cqldb/users' USING CassandraStorage();
+grunt> dump cassandra_users;
+(bobhatter,(act,22),(fname,bob),(gender,m),(highSchool,Cal High),(lname,hatter),(sat,500),(state,CA),{})
+(alicesmith,(act,27),(fname,alice),(gender,f),(highSchool,Tuscon High),(lname,smith),(sat,650),(state,AZ),{})
+ 
+// notice sat and act columns are bytearray values 
+grunt> describe cassandra_users;
+cassandra_users: {key: chararray,act: (name: chararray,value: bytearray),fname: (name: chararray,value: chararray),
+gender: (name: chararray,value: chararray),highSchool: (name: chararray,value: chararray),lname: (name: chararray,value: chararray),
+sat: (name: chararray,value: bytearray),state: (name: chararray,value: chararray),columns: {(name: chararray,value: chararray)}}
+
+grunt> users_by_state = GROUP cassandra_users BY state;
+grunt> dump users_by_state;
+((state,AX),{(aoakley,(highSchool,Phoenix High),(lname,Oakley),state,(act,22),(sat,500),(gender,m),(fname,Anne),{})})
+((state,AZ),{(gjames,(highSchool,Tuscon High),(lname,James),state,(act,24),(sat,650),(gender,f),(fname,Geronomo),{})})
+((state,CA),{(philton,(highSchool,Beverly High),(lname,Hilton),state,(act,37),(sat,220),(gender,m),(fname,Paris),{}),(jbrown,(highSchool,Cal High),(lname,Brown),state,(act,20),(sat,700),(gender,m),(fname,Jerry),{})})
+
+// Error - use explicit cast
+grunt> user_avg = FOREACH users_by_state GENERATE cassandra_users.state, AVG(cassandra_users.sat);
+grunt> dump user_avg;
+2012-07-22 17:15:04,361 [main] ERROR org.apache.pig.tools.grunt.Grunt - ERROR 1045: Could not infer the matching function for org.apache.pig.builtin.AVG as multiple or none of them fit. Please use an explicit cast.
+
+// Unable to cast as int
+grunt> user_avg = FOREACH users_by_state GENERATE cassandra_users.state, AVG((int)cassandra_users.sat);
+grunt> dump user_avg;
+2012-07-22 17:07:39,217 [main] ERROR org.apache.pig.tools.grunt.Grunt - ERROR 1052: Cannot cast bag with schema sat: bag({name: chararray,value: bytearray}) to int
+Seed data in CQL
+CREATE KEYSPACE cqldb with 
+  strategy_class = 'org.apache.cassandra.locator.SimpleStrategy' 
+  and strategy_options:replication_factor=3; 
+
+
+use cqldb;
+
+CREATE COLUMNFAMILY users (
+  KEY text PRIMARY KEY, 
+  fname text, lname text, gender varchar, 
+  act int, sat int, highSchool text, state varchar);
+
+insert into users (KEY, fname, lname, gender, act, sat, highSchool, state)
+values (gjames, Geronomo, James, f, 24, 650, 'Tuscon High', 'AZ');
+
+insert into users (KEY, fname, lname, gender, act, sat, highSchool, state)
+values (aoakley, Anne, Oakley, m , 22, 500, 'Phoenix High', 'AX');
+
+insert into users (KEY, fname, lname, gender, act, sat, highSchool, state)
+values (jbrown, Jerry, Brown, m , 20, 700, 'Cal High', 'CA');
+
+insert into users (KEY, fname, lname, gender, act, sat, highSchool, state)
+values (philton, Paris, Hilton, m , 37, 220, 'Beverly High', 'CA');
+
+select * from users;
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.3
+Component:
+None
+Label:
+None
+Environment:
+dse
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Cathy Daw
+Create date:
+23/Jul/12 18:51
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Jul/12 17:09

@@ -1,0 +1,37 @@
+Summary:
+distributedLogReplay may hang during chained region server failure
+Description:
+In a test, half cluster(in terms of region servers) was down and some log replay had incurred chained RS failures(receiving RS of a log replay failed again).
+Since by default, we only allow 3 concurrent SSH handlers(controlled by
+this.executorService.startExecutorService(ExecutorType.MASTER_SERVER_OPERATIONS,conf.getInt("hbase.master.executor.serverops.threads", 3));
+).
+If all 3 SSH handlers are doing logReplay(blocking call) and one of receiving RS fails again then logReplay will hang because regions of the newly failed RS can't be re-assigned to another live RS(no ssh handler will be processed due to max threads setting) and existing log replay will keep routing replay traffic to the dead RS.
+The fix is to submit logReplay work into a separate type of executor queue in order not to block SSH region assignment so that logReplay can route traffic to a live RS after retries and move forward.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.2
+Component:
+MTTR
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeffrey Zhong
+Reporter:
+Jeffrey Zhong
+Create date:
+11/Jun/13 07:05
+Update date:
+23/Sep/13 19:22
+Resolved date:
+05/Jul/13 08:46

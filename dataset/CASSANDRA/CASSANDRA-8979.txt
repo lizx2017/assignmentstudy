@@ -1,0 +1,35 @@
+Summary:
+MerkleTree mismatch for deleted and non-existing rows
+Description:
+Validation compaction will currently create different hashes for rows that have been deleted compared to nodes that have not seen the rows at all or have already compacted them away.
+In case this sounds familiar to you, see CASSANDRA-4905 which was supposed to prevent hashing of expired tombstones. This still seems to be in place, but does not address the issue completely. Or there was a change in 2.0 that rendered the patch ineffective.
+The problem is that rowHash() in the Validator will return a new hash in any case, whether the PrecompactedRow did actually update the digest or not. This will lead to the case that a purged, PrecompactedRow will not change the digest, but we end up with a different tree compared to not having rowHash called at all (such as in case the row already doesn't exist).
+As an implication, repair jobs will constantly detect mismatches between older sstables containing purgable rows and nodes that have already compacted these rows. After transfering the reported ranges, the newly created sstables will immediately get deleted again during the following compaction. This will happen for each repair run over again until the sstable with the purgable row finally gets compacted.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15, 2.1.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Stefan Podkowinski
+Reporter:
+Stefan Podkowinski
+Create date:
+17/Mar/15 16:17
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Apr/15 14:29

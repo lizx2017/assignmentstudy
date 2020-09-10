@@ -1,0 +1,61 @@
+Summary:
+Can't Parse any PDF using IBM JDK
+Description:
+All PDF (that I have tried) fail to parse using IBM JDK 1.5 on RedHat Linux. The error you receive is:
+Exception in thread "main" java.io.IOException: Error: Expected an integer type, actual='Ã£ÃÃ'
+at org.apache.pdfbox.pdfparser.BaseParser.readInt(BaseParser.java:1220)
+at org.apache.pdfbox.pdfparser.PDFParser.parseObject(PDFParser.java:493)
+at org.apache.pdfbox.pdfparser.PDFParser.parse(PDFParser.java:172)
+at org.apache.pdfbox.pdmodel.PDDocument.load(PDDocument.java:736)
+at org.apache.pdfbox.pdmodel.PDDocument.load(PDDocument.java:704)
+at org.apache.pdfbox.PDFReader.parseDocument(PDFReader.java:323)
+at org.apache.pdfbox.PDFReader.openPDFFile(PDFReader.java:286)
+at org.apache.pdfbox.PDFReader.main(PDFReader.java:271)
+Although after debugging the actual error is hidden:
+java.io.IOException: Error: Expected an integer type, actual='ãÏÓ'
+at org.apache.pdfbox.pdfparser.BaseParser.readInt(BaseParser.java:1220)
+at org.apache.pdfbox.pdfparser.PDFParser.parseObject(PDFParser.java:483)
+at org.apache.pdfbox.pdfparser.PDFParser.parse(PDFParser.java:172)
+at org.apache.pdfbox.pdmodel.PDDocument.load(PDDocument.java:736)
+at org.apache.pdfbox.pdmodel.PDDocument.load(PDDocument.java:704)
+at org.apache.pdfbox.PDFReader.parseDocument(PDFReader.java:323)
+at org.apache.pdfbox.PDFReader.openPDFFile(PDFReader.java:286)
+at org.apache.pdfbox.PDFReader.main(PDFReader.java:271)
+The characters shown in the hidden message occur at the start of most PDF Files that I have checked:
+%PDF-1.4
+%âãÏÓ
+6 0 obj
+<</Filter /FlateDecode
+/Length 489
+>>
+stream
+Tracing the code I can see the problem is down to the skipToNextObject() method in PDFParser class. This method is new since v0.7.4.
+The code converts the array of 16 bytes to a String. The characters âãÏÓ are read as negative numbers in both Sun and IBM JDKs but whilst on Sun the String created from the byte array contains the characters on IBM JDK these characters are missing from the String. So when you read back 16 characters the stream offset is incorrect.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.8.0-incubator
+Fix_version:
+0.8.0-incubator
+Component:
+Parsing
+Label:
+None
+Environment:
+redhat, java
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Chris Bowditch
+Create date:
+13/Aug/09 10:37
+Update date:
+21/Oct/09 10:28
+Resolved date:
+28/Aug/09 13:13

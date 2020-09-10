@@ -1,0 +1,86 @@
+Summary:
+cqlsh hangs indefinitely when dropping table
+Description:
+Using ccqlsh, I issue a drop statement for a table and it hangs indefinitely (running cassandra-2.0.3-709-g486f079 from trunk).
+Here's the statement:
+cqlsh:taskapp> drop table user_task;
+Here's the full setup I used:
+ccm create test_cluster
+ccm populate -n 3
+ccm start
+ccm node1 cqlsh
+
+CREATE KEYSPACE taskapp WITH replication = {
+  'class': 'SimpleStrategy',
+  'replication_factor': '3'
+};
+
+use taskapp;
+
+create table user (
+    user_id timeuuid PRIMARY KEY,
+    first_name text,
+    last_name text,
+    email text
+);
+
+create table user_task (
+    task_id timeuuid PRIMARY KEY,
+    user_id timeuuid,
+    task_order int,
+    task_description text,
+    is_complete boolean,
+    is_top_level boolean,
+    subtask_ids list<timeuuid>
+);
+and then the statement which hangs:
+drop table user_task;
+I also checked that all 3 nodes have the same schema version uuid, using these queries someone shared with me:
+cqlsh:taskapp> SELECT rpc_address, schema_version FROM system.peers
+           ... ;
+
+ rpc_address | schema_version
+-------------+--------------------------------------
+   127.0.0.3 | 6e782241-91e9-3cfa-88c0-88f445a573c1
+   127.0.0.2 | 6e782241-91e9-3cfa-88c0-88f445a573c1
+
+(2 rows)
+
+cqlsh:taskapp> SELECT schema_version FROM system.local WHERE key='local';
+
+ schema_version
+--------------------------------------
+ 6e782241-91e9-3cfa-88c0-88f445a573c1
+
+(1 rows)
+I checked the logs for all 3 nodes, which I think were normal. Node1 (used in the cqlsh session) showed this message:
+INFO  [Thrift:3] 2013-12-20 14:29:23,200 MigrationManager.java:289 - Drop ColumnFamily 'taskapp/user_task'
+The other node logs showed no activity that looked related to the attempted drop statement.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/CQL
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Russ Hatch
+Reporter:
+Russ Hatch
+Create date:
+20/Dec/13 22:48
+Update date:
+16/Apr/19 09:31
+Resolved date:
+20/Dec/13 23:41

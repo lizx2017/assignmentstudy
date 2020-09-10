@@ -1,0 +1,43 @@
+Summary:
+Region Server is starting normally even if clock skew is more than default 30 seconds(or any configured). -> Regionserver node time is greater than master node time
+Description:
+When Region server's time is ahead of Master's time and the difference is more than hbase.master.maxclockskew value, region server startup is not failing with ClockOutOfSyncException.
+This causes some abnormal behavior as detected by our Tests.
+ServerManager.java#checkClockSkew
+long skew = System.currentTimeMillis() - serverCurrentTime;
+if (skew > maxSkew)
+{ String message = "Server " + serverName + " has been " + "rejected; Reported time is too far out of sync with master. " + "Time difference of " + skew + "ms > max allowed of " + maxSkew + "ms"; LOG.warn(message); throw new ClockOutOfSyncException(message); }
+Above line results in negative value when Master's time is lesser than region server time and " if (skew > maxSkew) " check fails to find the skew in this case.
+Please Note: This was tested in hbase 0.94.11 version and the trunk also currently has the same logic.
+The fix for the same would be to make the skew positive value first as below:
+long skew = System.currentTimeMillis() - serverCurrentTime;
+skew = (skew < 0 ? -skew : skew);
+if (skew > maxSkew) {.....
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.11
+Fix_version:
+0.98.0, 0.96.1, 0.94.14
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Kashif
+Reporter:
+Kashif
+Create date:
+06/Nov/13 14:42
+Update date:
+26/Nov/13 05:53
+Resolved date:
+12/Nov/13 15:55

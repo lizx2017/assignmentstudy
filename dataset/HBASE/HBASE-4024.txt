@@ -1,0 +1,38 @@
+Summary:
+Major compaction may not be triggered, even though region server log says it is triggered
+Description:
+The trunk version of regionserver/Store.java, method List<StoreFile> compactSelection(List<StoreFile> candidates) has this code to determine whether major compaction should be done or not:
+// major compact on user action or age (caveat: we have too many files)
+boolean majorcompaction = (forcemajor || isMajorCompaction(filesToCompact))
+&& filesToCompact.size() < this.maxFilesToCompact;
+The isMajorCompaction(filesToCompact) method internally determines whether or not major compaction is required (and logs this as "Major compaction triggered ... " log message. However, after the call, the compactSelection method subsequently applies the filesToCompact.size() < this.maxFilesToCompact check which can turn off major compaction.
+This would result in a "Major compaction triggered" log message without actually triggering a major compaction.
+The filesToCompact.size() check should probably be moved inside the isMajorCompaction(filesToCompact) method.
+Status:
+CLOSED
+Priority:
+Trivial
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Suraj Varma
+Create date:
+23/Jun/11 22:50
+Update date:
+20/Nov/15 11:55
+Resolved date:
+27/Jul/11 04:40

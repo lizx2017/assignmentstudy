@@ -1,0 +1,40 @@
+Summary:
+ZK event thread waiting for root region assignment may block server shutdown handler for the region sever the root region was on
+Description:
+A RS died. The ServerShutdownHandler kicked in and started the logspliting. SpliLogManager
+installed the tasks asynchronously, then started to wait for them to complete.
+The task znodes were not created actually. The requests were just queued.
+At this time, the zookeeper connection expired. HMaster tried to recover the expired ZK session.
+During the recovery, a new zookeeper connection was created. However, this master became the
+new master again. It tried to assign root and meta.
+Because the dead RS got the old root region, the master needs to wait for the log splitting to complete.
+This waiting holds the zookeeper event thread. So the async create split task is never retried since
+there is only one event thread, which is waiting for the root region assigned.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0, 0.94.0
+Fix_version:
+0.92.0, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Jimmy Xiang
+Create date:
+27/Dec/11 23:23
+Update date:
+12/Oct/12 05:35
+Resolved date:
+05/Jan/12 17:29

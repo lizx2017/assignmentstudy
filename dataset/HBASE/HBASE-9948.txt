@@ -1,0 +1,49 @@
+Summary:
+HMaster should handle duplicate log split requests
+Description:
+I saw the following in test output for TestRestartCluster:
+2013-11-11 19:59:55,538 DEBUG [M:0;kiyo:36213] master.SplitLogManager(327): Scheduling batch of logs to split
+2013-11-11 19:59:55,538 INFO  [M:0;kiyo:36213] master.SplitLogManager(329): started splitting 1 logs in [hdfs://localhost:46376/user/hortonzy/hbase/WALs/kk,44962,1384199990193-splitting]
+2013-11-11 19:59:55,538 WARN  [M:0;kiyo:36213] master.SplitLogManager(1048): Failure because two threads can't wait for the same task; path=/hbase/splitWAL/WALs%2Fkk%2C44962%2C1384199990193-splitting%2Fkk%252C44962%252C1384199990193.1384199993702.meta
+2013-11-11 19:59:55,538 FATAL [M:0;kiyo:36213] master.HMaster(2188): Master server abort: loaded coprocessors are: [org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint]
+2013-11-11 19:59:55,538 FATAL [M:0;kiyo:36213] master.HMaster(2193): Unhandled exception. Starting shutdown.
+java.io.IOException: duplicate log split scheduled for hdfs://localhost:46376/user/hortonzy/hbase/WALs/kk,44962,1384199990193-splitting/kk%2C44962%2C1384199990193.1384199993702.meta
+        at org.apache.hadoop.hbase.master.SplitLogManager.splitLogDistributed(SplitLogManager.java:343)
+        at org.apache.hadoop.hbase.master.MasterFileSystem.splitLog(MasterFileSystem.java:409)
+        at org.apache.hadoop.hbase.master.MasterFileSystem.splitMetaLog(MasterFileSystem.java:301)
+        at org.apache.hadoop.hbase.master.MasterFileSystem.splitMetaLog(MasterFileSystem.java:292)
+        at org.apache.hadoop.hbase.master.HMaster.assignMeta(HMaster.java:1038)
+        at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:868)
+        at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:605)
+        at java.lang.Thread.run(Thread.java:724)
+2013-11-11 19:59:55,539 INFO  [M:0;kiyo:36213] master.HMaster(2386): Aborting
+2013-11-11 19:59:55,539 DEBUG [M:0;kiyo:36213] master.HMaster(1234): Stopping service threads
+HMaster should handle duplicate log split requests, instead of aborting.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gustavo Anatoly
+Reporter:
+Ted Yu
+Create date:
+11/Nov/13 20:59
+Update date:
+14/Jan/14 12:57
+Resolved date:
+

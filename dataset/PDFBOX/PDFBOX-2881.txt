@@ -1,0 +1,42 @@
+Summary:
+Radial and Axial shading steps are calculated incorrectly
+Description:
+I found a shading bug while writing some code to dump all shadings in a PDF. I don't know if this affects PDF rendering within PageDrawer or not.
+RadialShadingContext and AxialShadingContext use the following code in their constructors to calculate the number of steps (pixels) in the shading and build a lookup table for each step:
+// transform the distance to actual pixel space
+// use transform, because xform.getScaleX() does not return correct scaling on 90° rotated matrix
+Point2D point = new Point2D.Double(longestDistance, longestDistance);
+matrix.transform(point);
+xform.transform(point, point);
+factor = (int) Math.max(Math.abs(point.getX()), Math.abs(point.getY()));
+colorTable = calcColorTable();
+The variable "factor" is the number of steps and "matrix" is the parent stream's matrix + the pattern matrix, so this code is taking the current scale and assuming that that is equal to the number of pixels. This works when a pattern is painted onto a 0...1 scaled surface, but otherwise it produces incorrect results.
+There's no way to calculate the number of pixels in the device from its scale, or its matrix. Paint#createContext() provides the device bounds Rectangle, which is what we should be using. Indeed, this is handled correctly in the other shading contexts.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+Rendering
+Label:
+shading
+Environment:
+
+Attachment number:
+0
+Assignee:
+John Hewson
+Reporter:
+John Hewson
+Create date:
+14/Jul/15 21:52
+Update date:
+17/Mar/16 19:07
+Resolved date:
+17/Jul/15 19:22

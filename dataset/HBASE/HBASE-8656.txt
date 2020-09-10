@@ -1,0 +1,98 @@
+Summary:
+Rpc call may not be notified in SecureClient
+Description:
+In SecureClient.java, rpc responses will be processed by receiveResponse() which looks like:
+try {
+        int id = in.readInt();                    // try to read an id
+
+        if (LOG.isDebugEnabled())
+          LOG.debug(getName() + " got value #" + id);
+
+        Call call = calls.remove(id);
+
+        int state = in.readInt();     // read call status
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("call #"+id+" state is " + state);
+        }
+        if (state == Status.SUCCESS.state) {
+          Writable value = ReflectionUtils.newInstance(valueClass, conf);
+          value.readFields(in);                 // read value
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("call #"+id+", response is:\n"+value.toString());
+          }
+          // it's possible that this call may have been cleaned up due to a RPC
+          // timeout, so check if it still exists before setting the value.
+          if (call != null) {
+            call.setValue(value);
+          }
+        } else if (state == Status.ERROR.state) {
+          if (call != null) {
+            call.setException(new RemoteException(WritableUtils.readString(in), WritableUtils
+                .readString(in)));
+          }
+        } else if (state == Status.FATAL.state) {
+          // Close the connection
+          markClosed(new RemoteException(WritableUtils.readString(in),
+                                         WritableUtils.readString(in)));
+        }
+      } catch (IOException e) {
+        if (e instanceof SocketTimeoutException && remoteId.rpcTimeout > 0) {
+          // Clean up open calls but don't treat this as a fatal condition,
+          // since we expect certain responses to not make it by the specified
+          // {@link ConnectionId#rpcTimeout}.
+          closeException = e;
+        } else {
+          // Since the server did not respond within the default ping interval
+          // time, treat this as a fatal condition and close this connection
+          markClosed(e);
+        }
+      } finally {
+        if (remoteId.rpcTimeout > 0) {
+          cleanupCalls(remoteId.rpcTimeout);
+        }
+      }
+    }
+In above code, in the try block, the call will be firstly removed from call map by:
+        Call call = calls.remove(id);
+There may be two cases leading the call couldn't be notified and the invoking thread will wait forever.
+Firstly, if the returned status is Status.FATAL.state by:
+        int state = in.readInt();     // read call status
+The code will come into:
+} else if (state == Status.FATAL.state) {
+          // Close the connection
+          markClosed(new RemoteException(WritableUtils.readString(in),
+                                         WritableUtils.readString(in)));
+        }
+Here, the SecureConnection is marked as closed and all rpc calls in call map of this connection will be notified to receive an exception. However, the current rpc call has been removed from the call map, it won't be notified.
+Secondly, after the call has been removed by:
+        Call call = calls.remove(id);
+If we encounter any exception before the 'try' block finished, the code will come into 'catch' and 'finally' block, neither 'catch' block nor 'finally' block will notify the rpc call because it has been removed from call map.
+Compared with receiveResponse() in HBaseClient.java, it may be better to get the rpc call from call map and remove it at the end of the 'try' block.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.7
+Fix_version:
+0.94.9
+Component:
+Client, IPC/RPC, security
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jianwei Cui
+Reporter:
+Jianwei Cui
+Create date:
+30/May/13 10:04
+Update date:
+04/Jul/13 22:10
+Resolved date:
+24/Jun/13 20:52

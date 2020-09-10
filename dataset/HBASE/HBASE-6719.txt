@@ -1,0 +1,66 @@
+Summary:
+[replication] Data will lose if open a Hlog failed more than maxRetriesMultiplier
+Description:
+Please Take a look below code
+ReplicationSource.java
+protected boolean openReader(int sleepMultiplier) {
+{
+  ...
+  catch (IOException ioe) {
+
+      LOG.warn(peerClusterZnode + " Got: ", ioe);
+      // TODO Need a better way to determinate if a file is really gone but
+      // TODO without scanning all logs dir
+      if (sleepMultiplier == this.maxRetriesMultiplier) {
+        LOG.warn("Waited too long for this file, considering dumping");
+        return !processEndOfFile(); // Open a file failed over maxRetriesMultiplier(default 10)
+      }
+    }
+    return true;
+
+
+  ...
+}
+
+  protected boolean processEndOfFile() {
+    if (this.queue.size() != 0) {    // Skipped this Hlog . Data loss
+      this.currentPath = null;
+      this.position = 0;
+      return true;
+    } else if (this.queueRecovered) {   // Terminate Failover Replication source thread ,data loss
+      this.manager.closeRecoveredQueue(this);
+      LOG.info("Finished recovering the queue");
+      this.running = false;
+      return true;
+    }
+    return false;
+  }
+Some Time HDFS will meet some problem but actually Hlog file is OK , So after HDFS back ,Some data will lose and can not find them back in slave cluster.
+Status:
+OPEN
+Priority:
+Critical
+Resolution:
+Unresolved
+Affects_version:
+2.0.0
+Fix_version:
+None
+Component:
+Replication
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+terry zhang
+Reporter:
+terry zhang
+Create date:
+05/Sep/12 08:49
+Update date:
+16/Nov/16 22:13
+Resolved date:
+

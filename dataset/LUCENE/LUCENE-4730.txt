@@ -1,0 +1,55 @@
+Summary:
+SmartChineseAnalyzer got wrong matched offset
+Description:
+We found that SmartChineseAnalyzer got wrong matched offset with the following test code:
+public void testHighlight() throws Exception {
+String text = "My China ";
+String queryText = "China";
+StringBuilder builder = new StringBuilder("<html>");
+Analyzer analyzer = new SmartChineseAnalyzer(Version.LUCENE_40);
+//Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_40);
+QueryParser parser = new QueryParser(Version.LUCENE_40, "text", analyzer);
+Query query = parser.parse(queryText);
+SimpleHTMLFormatter formatter = new SimpleHTMLFormatter("<span style=\"background: yellow\">", "</span>");
+TokenStream tokens = analyzer.tokenStream("text", new StringReader(text));
+QueryScorer scorer = new QueryScorer(query, "text");
+Highlighter highlighter = new Highlighter(formatter, scorer);
+highlighter.setTextFragmenter(new SimpleSpanFragmenter(scorer));
+String result = highlighter.getBestFragments(tokens, text, 10, "...");
+if (result.length() < text.length())
+{ result = text; }
+builder.append("<body>");
+builder.append(result);
+builder.append("</body>");
+builder.append("</html>");
+System.out.println(builder.toString());
+}
+This method will generate a hilighted text, however, the highlight position is obviously wrong, and if we remove one space from the text, that is, change text from "My China " (ends with two spaces) to "My China " (ends with one space), it will generate a text with correct highlight. If we change the analyzer from SmartChineseAnalyzer to StandardAnalyzer, the highlight issue will disappear.
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+4.0, 4.1
+Fix_version:
+None
+Component:
+modules/analysis
+Label:
+None
+Environment:
+java 1.7, linux, windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jinsong Hu
+Create date:
+29/Jan/13 10:22
+Update date:
+09/Jun/16 14:21
+Resolved date:
+09/Jun/16 14:21

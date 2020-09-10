@@ -1,0 +1,81 @@
+Summary:
+AnalyzingInfixSuggesterTest.testRandomNRT() failures: FixedBitSet cannot be cast to SimpleTextBits
+Description:
+While beasting for LUCENE-7564, I found these reproducing master seeds, which trigger casting failures when SimpleText codec is randomly chosen:
+   [junit4] Suite: org.apache.lucene.search.suggest.analyzing.AnalyzingInfixSuggesterTest
+   [junit4]   2> NOTE: reproduce with: ant test  -Dtestcase=AnalyzingInfixSuggesterTest -Dtests.method=testRandomNRT -Dtests.seed=E4D62AFBD9F5FF7F -Dtests.slow=true -Dtests.locale=es-BO -Dtests.timezone=Africa/Asmara -Dtests.asserts=true -Dtests.file.encoding=UTF-8
+   [junit4] ERROR   0.18s | AnalyzingInfixSuggesterTest.testRandomNRT <<<
+   [junit4]    > Throwable #1: java.lang.ClassCastException: org.apache.lucene.util.FixedBitSet cannot be cast to org.apache.lucene.codecs.simpletext.SimpleTextLiveDocsFormat$SimpleTextBits
+   [junit4]    >        at __randomizedtesting.SeedInfo.seed([E4D62AFBD9F5FF7F:40F82446812A23C3]:0)
+   [junit4]    >        at org.apache.lucene.codecs.simpletext.SimpleTextLiveDocsFormat.writeLiveDocs(SimpleTextLiveDocsFormat.java:111)
+   [junit4]    >        at org.apache.lucene.index.DocumentsWriterPerThread.sealFlushedSegment(DocumentsWriterPerThread.java:570)
+   [junit4]    >        at org.apache.lucene.index.DocumentsWriterPerThread.flush(DocumentsWriterPerThread.java:481)
+   [junit4]    >        at org.apache.lucene.index.DocumentsWriter.doFlush(DocumentsWriter.java:539)
+   [junit4]    >        at org.apache.lucene.index.DocumentsWriter.flushAllThreads(DocumentsWriter.java:653)
+   [junit4]    >        at org.apache.lucene.index.IndexWriter.doFlush(IndexWriter.java:3368)
+   [junit4]    >        at org.apache.lucene.index.IndexWriter.flush(IndexWriter.java:3343)
+   [junit4]    >        at org.apache.lucene.index.IndexWriter.shutdown(IndexWriter.java:1134)
+   [junit4]    >        at org.apache.lucene.index.IndexWriter.close(IndexWriter.java:1179)
+   [junit4]    >        at org.apache.lucene.search.suggest.analyzing.AnalyzingInfixSuggester.close(AnalyzingInfixSuggester.java:843)
+   [junit4]    >        at org.apache.lucene.search.suggest.analyzing.AnalyzingInfixSuggesterTest.testRandomNRT(AnalyzingInfixSuggesterTest.java:629)
+   [junit4]    >        at java.lang.Thread.run(Thread.java:745)
+   [junit4]   2> NOTE: leaving temporary files on disk at: /home/sarowe/git/lucene-solr-3/lucene/build/suggest/test/J0/temp/lucene.search.suggest.analyzing.AnalyzingInfixSuggesterTest_E4D62AFBD9F5FF7F-003
+   [junit4]   2> NOTE: test params are: codec=SimpleText, sim=RandomSimilarity(queryNorm=true): {}, locale=es-BO, timezone=Africa/Asmara
+   [junit4]   2> NOTE: Linux 4.1.0-custom2-amd64 amd64/Oracle Corporation 1.8.0_77 (64-bit)/cpus=16,threads=1,free=435092720,total=514850816
+   [junit4]   2> NOTE: All tests run in this JVM: [AnalyzingInfixSuggesterTest]
+   [junit4] Completed [1/1 (1!)] in 1.65s, 22 tests, 1 error <<< FAILURES!
+   [junit4] Suite: org.apache.lucene.search.suggest.analyzing.AnalyzingInfixSuggesterTest
+   [junit4]   2> NOTE: reproduce with: ant test  -Dtestcase=AnalyzingInfixSuggesterTest -Dtests.method=testRandomNRT -Dtests.seed=C9621DF023FA10B9 -Dtests.slow=true -Dtests.locale=ar-SA -Dtests.timezone=Etc/Zulu -Dtests.asserts=true -Dtests.file.encoding=UTF-8
+   [junit4] ERROR   0.11s | AnalyzingInfixSuggesterTest.testRandomNRT <<<
+   [junit4]    > Throwable #1: java.lang.ClassCastException: org.apache.lucene.util.FixedBitSet cannot be cast to org.apache.lucene.codecs.simpletext.SimpleTextLiveDocsFormat$SimpleTextBits
+   [junit4]    >        at __randomizedtesting.SeedInfo.seed([C9621DF023FA10B9:6D4C134D7B25CC05]:0)
+   [junit4]    >        at org.apache.lucene.codecs.simpletext.SimpleTextLiveDocsFormat.writeLiveDocs(SimpleTextLiveDocsFormat.java:111)
+   [junit4]    >        at org.apache.lucene.index.DocumentsWriterPerThread.sealFlushedSegment(DocumentsWriterPerThread.java:570)
+   [junit4]    >        at org.apache.lucene.index.DocumentsWriterPerThread.flush(DocumentsWriterPerThread.java:481)
+   [junit4]    >        at org.apache.lucene.index.DocumentsWriter.doFlush(DocumentsWriter.java:539)
+   [junit4]    >        at org.apache.lucene.index.DocumentsWriter.flushAllThreads(DocumentsWriter.java:653)
+   [junit4]    >        at org.apache.lucene.index.IndexWriter.getReader(IndexWriter.java:451)
+   [junit4]    >        at org.apache.lucene.index.StandardDirectoryReader.doOpenFromWriter(StandardDirectoryReader.java:291)
+   [junit4]    >        at org.apache.lucene.index.StandardDirectoryReader.doOpenIfChanged(StandardDirectoryReader.java:266)
+   [junit4]    >        at org.apache.lucene.index.StandardDirectoryReader.doOpenIfChanged(StandardDirectoryReader.java:256)
+   [junit4]    >        at org.apache.lucene.index.DirectoryReader.openIfChanged(DirectoryReader.java:140)
+   [junit4]    >        at org.apache.lucene.search.SearcherManager.refreshIfNeeded(SearcherManager.java:156)
+   [junit4]    >        at org.apache.lucene.search.SearcherManager.refreshIfNeeded(SearcherManager.java:58)
+   [junit4]    >        at org.apache.lucene.search.ReferenceManager.doMaybeRefresh(ReferenceManager.java:176)
+   [junit4]    >        at org.apache.lucene.search.ReferenceManager.maybeRefreshBlocking(ReferenceManager.java:253)
+   [junit4]    >        at org.apache.lucene.search.suggest.analyzing.AnalyzingInfixSuggester.refresh(AnalyzingInfixSuggester.java:432)
+   [junit4]    >        at org.apache.lucene.search.suggest.analyzing.AnalyzingInfixSuggesterTest.testRandomNRT(AnalyzingInfixSuggesterTest.java:614)
+   [junit4]    >        at java.lang.Thread.run(Thread.java:745)
+   [junit4]   2> NOTE: leaving temporary files on disk at: /home/sarowe/git/lucene-solr-3/lucene/build/suggest/test/J0/temp/lucene.search.suggest.analyzing.AnalyzingInfixSuggesterTest_C9621DF023FA10B9-001
+   [junit4]   2> NOTE: test params are: codec=SimpleText, sim=RandomSimilarity(queryNorm=true): {}, locale=ar-SA, timezone=Etc/Zulu
+   [junit4]   2> NOTE: Linux 4.1.0-custom2-amd64 amd64/Oracle Corporation 1.8.0_77 (64-bit)/cpus=16,threads=1,free=151938872,total=346030080
+   [junit4]   2> NOTE: All tests run in this JVM: [AnalyzingInfixSuggesterTest]
+   [junit4] Completed [1/1 (1!)] in 22.43s, 22 tests, 2 errors <<< FAILURES!
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+7.0
+Component:
+core/codecs, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Steve Rowe
+Create date:
+28/Dec/16 02:49
+Update date:
+28/Dec/16 19:19
+Resolved date:
+28/Dec/16 19:19

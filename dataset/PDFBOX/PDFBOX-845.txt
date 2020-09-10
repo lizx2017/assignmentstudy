@@ -1,0 +1,48 @@
+Summary:
+Lockup in PDDocument.load() --> PDFParser.parseObject() with 6 threads
+Description:
+This is a TestNG unit test suite, with each test loading a different PDF via PDDocument.load(). I just switched TestNG to parallel=methods (had been serial) and it locked up first time. "jstack -l" output will be attached, but I'm putting the pdfbox portions here (just below).
+In looking at the code, it's not clear what's being waited on, except that four of the threads are stuck in BaseParser.parseDirObject(), apparently waiting on the (synchronized) toString() method of a [local] StringBuffer. (StringBuffer is used in BaseParser.java where a StringBuilder is clearly preferable – this is probably true for every local instance of a StringBuffer.)
+I don't know why that would cause the thread to sit waiting, though (JVM problem? 1.6.0_20 on Linux), and the other two threads appear to be waiting on COSObjectKey.getNumber() [perhaps], and I see no synchronized objects or methods there.
+Finding the cause of the lockup would be preferable, but replacing StringBuffer with StringBuilder whereever they are used locally (possibly including any private non-static members) would be an improvement in performance if nothing else.
+Threads 1, 2, 4, & 6:
+at org.apache.pdfbox.pdfparser.BaseParser.parseDirObject(BaseParser.java:1013)
+at org.apache.pdfbox.pdfparser.BaseParser.parseCOSDictionaryValue(BaseParser.java:157)
+at org.apache.pdfbox.pdfparser.BaseParser.parseCOSDictionary(BaseParser.java:233)
+at org.apache.pdfbox.pdfparser.BaseParser.parseDirObject(BaseParser.java:929)
+at org.apache.pdfbox.pdfparser.PDFParser.parseObject(PDFParser.java:519)
+at org.apache.pdfbox.pdfparser.PDFParser.parse(PDFParser.java:179)
+Threads 3 & 5:
+at org.apache.pdfbox.cos.COSDocument.getObjectFromPool(COSDocument.java:481)
+at org.apache.pdfbox.pdfparser.PDFParser.parseObject(PDFParser.java:540)
+at org.apache.pdfbox.pdfparser.PDFParser.parse(PDFParser.java:179)
+I should add: these same tests, using the same files, have run literally hundreds of times on various machines (Windows, Mac, Linux) using PDFBox 1.2.1 without any lockup.
+Clearly I can back off parallelizing my tests for now, but there is no obvious reason why PDDocument.load() can't be called in parallel, and so it concerns me that this will be a real problem.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Cannot Reproduce
+Affects_version:
+1.2.1
+Fix_version:
+None
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Larry West
+Create date:
+29/Sep/10 19:49
+Update date:
+04/Aug/14 18:29
+Resolved date:
+04/Aug/14 18:29

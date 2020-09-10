@@ -1,0 +1,53 @@
+Summary:
+Dropped columnfamilies can leave orphaned data files that do not get cleared on restart
+Description:
+Bring up 3 node cluster
+From node1: Run Stress Tool
+ stress --num-keys=10 --columns=10 --consistency-level=ALL --average-size-values --replication-factor=3 --nodes=node1,node2 
+Shutdown node3
+From node1: drop the Standard1 CF in Keyspace1
+Shutdown node2 and node3
+Bring up node1 and node2. Check that the Standard1 files are gone.
+ls -al /var/lib/cassandra/data/Keyspace1/
+Bring up node3. The log file shows the drop column family occurs
+ INFO 00:51:25,742 Applying migration 9a76f880-b4c5-11e0-0000-8901a7c5c9ce Drop column family: Keyspace1.Standard1
+Restart node3 to clear out dropped tables from the filesystem
+root@cathy3:~/cass-0.8/bin# ls -al /var/lib/cassandra/data/Keyspace1/
+total 36
+drwxr-xr-x 3 root root 4096 Jul 23 00:51 .
+drwxr-xr-x 6 root root 4096 Jul 23 00:48 ..
+-rw-r--r-- 1 root root    0 Jul 23 00:51 Standard1-g-1-Compacted
+-rw-r--r-- 2 root root 5770 Jul 23 00:51 Standard1-g-1-Data.db
+-rw-r--r-- 2 root root   32 Jul 23 00:51 Standard1-g-1-Filter.db
+-rw-r--r-- 2 root root  120 Jul 23 00:51 Standard1-g-1-Index.db
+-rw-r--r-- 2 root root 4276 Jul 23 00:51 Standard1-g-1-Statistics.db
+drwxr-xr-x 3 root root 4096 Jul 23 00:51 snapshots
+Bug: The files for Standard1 are orphaned on node3
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Cathy Daw
+Create date:
+23/Jul/11 00:57
+Update date:
+16/Apr/19 09:32
+Resolved date:
+29/Aug/11 15:12

@@ -1,0 +1,67 @@
+Summary:
+Writing wide row causes high CPU usage after compaction
+Description:
+Introduced in commit e74c13ff08663d306dcc5cdc99c07e9e6c12ca21 (see below) there is a significant slow down when creating a wide row with cassandra-stress:
+Testing with the prior (good) commit I used this to write a single wide row, which completed rather quickly:
+$ ccm create -v git:60f09f0121e0801851b9ab017eddf7e326fa05fb wide-row
+Fetching Cassandra updates...
+Cloning Cassandra (from local cache)
+Checking out requested branch (60f09f0121e0801851b9ab017eddf7e326fa05fb)
+Compiling Cassandra 60f09f0121e0801851b9ab017eddf7e326fa05fb ...
+Current cluster is now: wide-row
+$ ccm populate -n 1
+$ ccm start
+$ time ccm node1 stress -c 10000 -S 1000 -n 1
+Created keyspaces. Sleeping 1s for propagation.
+total,interval_op_rate,interval_key_rate,latency/95th/99th,elapsed_time
+1,0,0,273.3,273.3,273.3,0
+END
+
+real 0m7.106s
+user 0m1.710s
+sys 0m0.120s
+Using the bugged commit (e74c13ff08663d306dcc5cdc99c07e9e6c12ca21) I get a significant slow down:
+02:42 PM:~$ ccm create -v git:e74c13ff08663d306dcc5cdc99c07e9e6c12ca21 wide-row
+Fetching Cassandra updates...
+Current cluster is now: wide-row
+02:42 PM:~$ ccm populate -n 1
+02:42 PM:~$ ccm start
+02:42 PM:~$ time ccm node1 stress -c 10000 -S 1000 -n 1
+Created keyspaces. Sleeping 1s for propagation.
+total,interval_op_rate,interval_key_rate,latency,95th,99th,elapsed_time
+1,0,0,423.2,423.2,423.2,0
+Total operation time      : 00:00:00
+END
+
+real 4m16.394s
+user 0m2.230s
+sys 0m0.137s
+Interestingly, the commit in question just says it's a merge from cassandra-1.2, but I do not see this same slowdown using that branch, this only occurs in trunk.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Ryan McGuire
+Create date:
+02/May/13 18:53
+Update date:
+16/Apr/19 09:32
+Resolved date:
+05/Jul/13 08:44

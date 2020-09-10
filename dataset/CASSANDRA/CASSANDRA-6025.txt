@@ -1,0 +1,66 @@
+Summary:
+Deleted row resurrects if was not compacted in GC Grace Timeout due to thombstone read optimization in CollactionController
+Description:
+How to reproduce:
+1. Insert column
+2. Flush, so you'll have sstable-1
+3. Delete just inserted column
+4. Flush, now you have sstable-2 as well
+5. Left it uncompacted for more then gc grace time or just use 0, so you dont have to wait
+6. Read data form column. You'll read just deleted column
+            /* add the SSTables on disk */
+// This sorts sstables in the order sstable-2, sstable-1
+            Collections.sort(view.sstables, SSTable.maxTimestampComparator);
+//...
+            for (SSTableReader sstable : view.sstables)
+            {
+//...
+                if (iter.getColumnFamily() != null)
+//...
+                    while (iter.hasNext())
+                    {
+                        OnDiskAtom atom = iter.next();
+// the problem is here. reading atom after gc grace time
+// makes this condition false. so tombstone from sstable-2
+// is not placed to temp container and is just thrown away.
+// On next iteration of outer for statement an original
+// data inserted in step 1 from sstable-1 will be read and
+// placed to temp.
+                        if (atom.getLocalDeletionTime() >= gcBefore)
+                            temp.addAtom(atom);
+//
+                    }
+
+// .. so at the end of the for statemet we resolve data from temp. which
+// do not have tombstone at all -> data are resurrected.
+               container.addAll(temp, HeapAllocator.instance);
+ 
+}
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Oleg Anastasyev
+Create date:
+13/Sep/13 13:40
+Update date:
+16/Apr/19 09:32
+Resolved date:
+19/Sep/13 22:44

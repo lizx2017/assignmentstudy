@@ -1,0 +1,41 @@
+Summary:
+NIODataInputStream has problems on trunk
+Description:
+As the title says, there is cases where method calls to NIODataInputStream, at least readVInt calls can loop forever. This is possibly only a problem for vints where the code tries to read 8 bytes minimum but there is less than that available, and in that sense is related to Benedict's observation in CASSANDRA-9708, but it is more serious than said observation because:
+this can happen even if the buffer passed to NIODataInputStream ctor has more than 8 bytes available, and hence I'm relatively confident Benedict's fix in CASSANDRA-9708 is not enough.
+this doesn't necessarily fail cleanly by raising assertions, this can loop forever (which is much harder to debug).
+Due of that, and because that is at least one of the cause of CASSANDRA-9764, I think the problem warrants a specific ticket (from CASSANDRA-9708 that is).
+Now, the exact reason of this is looping is if readVInt is called but the buffer has less than 8 byte remaining (again, the buffer had more initially). In that case, readMinimum(8, 1) is called and it calls readNext() in a loop. Within readNext(), the buffer (which has buf.position() == 0 && buf.hasRemaining()) is actually unchanged (through a very weird dance of setting the position to the limit, then the limit to the capacity, and then flipping the buffer which resets everything to what it was), and because rbc is the emptyReadableByteChannel, rbc.read(buf) does nothing and always return -1. Back in readMinimum, read == -1 but remaining >= require (and remaining never changes), and hence the forever looping.
+Now, not sure what the best fix is because I'm not fully familiar with that code, but that does leads me to a 2nd point: NIODataInputSttream can IMHO use a bit of additional/better comments. I won't pretend having tried very hard to understand the whole class, so there is probably some lack of effort, but at least a few things felt like they should clarified:
+Provided I understand readNext() correctly, it only make sense when we do have a ReadableByteChannel (and the fact that it's not the case sounds like the bug). If that's the case, this should be explicitly documented and probably asserted. As as an aside, I wonder if using rbc == null when we don't have wouldn't be better: if we don't have one, we shouldn't try to use it, and having a null would make things fail loudly if we do.
+I'm not exactly sure what readMinimum arguments do. I'd have expected at least one to be called "minimum", and an explanation of the meaning of the other one.
+prepareReadPaddedPrimitive says that it "Add padding if requested" but there is seemingly no argument that trigger the "if requested part". Also unclear what that padding is about in the first place.
+As a final point, it looks like the case where NIODataInputStream is constructed with a ByteBuffer (rather than a ReadableByteChannel) seems to be completely untested by the unit tests.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+3.0 alpha 1
+Component:
+Legacy/Local Write-Read Paths, (2)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ariel Weisberg
+Reporter:
+Sylvain Lebresne
+Create date:
+22/Jul/15 10:38
+Update date:
+16/Apr/19 09:31
+Resolved date:
+24/Jul/15 10:21

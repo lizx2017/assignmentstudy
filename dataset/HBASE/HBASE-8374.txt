@@ -1,0 +1,52 @@
+Summary:
+NullPointerException when launching the balancer due to unknown region location
+Description:
+I don't reproduce this all the time, but I had it on a fairly clean env.
+It occurs every 5 minutes (i.e. the balancer period). Impact is severe: the balancer does not run. When it starts to occurs, it occurs all the time. I haven't tried to restart the master, but I think it should be enough.
+Now, looking at the code, the NPE is strange.
+2013-04-18 08:09:52,079 ERROR [box,60000,1366281581983-BalancerChore] org.apache.hadoop.hbase.master.balancer.BalancerChore: Caught exception
+java.lang.NullPointerException
+ at org.apache.hadoop.hbase.master.balancer.BaseLoadBalancer$Cluster.<init>(BaseLoadBalancer.java:145)
+ at org.apache.hadoop.hbase.master.balancer.StochasticLoadBalancer.balanceCluster(StochasticLoadBalancer.java:194)
+ at org.apache.hadoop.hbase.master.HMaster.balance(HMaster.java:1295)
+ at org.apache.hadoop.hbase.master.balancer.BalancerChore.chore(BalancerChore.java:48)
+ at org.apache.hadoop.hbase.Chore.run(Chore.java:81)
+ at java.lang.Thread.run(Thread.java:662)
+2013-04-18 08:09:52,103 DEBUG [box,60000,1366281581983-CatalogJanitor] org.apache.hadoop.hbase.client.ClientScanner: Creating scanner over .META. starting at key ''
+          if (regionFinder != null) {
+            //region location
+            List<ServerName> loc = regionFinder.getTopBlockLocations(region);
+            regionLocations[regionIndex] = new int[loc.size()];
+            for (int i=0; i < loc.size(); i++) {
+              regionLocations[regionIndex][i] = serversToIndex.get(loc.get(i));  // <========= NPE here
+            }
+          }
+pinging Enis Soztutar, just in case.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.0
+Fix_version:
+0.98.0, 0.95.1
+Component:
+Balancer
+Label:
+None
+Environment:
+AWS / real cluster with 3 nodes + master
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Nicolas Liochon
+Create date:
+18/Apr/13 15:01
+Update date:
+23/Sep/13 19:08
+Resolved date:
+19/Apr/13 17:13

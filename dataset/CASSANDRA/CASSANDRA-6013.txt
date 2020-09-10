@@ -1,0 +1,34 @@
+Summary:
+CAS may return false but still commit the insert
+Description:
+If a Paxos proposer proposes some value/update and that propose fail, there is no guarantee on whether this value will be accepted or not ultimately. Paxos guarantees that we'll agree on "a" value (for a given round in our case), but does not guarantee that the proposer of the agreed upon value will know it. In particular, if for a given proposal at least one accepter has accepted it but not a quorum does, then that value might (but that's not guaranteed either) be replayed (and committed) by another proposer.
+Currently, if a proposer A proposes some update U but it is rejected, A will sleep a bit and retry U. But if U was accepted by at least one acceptor, some other proposer B might replay U, succeed and commit it. If A does its retry after that happens, he will prepare, check the condition, and probably find that the conditions don't apply anymore since U has been committed already. It will thus return false, even though U has been in fact committed.
+Unfortunately I'm not sure there is an easy way for a proposer whose propose fails to know if the update will prevail or not eventually. Which mean the only acceptable solution I can see would be to return to the user "I don't know" (through some exception for instance). Which is annoying because having a proposal rejected won't be an extremely rare occurrence, even with relatively light contention, and returning "I don't know" often is a bit unfriendly.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.1
+Component:
+None
+Label:
+LWT
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Sylvain Lebresne
+Create date:
+12/Sep/13 15:31
+Update date:
+16/Apr/19 09:32
+Resolved date:
+16/Sep/13 06:40

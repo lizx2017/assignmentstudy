@@ -1,0 +1,42 @@
+Summary:
+Long sleeping in HConnectionManager after thread is interrupted
+Description:
+We run sometimes into the problem that when a thread running HBase client code is interrupted, it hangs. The problem is it is sleeping in HConnectionManager, in the methods locateRegionInMeta and getRegionServerWithRetries, where there is code like this:
+try{
+  Thread.sleep(getPauseTime(tries));
+} catch (InterruptedException e) {
+  // continue
+}
+which is located in a for-loop, so it will keep retrying even when someone requested the thread to stop its work.
+The attached patch proposes as fix to re-assert the interrupted status of the thread and to throw an IOException. Some other cases of InterruptedException-handling in the same class do a similar thing, though sometimes returning null or breaking. I found returning null causes NPE's in other locations so I think it is better to throw an informative exception.
+Side thought: I would not be against propagating the InterruptedException all the way up to the client APIs (HTable/HBaseAdmin), so that users who want to support interruptable threads do not have to check the interrupted flag. I'd need to check some more but I have the impression that now sometimes methods like HTable.get() simply return null when a thread is interrupted.
+Some background on good ways of handling InterruptedExceptions can be found here:
+http://www.ibm.com/developerworks/java/library/j-jtp05236.html
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+Client, IPC/RPC
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Bruno Dumon
+Reporter:
+Bruno Dumon
+Create date:
+01/Oct/10 13:32
+Update date:
+20/Nov/15 12:41
+Resolved date:
+01/Oct/10 23:48

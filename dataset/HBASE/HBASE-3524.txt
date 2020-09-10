@@ -1,0 +1,42 @@
+Summary:
+NPE from CompactionChecker
+Description:
+I recently updated production data to use HBase 0.90.0.
+Now I'm periodically seeing:
+[10/02/11 17:23:27] 30076066 [mpactionChecker] ERROR nServer$MajorCompactionChecker - Caught exception
+java.lang.NullPointerException
+at org.apache.hadoop.hbase.regionserver.Store.isMajorCompaction(Store.java:832)
+at org.apache.hadoop.hbase.regionserver.Store.isMajorCompaction(Store.java:810)
+at org.apache.hadoop.hbase.regionserver.HRegion.isMajorCompaction(HRegion.java:2800)
+at org.apache.hadoop.hbase.regionserver.HRegionServer$MajorCompactionChecker.chore(HRegionServer.java:1047)
+at org.apache.hadoop.hbase.Chore.run(Chore.java:66)
+The only negative effect is that this is interrupting compactions from happening. But that is pretty serious and this might be a sign of data corruption?
+Maybe it's just my data, but this task should at least involve improving the handling to catch the NPE and still iterate through the other onlineRegions that might compact without error. The MajorCompactionChecker.chore() method only catches IOExceptions and so this NPE breaks out of that loop.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.1, 0.90.2
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ryan rawson
+Reporter:
+James Kennedy
+Create date:
+11/Feb/11 01:56
+Update date:
+20/Nov/15 12:43
+Resolved date:
+12/Feb/11 05:53

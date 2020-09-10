@@ -1,0 +1,44 @@
+Summary:
+race condition with Gossiper with receiving messages when starting up?
+Description:
+I occasionally get this exception when starting a node:
+ERROR 17:53:52,941 Fatal exception in thread Thread[GMFD:4,5,main]
+java.lang.AssertionError
+at org.apache.cassandra.net.Header.<init>(Header.java:55)
+at org.apache.cassandra.net.Header.<init>(Header.java:73)
+at org.apache.cassandra.net.Message.<init>(Message.java:58)
+at org.apache.cassandra.gms.Gossiper.makeGossipDigestAckMessage(Gossiper.java:295)
+at org.apache.cassandra.gms.Gossiper$GossipDigestSynVerbHandler.doVerb(Gossiper.java:888)
+at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:41)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:636)
+I believe I've tracked down this to there being a small window of time between starting the Gossiper.GossipSynVerbHandler thread and when Gossiper.start is called with it's endpoint. This is because the thread is started in the StorageService constructor, which seems to be getting initialized before thrift.CassandraDaemon.setup is being called.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+0.7 beta 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+Erick Tryzelaar
+Create date:
+22/Apr/10 02:27
+Update date:
+16/Apr/19 09:33
+Resolved date:
+11/Jun/10 20:37

@@ -1,0 +1,61 @@
+Summary:
+Problem using FunctionScoreQuery and Highlighting
+Description:
+Hey,
+I just updated my Lucene to 6.5.0 and tried to get rid of the now deprecated index-time field boosts.
+So I did the suggested fix in the deprecation message and added FloatDocValues to each Document holding the Boosts for each indexed field.
+In my current Search Implementation there is one BooleanQuery per Field containing three BoostQueries. To apply the field boosts from my DocValues I wrapped each BooleanQuery inside a FunctionScoreQuery like this:
+BooleanQuery booleanQuery;
+...
+new FunctionScoreQuery(booleanQuery, DoubleValuesSource.fromFloatField(fieldName));
+So far it works as expected but I realized that my Highlighting is not working anymore.
+For Highlighting I use the following Snippet:
+MyHighlighting.java
+    public static String[] getFragmentsWithHighlightedTerms(Analyzer analyzer, Query query, String fieldName, String fieldContents) {
+    QueryScorer scorer = new QueryScorer(query);
+    Fragmenter fragmenter = new SimpleFragmenter(80);
+    Highlighter highlighter = new Highlighter(new EscapeHtmlFormatter(), scorer);
+    highlighter.setTextFragmenter(fragmenter);
+    highlighter.setMaxDocCharsToAnalyze(Integer.MAX_VALUE);
+    TextFragment[] fragments;
+    try {
+        TokenStream tokenStream = analyzer.tokenStream(fieldName, fieldContents);
+        fragments = highlighter.getBestTextFragments(tokenStream, fieldContents, true, 1);
+    } catch (InvalidTokenOffsetsException e) {
+        throw WrappedException.wrap(e); 
+    }
+        return formatFragments(fragments);
+    }
+}
+When I remove the FunctionScorerQuery wrapped around my BooleanQueries the Highlighting is perfectly fine again. Am I missing something here or is this a bug?
+PS: This is my first post here. I hope I did everything right
+Cheers
+Manu
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Not A Problem
+Affects_version:
+6.5
+Fix_version:
+None
+Component:
+core/query/scoring, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Manuel Gellfart
+Create date:
+25/Apr/17 13:10
+Update date:
+25/Apr/17 14:53
+Resolved date:
+25/Apr/17 14:53

@@ -1,0 +1,36 @@
+Summary:
+Returning split length of 0 confuses Pig
+Description:
+Matt Kennedy reports on the user list,
+There is a new feature in Pig 0.8 that will try to reduce the number of splits used to speed up the whole job. Since the ColumnFamilyInputFormat lists the input size as zero, this feature eliminates all of the splits except for one.
+The workaround is to disable this feature for jobs that use CassandraStorage by setting -Dpig.splitCombination=false in the pig_cassandra script.
+However, we wanted to keep splitCombination on because it is a useful optimization for a lot of our use cases, so I went digging for the least intrusive way to keep the split combiner on, but also prevent it from combining splits that read from Cassandra. My solution, which you are welcome to critique, is to change line 65 of http://svn.apache.org/viewvc/cassandra/trunk/src/java/org/apache/cassandra/hadoop/ColumnFamilySplit.java such that it returns Long.MAX_VALUE instead of zero.
+I looked into actually returning the number of keys in the split but Hadoop javadoc says "Get the size of the split, so that the input splits can be sorted by size" so since our splits should be very very close in size this doesn't sound like it's worth doing an extra round trip to the host servers to get super accurate numbers on. Returning MAX_VALUE seems like it's good enough.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Jonathan Ellis
+Create date:
+17/Feb/11 18:35
+Update date:
+16/Apr/19 09:33
+Resolved date:
+18/Feb/11 22:49

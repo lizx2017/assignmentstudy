@@ -1,0 +1,148 @@
+Summary:
+Spin in ReadWriteConsistencyControl eating CPU (load > 40) and no progress running YCSB on clean cluster startup
+Description:
+When I try to do a YCSB load, RSs will spin up massive load but make no progress. Seems to happen to each RS in turn until they do their first flush. They stay in the high-load mode for maybe 5-10 minutes or so and then fall out of the bad condition.
+Here is my ugly YCSB command (Haven't gotten around to tidying it up yet):
+$ java -cp build/ycsb.jar:/home/hadoop/current/conf/:/home/hadoop/current/hbase-0.21.0-SNAPSHOT.jar:/home/hadoop/current/lib/hadoop-core-0.20.3-append-r956776.jar:/home/hadoop/current/lib/zookeeper-3.3.1.jar:/home/hadoop/current/lib/commons-logging-1.1.1.jar:/home/hadoop/current/lib/log4j-1.2.15.jar  com.yahoo.ycsb.Client -load -db com.yahoo.ycsb.db.HBaseClient  -P workloads/5050 -p columnfamily=values -s -threads 100 -p recordcount=10000000
+Cluster is 5 regionservers NOT running hadoop-core-0.20.3-append-r956776 but rather old head of branch-0.20 hadoop.
+It seems that its easy to repro if you start fresh. It might happen later in loading but it seems as though after first flush, we're ok.
+It comes on pretty immediately. The server that is taking on the upload has its load start to climb gradually up into the 40s then stays there. Later it falls when condtion clears.
+Here is content of my yahoo workload file:
+recordcount=100000000
+operationcount=100000000
+workload=com.yahoo.ycsb.workloads.CoreWorkload
+
+readallfields=true
+
+readproportion=0.5
+updateproportion=0.5
+scanproportion=0
+insertproportion=0
+
+requestdistribution=zipfian
+Here is my hbase-site.xml
+  <property>
+    <name>hbase.regions.slop</name>
+    <value>0.01</value>
+    <description>Rebalance if regionserver has average + (average * slop) regions.
+    Default is 30% slop.
+    </description>
+  </property>
+
+  <property>
+    <name>hbase.zookeeper.quorum</name>
+    <value>XXXXXXXXX</value>
+  </property>
+
+<property>
+  <name>hbase.regionserver.hlog.blocksize</name>
+  <value>67108864</value>
+  <description>Block size for HLog files. To minimize potential data loss,
+    the size should be (avg key length) * (avg value length) * flushlogentries.
+    Default 1MB.
+  </description>
+</property>
+
+<property>
+  <name>hbase.hstore.blockingStoreFiles</name>
+  <value>25</value>
+</property>
+
+<property>
+  <name>hbase.rootdir</name>
+  <value>hdfs://svXXXXXX:9000/hbase</value>
+  <description>The directory shared by region servers.</description>
+</property>
+
+<property>
+  <name>hbase.cluster.distributed</name>
+  <value>true</value>
+</property>
+
+<property>
+  <name>zookeeper.znode.parent</name>
+  <value>/stack</value>
+  <description>
+    the path in zookeeper for this cluster
+  </description>
+</property>
+
+<property>
+  <name>hfile.block.cache.size</name>
+  <value>0.2</value>
+  <description>
+    The size of the block cache used by HFile/StoreFile. Set to 0 to disable.
+  </description>
+</property>
+
+
+<property>
+  <name>hbase.hregion.memstore.block.multiplier</name>
+  <value>8</value>
+  <description>
+    Block updates if memcache has hbase.hregion.block.memcache
+    time hbase.hregion.flush.size bytes.  Useful preventing
+    runaway memcache during spikes in update traffic.  Without an
+    upper-bound, memcache fills such that when it flushes the
+    resultant flush files take a long time to compact or split, or
+    worse, we OOME.
+  </description>
+</property>
+
+<property>
+<name>zookeeper.session.timeout</name>
+<value>60000</value>
+</property>
+
+
+<property>
+  <name>hbase.regionserver.handler.count</name>
+  <value>60</value>
+  <description>Count of RPC Server instances spun up on RegionServers
+    Same property is used by the HMaster for count of master handlers.
+    Default is 10.
+  </description>
+</property>
+
+<property>
+    <name>hbase.regions.percheckin</name>
+    <value>20</value>
+</property>
+
+<property>
+    <name>hbase.regionserver.maxlogs</name>
+    <value>128</value>
+</property>
+
+<property>
+    <name>hbase.regionserver.logroll.multiplier</name>
+    <value>2.95</value>
+</property>
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+23/Jun/10 06:14
+Update date:
+20/Nov/15 12:40
+Resolved date:
+24/Jun/10 04:45

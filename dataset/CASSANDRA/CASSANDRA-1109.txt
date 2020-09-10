@@ -1,0 +1,50 @@
+Summary:
+Cassandra does not expire data after setting timeToLive argument for each value
+Description:
+Hello,
+I downloaded latest cassandra source code from svn trunk. I wanted to test expire data functionality. Using Thrift API, I set timeToLive parameter for each fieldValue, however cassandra ignored it and did not expire any data.
+I debugged cassandra's source code and found a bug in src/java/org/apache/cassandra/db/RowMutation.java.
+In RowMutation.addColumnOrSuperColumnToRowMutation() method, QueryPath was not setting timeToLive argument. I updated RowMutation.java locally and tested it and then my data expired after 'n' number of seconds.
+I wanted to have this fix in the trunk also.
+Index: src/java/org/apache/cassandra/db/RowMutation.java
+===================================================================
+— src/java/org/apache/cassandra/db/RowMutation.java (revision 946222)
++++ src/java/org/apache/cassandra/db/RowMutation.java (working copy)
+@@ -295,12 +295,12 @@
+{
+for (org.apache.cassandra.thrift.Column column : cosc.super_column.columns)
+{ - rm.add(new QueryPath(cfName, cosc.super_column.name, column.name), column.value, column.timestamp); + rm.add(new QueryPath(cfName, cosc.super_column.name, column.name), column.value, column.timestamp, column.ttl); }
+}
+else
+{ - rm.add(new QueryPath(cfName, null, cosc.column.name), cosc.column.value, cosc.column.timestamp); + rm.add(new QueryPath(cfName, null, cosc.column.name), cosc.column.value, cosc.column.timestamp, cosc.column.ttl); }
+}
+Thanks,
+Jignesh
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jignesh Dhruv
+Reporter:
+Jignesh Dhruv
+Create date:
+19/May/10 15:57
+Update date:
+16/Apr/19 09:33
+Resolved date:
+19/May/10 23:38

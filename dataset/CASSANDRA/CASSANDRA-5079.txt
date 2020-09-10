@@ -1,0 +1,37 @@
+Summary:
+Compaction deletes ExpiringColumns in Secondary Indexes
+Description:
+From this discussion http://www.mail-archive.com/user@cassandra.apache.org/msg26599.html
+CompactionManager.getDefaultGcBefore() set's the gc_before to be Integer.MAX_VALUE.
+In the example all entries in the secondary index have a TTL. In PreCompactedRow.removeDeletedAndOldShards() the CF is determined to have irrelevant data, the call to CFS.removeDeleted() results in the ExpiringColumns being removed and the row is treated as empty. CompactionTask.execute() exits at the if (!nni.hasNext()) test, so the sstables are marked as compacted and soon deleted.
+In the example the localDeletionTime was Thu, 21 Mar 2013 08:25:22 GMT and should not have been purged.
+In the example when the first compaction on the secondary index runs the on disk data for the index is deleted. The logs show a compaction starting and no associated "Compacted to" message from that compaction thread.
+The impact is incorrect results from secondary indexes queries.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.9, 1.2.0 rc2
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+amorton
+Reporter:
+amorton
+Create date:
+20/Dec/12 04:05
+Update date:
+16/Apr/19 09:32
+Resolved date:
+20/Dec/12 09:12

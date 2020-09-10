@@ -1,0 +1,109 @@
+Summary:
+NPE in ProcessRegionClose because meta is offline kills master and thus the cluster
+Description:
+This issue was born of study done in hbase-2413. The meta went offline and we were processing a region close at the same time. The close processing fell into a NPE loop and wouldn't get out of it killing master and effectivly killing the cluster:
+2010-03-31 17:50:57,004 INFO org.apache.hadoop.hbase.master.ServerManager: hbasetest020.X.X.X,60020,1270077892989 znode expired
+2010-03-31 17:50:57,004 INFO org.apache.hadoop.hbase.master.RegionManager: META region removed from onlineMetaRegions
+2010-03-31 17:51:15,385 INFO org.apache.hadoop.hbase.master.ServerManager: Received start message from: hbasetest020.X.X.X,60020,1270083075377
+2010-03-31 17:51:15,399 DEBUG org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper: Updated ZNode /hbase/rs/1270083075377 with data 10.18.35.215:60020
+2010-03-31 17:51:15,870 DEBUG org.apache.hadoop.hbase.master.RegionManager: Server is overloaded: load=5, avg=3.0, slop=0.3
+2010-03-31 17:51:15,870 DEBUG org.apache.hadoop.hbase.master.RegionManager: Choosing to reassign 2 regions. mostLoadedRegions has 5 regions in it.
+2010-03-31 17:51:15,870 DEBUG org.apache.hadoop.hbase.master.RegionManager: Going to close region test1,3147000000,1270081876965
+2010-03-31 17:51:15,870 DEBUG org.apache.hadoop.hbase.master.RegionManager: Going to close region test1,9352000000,1270080893514
+2010-03-31 17:51:15,870 INFO org.apache.hadoop.hbase.master.RegionManager: Skipped 0 region(s) that are in transition states
+2010-03-31 17:51:15,878 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_CLOSE: test1,3147000000,1270081876965 from hbasetest019.X.X.X,60020,1270082983630; 1 of 2
+2010-03-31 17:51:15,879 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_CLOSE: test1,9352000000,1270080893514 from hbasetest019.X.X.X,60020,1270082983630; 2 of 2
+2010-03-31 17:51:44,897 DEBUG org.apache.hadoop.hbase.master.ProcessRegionClose$1: Trying to contact region server for regionName '.META.,,1', but failed after 10 attempts.
+Exception 1:
+java.io.IOException: Call to /10.18.35.215:60020 failed on local exception: java.io.EOFExceptionException 1:
+java.net.ConnectException: Connection refusedException 1:
+java.net.ConnectException: Connection refusedException 1:
+java.net.ConnectException: Connection refusedException 1:
+java.net.ConnectException: Connection refusedException 1:
+java.net.ConnectException: Connection refusedException 1:
+java.net.ConnectException: Connection refusedException 1:
+org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: .META.,,1
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:2282)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.delete(HRegionServer.java:1989)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:577)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:915)
+Exception 1:
+org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: .META.,,1
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:2282)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.delete(HRegionServer.java:1989)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:577)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:915)
+
+org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: .META.,,1
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:2282)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.delete(HRegionServer.java:1989)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:577)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:915)
+
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:39)
+        at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:27)
+        at java.lang.reflect.Constructor.newInstance(Constructor.java:513)
+        at org.apache.hadoop.hbase.RemoteExceptionHandler.decodeRemoteException(RemoteExceptionHandler.java:94)
+        at org.apache.hadoop.hbase.master.RetryableMetaOperation.doWithRetries(RetryableMetaOperation.java:74)
+        at org.apache.hadoop.hbase.master.ProcessRegionClose.process(ProcessRegionClose.java:63)
+        at org.apache.hadoop.hbase.master.HMaster.processToDoQueue(HMaster.java:494)
+        at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:429)
+2010-03-31 17:51:44,899 DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: ProcessRegionClose of test1,1230000000,1270081673808, false, reassign: true
+2010-03-31 17:51:44,899 DEBUG org.apache.hadoop.hbase.master.ProcessRegionClose$1: Exception in RetryableMetaOperation:
+java.lang.NullPointerException
+        at org.apache.hadoop.hbase.master.RetryableMetaOperation.doWithRetries(RetryableMetaOperation.java:64)
+        at org.apache.hadoop.hbase.master.ProcessRegionClose.process(ProcessRegionClose.java:63)
+        at org.apache.hadoop.hbase.master.HMaster.processToDoQueue(HMaster.java:494)
+        at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:429)
+2010-03-31 17:51:44,900 WARN org.apache.hadoop.hbase.master.HMaster: Processing pending operations: ProcessRegionClose of test1,1230000000,1270081673808, false, reassign: true
+java.lang.RuntimeException: java.lang.NullPointerException
+        at org.apache.hadoop.hbase.master.RetryableMetaOperation.doWithRetries(RetryableMetaOperation.java:96)
+        at org.apache.hadoop.hbase.master.ProcessRegionClose.process(ProcessRegionClose.java:63)
+        at org.apache.hadoop.hbase.master.HMaster.processToDoQueue(HMaster.java:494)
+        at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:429)
+Caused by: java.lang.NullPointerException
+        at org.apache.hadoop.hbase.master.RetryableMetaOperation.doWithRetries(RetryableMetaOperation.java:64)
+        ... 3 more
+... and so on.
+Marking a blocker for 0.20.5.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.20.5, 0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+08/Apr/10 18:37
+Update date:
+12/Oct/12 06:15
+Resolved date:
+30/Apr/10 07:02

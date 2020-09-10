@@ -1,0 +1,108 @@
+Summary:
+OLAP Cube can't be created dynamically - i.e. manually in code
+Description:
+Steps to reproduce:
+Olap Cube can be created by defining it in MXML, but if one wants to create it dynamically (by ActionScript - coding) it isn't possible - cube can't be instanced that way. It seems that it wasn't designed to create cubes in ActionScript (in code). This is in conflict with general Flex logic that you can create almost everything in code or by mxml - what suites you the best.
+We found the way how to do this - it works but it is just an workaround. Cube created like this is not the same as created, e.g. .findDimensionByName/.findAttributeByName is not working.
+Workaround:
+public function setDataProvider(dataFlatRoot:Object, cubeXml:Object):void
+{
+selectedCell.row = -1;
+selectedCell.col = -1;
+selectedCell.rowAxisUniqueName = "";
+selectedCell.colAxisUniqueName = "";
+selectedCell.minValue=0;
+selectedCell.maxValue=0;
+ColoredBackgroundItemRenderer.selectedCell = selectedCell;
+this.cubeXml = cubeXml;
+this.dataFlat = XmlUtils.toArrayCollection(dataFlatRoot.row) as ICollectionView;
+this.cubeOlap = new OLAPCube();
+var ind_dim:int = 0;
+var ind_attr:int;
+for each(var dimensionXml:Object in XmlUtils.toArrayCollection(this.cubeXml.dimension))
+{
+var dimension:OLAPDimension = new OLAPDimension;
+dimension.name = dimensionXml.name;
+dimension.cube = this.cubeOlap;
+var xmlDimension:XML = new XML;
+ind_attr = 0;
+for each(var attributeXml:Object in XmlUtils.toArrayCollection(dimensionXml.attribute))
+{
+var attribute:OLAPAttribute = new OLAPAttribute;
+var member:OLAPMember = new OLAPMember;
+member.dataField = attributeXml.dataField;
+member.name = attributeXml.name;
+member.dimension = dimension;
+attribute.members.addItem(member);
+// NOTE: This is redundant with members but works!
+attribute.dataField = attributeXml.dataField;
+attribute.name = attributeXml.name;
+attribute.dimension = dimension;
+dimension.attributes.addItem(attribute);
+var arrToAdd:ArrayCollection = null;
+if (ind_dim==0 && ind_attr==0)
+arrToAdd = listRowDp;
+else if (ind_dim==1 && ind_attr==0)
+arrToAdd = listColDp;
+else
+arrToAdd = listAllDp;
+arrToAdd.addItem(
+{name:(attributeXml.name), type:(dimensionXml.name), ind_dim: ind_dim, ind_attr: ind_attr}
+);
+ind_attr++;
+}
+this.cubeOlap.dimensions.addItem(dimension);
+ind_dim++;
+}
+var measures:ArrayCollection = new ArrayCollection;
+for each(var measureXml:Object in XmlUtils.toArrayCollection(this.cubeXml.measure))
+{ var measure:OLAPMeasure = new OLAPMeasure; measure.name = measureXml.name; measure.dataField = measureXml.dataField; measures.addItem(measure); //this.cubeOlap.measures.addItem(measure); }
+this.cubeOlap.measures = measures
+this.cubeOlap.dataProvider = this.dataFlat;
+// just for testing in dbg
+for each(var obb:Object in this.dataFlat[0])
+{ var i:int=1; }
+this.cubeOlap.addEventListener(CubeEvent.CUBE_COMPLETE, creationCompleteHandler);
+this.cubeOlap.refresh();
+}
+Input to function is xml like:
+<cube>
+<dimension id="ag1" name="DimName1" selectedViewIndex="0" categoryDataField="CATFIELD1" >
+<attribute dataField="FIELD1" name="AttrName1" key_part="true"/>
+</dimension>
+<dimension id="ag2" name="DimName2" selectedViewIndex="1" categoryDataField="CATFIELD2" >
+<attribute dataField="FIELD2" name="AttrName2" key_part="true"/>
+</dimension>
+<dimension id="ag3" name="DimName3" selectedViewIndex="2" categoryDataField="CATFIELD3" >
+<attribute dataField="FIELD3" name="AttrName3" key_part="true"/>
+</dimension>
+<measure name="Measure1" dataField="COUNT_ALL"/>
+</cube>
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Cannot Reproduce
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+OLAP API
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+24/Jan/08 05:27
+Update date:
+28/Jan/08 00:32
+Resolved date:
+28/Jan/08 00:07

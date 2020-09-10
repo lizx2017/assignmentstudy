@@ -1,0 +1,122 @@
+Summary:
+drop/recreate column family race condition
+Description:
+using 0.7 latest from trunk as of few minutes ago. 1 client, 1 node
+i have the scenario where i want to drop a column family and recreate it
+unit testing for instance, is a good reason you may want to do this
+(always start fresh).
+the problem i observe is that if i do the following:
+1 - drop the column family
+2 - recreate it
+3 - read data from a key that existed before dropping, but doesn't exist now
+if those steps happen fast enough, i will get the old row - definitely
+no good.
+if they happen slow enough, get_slice throws:
+"org.apache.thrift.TApplicationException: Internal error processing
+get_slice"
+.. and on the server i see:
+2010-09-07 13:53:48,086 ERROR
+[org.apache.cassandra.thrift.Cassandra$Processor] (pool-1-thread-4 -
+Internal error processing get_slice
+java.lang.RuntimeException: java.util.concurrent.ExecutionException:
+java.io.IOError: java.io.FileNotFoundException:
+cassandra-data/data/Queues/test_1283892789285_Waiting-e-1-Data.db (No
+such file or directory)
+at
+org.apache.cassandra.service.StorageProxy.weakRead(StorageProxy.java:275)
+at
+org.apache.cassandra.service.StorageProxy.readProtocol(StorageProxy.java:218)
+at
+org.apache.cassandra.thrift.CassandraServer.readColumnFamily(CassandraServer.java:114)
+at
+org.apache.cassandra.thrift.CassandraServer.getSlice(CassandraServer.java:220)
+at
+org.apache.cassandra.thrift.CassandraServer.multigetSliceInternal(CassandraServer.java:299)
+at
+org.apache.cassandra.thrift.CassandraServer.get_slice(CassandraServer.java:260)
+at
+org.apache.cassandra.thrift.Cassandra$Processor$get_slice.process(Cassandra.java:2795)
+at
+org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:2651)
+at
+org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:167)
+at
+java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at
+java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+Caused by: java.util.concurrent.ExecutionException: java.io.IOError:
+java.io.FileNotFoundException:
+cassandra-data/data/Queues/test_1283892789285_Waiting-e-1-Data.db (No
+such file or directory)
+at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+at
+org.apache.cassandra.service.StorageProxy.weakRead(StorageProxy.java:271)
+... 11 more
+Caused by: java.io.IOError: java.io.FileNotFoundException:
+cassandra-data/data/Queues/test_1283892789285_Waiting-e-1-Data.db (No
+such file or directory)
+at
+org.apache.cassandra.io.util.BufferedSegmentedFile.getSegment(BufferedSegmentedFile.java:68)
+at
+org.apache.cassandra.io.sstable.SSTableReader.getFileDataInput(SSTableReader.java:509)
+at
+org.apache.cassandra.db.columniterator.SSTableSliceIterator.<init>(SSTableSliceIterator.java:49)
+at
+org.apache.cassandra.db.filter.SliceQueryFilter.getSSTableColumnIterator(SliceQueryFilter.java:65)
+at
+org.apache.cassandra.db.filter.QueryFilter.getSSTableColumnIterator(QueryFilter.java:76)
+at
+org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:961)
+at
+org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:856)
+at
+org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:826)
+at org.apache.cassandra.db.Table.getRow(Table.java:321)
+at
+org.apache.cassandra.db.SliceFromReadCommand.getRow(SliceFromReadCommand.java:63)
+at
+org.apache.cassandra.service.StorageProxy$weakReadLocalCallable.call(StorageProxy.java:737)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+... 3 more
+Caused by: java.io.FileNotFoundException:
+cassandra-data/data/Queues/test_1283892789285_Waiting-e-1-Data.db (No
+such file or directory)
+at java.io.RandomAccessFile.open(Native Method)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:212)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:98)
+at
+org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:142)
+at
+org.apache.cassandra.io.util.BufferedSegmentedFile.getSegment(BufferedSegmentedFile.java:62)
+... 15 more
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+B. Todd Burruss
+Create date:
+07/Sep/10 21:21
+Update date:
+16/Apr/19 09:33
+Resolved date:
+15/Sep/10 20:39

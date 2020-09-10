@@ -1,0 +1,79 @@
+Summary:
+Text extraction shows glyphs with zero height
+Description:
+This happens with file 001033.pdf:
+2.0:
+String[108.0,663.6 fs=6.96 xscale=6.96 height=0.0 space=12.1104 width=3.4800034]1
+String[144.0,668.4 fs=9.0 xscale=9.0 height=0.0 space=20.25 width=2.996994]I
+String[147.417,668.4 fs=9.0 xscale=9.0 height=0.0 space=20.25 width=4.5]n
+String[152.337,668.4 fs=9.0 xscale=9.0 height=0.0 space=20.25 width=2.25] 
+String[154.88701,668.4 fs=9.0 xscale=9.0 height=0.0 space=20.25 width=2.501999]t
+String[157.809,668.4 fs=9.0 xscale=9.0 height=0.0 space=20.25 width=4.5]h
+String[162.729,668.4 fs=9.0 xscale=9.0 height=0.0 space=20.25 width=3.9960022]e
+String[167.145,668.4 fs=9.0 xscale=9.0 height=0.0 space=20.25 width=2.25] 
+1.8:
+String[108.0,663.6 fs=6.96 xscale=6.96 height=4.57272 space=1.74 width=3.4800034]1
+String[144.0,668.4 fs=9.0 xscale=9.0 height=5.913 space=2.25 width=2.996994]I
+String[147.417,668.4 fs=9.0 xscale=9.0 height=5.913 space=2.25 width=4.5]n
+String[152.337,668.4 fs=9.0 xscale=9.0 height=5.913 space=2.25 width=2.25] 
+String[154.88701,668.4 fs=9.0 xscale=9.0 height=5.913 space=2.25 width=2.501999]t
+String[157.809,668.4 fs=9.0 xscale=9.0 height=5.913 space=2.25 width=4.5]h
+String[162.729,668.4 fs=9.0 xscale=9.0 height=5.913 space=2.25 width=3.9960022]e
+String[167.145,668.4 fs=9.0 xscale=9.0 height=5.913 space=2.25 width=2.25] 
+The font has an empty bbox:
+def
+/FontBBox {0 0 0 0}
+1.8 had this code to get the height (in PDSimpleFont):
+                PDRectangle fontBBox = desc.getFontBoundingBox();
+                if (fontBBox != null)
+                {
+                    retval = fontBBox.getHeight() / 2;
+                }
+                if( retval == 0 )
+                {
+                    retval = desc.getCapHeight();
+                }
+                if( retval == 0 )
+                {
+                    retval = desc.getAscent();
+                }
+                if( retval == 0 )
+                {
+                    retval = desc.getXHeight();
+                    if (retval > 0)
+                    {
+                        retval -= desc.getDescent();
+                    }
+                }
+2.0 has only this:
+float glyphHeight = font.getBoundingBox().getHeight() / 2;
+So 2.0 takes the height from the font itself, and has no Plan B.
+Getting the BBox from the font descriptor brings correct heights. (And a better text extraction)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+Text extraction
+Label:
+regression
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+20/Oct/15 16:16
+Update date:
+17/Mar/16 19:07
+Resolved date:
+20/Oct/15 17:23

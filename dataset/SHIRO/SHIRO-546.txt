@@ -1,0 +1,83 @@
+Summary:
+DefaultWebSessionManager onStart might produce nullPointer Exception
+Description:
+DefaultWebSessionManager#onStart() when you get the HttpServletRequest it might be null a throw a null pointer exception so it might need a little validation
+from
+   @Override
+    protected void onStart(Session session, SessionContext context) {
+        super.onStart(session, context);
+
+        if (!WebUtils.isHttp(context)) {
+            log.debug("SessionContext argument is not HTTP compatible or does not have an HTTP request/response " +
+                    "pair. No session ID cookie will be set.");
+            return;
+
+        }
+        HttpServletRequest request = WebUtils.getHttpRequest(context);
+        HttpServletResponse response = WebUtils.getHttpResponse(context);
+
+        if (isSessionIdCookieEnabled()) {
+            Serializable sessionId = session.getId();
+            storeSessionId(sessionId, request, response);
+        } else {
+            log.debug("Session ID cookie is disabled.  No cookie has been set for new session with id {}", session.getId());
+        }
+
+        request.removeAttribute(ShiroHttpServletRequest.REFERENCED_SESSION_ID_SOURCE);
+        request.setAttribute(ShiroHttpServletRequest.REFERENCED_SESSION_IS_NEW, Boolean.TRUE);
+    }
+to
+    @Override
+    protected void onStart(Session session, SessionContext context) {
+        super.onStart(session, context);
+
+        if (!WebUtils.isHttp(context)) {
+            log.debug("SessionContext argument is not HTTP compatible or does not have an HTTP request/response " +
+                    "pair. No session ID cookie will be set.");
+            return;
+
+        }
+        HttpServletRequest request = WebUtils.getHttpRequest(context);
+        HttpServletResponse response = WebUtils.getHttpResponse(context);
+
+        if (isSessionIdCookieEnabled()) {
+            Serializable sessionId = session.getId();
+            storeSessionId(sessionId, request, response);
+        } else {
+            log.debug("Session ID cookie is disabled.  No cookie has been set for new session with id {}", session.getId());
+        }
+
+        if (request != null) {
+            request.removeAttribute(ShiroHttpServletRequest.REFERENCED_SESSION_ID_SOURCE);
+            request.setAttribute(ShiroHttpServletRequest.REFERENCED_SESSION_IS_NEW, Boolean.TRUE);
+        }
+        
+    }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+1.2.4
+Fix_version:
+None
+Component:
+Session Management
+Label:
+easyfix newbie patch
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ariel Isaac
+Create date:
+07/Oct/15 17:46
+Update date:
+07/Jul/16 19:43
+Resolved date:
+07/Jul/16 19:43

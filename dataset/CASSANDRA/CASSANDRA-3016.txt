@@ -1,0 +1,57 @@
+Summary:
+CQL: double and float types do not seem to work properly
+Description:
+Was asked to make this from the mailing list by Jonathan Ellis.
+I'm just getting started with CQL, and decided to do a simple test create/insert/select thing to check that everything was working. Most everything seems to work, but it appears that double/floats do not work properly. Here's what I did:
+test.cql
+--------------------------
+CREATE KEYSPACE test with strategy_class = 'SimpleStrategy' and strategy_options:replication_factor=1;
+USE test;
+CREATE COLUMNFAMILY testvals (
+key varchar PRIMARY KEY,
+value float
+);
+INSERT INTO testvals (key,value) VALUES ('k1',341.32355);
+SELECT key, value FROM testvals;
+--------------------------
+The output is this:
+cqlsh localhost < scripts/test.cql
+key | value |
+k1 | @uU-B??? |
+Same thing happens when I do value double. I also tried to do this from the python driver, gives the same weirdness:
+In [2]: import cql
+In [3]: con = cql.connect("localhost",keyspace="test")
+In [4]: cursor = con.cursor()
+In [5]: cursor.execute("SELECT * from testvals")
+Out[5]: True
+In [6]: for r in cursor: print r
+...:
+[u'k1', '?\xf8\x00\x00\x00\x00\x00\x00']
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Invalid
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+paul cannon
+Reporter:
+Matt Hollingsworth
+Create date:
+11/Aug/11 03:43
+Update date:
+16/Apr/19 09:32
+Resolved date:
+13/Oct/11 22:15

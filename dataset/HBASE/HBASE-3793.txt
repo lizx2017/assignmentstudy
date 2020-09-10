@@ -1,0 +1,46 @@
+Summary:
+HBASE-3468 Broke checkAndPut with null value
+Description:
+The previous code called Bytes.equal() which does a check for "null" on the left or right argument. Now the comparator calls Bytes.compareTo() - which has no check for null. But this is a valid input and checks for existence. I actually noticed this running
+https://github.com/larsgeorge/hbase-book/blob/master/ch04/src/main/java/client/CheckAndPutExample.java
+This used to work, now it throws an NPE
+Caused by: java.lang.NullPointerException
+ at org.apache.hadoop.hbase.util.Bytes.compareTo(Bytes.java:854)
+ at org.apache.hadoop.hbase.filter.WritableByteArrayComparable.compareTo(WritableByteArrayComparable.java:63)
+ at org.apache.hadoop.hbase.regionserver.HRegion.checkAndMutate(HRegion.java:1681)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.checkAndMutate(HRegionServer.java:1693)
+ ... 6 more
+
+
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getRegionServerWithRetries(HConnectionManager.java:1026)
+ at org.apache.hadoop.hbase.client.HTable.checkAndPut(HTable.java:750)
+ at client.CheckAndPutExample.main(CheckAndPutExample.java:33)
+Easy fixable, just needs to handle the null value before even calling comparator.compareTo().
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ming Ma
+Reporter:
+Lars George
+Create date:
+16/Apr/11 17:42
+Update date:
+20/Nov/15 12:41
+Resolved date:
+13/Jun/11 23:44

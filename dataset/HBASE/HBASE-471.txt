@@ -1,0 +1,59 @@
+Summary:
+IllegalStateException thrown in client after region was split and deleted
+Description:
+For some reason a client sometimes fails to locate a row with a IllegalStateException when the region was split and deleted.
+> [2008-02-25 16:12:39,171] ERROR [http-80-Processor20] archive.MultilingualArchive - getDocument: An error occurred.
+> java.lang.IllegalStateException: region offline: pdc-docs,US7039976_20060509,1203981958556
+> at org.apache.hadoop.hbase.HConnectionManager$TableServers.locateRegionInMeta(HConnectionManager.java:432)
+> at org.apache.hadoop.hbase.HConnectionManager$TableServers.locateRegion(HConnectionManager.java:343)
+> at org.apache.hadoop.hbase.HConnectionManager$TableServers.locateRegion(HConnectionManager.java:306)
+> at org.apache.hadoop.hbase.HTable.getRegionLocation(HTable.java:102)
+> at org.apache.hadoop.hbase.HTable.get(HTable.java:280)
+Tracing the region on the master shows this:
+> 2008-02-25 16:09:38,761 DEBUG org.apache.hadoop.hbase.HMaster: Received MSG_REGION_SPLIT :
++pdc-docs,US7039976_20060509,1203981958556 from 192.168.105.21:60020
+> 2008-02-25 16:09:38,761 INFO org.apache.hadoop.hbase.HMaster: region pdc-docs,US7039976_20060509,1203981958556 split. New regions
++are: pdc-docs,US7039976_20060509,1203984578345, pdc-docs,US7046359_20060516,1203984578345
+> 2008-02-25 16:10:02,470 DEBUG org.apache.hadoop.hbase.HMaster: HMaster.metaScanner regioninfo: {regionname:
++pdc-docs,US7039976_20060509,1203981958556, startKey: <US7039976_20060509>, endKey: <US7053021_20060530>, encodedName: 1260314009,
++offline: true, split: true, tableDesc: {name: pdc-docs, families: {contents:=
+{name: contents, max versions: 3, compression: NONE, in +memory: false, max length: 2147483647, bloom filter: none}
+, language:=
+{name: language, max versions: 3, compression: NONE, in +memory: false, max length: 2147483647, bloom filter: none}
+, mimetype:={name: mimetype, max versions: 3, compression: NONE, in
++memory: false, max length: 2147483647, bloom filter: none}}}}, server: 192.168.105.21:60020, startCode: 1203949130468
+> 2008-02-25 16:10:02,513 DEBUG org.apache.hadoop.hbase.HMaster: pdc-docs,US7039976_20060509,1203984578345 no longer has references
++to pdc-docs,US7039976_20060509,1203981958556
+> 2008-02-25 16:10:02,516 DEBUG org.apache.hadoop.hbase.HMaster: pdc-docs,US7046359_20060516,1203984578345 no longer has references
++to pdc-docs,US7039976_20060509,1203981958556
+> 2008-02-25 16:10:02,516 INFO org.apache.hadoop.hbase.HMaster: Deleting region pdc-docs,US7039976_20060509,1203981958556 because
++daughter splits no longer hold references
+After discussion with st^ack it seems that the server is simply not retrying IllegalStateException but IOExceptions only. Also see HBASE-452 which should be addressed at the same time.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Incomplete
+Affects_version:
+0.1.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+debian
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Lars George
+Create date:
+26/Feb/08 00:34
+Update date:
+22/Aug/08 21:35
+Resolved date:
+23/Apr/08 22:37

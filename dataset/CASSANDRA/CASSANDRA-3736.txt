@@ -1,0 +1,97 @@
+Summary:
+-Dreplace_token leaves old node (IP) in the gossip with the token.
+Description:
+https://issues.apache.org/jira/browse/CASSANDRA-957 introduce a -Dreplace_token,
+however, the replaced IP keeps on showing up in the Gossiper when starting the replacement node:
+ INFO [Thread-2] 2012-01-12 23:59:35,162 CassandraDaemon.java (line 213) Listening for thrift clients...
+ INFO [GossipStage:1] 2012-01-12 23:59:35,173 Gossiper.java (line 836) Node /50.56.59.68 has restarted, now UP
+ INFO [GossipStage:1] 2012-01-12 23:59:35,174 Gossiper.java (line 804) InetAddress /50.56.59.68 is now UP
+ INFO [GossipStage:1] 2012-01-12 23:59:35,175 StorageService.java (line 988) Node /50.56.59.68 state jump to normal
+ INFO [GossipStage:1] 2012-01-12 23:59:35,176 Gossiper.java (line 836) Node /50.56.58.55 has restarted, now UP
+ INFO [GossipStage:1] 2012-01-12 23:59:35,176 Gossiper.java (line 804) InetAddress /50.56.58.55 is now UP
+ INFO [GossipStage:1] 2012-01-12 23:59:35,177 StorageService.java (line 1016) Nodes /50.56.58.55 and action-quick2/50.56.31.186 have the same token 85070591730234615865843651857942052864.  Ignoring /50.56.58.55
+ INFO [GossipTasks:1] 2012-01-12 23:59:45,048 Gossiper.java (line 818) InetAddress /50.56.58.55 is now dead.
+ INFO [GossipTasks:1] 2012-01-13 00:00:06,062 Gossiper.java (line 632) FatClient /50.56.58.55 has been silent for 30000ms, removing from gossip
+ INFO [GossipStage:1] 2012-01-13 00:01:06,320 Gossiper.java (line 838) Node /50.56.58.55 is now part of the cluster
+ INFO [GossipStage:1] 2012-01-13 00:01:06,320 Gossiper.java (line 804) InetAddress /50.56.58.55 is now UP
+ INFO [GossipStage:1] 2012-01-13 00:01:06,321 StorageService.java (line 1016) Nodes /50.56.58.55 and action-quick2/50.56.31.186 have the same token 85070591730234615865843651857942052864.  Ignoring /50.56.58.55
+ INFO [GossipTasks:1] 2012-01-13 00:01:16,106 Gossiper.java (line 818) InetAddress /50.56.58.55 is now dead.
+ INFO [GossipTasks:1] 2012-01-13 00:01:37,121 Gossiper.java (line 632) FatClient /50.56.58.55 has been silent for 30000ms, removing from gossip
+ INFO [GossipStage:1] 2012-01-13 00:02:37,352 Gossiper.java (line 838) Node /50.56.58.55 is now part of the cluster
+ INFO [GossipStage:1] 2012-01-13 00:02:37,353 Gossiper.java (line 804) InetAddress /50.56.58.55 is now UP
+ INFO [GossipStage:1] 2012-01-13 00:02:37,353 StorageService.java (line 1016) Nodes /50.56.58.55 and action-quick2/50.56.31.186 have the same token 85070591730234615865843651857942052864.  Ignoring /50.56.58.55
+ INFO [GossipTasks:1] 2012-01-13 00:02:47,158 Gossiper.java (line 818) InetAddress /50.56.58.55 is now dead.
+ INFO [GossipStage:1] 2012-01-13 00:02:50,162 Gossiper.java (line 818) InetAddress /50.56.58.55 is now dead.
+ INFO [GossipStage:1] 2012-01-13 00:02:50,163 StorageService.java (line 1156) Removing token 122029383590318827259508597176866581733 for /50.56.58.55
+in the above, /50.56.58.55 was the replaced IP.
+tried adding the "Gossiper.instance.removeEndpoint(endpoint);" in the StorageService.java where the message 'Nodes %s and %s have the same token %s. Ignoring %s",' seems only have fixed this temporary. Here is a ring output:
+riptano@action-quick:~/work/cassandra$ ./bin/nodetool -h localhost ring
+Address         DC          Rack        Status State   Load            Owns    Token                                       
+                                                                               85070591730234615865843651857942052864      
+50.56.59.68     datacenter1 rack1       Up     Normal  6.67 KB         85.56%  60502102442797279294142560823234402248      
+50.56.31.186    datacenter1 rack1       Up     Normal  11.12 KB        14.44%  85070591730234615865843651857942052864 
+gossipinfo:
+$ ./bin/nodetool -h localhost gossipinfo
+/50.56.58.55
+  LOAD:6835.0
+  SCHEMA:00000000-0000-1000-0000-000000000000
+  RPC_ADDRESS:50.56.58.55
+  STATUS:NORMAL,85070591730234615865843651857942052864
+  RELEASE_VERSION:1.0.7-SNAPSHOT
+/50.56.59.68
+  LOAD:6835.0
+  SCHEMA:00000000-0000-1000-0000-000000000000
+  RPC_ADDRESS:50.56.59.68
+  STATUS:NORMAL,60502102442797279294142560823234402248
+  RELEASE_VERSION:1.0.7-SNAPSHOT
+action-quick2/50.56.31.186
+  LOAD:11387.0
+  SCHEMA:00000000-0000-1000-0000-000000000000
+  RPC_ADDRESS:50.56.31.186
+  STATUS:NORMAL,85070591730234615865843651857942052864
+  RELEASE_VERSION:1.0.7-SNAPSHOT
+Note that at 1 point earlier it seems to have been removed:
+$ ./bin/nodetool -h localhost gossipinfo
+/50.56.59.68
+LOAD:13815.0
+SCHEMA:00000000-0000-1000-0000-000000000000
+RPC_ADDRESS:50.56.59.68
+STATUS:NORMAL,60502102442797279294142560823234402248
+RELEASE_VERSION:1.0.7-SNAPSHOT
+action-quick2/50.56.31.186
+LOAD:13725.0
+SCHEMA:00000000-0000-1000-0000-000000000000
+RPC_ADDRESS:50.56.31.186
+STATUS:NORMAL,85070591730234615865843651857942052864
+RELEASE_VERSION:1.0.7-SNAPSHOT
+riptano@action-quick2:~/work/cassandra$ INFO [GossipStage:1] 2012-01-13 01:03:30,073 Gossiper.java (line 838) Node /50.56.58.55 is now part of the cluster
+INFO [GossipStage:1] 2012-01-13 01:03:30,073 Gossiper.java (line 804) InetAddress /50.56.58.55 is now UP
+INFO [GossipStage:1] 2012-01-13 01:03:30,074 StorageService.java (line 1017) Nodes /50.56.58.55 and action-quick2/50.56.31.186 have the same token 85070591730234615865843651857942052864. Ignoring /50.56.58.55
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.8, 1.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Vijay
+Reporter:
+Jackson Chung
+Create date:
+13/Jan/12 01:13
+Update date:
+16/Apr/19 09:32
+Resolved date:
+19/Jan/12 21:08

@@ -1,0 +1,53 @@
+Summary:
+Setting -Dcassandra.fd_initial_value_ms Results in NPE
+Description:
+Start Cassandra with -Dcassandra.fd_initial_value_ms=1000 and you'll get the following stacktrace:
+ INFO [main] 2014-02-21 14:45:57,731 StorageService.java (line 617) Starting up server gossip
+ERROR [main] 2014-02-21 14:45:57,736 CassandraDaemon.java (line 464) Exception encountered during startup
+java.lang.ExceptionInInitializerError
+    at org.apache.cassandra.gms.Gossiper.<init>(Gossiper.java:178)
+    at org.apache.cassandra.gms.Gossiper.<clinit>(Gossiper.java:71)
+    at org.apache.cassandra.service.StorageService.joinTokenRing(StorageService.java:618)
+    at org.apache.cassandra.service.StorageService.initServer(StorageService.java:583)
+    at org.apache.cassandra.service.StorageService.initServer(StorageService.java:480)
+    at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:348)
+    at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:447)
+    at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:490)
+Caused by: java.lang.NullPointerException
+    at org.apache.cassandra.gms.FailureDetector.getInitialValue(FailureDetector.java:81)
+    at org.apache.cassandra.gms.FailureDetector.<clinit>(FailureDetector.java:48)
+    ... 8 more
+ERROR [StorageServiceShutdownHook] 2014-02-21 14:45:57,754 CassandraDaemon.java (line 191) Exception in thread Thread[StorageServiceShutdownHook,5,main]
+java.lang.NoClassDefFoundError: Could not initialize class org.apache.cassandra.gms.Gossiper
+    at org.apache.cassandra.service.StorageService$1.runMayThrow(StorageService.java:550)
+    at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+    at java.lang.Thread.run(Thread.java:724)
+Glancing at the code, this is because the FailureDetector logger isn't initialized when the static initialization of INITIAL_VALUE happens.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.17, 2.0.8
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Dave Brosius
+Reporter:
+Tyler Hobbs
+Create date:
+21/Feb/14 21:01
+Update date:
+16/Apr/19 09:31
+Resolved date:
+28/Apr/14 23:55

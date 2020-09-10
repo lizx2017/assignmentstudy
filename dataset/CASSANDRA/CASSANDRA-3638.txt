@@ -1,0 +1,86 @@
+Summary:
+rangeSlice may iterate the whole memtable while just query one row . This may seriously affect the performance .
+Description:
+RangeSliceVerbHandler may just only query one row , but cassandra may iterate the whole memtable .
+the problem is in ColumnFamilyStore.getRangeSlice() method .
+// this iterator may iterate the whole memtable!!
+ColumnFamilyStore.java
+ public List<Row> getRangeSlice(ByteBuffer superColumn, final AbstractBounds range, int maxResults, IFilter columnFilter)
+    throws ExecutionException, InterruptedException
+    {
+    ...
+        DecoratedKey startWith = new DecoratedKey(range.left, null);
+        DecoratedKey stopAt = new DecoratedKey(range.right, null);
+
+        QueryFilter filter = new QueryFilter(null, new QueryPath(columnFamily, superColumn, null), columnFilter);
+        int gcBefore = (int)(System.currentTimeMillis() / 1000) - metadata.getGcGraceSeconds();
+
+        List<Row> rows;
+        ViewFragment view = markReferenced(startWith, stopAt);
+        try
+        {
+            CloseableIterator<Row> iterator = RowIteratorFactory.getIterator(view.memtables, view.sstables, startWith, stopAt, filter, getComparator(), this);
+            rows = new ArrayList<Row>();
+
+            try
+            {
+                // pull rows out of the iterator
+                boolean first = true;
+                while (iterator.hasNext()) // this iterator may iterate the whole memtable!!               
+               {
+                    ....
+                }
+            }
+          .....
+        }
+       .....
+        return rows;
+    }
+// Just only query one row ,but returned a sublist of columnFamiles
+Memtable.java
+// Just only query one row ,but returned a sublist of columnFamiles     
+public Iterator<Map.Entry<DecoratedKey, ColumnFamily>> getEntryIterator(DecoratedKey startWith)
+    {
+        return columnFamilies.tailMap(startWith).entrySet().iterator();
+    }
+// entry.getKey() will never bigger or equal to startKey, and then iterate the whole sublist of memtable
+RowIteratorFactory.java
+ public IColumnIterator computeNext()
+        {
+            while (iter.hasNext())
+            {
+                Map.Entry<DecoratedKey, ColumnFamily> entry = iter.next();
+                IColumnIterator ici = filter.getMemtableColumnIterator(entry.getValue(), entry.getKey(), comparator);
+                // entry.getKey() will never bigger or equal to startKey, and then iterate the whole sublist of memtable             
+                if (pred.apply(ici))  
+                    return ici;
+            }
+            return endOfData();
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+MaHaiyang
+Create date:
+15/Dec/11 13:12
+Update date:
+16/Apr/19 09:32
+Resolved date:
+23/Dec/11 16:25

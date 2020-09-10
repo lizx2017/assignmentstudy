@@ -1,0 +1,75 @@
+Summary:
+a few insert operations failed while bootstrapping
+Description:
+I inserted 10000 key/value while bootstrapping and found 2 insert operations failed.
+DEBUG [pool-1-thread-63] 2010-01-20 17:01:57,033 StorageProxy.java (line 225) insert writing key 15530 to 10981@/10.81.37.65
+ERROR [pool-1-thread-46] 2010-01-20 17:01:57,033 Cassandra.java (line 1064) Internal error processing insert
+java.lang.AssertionError
+at org.apache.cassandra.locator.AbstractReplicationStrategy.getHintedMapForEndpoints(AbstractReplicationStrategy.java:157)
+at org.apache.cassandra.locator.AbstractReplicationStrategy.getHintedEndpoints(AbstractReplicationStrategy.java:76)
+at org.apache.cassandra.service.StorageService.getHintedEndpointMap(StorageService.java:1178)
+at org.apache.cassandra.service.StorageProxy.insertBlocking(StorageProxy.java:169)
+at org.apache.cassandra.service.CassandraServer.doInsert(CassandraServer.java:466)
+at org.apache.cassandra.service.CassandraServer.insert(CassandraServer.java:417)
+at org.apache.cassandra.service.Cassandra$Processor$insert.process(Cassandra.java:1056)
+at org.apache.cassandra.service.Cassandra$Processor.process(Cassandra.java:817)
+at org.apache.thrift.server.TThreadPoolServer$WorkerProcess.run(TThreadPoolServer.java:253)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:885)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:907)
+at java.lang.Thread.run(Thread.java:619)
+ERROR [pool-1-thread-44] 2010-01-20 17:01:57,033 Cassandra.java (line 1064) Internal error processing insert
+java.lang.AssertionError
+at org.apache.cassandra.locator.AbstractReplicationStrategy.getHintedMapForEndpoints(AbstractReplicationStrategy.java:157)
+at org.apache.cassandra.locator.AbstractReplicationStrategy.getHintedEndpoints(AbstractReplicationStrategy.java:76)
+at org.apache.cassandra.service.StorageService.getHintedEndpointMap(StorageService.java:1178)
+at org.apache.cassandra.service.StorageProxy.insertBlocking(StorageProxy.java:169)
+at org.apache.cassandra.service.CassandraServer.doInsert(CassandraServer.java:466)
+at org.apache.cassandra.service.CassandraServer.insert(CassandraServer.java:417)
+at org.apache.cassandra.service.Cassandra$Processor$insert.process(Cassandra.java:1056)
+at org.apache.cassandra.service.Cassandra$Processor.process(Cassandra.java:817)
+at org.apache.thrift.server.TThreadPoolServer$WorkerProcess.run(TThreadPoolServer.java:253)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:885)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:907)
+at java.lang.Thread.run(Thread.java:619)
+I traced the code and found the following assertion failed :
+/* org.apache.cassandra.locator.AbstractReplicationStrategy.getHintedMapForEndpoints(Collection<InetAddress>) */
+assert map.size() == targets.size();
+The following reasons caused this issue:
+1) targets is a list , not a map, as a result there may be some duplicated IP.
+2) The following codes are not atomic :
+org.apache.cassandra.service.StorageService.handleStateNormal(InetAddress, String)
+tokenMetadata_.updateNormalToken(token, endPoint);
+calculatePendingRanges();
+That's to say the IP may be both in the naturalEndpoints and pendingRanges.
+eg :
+targets is IPa, IPb, IPc, IPa; (size = 4)
+then, the map will be IPa, IPb, IPc. (size = 3)
+as a result, assert failed.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jaakko Laine
+Reporter:
+david.pan
+Create date:
+22/Jan/10 02:42
+Update date:
+16/Apr/19 09:33
+Resolved date:
+10/Feb/10 15:57

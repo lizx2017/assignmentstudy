@@ -1,0 +1,40 @@
+Summary:
+Offline scrub does not migrate the directory structure on migration from 1.0.x to 1.1.x and causes the keyspace to disappear
+Description:
+Due to CASSANDRA-4411, upon migration from 1.0.x to 1.1.x containing LCS-compacted sstables, an offline scrub should be run before Cassandra 1.1.x is started. But Cassandra 1.1.x uses a new directory structure (CASSANDRA-2749) that offline scrubber doesn't detect or try to migrate.
+How to reproduce:
+1- Run cassandra 1.0.12.
+2- Run stress tool, let Cassandra flush Keyspace1 or flush manually.
+3- Stop cassandra 1.0.12
+4- Run ./bin/sstablescrub Keyspace1 Standard1
+which returns "Unknown keyspace/columnFamily Keyspace1.Standard1" and notice the data directory isn't migrated.
+5- Run cassandra 1.1.9. Keyspace1 doesn't get loaded and Cassandra doesn't try to migrate the directory structure. Also commitlog entries get skipped: "Skipped XXXXX mutations from unknown (probably removed) CF with id 1000"
+Without the unsuccessful step 4, Cassandra 1.1.9 loads and migrates the Keyspace correctly.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.11
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Omid Aladini
+Reporter:
+Omid Aladini
+Create date:
+29/Jan/13 17:08
+Update date:
+16/Apr/19 09:32
+Resolved date:
+22/Mar/13 14:26

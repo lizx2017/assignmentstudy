@@ -1,0 +1,44 @@
+Summary:
+NullPointerException when loadbalancer tries to close the region for reassigning to new RS.
+Description:
+1. Start 2 RS. Create some regions so that is is balanced.
+2. Stop RS2. Now all the Regions from RS2 are assigned to RS1.
+3. Again start RS2.
+4. Load Balancing is calculated and few regions from RS1 are assigned to RS2.
+As part of this step Master tries to unassign the regions from RS1.
+          RegionTransitionData data = ZKAssign.getDataNoWatch(zkw, ZKAssign
+              .getNodeName(zkw, region.getEncodedName()), null);
+          if (data.equals(EventType.RS_ZK_REGION_CLOSING)) {
+            ZKAssign.createNodeClosing(zkw, region, master.getServerName());
+          }
+Now there is no data present in the unassigned node. We are directly comparing the data.
+Here data is null. Hence nullpointer exception is thrown.
+Hence load balancing fails.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+09/Aug/11 10:39
+Update date:
+20/Nov/15 11:53
+Resolved date:
+09/Aug/11 11:23

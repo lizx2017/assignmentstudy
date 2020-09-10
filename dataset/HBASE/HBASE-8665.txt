@@ -1,0 +1,35 @@
+Summary:
+bad compaction priority behavior in queue can cause store to be blocked
+Description:
+Note that this can be solved by bumping up the number of compaction threads but still it seems like this priority "inversion" should be dealt with.
+There's a store with 1 big file and 3 flushes (1 2 3 4) sitting around and minding its own business when it decides to compact. Compaction (2 3 4) is created and put in queue, it's low priority, so it doesn't get out of the queue for some time - other stores are compacting. Meanwhile more files are flushed and at (1 2 3 4 5 6 7) it decides to compact (5 6 7). This compaction now has higher priority than the first one. After that if the load is high it enters vicious cycle of compacting and compacting files as they arrive, with store being blocked on and off, with the (2 3 4) compaction staying in queue for up to ~20 minutes (that I've seen).
+I wonder why we do thing thing where we queue compaction and compact separately. Perhaps we should take snapshot of all store priorities, then do select in order and execute the first compaction we find. This will need starvation safeguard too but should probably be better.
+Btw, exploring compaction policy may be more prone to this, as it can select files from the middle, not just beginning, which, given the treatment of already selected files that was not changed from the old ratio-based one (all files with lower seqNums than the ones selected are also ineligible for further selection), will make more files ineligible (e.g. imagine with 10 blocking files, with 8 present (1-8), (6 7 8) being selected and getting stuck). Today I see the case that would also apply to old policy, but yesterday I saw file distribution something like this: 4,5g, 2,1g, 295,9m, 113,3m, 68,0m, 67,8m, 1,1g, 295,1m, 100,4m, unfortunately w/o enough logs to figure out how it resulted.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.95.1
+Fix_version:
+0.95.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergey Shelukhin
+Reporter:
+Sergey Shelukhin
+Create date:
+30/May/13 23:21
+Update date:
+23/Sep/13 19:22
+Resolved date:
+19/Jun/13 00:42

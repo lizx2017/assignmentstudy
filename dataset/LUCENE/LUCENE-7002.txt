@@ -1,0 +1,55 @@
+Summary:
+MultiCollector throws NPE when there is CollectTerminatedException is thrown by a subcollector
+Description:
+I am seeing this in our log:
+Caused by: java.lang.NullPointerException
+        at org.apache.lucene.search.MultiCollector$MultiLeafCollector.setScorer(MultiCollector.java:156)
+        at org.apache.lucene.search.BooleanScorer$1$1.setScorer(BooleanScorer.java:50)
+        at org.apache.lucene.search.Weight$DefaultBulkScorer.score(Weight.java:166)
+        at org.apache.lucene.search.BooleanScorer$1.score(BooleanScorer.java:59)
+        at org.apache.lucene.search.BooleanScorer$BulkScorerAndDoc.score(BooleanScorer.java:90)
+        at org.apache.lucene.search.BooleanScorer.scoreWindowSingleScorer(BooleanScorer.java:313)
+        at org.apache.lucene.search.BooleanScorer.scoreWindow(BooleanScorer.java:336)
+        at org.apache.lucene.search.BooleanScorer.score(BooleanScorer.java:364)
+        at org.apache.lucene.search.BulkScorer.score(BulkScorer.java:39)
+        at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:821)
+        at org.apache.lucene.search.IndexSearcher$5.call(IndexSearcher.java:763)
+        at org.apache.lucene.search.IndexSearcher$5.call(IndexSearcher.java:760)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+Looks like
+MultiCollector.removeCollector(i)
+is called on line 176, the loop:
+for (LeafCollector c : collectors) {
+        c.setScorer(scorer);
+}
+in setScorer can still step on it, on line 155.
+I am however, unable to reproduce that with a unit test.
+I made a copy of this class and added a null check in setScorer() and the problem goes away.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+5.4
+Fix_version:
+5.4.2, 5.5
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adrien Grand
+Reporter:
+John Wang
+Create date:
+29/Jan/16 16:46
+Update date:
+23/Feb/16 10:40
+Resolved date:
+10/Feb/16 16:28

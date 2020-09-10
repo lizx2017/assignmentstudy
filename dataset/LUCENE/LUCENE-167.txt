@@ -1,0 +1,70 @@
+Summary:
+[PATCH] QueryParser not handling queries containing AND and OR
+Description:
+The QueryParser does not seem to handle boolean queries containing AND and OR
+operators correctly:
+e.g.
+a AND b OR c AND d gets parsed as +a +b +c +d.
+The attached patch fixes this by changing the vector of boolean clauses into a
+vector of vectors of boolean clauses in the addClause method of the query
+parser. A new sub-vector is created whenever an explicit OR operator is used.
+Queries using explicit AND/OR are grouped by precedence of AND over OR. That is
+a OR b AND c gets a OR (b AND c).
+Queries using implicit AND/OR (depending on the default operator) are handled as
+before (so one can still use a +b -c to create one boolean query, where b is
+required, c forbidden and a optional).
+It's less clear how a query using both explizit AND/OR and implicit operators
+should be handled.
+Since the patch groups on explicit OR operators a query
+a OR b c is read as a (b c)
+whereas
+a AND b c as +a +b c
+(given that default operator or is used).
+There's one issue left:
+The old query parser reads a query
+`a OR NOT b' as `a -b' which is the same as `a AND NOT b'.
+The modified query parser reads this as `a (-b)'.
+While this looks better (at least to me), it does not produce the result of a OR
+NOT b. Instead the (-b) part seems to be silently dropped.
+While I understand that this query is illegal (just searching for one negative
+term) I don't think that silently dropping this part is an appropriate way to
+deal with that. But I don't think that's a query parser issue.
+The only question is, if the query parser should take care of that.
+I attached the patch (made against 1.3rc3 but working for 1.3final as well) and
+a test program.
+The test program parses a number of queries with default-or and default-and
+operator and reparses the result of the toString method of the created query.
+It outputs the initial query, the parsed query with default or, the reparesed
+query, the parsed query with the default and it's reparsed query.
+If called with a -q option, it also run's the queries against an index
+consisting of all documentes containing one or none a b c or d.
+Using an unpatched and a patched version of lucene in the classpath one can look
+at the effect of the patch in detail.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/queryparser
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Erik Hatcher
+Reporter:
+Morus Walter
+Create date:
+30/Dec/03 18:33
+Update date:
+02/Jun/11 22:04
+Resolved date:
+25/Aug/09 09:05

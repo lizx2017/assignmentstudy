@@ -1,0 +1,54 @@
+Summary:
+ArrayIndexOutOfBoundsException on range query from client
+Description:
+schema:
+CREATE TABLE inboxkeyspace.inboxes(user_id bigint, message_id bigint, thread_id bigint, network_id bigint, read boolean, PRIMARY KEY(user_id, message_id)) WITH CLUSTERING ORDER BY (message_id DESC);
+CREATE INDEX ON inboxkeyspace.inboxes(read);
+query:
+SELECT thread_id, message_id, network_id FROM inboxkeyspace.inboxes WHERE user_id = ? AND message_id < ? AND read = ? LIMIT ? 
+The query works if run via cqlsh. However, when run through the datastax client, on the client side we get a timeout exception and on the server side, the Cassandra log shows this exception:
+ERROR [ReadStage:4190] 2013-12-10 13:18:03,579 CassandraDaemon.java (line 187) Exception in thread Thread[ReadStage:4190,5,main]
+java.lang.RuntimeException: java.lang.ArrayIndexOutOfBoundsException: 0
+        at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1940)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:722)
+Caused by: java.lang.ArrayIndexOutOfBoundsException: 0
+        at org.apache.cassandra.db.filter.SliceQueryFilter.start(SliceQueryFilter.java:261)
+        at org.apache.cassandra.db.index.composites.CompositesSearcher.makePrefix(CompositesSearcher.java:66)
+        at org.apache.cassandra.db.index.composites.CompositesSearcher.getIndexedIterator(CompositesSearcher.java:101)
+        at org.apache.cassandra.db.index.composites.CompositesSearcher.search(CompositesSearcher.java:53)
+        at org.apache.cassandra.db.index.SecondaryIndexManager.search(SecondaryIndexManager.java:537)
+        at org.apache.cassandra.db.ColumnFamilyStore.search(ColumnFamilyStore.java:1669)
+        at org.apache.cassandra.db.PagedRangeCommand.executeLocally(PagedRangeCommand.java:109)
+        at org.apache.cassandra.service.StorageProxy$LocalRangeSliceRunnable.runMayThrow(StorageProxy.java:1423)
+        at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1936)
+        ... 3 more
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Enrico Scalavino
+Create date:
+10/Dec/13 13:39
+Update date:
+16/Apr/19 09:31
+Resolved date:
+29/Jan/14 18:25

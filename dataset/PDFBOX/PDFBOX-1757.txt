@@ -1,0 +1,60 @@
+Summary:
+Errors parsing/extracting text from a PDF
+Description:
+I am trying to extract text from PDFs. Extracting text from the test file http://digitalcorpora.org/corp/nps/files/govdocs1/020/020747.pdf causes exceptions to be thrown.
+The first:
+Exception in thread "main" java.lang.RuntimeException: java.io.IOException: Value is not an integer: 636121514401477526485946144
+at org.apache.pdfbox.pdfparser.PDFStreamParser$1.tryNext(PDFStreamParser.java:187)
+at org.apache.pdfbox.pdfparser.PDFStreamParser$1.hasNext(PDFStreamParser.java:194)
+at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:255)
+at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:235)
+at org.apache.pdfbox.util.PDFStreamEngine.processStream(PDFStreamEngine.java:215)
+at org.apache.pdfbox.util.PDFTextStripper.processPage(PDFTextStripper.java:455)
+at org.apache.pdfbox.util.PDFTextStripper.processPages(PDFTextStripper.java:379)
+at org.apache.pdfbox.util.PDFTextStripper.writeText(PDFTextStripper.java:335)
+Caused by: java.io.IOException: Value is not an integer: 636121514401477526485946144
+at org.apache.pdfbox.cos.COSNumber.get(COSNumber.java:104)
+at org.apache.pdfbox.pdfparser.PDFStreamParser.parseNextToken(PDFStreamParser.java:351)
+at org.apache.pdfbox.pdfparser.PDFStreamParser.access$000(PDFStreamParser.java:46)
+at org.apache.pdfbox.pdfparser.PDFStreamParser$1.tryNext(PDFStreamParser.java:182)
+Code to cause above exception:
+PDFTextStripper ts = new PDFTextStripper();
+PrintWriter out = new PrintWriter(new FileWriter(new File ("020747.txt")));
+PDDocument doc = PDDocument.load(new File("020747.pdf").toURI().toURL(), true);
+ts.setForceParsing(true);
+ts.writeText(doc, out);
+Using the following code causes a different exception until org.apache.pdfbox.baseParser.pushBackSize is increased (only tested 1024768). After it is increased I get basically the same exception as above
+PrintWriter out = new PrintWriter(new FileWriter(new File("020747.txt")));
+PDFParser parser = new PDFParser(new FileInputStream(new File("020747.pdf")));
+parser.parse();
+PDFTextStripper ts = new PDFTextStripper();
+ts.setForceParsing(true);
+ts.writeText(parser.getPDDocument(), out);
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Not A Problem
+Affects_version:
+1.8.2
+Fix_version:
+None
+Component:
+Parsing
+Label:
+None
+Environment:
+ubuntu, windows 7, java 1.6
+Attachment number:
+0
+Assignee:
+Timo Boehme
+Reporter:
+William Palmer
+Create date:
+24/Oct/13 12:45
+Update date:
+05/Nov/13 11:36
+Resolved date:
+04/Nov/13 10:58

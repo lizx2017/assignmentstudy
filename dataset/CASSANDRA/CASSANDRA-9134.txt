@@ -1,0 +1,86 @@
+Summary:
+Fix leak detected errors in unit tests
+Description:
+There are several of these errors when running unit tests on trunk:
+    [junit] ERROR 01:09:36 LEAK DETECTED: a reference (org.apache.cassandra.utils.concurrent.Ref$State@317c884a) to class org.apache.cassandra.io.util.SafeMemory$MemoryTidy@943674927:Memory@[7f1bcc0078e0..7f1bcc007908) was not released before the reference was garbage collected
+    [junit] ERROR 01:09:36 LEAK DETECTED: a reference (org.apache.cassandra.utils.concurrent.Ref$State@317c884a) to class org.apache.cassandra.io.util.SafeMemory$MemoryTidy@943674927:Memory@[7f1bcc0078e0..7f1bcc007908) was not released before the reference was garbage collected
+    [junit] ERROR 01:09:36 Allocate trace org.apache.cassandra.utils.concurrent.Ref$State@317c884a:
+    [junit] Thread[CompactionExecutor:1,1,main]
+    [junit]  at java.lang.Thread.getStackTrace(Thread.java:1589)
+    [junit]  at org.apache.cassandra.utils.concurrent.Ref$Debug.<init>(Ref.java:200)
+    [junit]  at org.apache.cassandra.utils.concurrent.Ref$State.<init>(Ref.java:133)
+    [junit]  at org.apache.cassandra.utils.concurrent.Ref.<init>(Ref.java:60)
+    [junit]  at org.apache.cassandra.io.util.SafeMemory.<init>(SafeMemory.java:33)
+    [junit]  at org.apache.cassandra.io.util.SafeMemoryWriter.<init>(SafeMemoryWriter.java:31)
+    [junit]  at org.apache.cassandra.io.sstable.IndexSummaryBuilder.<init>(IndexSummaryBuilder.java:112)
+    [junit]  at org.apache.cassandra.io.sstable.format.big.BigTableWriter$IndexWriter.<init>(BigTableWriter.java:491)
+    [junit]  at org.apache.cassandra.io.sstable.format.big.BigTableWriter.<init>(BigTableWriter.java:83)
+    [junit]  at org.apache.cassandra.io.sstable.format.big.BigFormat$WriterFactory.open(BigFormat.java:107)
+    [junit]  at org.apache.cassandra.io.sstable.format.SSTableWriter.create(SSTableWriter.java:89)
+    [junit]  at org.apache.cassandra.db.compaction.writers.DefaultCompactionWriter.<init>(DefaultCompactionWriter.java:53)
+    [junit]  at org.apache.cassandra.db.compaction.CompactionTask.getCompactionAwareWriter(CompactionTask.java:253)
+    [junit]  at org.apache.cassandra.db.compaction.CompactionTask.runMayThrow(CompactionTask.java:153)
+    [junit]  at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+    [junit]  at org.apache.cassandra.db.compaction.CompactionTask.executeInternal(CompactionTask.java:73)
+    [junit]  at org.apache.cassandra.db.compaction.AbstractCompactionTask.execute(AbstractCompactionTask.java:58)
+    [junit]  at org.apache.cassandra.db.compaction.CompactionManager$BackgroundCompactionTask.run(CompactionManager.java:239)
+    [junit]  at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+    [junit]  at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+    [junit]  at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+    [junit]  at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+    [junit]  at java.lang.Thread.run(Thread.java:745)
+    [junit] 
+    [junit] ERROR 01:09:36 Allocate trace org.apache.cassandra.utils.concurrent.Ref$State@317c884a:
+    [junit] Thread[CompactionExecutor:1,1,main]
+    [junit]  at java.lang.Thread.getStackTrace(Thread.java:1589)
+    [junit]  at org.apache.cassandra.utils.concurrent.Ref$Debug.<init>(Ref.java:200)
+    [junit]  at org.apache.cassandra.utils.concurrent.Ref$State.<init>(Ref.java:133)
+    [junit]  at org.apache.cassandra.utils.concurrent.Ref.<init>(Ref.java:60)
+    [junit]  at org.apache.cassandra.io.util.SafeMemory.<init>(SafeMemory.java:33)
+    [junit]  at org.apache.cassandra.io.util.SafeMemoryWriter.<init>(SafeMemoryWriter.java:31)
+    [junit]  at org.apache.cassandra.io.sstable.IndexSummaryBuilder.<init>(IndexSummaryBuilder.java:112)
+    [junit]  at org.apache.cassandra.io.sstable.format.big.BigTableWriter$IndexWriter.<init>(BigTableWriter.java:491)
+    [junit]  at org.apache.cassandra.io.sstable.format.big.BigTableWriter.<init>(BigTableWriter.java:83)
+    [junit]  at org.apache.cassandra.io.sstable.format.big.BigFormat$WriterFactory.open(BigFormat.java:107)
+    [junit]  at org.apache.cassandra.io.sstable.format.SSTableWriter.create(SSTableWriter.java:89)
+    [junit]  at org.apache.cassandra.db.compaction.writers.DefaultCompactionWriter.<init>(DefaultCompactionWriter.java:53)
+    [junit]  at org.apache.cassandra.db.compaction.CompactionTask.getCompactionAwareWriter(CompactionTask.java:253)
+    [junit]  at org.apache.cassandra.db.compaction.CompactionTask.runMayThrow(CompactionTask.java:153)
+    [junit]  at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+    [junit]  at org.apache.cassandra.db.compaction.CompactionTask.executeInternal(CompactionTask.java:73)
+    [junit]  at org.apache.cassandra.db.compaction.AbstractCompactionTask.execute(AbstractCompactionTask.java:58)
+    [junit]  at org.apache.cassandra.db.compaction.CompactionManager$BackgroundCompactionTask.run(CompactionManager.java:239)
+    [junit]  at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+    [junit]  at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+    [junit]  at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+    [junit]  at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+    [junit]  at java.lang.Thread.run(Thread.java:745)
+    [junit] 
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/Local Write-Read Paths, Legacy/Testing
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Stefania
+Reporter:
+Stefania
+Create date:
+08/Apr/15 01:33
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Apr/15 19:36

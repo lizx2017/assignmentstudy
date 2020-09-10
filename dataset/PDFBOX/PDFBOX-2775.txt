@@ -1,0 +1,79 @@
+Summary:
+ArrayIndexOutOfBoundsException in PDFTextStripper.processTextPosition()
+Description:
+Reported by Andrew M. in the user mailing list:
+Exception in thread "main" java.lang.ArrayIndexOutOfBoundsException: Array index out of range: 3
+ at java.util.Vector.get(Vector.java:744)
+ at org.apache.pdfbox.text.PDFTextStripper.processTextPosition(PDFTextStripper.java:903)
+ at org.apache.pdfbox.text.PDFTextStripperByArea.processTextPosition(PDFTextStripperByArea.java:132)
+ at org.apache.pdfbox.text.PDFTextStreamEngine.showGlyph(PDFTextStreamEngine.java:229)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.showText(PDFStreamEngine.java:717)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.showTextStrings(PDFStreamEngine.java:627)
+ at org.apache.pdfbox.contentstream.operator.text.ShowTextAdjusted.process(ShowTextAdjusted.java:38)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processOperator(PDFStreamEngine.java:829)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processStreamOperators(PDFStreamEngine.java:490)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processStream(PDFStreamEngine.java:456)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processPage(PDFStreamEngine.java:167)
+ at org.apache.pdfbox.text.PDFTextStreamEngine.processPage(PDFTextStreamEngine.java:117)
+ at org.apache.pdfbox.text.PDFTextStripper.processPage(PDFTextStripper.java:347)
+ at org.apache.pdfbox.text.PDFTextStripperByArea.extractRegions(PDFTextStripperByArea.java:113)
+ at testpdfbox20.ExtractTextError.textFromBox(ExtractTextError.java:25)
+ at testpdfbox20.ExtractTextError.main(ExtractTextError.java:45)
+public class ExtractTextError
+{
+    static String textFromBox(PDDocument doc, int x, int y, int w, int h, int page)
+            throws IOException
+    {
+        PDFTextStripperByArea stripper = new PDFTextStripperByArea();
+        Rectangle rect = new Rectangle(x, y - h, w, h);
+        stripper.addRegion("region", rect);
+        int pageCount = doc.getDocumentCatalog().getPages().getCount();
+        System.out.println("getting text from page #" + page + " of " + pageCount + " in doc.");
+        if (page <= pageCount)
+        {
+            PDPage pp = doc.getDocumentCatalog().getPages().get(page - 1);
+            stripper.extractRegions(pp);
+            String text = stripper.getTextForRegion("region");
+            System.out.println("text=" + text);
+            return text;
+        }
+        else
+        {
+            return "No page #" + page;
+        }
+    }
+
+    public static void main(String[] args) throws IOException
+    {
+        PDDocument doc = PDDocument.load(new File("jaf-1-150219.pdf"));
+        textFromBox(doc, 33, 159, 216, 43, 1);
+    }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+Text extraction
+Label:
+beads
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+26/Apr/15 21:20
+Update date:
+17/Mar/16 19:08
+Resolved date:
+21/Oct/15 21:13

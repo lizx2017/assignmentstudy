@@ -1,0 +1,42 @@
+Summary:
+Class load issue in OSGI in ClassUtils
+Description:
+I had the same issue that is described in:
+http://stackoverflow.com/questions/20653146/how-to-load-class-in-an-osgi-e4-environment-while-using-shiro where it was suggested a bug was entered but never was, so here it is. A similar workaround worked for me:
+Thread currentThread = Thread.currentThread();
+ClassLoader originalCl = currentThread.getContextClassLoader();
+try
+{ Class<?> clazz = ((InfrastructureServer) server).getBundleContext().getBundle() .loadClass(CustomRolePermissionResolver.class.getName()); ClassLoader bundleClassLoader = clazz.getClassLoader(); currentThread.setContextClassLoader(bundleClassLoader); webappContext.deploy(httpServer); }
+catch (ClassNotFoundException e)
+{ // TODO Auto-generated catch block e.printStackTrace(); }
+finally
+{ currentThread.setContextClassLoader(originalCl); }
+In addition, commons-collections 3.2.1 must be used in an OSGi environment, I suggest bumping your dependency.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+1.2.3
+Fix_version:
+1.4.1
+Component:
+None
+Label:
+None
+Environment:
+felix
+Attachment number:
+0
+Assignee:
+Francois Papon
+Reporter:
+Tom Nelson
+Create date:
+28/Jul/15 18:25
+Update date:
+13/Jan/19 15:54
+Resolved date:
+

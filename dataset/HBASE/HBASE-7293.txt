@@ -1,0 +1,51 @@
+Summary:
+[replication] Remove dead sinks from ReplicationSource.currentPeers and pick new ones
+Description:
+I happened to look at a log today where I saw a lot lines like this:
+2012-12-06 23:29:08,318 INFO org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Slave cluster looks down: This server is in the failed servers list: sv4r20s49/10.4.20.49:10304
+2012-12-06 23:29:15,987 WARN org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Can't replicate because of a local or network error: 
+java.net.ConnectException: Connection refused
+ at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+ at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:567)
+ at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:206)
+ at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:519)
+ at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:484)
+ at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.setupConnection(HBaseClient.java:416)
+ at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.setupIOstreams(HBaseClient.java:462)
+ at org.apache.hadoop.hbase.ipc.HBaseClient.getConnection(HBaseClient.java:1150)
+ at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:1000)
+ at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Invoker.invoke(WritableRpcEngine.java:150)
+ at $Proxy14.replicateLogEntries(Unknown Source)
+ at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.shipEdits(ReplicationSource.java:627)
+ at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.run(ReplicationSource.java:365)
+2012-12-06 23:29:15,988 INFO org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Slave cluster looks down: Connection refused
+What struck me as weird is this had been going on for some days, I would expect the RS to find new servers if it wasn't able to replicate. But the reality is that only a few of the chosen sink RS were down so eventually the source hits one that's good and is never able to refresh its list of servers.
+We should remove the dead servers, it's spammy and probably adds some slave lag.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.3, 0.95.2
+Fix_version:
+0.94.5, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Jean-Daniel Cryans
+Create date:
+06/Dec/12 23:32
+Update date:
+26/Feb/13 08:27
+Resolved date:
+22/Jan/13 23:57

@@ -1,0 +1,36 @@
+Summary:
+Memory leak due to soft reference caching
+Description:
+In a heap dump, it appears that DefaultResourceCache is retaining 5.3 GB of memory due to buffered images (via PDImageXObject). I suspect that G1 is not collecting soft references across all regions before it out-of-memory errors.
+In PDFBOX-4389, I discovered very slow PDDocument#load times due to a JDK10 I/O bug. Previously I was loading the document to render each page, but this took 1.5 minutes. To work around that bug I reused the document instance across pages. This seems to have fail because the pages were cached and not cleared by the GC.
+The DefaultResourceCache does not prune its cache entries when the soft references are collected. Like WeakHashMap, it should use a ReferenceQueue, poll it on every access, and prune accordingly.
+Thankfully PDDocument#setResourceCache exists. For now I am going to reset the cache to a new instance after a page has been rendered. The entries should no longer be reachable and be GC'd more aggressively. If that doesn't work, I'll either replace the cache (e.g. with Caffeine) or disable it by setting the instance to null.
+I think the desired fix is to prune the DefaultResourceCache and, ideally, reconsider usage of soft references (as they tend to be poor in practice). 
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Workaround
+Affects_version:
+2.0.12
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+java 1.10
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ben Manes
+Create date:
+04/Dec/18 23:24
+Update date:
+06/Dec/18 20:06
+Resolved date:
+06/Dec/18 20:06

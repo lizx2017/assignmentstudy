@@ -1,0 +1,45 @@
+Summary:
+Gossip sends removed node which causes restarted nodes to constantly create new threads
+Description:
+Our cassandra cluster had 14 nodes but it was mostly idle so about 2 weeks ago we removed 3 of them (via standard decommision) & moved tokens to balance load.
+Since then no node was restarted but last week after restarting 2 of them we observed that both of them spawn threads ( WRITE-/1.2.3.4 where 1.2.3.4 is one of removed nodes IPs ) till they hit limit ( which is 800 on our system) and then cassandra dies. Not restarted nodes do not do that. There are no outgoing connections to those dead nodes
+I noticed dead nodes are still in nodetool gossipinfo on non-restarted nodes but not on restarted ones so it seems they are not propertly removed from gossip.
+Would rolling restart work for fixing this or is full cluster stop-start required ?
+trace from hanging threads:
+ "WRITE-/1.2.3.4" daemon prio=10 tid=0x00007f5fe8194000 nid=0x2fb2 waiting on
+condition [0x00007f6020de0000]
+   java.lang.Thread.State: WAITING (parking)
+ at sun.misc.Unsafe.park(Native Method)
+ - parking to wait for <0x00000007536a1160> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+ at java.util.concurrent.locks.LockSupport.park(LockSupport.java:156)
+ at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:1987)
+ at java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.java:399)
+ at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:104)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+centos, jvm
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Mariusz Gronczewski
+Create date:
+14/Jan/13 12:03
+Update date:
+16/Apr/19 09:32
+Resolved date:
+24/Mar/13 14:35

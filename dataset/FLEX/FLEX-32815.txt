@@ -1,0 +1,47 @@
+Summary:
+Series data graphics does not start from the beginning of the chart when DateTimeAxis is used and labelUnits are bigger than a day
+Description:
+Steps to reproduce:
+1. Use DateTimeAxis for horizontal axis and use AreaChart or other
+2. axis labelUnits are manually or automatically set to weeks
+3. do NOT use axisParsingFunction to produce Date objects for the axis but instead have Date objects directly in your series dataProvider for property that
+is specified as xField property (this way the axis will use it to produce labels, ticks etc.)
+4. and most important is that the Date objects from the dataProvider should not be rounded to time 0:00:00 but instead have some real time set , for example
+10:25:00 AM
+Actual Results:
+The series data graphics does not start from the beginning of the chart.
+Expected Results:
+The series data graphics should start from the beginning of the chart no matter what the dataProvider is and what labelUnits are specified
+Solution and explanation of the bug :
+The series data graphics does not start from the beginning because sometimes the first axis tick and label position is calculated incorrectly and is positioned
+incorrectly and that messes up the chart layout. The first axis tick and label position should be always a positive value between 0 and 1 (ratio of the chart's
+width) but sometimes it is calculated to a negative value. This happens when the computedMinimum has greated value than the labelBase property. This in other hand occurs because roundDateUp function rounds the Date to a time = 0:00:00 and is possible to to actually decrease the value of labelBase property. The solution I found for this deffect is to make the following check right after roundDateUp in 2 methods in DateTimeAxis class - buildMinorTickCache and buildLabelCache :
+labelBase = labelBase < labelMinimum ? labelMinimum : labelBase;
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.0 (
+Fix_version:
+None
+Component:
+Charts:Data Graphics
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+26/May/10 03:33
+Update date:
+26/May/10 03:33
+Resolved date:
+

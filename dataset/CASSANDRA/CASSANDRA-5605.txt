@@ -1,0 +1,45 @@
+Summary:
+Crash caused by insufficient disk space to flush
+Description:
+A few times now I have seen our Cassandra nodes crash by running themselves out of memory. It starts with the following exception:
+ERROR [FlushWriter:13000] 2013-05-31 11:32:02,350 CassandraDaemon.java (line 164) Exception in thread Thread[FlushWriter:13000,5,main]
+java.lang.RuntimeException: Insufficient disk space to write 8042730 bytes
+        at org.apache.cassandra.io.util.DiskAwareRunnable.runMayThrow(DiskAwareRunnable.java:42)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:722)
+After which, it seems the MemtablePostFlusher stage gets stuck and no further memtables get flushed:
+ 
+INFO [ScheduledTasks:1] 2013-05-31 11:59:12,467 StatusLogger.java (line 68) MemtablePostFlusher               1        32         0
+INFO [ScheduledTasks:1] 2013-05-31 11:59:12,469 StatusLogger.java (line 73) CompactionManager                 1         2
+What makes this ridiculous is that, at the time, the data directory on this node had 981GB free disk space (as reported by du). We primarily use STCS and at the time the aforementioned exception occurred, at least one compaction task was executing which could have easily involved 981GB (or more) worth of input SSTables. Correct me if I am wrong but but Cassandra counts data currently being compacted against available disk space. In our case, this is a significant overestimation of the space required by compaction since a large portion of the data being compacted has expired or is an overwrite.
+More to the point though, Cassandra should not crash because its out of disk space unless its really actually out of disk space (ie, dont consider 'phantom' compaction disk usage when flushing). I have seen one of our nodes die in this way before our alerts for disk space even went off.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.10, 2.0.1
+Component:
+None
+Label:
+None
+Environment:
+java 1.7
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Dan Hendry
+Create date:
+31/May/13 19:08
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/Sep/13 17:45

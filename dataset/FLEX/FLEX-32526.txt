@@ -1,0 +1,89 @@
+Summary:
+Advanced Data Grid will not read XML passed by PHP using HTTPSERVICE
+Description:
+Steps to reproduce:
+1. Use PHP Dom Object to create the XML Object in file Alerts_xml.php
+header('Content-Type: text/xml');
+header('Expires: Wed, 23, Dec 1980 00:30:00 GMT'); //time in the past
+header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+header('Pragma: no-cache');
+//Create a Cart to collect the items
+$dom = new DOMDocument("1.0", "iso-8859-15");
+//$dom->xmlStandalone = true;
+$response = $dom->createElement('response');
+$dom->appendChild($response);
+$s = event_stats();
+foreach($s as $s)
+{ $cust = $s->customer; $cust = str_replace("&","and",$cust); $status = $s->srstatus; if(!$status) $status = "Acknowledged"; $month = $s->month; $evts = $s->evt_cnt; $cst = $dom->createElement('cust'); $csttext = $dom->createTextNode($cust); $cst->appendChild($csttext); $stat = $dom->createElement('status'); $stattext = $dom->createTextNode($status); $stat->appendChild($stattext); //new element for new item $mo = $dom->createElement('month'); $motext = $dom->createTextNode($month); $mo->appendChild($motext); //new element for new item $evs = $dom->createElement('tot_evt'); $evstext = $dom->createTextNode($evts); $evs->appendChild($evstext); //put all the items in this Bag $stats = $dom->createElement('stats'); $stats->appendChild($cst); $stats->appendChild($stat); $stats->appendChild($mo); $stats->appendChild($evs); //Put the Bag in the trunk and take it home $response->appendChild($stats); }
+$xmlString = $dom->saveXML();
+echo $xmlString;
+2. Call to PHP file in the mxml file
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" initialize="Customers.send()">
+<mx:Script>
+<![CDATA[
+import mx.collections.*;
+import mx.rpc.events.*;
+import mx.charts.*;
+[Bindable]
+public var tosdata:XMLListCollection;
+//public var filterdata=tosdata.(cust == "Affinion");
+public function resultTos(event:ResultEvent):void
+{ var xmlTosdata:XML = XML(event.result); tosdata = new XMLListCollection(xmlTosdata.stats); }
+]]
+>
+</mx:Script>
+<mx:HTTPService url="alerts_xml.php" id="Customers" method="POST" result="resultTos(event)" resultFormat="e4x">
+</mx:HTTPService>
+<mx:AdvancedDataGrid id="myADG" width="100%" height="100%" creationComplete="gc.refresh()" wordWrap="true">
+<mx:dataProvider>
+<mx:GroupingCollection id="gc" source="
+{tosdata}
+">
+<mx:Grouping>
+<mx:GroupingField name="cust"/>
+</mx:Grouping>
+</mx:GroupingCollection>
+</mx:dataProvider>
+<mx:columns>
+<mx:AdvancedDataGridColumn dataField="month"/>
+<mx:AdvancedDataGridColumn dataField="status"/>
+<mx:AdvancedDataGridColumn dataField="tot_evt"/>
+</mx:columns>
+</mx:AdvancedDataGrid>
+</mx:Application>
+This causes the advancedatagrid to load with column headers without any data.
+3. Modify PHP file to have ob_start(); at the first line of the file and ob_get_clean(), then write to out.xml
+4. Modify MXML file to call to out.mxl instead of Alerts_xml.php
+Advanced Data Grid is produced as expected.
+Actual Results:
+Expected Results:
+Workaround (if any):
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Accessibility
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+11/Jun/09 14:11
+Update date:
+20/Jul/11 21:41
+Resolved date:
+

@@ -1,0 +1,73 @@
+Summary:
+Failure reading a erroneous/spurious AutoSavingCache file can result in a failed application of a migration, which can prevent a node from reaching schema agreement.
+Description:
+Failure reading a erroneous/spurious AutoSavingCache file can result in a failed application of a migration, which can prevent a node from reaching schema agreement. This is distinctly possible when a machine loses it's data partition, and attempts to recover the schema upon restart, and so has to apply all the migrations. The initial stack traces look like this:
+Add column family: org.apache.cassandra.config.CFMetaData@38bcfee6[cfId=1000,ksName=someks,cfName=somecf,cfType=Standard,comparat
+or=org.apache.cassandra.db.marshal.UTF8Type,subcolumncomparator=<null>, ...
+Followed by:
+ERROR 00:56:47,974 Fatal exception in thread Thread[MigrationStage:1,5,main]
+java.lang.RuntimeException: java.lang.NegativeArraySizeException
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Caused by: java.lang.NegativeArraySizeException
+at org.apache.cassandra.cache.AutoSavingCache.readSaved(AutoSavingCache.java:130)
+at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:273)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:465)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:435)
+at org.apache.cassandra.db.Table.initCf(Table.java:369)
+at org.apache.cassandra.db.migration.AddColumnFamily.applyModels(AddColumnFamily.java:93)
+at org.apache.cassandra.db.migration.Migration.apply(Migration.java:153)
+at org.apache.cassandra.db.DefinitionsUpdateVerbHandler$1.runMayThrow(DefinitionsUpdateVerbHandler.java:73)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+... 6 more
+Ultimately, attempted changes to this keyspace/cf will fail like this:
+ERROR 13:07:51,006 Fatal exception in thread Thread[MigrationStage:1,5,main]
+java.lang.RuntimeException: java.lang.IllegalArgumentException: Unknown CF 1000
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Caused by: java.lang.IllegalArgumentException: Unknown CF 1000
+at org.apache.cassandra.db.Table.getColumnFamilyStore(Table.java:155)
+at org.apache.cassandra.db.Table.getColumnFamilyStore(Table.java:148)
+at org.apache.cassandra.db.migration.DropKeyspace.applyModels(DropKeyspace.java:63)
+at org.apache.cassandra.db.migration.Migration.apply(Migration.java:153)
+at org.apache.cassandra.db.DefinitionsUpdateVerbHandler$1.runMayThrow(DefinitionsUpdateVerbHandler.java:73)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+... 6 more
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.7, 1.0.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Eldon Stegall
+Reporter:
+Eldon Stegall
+Create date:
+16/Sep/11 16:58
+Update date:
+16/Apr/19 09:32
+Resolved date:
+22/Sep/11 21:09

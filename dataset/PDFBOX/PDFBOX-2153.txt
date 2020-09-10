@@ -1,0 +1,49 @@
+Summary:
+Setting the correct clipping path for shading
+Description:
+While doing tests with the file eci_altona-test-suite-v2_technical_H.pdf (uncompressed) of PDFBOX-1915 I noticed that by removing a "W" (modifies the clipping region) operator of a type 7 shading I got a lot more correct shadings (type 6 and lower). It looked like PDFBox had been using the clipping of the type 7 when drawing the type 6, which is just a rectangle above in that rendering. This resulted in a blank.
+By adding
+graphics.setClip(getGraphicsState().getCurrentClippingPath());
+in PageDrawer.shfill() just before the graphics.fill() I get several files to render correctly that I hadn't before.
+(Setting null will probably do the same, didn't test that yet).
+The following PDFs are rendered correctly with the change:
+McAfee-ShadingType7.pdf
+eci_altona-test-suite-v2_technical_H.pdf
+crestron-p9.pdf (these three found in PDFBOX-1915)
+PDFBOX-1451.pdf ("alfresco")
+PDFBOX-1940.pdf ("chart")
+PDFBOX-1861-tracemonkey.pdf p.11
+Not solved by the change:
+PDFBOX-2098-asyTUG.pdf p.6 (this one doesn't use shfill)
+PDFBOX-1861-tracemonkey.pdf p.6 (not shading)
+PDFBOX-1416.pdf (not shading)
+texample-rgb-triangle.pdf (John has an explanation about that one)
+WDYT? Is there any reason NOT to set the clipping path in PageDrawer.shFill() ?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.5, (3)
+Fix_version:
+1.8.7, 2.0.0
+Component:
+Rendering
+Label:
+shading shadingpatte
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+20/Jun/14 07:01
+Update date:
+19/Sep/14 14:40
+Resolved date:
+22/Jun/14 16:29

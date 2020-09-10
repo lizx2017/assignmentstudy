@@ -1,0 +1,48 @@
+Summary:
+Wasted work (or incorrect behavior) in PDCIDFontType2Font.readCIDToGIDMapping
+Description:
+The problem appears in version 1.8.2 and in revision 1497941. I
+attached a two-line patch (patch.diff) that fixes it.
+In method "PDCIDFontType2Font.readCIDToGIDMapping", the loop:
+"for(int offset = 0;offset < numberOfInts;offset++)"
+keeps overriding "cid2gid[index]" with "getCodeFromArray(mapAsBytes,
+offset, 2)", where "index" does not change in the loop ("index" is
+always "0"). Therefore, only the last written value is visible out of
+the loop and all the previous writes and iterations are not necessary.
+The patch iterates from the end of the loop and breaks the first time
+when "cid2gid[index]" is set. The code can be further simplified, but
+I leave it like this to make the patch easy to follow.
+My patch preserves the original code behavior, but note that the
+original code (not the patch) may be incorrect to start with: maybe
+the code is not supposed to keep overriding "cid2gid[index]" (with
+"index" never changing in the loop, with value "0" all the time), but
+rather to also change "index". Maybe the code was supposed to be
+something like "cid2gid[index++]".
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.2
+Fix_version:
+1.8.3, 2.0.0
+Component:
+PDModel
+Label:
+patch performance
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Adrian Nistor
+Create date:
+28/Jun/13 23:28
+Update date:
+30/Nov/13 17:02
+Resolved date:
+22/Jul/13 17:33

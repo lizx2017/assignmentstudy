@@ -1,0 +1,101 @@
+Summary:
+NumericRangeQuery.hashCode() produces frequent collisions
+Description:
+We have a user who is developing a Solr plugin and needs to store NumericRangeQuery objects in a hash table. They found that NumericRangeQuery.hashCode() produces extremely frequent collisions. I understand that the contract for hashCode doesn't (and can't) guarantee unique hash codes for every value, but the distribution of this method seems particularly bad with an affinity for the hash value 897548010. Out of a set of 31 ranges, hashCode returned 897548010 14 times. This is going to result in very inefficient distribution of the objects in the hash table. The standard "times 31" hash function recommended by Effective Java fares quite a bit better, although it still produces quite a few collisions. Here's a test case that compares the results of the current hashCode function with the times 31 method. An even better method, like Murmur3 might be found here: http://floodyberry.com/noncryptohashzoo/
+package com.company;
+
+import org.apache.lucene.search.NumericRangeQuery;
+
+public class Main {
+
+    public static int betterHash(NumericRangeQuery query) {
+        // I can't subclass NumericRangeQuery since it's constructor is private, so I can't call super and
+        // had to copy and paste from the hashCode method for both MultiTermQuery and NumericRangeQuery
+
+        // MultiTermQuery.hashCode (copied verbatim)
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + Float.floatToIntBits(query.getBoost());
+        result = prime * result + query.getRewriteMethod().hashCode();
+        if (query.getField() != null) result = prime * result + query.getField().hashCode();
+
+        // NumericRangeQuery.hashCode (changed XOR with random constant to times 31)
+        result = result * prime + query.getPrecisionStep();
+        if (query.getMin() != null) result = result * prime + query.getMin().hashCode();
+        if (query.getMax() != null) result = result * prime + query.getMax().hashCode();
+        result = result * prime + Boolean.valueOf(query.includesMin()).hashCode();
+        result = result * prime + Boolean.valueOf(query.includesMax()).hashCode();
+        return result;
+    }
+
+    public static void main(String[] args) {
+        long previous = Long.MIN_VALUE;
+        long[] list = {
+                -9223372036854775798L,
+                -8608480567731124078L,
+                -7993589098607472357L,
+                -7378697629483820637L,
+                -6763806160360168916L,
+                -6148914691236517196L,
+                -5534023222112865475L,
+                -4919131752989213755L,
+                -4304240283865562034L,
+                -3689348814741910314L,
+                -3074457345618258593L,
+                -2459565876494606873L,
+                -1844674407370955152L,
+                -1229782938247303432L,
+                -614891469123651711L,
+                10L,
+                614891469123651730L,
+                1229782938247303451L,
+                1844674407370955171L,
+                2459565876494606892L,
+                3074457345618258612L,
+                3689348814741910333L,
+                4304240283865562053L,
+                4919131752989213774L,
+                5534023222112865494L,
+                6148914691236517215L,
+                6763806160360168935L,
+                7378697629483820656L,
+                7993589098607472376L,
+                8608480567731124097L,
+                Long.MAX_VALUE
+        };
+
+        for (long current : list) {
+            NumericRangeQuery<Long> query =  NumericRangeQuery.newLongRange("_token_long", 8, previous, current, true, true);
+            System.out.println("[" + previous + " TO " + current + "]: " + query.hashCode() + " / " + betterHash(query));
+            previous = current + 1;
+        }
+    }
+}
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+4.6, 5.3
+Fix_version:
+6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+J.B. Langston
+Create date:
+09/Sep/15 21:29
+Update date:
+26/Feb/16 16:15
+Resolved date:
+26/Feb/16 16:15

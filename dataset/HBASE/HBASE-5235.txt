@@ -1,0 +1,64 @@
+Summary:
+HLogSplitter writer thread's streams not getting closed when any of the writer threads has exceptions.
+Description:
+Pls find the analysis. Correct me if am wrong
+2012-01-15 05:14:02,374 FATAL org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: WriterThread-9 Got while writing log entry to log
+java.io.IOException: All datanodes 10.18.40.200:50010 are bad. Aborting...
+ at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.processDatanodeError(DFSClient.java:3373)
+ at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.access$2000(DFSClient.java:2811)
+ at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:3026)
+Here we have an exception in one of the writer threads. If any exception we try to hold it in an Atomic variable
+  private void writerThreadError(Throwable t) {
+    thrown.compareAndSet(null, t);
+  }
+In the finally block of splitLog we try to close the streams.
+      for (WriterThread t: writerThreads) {
+        try {
+          t.join();
+        } catch (InterruptedException ie) {
+          throw new IOException(ie);
+        }
+        checkForErrors();
+      }
+      LOG.info("Split writers finished");
+      
+      return closeStreams();
+Inside checkForErrors
+  private void checkForErrors() throws IOException {
+    Throwable thrown = this.thrown.get();
+    if (thrown == null) return;
+    if (thrown instanceof IOException) {
+      throw (IOException)thrown;
+    } else {
+      throw new RuntimeException(thrown);
+    }
+  }
+So once we throw the exception the DFSStreamer threads are not getting closed.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.5, 0.92.0
+Fix_version:
+0.90.6, 0.92.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+20/Jan/12 14:26
+Update date:
+20/Nov/15 11:54
+Resolved date:
+26/Jan/12 07:32

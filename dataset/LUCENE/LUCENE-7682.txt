@@ -1,0 +1,68 @@
+Summary:
+UnifiedHighlighter not highlighting all terms relevant in SpanNearQuery
+Description:
+Original text: "Something for protecting wildlife feed in a feed thing."
+Query is:
+SpanNearQuery with Slop 9 - in order -
+1. SpanTermQuery(wildlife)
+2. SpanTermQuery(feed)
+This should highlight both instances of "feed" since they are both within slop of 9 of "wildlife". However, only the first instance is highlighted. This occurs with unordered SpanNearQuery as well. Test below replicates. Affects both the current 6.x line and master.
+Test that fits within TestUnifiedHighlighterMTQ:
+  public void testOrderedSpanNearQueryWithDupeTerms() throws Exception {
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    Document doc = new Document();
+    doc.add(new Field("body", "Something for protecting wildlife feed in a feed thing.", fieldType));
+    doc.add(newTextField("id", "id", Field.Store.YES));
+
+    iw.addDocument(doc);
+    IndexReader ir = iw.getReader();
+    iw.close();
+
+
+    IndexSearcher searcher = newSearcher(ir);
+    UnifiedHighlighter highlighter = new UnifiedHighlighter(searcher, indexAnalyzer);
+    int docID = searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc;
+
+    SpanTermQuery termOne = new SpanTermQuery(new Term("body", "wildlife"));
+    SpanTermQuery termTwo = new SpanTermQuery(new Term("body", "feed"));
+    SpanNearQuery topQuery = new SpanNearQuery.Builder("body", true)
+        .setSlop(9)
+        .addClause(termOne)
+        .addClause(termTwo)
+        .build();
+
+    int[] docIds = new int[] {docID};
+
+    String snippets[] = highlighter.highlightFields(new String[] {"body"}, topQuery, docIds, new int[] {2}).get("body");
+    assertEquals(1, snippets.length);
+    assertEquals("Something for protecting <b>wildlife</b> <b>feed</b> in a <b>feed</b> thing.", snippets[0]);
+    ir.close();
+  }
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+modules/highlighter
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Michael Braun
+Create date:
+07/Feb/17 18:41
+Update date:
+16/Aug/17 04:01
+Resolved date:
+

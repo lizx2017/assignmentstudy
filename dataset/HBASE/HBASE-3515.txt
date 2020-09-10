@@ -1,0 +1,44 @@
+Summary:
+[replication] ReplicationSource can miss a log after RS comes out of GC
+Description:
+This is from Hudson build 1738, if a log is about to be rolled and the ZK connection is already closed then the replication code will fail at adding the new log in ZK but the log will still be rolled and it's possible that some edits will make it in.
+From the log:
+2011-02-08 10:21:20,618 FATAL [RegionServer:0;vesta.apache.org,46117,1297160399378.logRoller] regionserver.HRegionServer(1383):
+ABORTING region server serverName=vesta.apache.org,46117,1297160399378, load=(requests=1525, regions=12,
+usedHeap=273, maxHeap=1244): Failed add log to list
+org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for
+/1/replication/rs/vesta.apache.org,46117,1297160399378/2/vesta.apache.org%3A46117.1297160480509
+...
+2011-02-08 10:21:22,444 DEBUG [MASTER_META_SERVER_OPERATIONS-vesta.apache.org:56008-0] wal.HLogSplitter(258):
+Splitting hlog 8 of 8: hdfs://localhost:55474/user/hudson/.logs/vesta.apache.org,46117,1297160399378/vesta.apache.org%3A46117.1297160480509, length=0
+2011-02-08 10:21:22,862 DEBUG [MASTER_META_SERVER_OPERATIONS-vesta.apache.org:56008-0] wal.HLogSplitter(436):
+Pushed=31 entries from hdfs://localhost:55474/user/hudson/.logs/vesta.apache.org,46117,1297160399378/vesta.apache.org%3A46117.1297160480509
+The easiest thing to do would be let the exception out and cancel the log roll.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+08/Feb/11 18:46
+Update date:
+20/Nov/15 12:42
+Resolved date:
+01/Nov/11 23:45

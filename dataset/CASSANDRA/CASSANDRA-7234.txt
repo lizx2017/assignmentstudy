@@ -1,0 +1,37 @@
+Summary:
+Post-compaction cache preheating can result in FileNotFoundExceptions when tables are dropped
+Description:
+In CompactionTask.java, after a compaction finishes, we do this:
+        replaceCompactedSSTables(toCompact, sstables);
+        // TODO: this doesn't belong here, it should be part of the reader to load when the tracker is wired up
+        for (SSTableReader sstable : sstables)
+            sstable.preheat(cachedKeyMap.get(sstable.descriptor));
+The problem is that if the table was dropped, replaceCompactedSSTables will release its references on the new sstables, resulting in them being closed.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.9
+Component:
+None
+Label:
+compaction
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Tyler Hobbs
+Create date:
+14/May/14 20:35
+Update date:
+16/Apr/19 09:31
+Resolved date:
+12/Jun/14 01:15

@@ -1,0 +1,56 @@
+Summary:
+RegionServer confused about empty row keys
+Description:
+I'm no longer sure about the expected behavior when using an empty row key (e.g. a 0-byte long byte array). I assumed that this was a legitimate row key, just like having an empty column qualifier is allowed. But it seems that the RegionServer considers the empty row key to be whatever the first row key is.
+Version: 0.89.20100830, r0da2890b242584a8a5648d83532742ca7243346b, Sat Sep 18 15:30:09 PDT 2010
+
+hbase(main):001:0> scan 'tsdb-uid', {LIMIT => 1}
+ROW                           COLUMN+CELL                                                                          
+ \x00                         column=id:metrics, timestamp=1288375187699, value=foo      
+ \x00                         column=id:tagk, timestamp=1287522021046, value=bar         
+ \x00                         column=id:tagv, timestamp=1288111387685, value=qux      
+1 row(s) in 0.4610 seconds
+
+hbase(main):002:0> get 'tsdb-uid', ''
+COLUMN                        CELL                                                                                 
+ id:metrics                   timestamp=1288375187699, value=foo                         
+ id:tagk                      timestamp=1287522021046, value=bar                         
+ id:tagv                      timestamp=1288111387685, value=qux                      
+3 row(s) in 0.0910 seconds
+
+hbase(main):003:0> get 'tsdb-uid', "\000"
+COLUMN                        CELL                                                                                 
+ id:metrics                   timestamp=1288375187699, value=foo                         
+ id:tagk                      timestamp=1287522021046, value=bar                         
+ id:tagv                      timestamp=1288111387685, value=qux                      
+3 row(s) in 0.0550 seconds
+This isn't a parsing problem with the command-line of the shell. I can reproduce this behavior both with plain Java code and with my asynchbase client.
+Since I don't actually have a row with an empty row key, I expected that the first get would return nothing.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.89.20100621, (10)
+Fix_version:
+0.95.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Devaraj Das
+Reporter:
+Benoit Sigoure
+Create date:
+29/Oct/10 18:23
+Update date:
+23/Sep/13 18:30
+Resolved date:
+21/Jan/13 20:12

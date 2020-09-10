@@ -1,0 +1,44 @@
+Summary:
+RegionScanner.reseek() creates NPE when a flush or compaction happens before the reseek.
+Description:
+HBASE-5520 introduced reseek() on the RegionScanner.
+Now when a scanner is created we have the StoreScanner heap. After this if a flush or compaction happens parallely all the StoreScannerObservers are cleared so that whenever a new next() call happens we tend to recreate the scanner based on the latest store files.
+The reseek() in StoreScanner expects the heap not to be null because always reseek would be called from next()
+public synchronized boolean reseek(KeyValue kv) throws IOException {
+    //Heap cannot be null, because this is only called from next() which
+    //guarantees that heap will never be null before this call.
+    if (explicitColumnQuery && lazySeekEnabledGlobally) {
+      return heap.requestSeek(kv, true, useRowColBloom);
+    } else {
+      return heap.reseek(kv);
+    }
+  }
+Now when we call RegionScanner.reseek() directly using CPs we tend to get a NPE. In our case it happened when a major compaction was going on. I will also attach a testcase to show the problem.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudevan
+Reporter:
+ramkrishna.s.vasudevan
+Create date:
+29/Sep/12 11:26
+Update date:
+07/Apr/13 05:05
+Resolved date:
+05/Oct/12 06:33

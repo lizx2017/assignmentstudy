@@ -1,0 +1,46 @@
+Summary:
+rolling-restart.sh script hangs when attempting to detect expiration of /hbase/master znode.
+Description:
+Due to bugfix ZOOKEEPER-1059 (ZK 3.4.0+), the rolling-restart.sh script will hang when attempting to make sure the /hbase/master znode is deleted.
+Here's the code
+# make sure the master znode has been deleted before continuing
+    zparent=`$bin/hbase org.apache.hadoop.hbase.util.HBaseConfTool zookeeper.znode.parent`
+    if [ "$zparent" == "null" ]; then zparent="/hbase"; fi
+    zmaster=`$bin/hbase org.apache.hadoop.hbase.util.HBaseConfTool zookeeper.znode.master`
+    if [ "$zmaster" == "null" ]; then zmaster="master"; fi
+    zmaster=$zparent/$zmaster
+    echo -n "Waiting for Master ZNode ${zmaster} to expire"
+    while bin/hbase zkcli stat $zmaster >/dev/null 2>&1; do
+      echo -n "."
+      sleep 1
+    done
+    echo #force a newline
+Prior to ZOOKEEPER-1059, stat on a null znode would NPE and cause zkcli to exit with retcode 1. Afterwards, the null is caught, zkcli will exit with 0 in the case where the znode is present and in the case where it does not exist.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.92.0, (2)
+Fix_version:
+0.94.0, 0.95.0
+Component:
+Zookeeper
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Hsieh
+Reporter:
+Jonathan Hsieh
+Create date:
+20/Mar/12 07:53
+Update date:
+18/Sep/13 22:23
+Resolved date:
+20/Mar/12 22:53

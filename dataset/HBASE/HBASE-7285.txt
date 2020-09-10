@@ -1,0 +1,36 @@
+Summary:
+HMaster fails to start with secure Hadoop
+Description:
+In current trunk, HMaster will fail to start with secure Hadoop if the user starting the process has not obtained a kerberos TGT. The user starting the process should not be required to have a TGT, as the HMaster process self logs in using the configured keytab and principal.
+This is due to a log line in the HMaster constructor executing prior to the User.login() step:
+    LOG.info("hbase.rootdir=" + FSUtils.getRootDir(this.conf) +
+        ", hbase.cluster.distributed=" + this.conf.getBoolean("hbase.cluster.distributed", false));
+Here the FSUtils.getRootDir() winds up hitting the NameNode. The fix is trivial, moving the log line to follow User.login().
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.95.0
+Component:
+security
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Helmling
+Reporter:
+Gary Helmling
+Create date:
+05/Dec/12 22:57
+Update date:
+23/Sep/13 18:31
+Resolved date:
+05/Dec/12 23:14

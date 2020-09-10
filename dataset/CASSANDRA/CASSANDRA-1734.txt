@@ -1,0 +1,56 @@
+Summary:
+New subcolumn resurrect deleted subcolumns
+Description:
+The followings are the conversation I had with jbellis on IRC:
+have a question on deletion of super column....deletion of SuperColumn works fine....but when I add any new sub-column, the 'old' sub-columns reappear..how can I tell they are tombstoned
+the 'old' sub-columns still have all the data in place, including timestamp
+and the timestamp is older than markDeletaAt of the super column
+<jbellis> appoji: right. that is expected. the subcolumns won't be tombstoned, the supercolumn tombstone should supress them.
+<jbellis> shouldn't*
+<jbellis> appoji: but writing a new subcolumn should resurrect the others. can you submit a test case?
+I am able to reproduce it with cli as followings:
+1. create column family UserGroup with column_type = 'Super' and gc_grace=5 and comparator = 'AsciiType' and subcomparator = 'BytesType'
+2. set UserGroup ['100'] ['memberList']['paul']=''
+3. del UserGroup ['100'] ['memberList']
+4. wait for 5 seconds and "list UserGroup" does not return any data, which is correct
+5. set UserGroup ['100'] ['memberList']['andrew']=''
+6. now "list UserGroup" returns 2 sub-columns ('paul' and 'andrew')
+here is server log for step 6:
+DEBUG 22:40:52,378 range_slice
+DEBUG 22:40:52,379 RangeSliceCommand
+{keyspace='Appoji', column_family='UserGroup 1', super_column=null, predicate=SlicePredicate(slice_range:SliceRange(start:80 01 00 01 00 00 00 10 67 65 74 5F 72 61 6E 67 65 5F 73 6C 69 63 65 73 00 00 00 28 0C 00 01 0B 00 03 00 00 00 0A 55 73 65 72 47 72 6F 75 70 31 00 0C 00 02 0C 00 0 2 0B 00 01 00 00 00 00, finish:80 01 00 01 00 00 00 10 67 65 74 5F 72 61 6E 67 6 5 5F 73 6C 69 63 65 73 00 00 00 28 0C 00 01 0B 00 03 00 00 00 0A 55 73 65 72 47 72 6F 75 70 31 00 0C 00 02 0C 00 02 0B 00 01 00 00 00 00 0B 00 02 00 00 00 00, r eversed:false, count:100)), range=[0,0], max_keys=100}
+DEBUG 22:40:52,380 restricted single token match for query [0,0]
+DEBUG 22:40:52,381 local range slice
+DEBUG 22:40:52,382 collecting 0 of 100: SuperColumn(memberList -delete at 128953
+3231194000- [616e64726577:false:0@1289533250404000,7061756c:false:0@128953321401
+5000,])
+DEBUG 22:40:52,383 scanned DecoratedKey(9839004666223652184852086760848439587, 3
+13030)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.0 rc 1
+Component:
+None
+Label:
+None
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Wenjun
+Create date:
+12/Nov/10 03:43
+Update date:
+16/Apr/19 09:33
+Resolved date:
+15/Nov/10 14:24

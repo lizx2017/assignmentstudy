@@ -1,0 +1,63 @@
+Summary:
+checkJavaDocs.py mis-chunks javadocs HTML and then wrongly reports imbalanced tags
+Description:
+Spin-off from SOLR-9107, where Hoss Man wrote:
+but as things stand with this patch, precommit currently complains about malformed javadocs...
+     [echo] Checking for malformed docs...
+     [exec] 
+     [exec] /home/hossman/lucene/dev/solr/build/docs/solr-test-framework/org/apache/solr/util/RandomizeSSL.html
+     [exec]   broken details HTML: Field Detail: reason: saw closing "</ul>" without opening <ul...>
+     [exec]   broken details HTML: Field Detail: ssl: saw closing "</ul>" without opening <ul...>
+     [exec]   broken details HTML: Field Detail: clientAuth: saw closing "</ul>" without opening <ul...>
+...but i can't really understand why. The <ul> tags look balanced to me, and tidy -output /dev/null .../RandomizeSSL.html concurs that "No warnings or errors were found." I thought maybe the problem was related to some of the @see tags in the docs for these attributes, but even if i completley remove the javadocs the same validation errors occur.
+When I modify checkJavaDocs.py to print out the offending chunk of HTML, here's what I see for the first of the above:
+solr/build/docs/solr-test-framework/org/apache/solr/util/RandomizeSSL.html
+  broken details HTML: Field Detail: reason: saw closing "</ul>" without opening <ul...> in:
+-----
+<ul><pre>public abstract&nbsp;<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;reason</pre>
+<div class="block">Comment to inlcude when logging details of SSL randomization</div>
+<dl>
+<dt>Default:</dt>
+<dd>""</dd>
+</dl>
+</li>
+</ul>
+</li>
+</ul>
+<ul class="blockList">
+<li class="blockList"><a name="ssl--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+</ul>
+So the chunking that's happening here isn't aligning with the detail HTML for methods, fields etc. - it doesn't start early enough and ends too late.
+Furthormore, I can see that the chunking procedure ignores the final item in an HTML file (the stuff after the last <h4>) - if I insert trash after the final <h4>, but within the javadocs for the corresponding final detail item in the HTML file, the current implementation ignores the problem.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.5.2, (3)
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Steve Rowe
+Reporter:
+Steve Rowe
+Create date:
+01/Jun/16 04:56
+Update date:
+17/Jun/16 13:11
+Resolved date:
+01/Jun/16 18:33

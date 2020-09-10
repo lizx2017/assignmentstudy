@@ -1,0 +1,105 @@
+Summary:
+Can not create insert more than half million rows
+Description:
+The following code, which attempts to insert certain number of rows into a table.
+This is running with hbase 0.20.3 after downloading without changing config.
+Does not work if there is more than 500K or so rows .
+I can see data being created in $HBASE_HOME/TestTable/xxxx/test_family where xxxx is a number.
+But the data disappear once it get 3 files of size around 16MB.
+I guess it is being compacted or moved to somewhere ? But I see nothing in $HBASE_HOME/TestTable/compaction.dir.
+To create 2Million rows , run it as java Test 2000
+To create 10 Millions rows, run it as java Test 10000
+import java.io.*;
+import java.util.*;
+import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.io.BatchUpdate;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.util.Bytes;
+public class Test{
+public static HTable getTable(HBaseConfiguration config, String tableName, String[] columnFamilies)throws IOException
+{ HBaseAdmin admin = new HBaseAdmin(config); createTable(admin, tableName, columnFamilies); HTable table = new HTable(config, tableName); table.setAutoFlush(false); table.setWriteBufferSize(1024*1024*12); return table; }
+public static boolean createTable(HBaseAdmin admin, String tableName, String[] columnFamilies)throws IOException{
+if(admin.tableExists(tableName))return false;
+HTableDescriptor desc = new HTableDescriptor(tableName);
+for(String s : columnFamilies)
+{ HColumnDescriptor col = new HColumnDescriptor(s.getBytes()); col.setMaxVersions(1); desc.addFamily(col); }
+admin.createTable(desc);
+return true;
+}
+public static void test_serial_insert(HTable table, String family, int count)throws IOException{
+byte[] bf = Bytes.toBytes(family);
+for(int i = 0; i < count; i++){
+int id = i;
+byte[] qualifier = Bytes.toBytes; // "i"
+byte[] key = Bytes.toBytes;
+byte[] val = Bytes.toBytes;
+Put put = new Put(key);
+put.setWriteToWAL(false);
+put.add(bf, qualifier, 0, val);
+table.put(put);
+if( (i+1) % 1000000 == 0)
+{System.out.println( (i+1)/1000000 + " M"); }
+}
+table.flushCommits();
+}
+public static void count(HTable table)throws IOException{
+Scan scan = new Scan();
+ResultScanner scanner = table.getScanner(scan);
+Result result = null;
+int i = 0;
+while( (result = scanner.next()) != null )
+{ byte[] key = result.getRow(); ++i; if(i % 10000 == 0)System.out.println(i); }
+System.out.println("TOTAL========== "+i);
+}
+public static void removeTable(HBaseAdmin admin, String tableName)throws IOException
+{ if(!admin.tableExists(tableName))return; admin.disableTable(tableName); admin.deleteTable(tableName); }
+public static void main(String[] args)throws Exception{
+int k = 1000;
+boolean insert = true;
+if(args.length > 0)
+{ if("read".equals(args[0]))insert = false; else k = Integer.parseInt(args[0]); }
+HBaseConfiguration config = new HBaseConfiguration();
+String tableName = "TestTable";
+String familyName = "test_family";
+HBaseAdmin admin = new HBaseAdmin(config);
+removeTable(admin, tableName);
+HTable table = getTable(config, tableName, new String[]
+{familyName}
+);
+if(insert)test_serial_insert(table, familyName, k*1000);
+count(table);
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.20.3
+Fix_version:
+0.90.0
+Component:
+Client, io, (2)
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+mingkeming
+Create date:
+17/Feb/10 10:21
+Update date:
+20/Nov/15 12:40
+Resolved date:
+23/Feb/10 08:07

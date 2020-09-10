@@ -1,0 +1,94 @@
+Summary:
+org.apache.pdfbox.filter.FlateFilter decode SEVERE: Stop reading corrupt stream
+Description:
+Error "org.apache.pdfbox.filter.FlateFilter decode SEVERE: Stop reading corrupt stream" thrown when extracting text.
+The error is thrown at:
+page 397 if the page loop starts at zero – for (int i = 0; i < allPages.size(); i++)
+page 790 if the loop starts at 395 (that would make it approx. 397 pages from the beggining of the loop)
+page 848 if the loop starts at 450 (that would make it aprox. 397 pages from the beggining of the loop)
+The error is not thrown if:
+the loop starts at page 452 or later
+the loop starts at 0 and ends before 396
+the loop starts at 200 and ends before 595
+Therefore I suspect that a loop spanning more than 396 pages will throw an error. Is that an indication of a memory leak of some sort?
+Full code is below. Note that the result is the same when instantiating a single PDFTextStripperByArea outside the page loop and invoking resetEngine() on the stripper inside the page loop.
+import java.awt.geom.Rectangle2D;
+import java.io.IOException;
+import java.util.List;
+import org.apache.pdfbox.exceptions.COSVisitorException;
+import org.apache.pdfbox.exceptions.CryptographyException;
+import org.apache.pdfbox.exceptions.InvalidPasswordException;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.util.PDFTextStripperByArea;
+public class Main {
+public static void main(String[] args) throws IOException,
+COSVisitorException, CryptographyException {
+PDDocument document = null;
+try {
+document = PDDocument.load("/Users/ilijapavlic/Desktop/IATAUnitedStates.pdf");
+if (document.isEncrypted()) {
+try
+{ document.decrypt(""); }
+catch (InvalidPasswordException e)
+{ System.err.println("Error: Document is encrypted with a password."); System.exit(1); }
+}
+float x = 55f;
+float y = 40f;
+float width = 168.5f;
+float height = 689f;
+float evenOffset = -10f;
+List allPages = document.getDocumentCatalog().getAllPages();
+for (int i = 0; i < allPages.size(); i++) {
+System.out.println("Page " + i);
+PDPage page = (PDPage) allPages.get;
+PDFTextStripperByArea stripper = new PDFTextStripperByArea();
+stripper.setSortByPosition(true);
+for (int j = 0; j < 3; j++)
+{
+if (i % 2 == 0)
+{ Rectangle2D.Float region = new Rectangle2D.Float(x, y, width*3, height); stripper.addRegion("region", region); }
+else
+{ Rectangle2D.Float region = new Rectangle2D.Float(x + evenOffset, y, width*3, height); stripper.addRegion("region", region); }
+}
+stripper.extractRegions(page);
+for (String regionName : stripper.getRegions())
+{ stripper.getTextForRegion(regionName); }
+}
+}
+catch(Exception e)
+{ e.printStackTrace(); }
+finally {
+if (document != null)
+{ document.close(); }
+}
+}
+}
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Not A Problem
+Affects_version:
+1.6.0
+Fix_version:
+None
+Component:
+Text extraction
+Label:
+None
+Environment:
+mac os x
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Ilija Pavlic
+Create date:
+05/Jan/12 01:11
+Update date:
+05/Feb/12 18:48
+Resolved date:
+05/Feb/12 18:48

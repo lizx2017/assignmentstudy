@@ -1,0 +1,114 @@
+Summary:
+Check filesystem permissions on startup
+Description:
+We added a new node to a 44 node cluster starting the datanode, mapred and regionserver processes on it. The Unix filesystem was configured incorrectly, i.e. /tmp was not writable to processes. All three processes had issues with this. Datanode and mapred shutdown on exception.
+Regionserver did not stop, in fact reported to master that its up without regions. So master assigned regions to it. Regionserver would not accept them, resulting in a constant assign, reject, reassign cycle, that put many regions into a state of not being available. There are no logs about this, but we could observer the regioncount fluctuate by hundredths of regions and the application throwing many NotServingRegion exceptions.
+In fact to the master process the regionserver looked fine, so it was trying to send regions its way. Regionserver rejected them. So the master/balancer was going into a assign/reassign cycle destabilizing the cluster. Many puts and gets simply failed with NotServingRegionExceptions and took a long time to complete.
+Exception from regionserver:
+2011-08-06 23:57:13,953 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Got ZooKeeper event, state: SyncConnected, type: NodeCreated, path: /hbase/master
+2011-08-06 23:57:13,957 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Telling master at 17.1.0.1:60000 that we are up
+2011-08-06 23:57:13,957 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Telling master at 17.1.0.1:60000 that we are up
+2011-08-07 00:07:39.648::INFO: Logging to STDERR via org.mortbay.log.StdErrLog
+2011-08-07 00:07:39.712::INFO: jetty-6.1.14
+2011-08-07 00:07:39.742::WARN: tmpdir
+java.io.IOException: Permission denied
+at java.io.UnixFileSystem.createFileExclusively(Native Method)
+at java.io.File.checkAndCreate(File.java:1704)
+at java.io.File.createTempFile(File.java:1792)
+at java.io.File.createTempFile(File.java:1828)
+at org.mortbay.jetty.webapp.WebAppContext.getTempDirectory(WebAppContext.java:745)
+at org.mortbay.jetty.webapp.WebAppContext.doStart(WebAppContext.java:458)
+at org.mortbay.component.AbstractLifeCycle.start(AbstractLifeCycle.java:50)
+at org.mortbay.jetty.handler.HandlerCollection.doStart(HandlerCollection.java:152)
+at org.mortbay.jetty.handler.ContextHandlerCollection.doStart(ContextHandlerCollection.java:156)
+at org.mortbay.component.AbstractLifeCycle.start(AbstractLifeCycle.java:50)
+at org.mortbay.jetty.handler.HandlerWrapper.doStart(HandlerWrapper.java:130)
+at org.mortbay.jetty.Server.doStart(Server.java:222)
+at org.mortbay.component.AbstractLifeCycle.start(AbstractLifeCycle.java:50)
+at org.apache.hadoop.http.HttpServer.start(HttpServer.java:461)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.startServiceThreads(HRegionServer.java:1168)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.init(HRegionServer.java:792)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:430)
+at java.lang.Thread.run(Thread.java:619)
+Exception from datanode:
+2011-08-06 23:37:20,444 INFO org.apache.hadoop.http.HttpServer: Jetty bound to port 50075
+2011-08-06 23:37:20,444 INFO org.mortbay.log: jetty-6.1.14
+2011-08-06 23:37:20,469 WARN org.mortbay.log: tmpdir
+java.io.IOException: Permission denied
+at java.io.UnixFileSystem.createFileExclusively(Native Method)
+at java.io.File.checkAndCreate(File.java:1704)
+at java.io.File.createTempFile(File.java:1792)
+at java.io.File.createTempFile(File.java:1828)
+at org.mortbay.jetty.webapp.WebAppContext.getTempDirectory(WebAppContext.java:745)
+at org.mortbay.jetty.webapp.WebAppContext.doStart(WebAppContext.java:458)
+at org.mortbay.component.AbstractLifeCycle.start(AbstractLifeCycle.java:50)
+at org.mortbay.jetty.handler.HandlerCollection.doStart(HandlerCollection.java:152)
+at org.mortbay.jetty.handler.ContextHandlerCollection.doStart(ContextHandlerCollection.java:156)
+at org.mortbay.component.AbstractLifeCycle.start(AbstractLifeCycle.java:50)
+at org.mortbay.jetty.handler.HandlerWrapper.doStart(HandlerWrapper.java:130)
+at org.mortbay.jetty.Server.doStart(Server.java:222)
+at org.mortbay.component.AbstractLifeCycle.start(AbstractLifeCycle.java:50)
+at org.apache.hadoop.http.HttpServer.start(HttpServer.java:463)
+at org.apache.hadoop.hdfs.server.datanode.DataNode.startDataNode(DataNode.java:384)
+at org.apache.hadoop.hdfs.server.datanode.DataNode.<init>(DataNode.java:225)
+at org.apache.hadoop.hdfs.server.datanode.DataNode.makeInstance(DataNode.java:1309)
+at org.apache.hadoop.hdfs.server.datanode.DataNode.instantiateDataNode(DataNode.java:1264)
+at org.apache.hadoop.hdfs.server.datanode.DataNode.createDataNode(DataNode.java:1272)
+at org.apache.hadoop.hdfs.server.datanode.DataNode.main(DataNode.java:1394)
+2011-08-06 23:37:20,471 INFO org.apache.hadoop.hdfs.server.datanode.DataNode: SHUTDOWN_MSG:
+/************************************************************
+SHUTDOWN_MSG: Shutting down DataNode at hdp1122/17.1.0.22
+************************************************************/
+Exception from tasktracker:
+2011-08-06 23:33:50,380 INFO org.apache.hadoop.http.HttpServer: Jetty bound to port 50060
+2011-08-06 23:33:50,380 INFO org.mortbay.log: jetty-6.1.14
+2011-08-06 23:33:50,415 WARN org.mortbay.log: tmpdir
+java.io.IOException: Permission denied
+at java.io.UnixFileSystem.createFileExclusively(Native Method)
+at java.io.File.checkAndCreate(File.java:1704)
+at java.io.File.createTempFile(File.java:1792)
+at java.io.File.createTempFile(File.java:1828)
+at org.mortbay.jetty.webapp.WebAppContext.getTempDirectory(WebAppContext.java:745)
+at org.mortbay.jetty.webapp.WebAppContext.doStart(WebAppContext.java:458)
+at org.mortbay.component.AbstractLifeCycle.start(AbstractLifeCycle.java:50)
+at org.mortbay.jetty.handler.HandlerCollection.doStart(HandlerCollection.java:152)
+at org.mortbay.jetty.handler.ContextHandlerCollection.doStart(ContextHandlerCollection.java:156)
+at org.mortbay.component.AbstractLifeCycle.start(AbstractLifeCycle.java:50)
+at org.mortbay.jetty.handler.HandlerWrapper.doStart(HandlerWrapper.java:130)
+at org.mortbay.jetty.Server.doStart(Server.java:222)
+at org.mortbay.component.AbstractLifeCycle.start(AbstractLifeCycle.java:50)
+at org.apache.hadoop.http.HttpServer.start(HttpServer.java:463)
+at org.apache.hadoop.mapred.TaskTracker.<init>(TaskTracker.java:935)
+at org.apache.hadoop.mapred.TaskTracker.main(TaskTracker.java:2837)
+2011-08-06 23:33:50,416 INFO org.apache.hadoop.mapred.TaskTracker: SHUTDOWN_MSG:
+/************************************************************
+SHUTDOWN_MSG: Shutting down TaskTracker at hdp1122/17.1.0.22
+************************************************************/
+Status:
+RESOLVED
+Priority:
+Trivial
+Resolution:
+Won't Fix
+Affects_version:
+0.20.4
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+debian
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+Matthias Hofschen
+Create date:
+16/Aug/11 06:25
+Update date:
+05/Aug/14 20:11
+Resolved date:
+24/Aug/12 03:49

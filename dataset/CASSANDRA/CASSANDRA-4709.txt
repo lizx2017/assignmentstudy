@@ -1,0 +1,57 @@
+Summary:
+(CQL3) Missing validation for IN queries on column not part of the PK
+Description:
+Copy-pasting from the original mail (http://mail-archives.apache.org/mod_mbox/cassandra-user/201209.mbox/%3C20120922185826.GO6205@pslp2%3E):
+[cqlsh 2.2.0 | Cassandra 1.1.5 | CQL spec 3.0.0 | Thrift protocol 19.32.0]
+Use HELP for help.
+cqlsh> 
+cqlsh> create keyspace xpl1 WITH strategy_class ='SimpleStrategy' and strategy_options:replication_factor=1;
+cqlsh> use xpl1;
+cqlsh:xpl1> create table t1 (pk varchar primary key, col1 varchar, col2 varchar);
+cqlsh:xpl1> create index t1_c1 on t1(col1);
+cqlsh:xpl1> create index t1_c2 on t1(col2);
+cqlsh:xpl1> insert into t1  (pk, col1, col2) values ('pk1','foo1','bar1');
+cqlsh:xpl1> insert into t1  (pk, col1, col2) values ('pk1a','foo1','bar1');
+cqlsh:xpl1> insert into t1  (pk, col1, col2) values ('pk1b','foo1','bar1');
+cqlsh:xpl1> insert into t1  (pk, col1, col2) values ('pk1c','foo1','bar1');
+cqlsh:xpl1> insert into t1  (pk, col1, col2) values ('pk2','foo2','bar2');
+cqlsh:xpl1> insert into t1  (pk, col1, col2) values ('pk3','foo3','bar3');
+cqlsh:xpl1> select * from t1 where col2='bar1';
+ pk   | col1 | col2
+------+------+------
+ pk1b | foo1 | bar1
+  pk1 | foo1 | bar1
+ pk1a | foo1 | bar1
+ pk1c | foo1 | bar1
+
+cqlsh:xpl1> select * from t1 where col2 in ('bar1', 'bar2') ;
+cqlsh:xpl1> 
+We should either make that last query work or refuse the query but returning nothing is wrong.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+24/Sep/12 12:12
+Update date:
+16/Apr/19 09:32
+Resolved date:
+09/Oct/12 14:16

@@ -1,0 +1,45 @@
+Summary:
+ORDER BY desc breaks cqlsh COPY
+Description:
+If you have a reversed text field, COPY chokes on it because the type is
+"'org.apache.cassandra.db.marshal.ReversedType'<text>" not just 'text' so the strings don't get quoted in the generated CQL.
+    def do_import_row(self, columns, nullval, layout, row):
+        rowmap = {}
+        for name, value in zip(columns, row):
+            if value != nullval:
+                type = layout.get_column(name).cqltype.cql_parameterized_type()
+                if type in ('ascii', 'text', 'timestamp', 'inet'):
+                    rowmap[name] = self.cql_protect_value(value)
+                else:
+                    rowmap[name] = value
+            else:
+                rowmap[name] = 'null'
+        return self.do_import_insert(layout, rowmap)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.6
+Component:
+Legacy/Tools
+Label:
+cqlsh
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Jeremiah Jordan
+Create date:
+03/Jun/13 20:40
+Update date:
+16/Apr/19 09:32
+Resolved date:
+03/Jun/13 22:00

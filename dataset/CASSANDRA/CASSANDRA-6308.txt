@@ -1,0 +1,135 @@
+Summary:
+Thread leak caused in creating OutboundTcpConnectionPool
+Description:
+We have seen in one of our large clusters that there are many OutboundTcpConnection threads having the same names. From a thread dump, OutboundTcpConnection threads have accounted for the largest shares of the total threads (65%+) and kept growing.
+Here is a portion of a grep output for threads in which names start with "WRITE-":
+"WRITE-/10.28.131.195" daemon prio=10 tid=0x00002aaac4022000 nid=0x2cb5 waiting on condition [0x00002acfbacda000]
+"WRITE-/10.28.131.195" daemon prio=10 tid=0x00002aaac42fe000 nid=0x2cb4 waiting on condition [0x00002acfbacad000]
+"WRITE-/10.30.142.49" daemon prio=10 tid=0x0000000040840000 nid=0x2cb1 waiting on condition [0x00002acfbac80000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004083e000 nid=0x2cb0 waiting on condition [0x00002acfbac53000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004083b800 nid=0x2caf waiting on condition [0x00002acfbac26000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040839800 nid=0x2cae waiting on condition [0x00002acfbabf9000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040837800 nid=0x2cad waiting on condition [0x00002acfbabcc000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000404a3800 nid=0x2cac waiting on condition [0x00002acfbab9f000]
+"WRITE-/10.30.142.49" daemon prio=10 tid=0x00000000404a1800 nid=0x2cab waiting on condition [0x00002acfbab72000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004049f800 nid=0x2caa waiting on condition [0x00002acfbab45000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004049e000 nid=0x2ca9 waiting on condition [0x00002acfbab18000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004049c800 nid=0x2ca8 waiting on condition [0x00002acfbaaeb000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x000000004049a800 nid=0x2ca7 waiting on condition [0x00002acfbaabe000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040498800 nid=0x2ca6 waiting on condition [0x00002acfbaa91000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040496800 nid=0x2ca5 waiting on condition [0x00002acfbaa64000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040717800 nid=0x2ca4 waiting on condition [0x00002acfbaa37000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040716000 nid=0x2ca3 waiting on condition [0x00002acfbaa0a000]
+"WRITE-/10.30.146.195" daemon prio=10 tid=0x0000000040714800 nid=0x2ca2 waiting on condition [0x00002acfba9dd000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040712800 nid=0x2ca1 waiting on condition [0x00002acfba9b0000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040710800 nid=0x2ca0 waiting on condition [0x00002acfba983000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004070e800 nid=0x2c9f waiting on condition [0x00002acfba956000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004070d000 nid=0x2c9e waiting on condition [0x00002acfba929000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004070b800 nid=0x2c9d waiting on condition [0x00002acfba8fc000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004070a000 nid=0x2c9c waiting on condition [0x00002acfba8cf000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040827000 nid=0x2c9b waiting on condition [0x00002acfba8a2000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040825000 nid=0x2c9a waiting on condition [0x00002acfba875000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00002aaac488e000 nid=0x2c99 waiting on condition [0x00002acfba848000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040823000 nid=0x2c98 waiting on condition [0x00002acfba81b000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040821800 nid=0x2c97 waiting on condition [0x00002acfba7ee000]
+"WRITE-/10.30.146.195" daemon prio=10 tid=0x000000004081f000 nid=0x2c96 waiting on condition [0x00002acfba7c1000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004081d000 nid=0x2c95 waiting on condition [0x00002acfba794000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004081b000 nid=0x2c94 waiting on condition [0x00002acfba767000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00002aaac488b000 nid=0x2c93 waiting on condition [0x00002acfba73a000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040819000 nid=0x2c92 waiting on condition [0x00002acfba70d000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407f9000 nid=0x2c91 waiting on condition [0x00002acfba6e0000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407f7000 nid=0x2c90 waiting on condition [0x00002acfba6b3000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407f5000 nid=0x2c8f waiting on condition [0x00002acfba686000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407f3000 nid=0x2c8d waiting on condition [0x00002acfba659000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407f1800 nid=0x2c8c waiting on condition [0x00002acfba62c000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000407ef000 nid=0x2c8b waiting on condition [0x00002acfba5ff000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000407ed800 nid=0x2c8a waiting on condition [0x00002acfba5d2000]
+"WRITE-/10.28.131.195" daemon prio=10 tid=0x00000000407ec000 nid=0x2c89 waiting on condition [0x00002acfba5a5000]
+"WRITE-/10.30.161.144" daemon prio=10 tid=0x00000000407e9800 nid=0x2c88 waiting on condition [0x00002acfba578000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405f5000 nid=0x2c87 waiting on condition [0x00002acfba54b000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405f3000 nid=0x2c86 waiting on condition [0x00002acfba51e000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405f1000 nid=0x2c85 waiting on condition [0x00002acfba4f1000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405ef000 nid=0x2c83 waiting on condition [0x00002acfba4c4000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405ed800 nid=0x2c82 waiting on condition [0x00002acfba497000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405eb800 nid=0x2c81 waiting on condition [0x00002acfba46a000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405ea000 nid=0x2c80 waiting on condition [0x00002acfba43d000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405e8800 nid=0x2c7f waiting on condition [0x00002acfba40f000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405e7800 nid=0x2c7e waiting on condition [0x00002acfba3e2000]
+"WRITE-/10.30.161.144" daemon prio=10 tid=0x0000000040607000 nid=0x2c7d waiting on condition [0x00002acfba3b5000]
+"WRITE-/10.30.161.144" daemon prio=10 tid=0x0000000040605800 nid=0x2c7c waiting on condition [0x00002acfba388000]
+"WRITE-/10.30.142.49" daemon prio=10 tid=0x0000000040604000 nid=0x2c7b waiting on condition [0x00002acfba35b000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x0000000040602000 nid=0x2c7a waiting on condition [0x00002acfba32e000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405ff800 nid=0x2c79 waiting on condition [0x00002acfba301000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405fe000 nid=0x2c78 waiting on condition [0x00002acfba2d4000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405fc000 nid=0x2c77 waiting on condition [0x00002acfba2a7000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x00000000405fa800 nid=0x2c75 waiting on condition [0x00002acfba27a000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x0000000040af9800 nid=0x2c74 waiting on condition [0x00002acfba24d000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x0000000040af8000 nid=0x2c73 waiting on condition [0x00002acfba220000]
+"WRITE-/10.30.161.144" daemon prio=10 tid=0x0000000040af6000 nid=0x2c72 waiting on condition [0x00002acfba1f3000]
+"WRITE-/10.28.131.195" daemon prio=10 tid=0x0000000040af4000 nid=0x2c71 waiting on condition [0x00002acfba1c6000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x0000000040af2000 nid=0x2c70 waiting on condition [0x00002acfba199000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040af0800 nid=0x2c6f waiting on condition [0x00002acfba16c000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040aef000 nid=0x2c6e waiting on condition [0x00002acfba13f000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040aed000 nid=0x2c6d waiting on condition [0x00002acfba112000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040aeb800 nid=0x2c6b waiting on condition [0x00002acfba0b8000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00002aaac46b9000 nid=0x2c6a waiting on condition [0x00002acfba08b000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407b3000 nid=0x2c69 waiting on condition [0x00002acfba05e000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407b1800 nid=0x2c68 waiting on condition [0x00002acfba031000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407af800 nid=0x2c66 waiting on condition [0x00002acfba004000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407ae000 nid=0x2c65 waiting on condition [0x00002acfb9fd7000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407ab800 nid=0x2c64 waiting on condition [0x00002acfb9faa000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407a9800 nid=0x2c63 waiting on condition [0x00002acfb9f7d000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407a8000 nid=0x2c62 waiting on condition [0x00002acfb9f50000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407a6800 nid=0x2c61 waiting on condition [0x00002acfb9f23000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000408d2800 nid=0x2c60 waiting on condition [0x00002acfb9ef6000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000408d1000 nid=0x2c5f waiting on condition [0x00002acfb9ec9000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000408cf800 nid=0x2c5d waiting on condition [0x00002acfb9e9c000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000408cd800 nid=0x2c5c waiting on condition [0x00002acfb9e6f000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000408cc000 nid=0x2c5b waiting on condition [0x00002acfb9e42000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004088d800 nid=0x2c5a waiting on condition [0x00002acfb9e15000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004088b000 nid=0x2c59 waiting on condition [0x00002acfb9de8000]
+"WRITE-/10.157.10.134" daemon prio=10 tid=0x0000000040889000 nid=0x2c58 waiting on condition [0x00002acfb9dbb000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040887800 nid=0x2c57 waiting on condition [0x00002acfb9d8e000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x0000000040720000 nid=0x2c56 waiting on condition [0x00002acfb9d61000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x000000004071f000 nid=0x2c55 waiting on condition [0x00002acfb9d34000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000407c3000 nid=0x2c54 waiting on condition [0x00002acfb9d07000]
+"WRITE-/10.78.95.30" daemon prio=10 tid=0x00000000407c1800 nid=0x2c53 waiting on condition [0x00002acfb9cda000]
+"WRITE-/10.28.131.195" daemon prio=10 tid=0x00000000407c0000 nid=0x2c52 waiting on condition [0x00002acfb9cac000]
+"WRITE-/10.28.131.195" daemon prio=10 tid=0x00000000407be000 nid=0x2c51 waiting on condition [0x00002acfb9c7f000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000405cc000 nid=0x2c50 waiting on condition [0x00002acfb9c52000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000405ca800 nid=0x2c4f waiting on condition [0x00002acfb9c24000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000405c8800 nid=0x2c4e waiting on condition [0x00002acfb9bf7000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00000000405c6800 nid=0x2c4d waiting on condition [0x00002acfb9bca000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00002aaac5010800 nid=0x2c4c waiting on condition [0x00002acfb9b9c000]
+"WRITE-/10.6.222.233" daemon prio=10 tid=0x00002aaac4cd9800 nid=0x2c4b waiting on condition [0x00002acfb9b6f000]
+"WRITE-/10.11.15.209" daemon prio=10 tid=0x0000000040756800 nid=0x2c4a waiting on condition [0x00002acfb9b42000]
+"WRITE-/10.11.15.209" daemon prio=10 tid=0x0000000040754800 nid=0x2c49 waiting on condition [0x00002acfb9b15000]
+We have patched this https://issues.apache.org/jira/browse/CASSANDRA-5175 but I don't this fix solves the issue totally. I will attach a patch soon.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.12, 2.0.3
+Component:
+None
+Label:
+leak thread
+Environment:
+
+Attachment number:
+0
+Assignee:
+Minh Do
+Reporter:
+Minh Do
+Create date:
+06/Nov/13 18:32
+Update date:
+16/Apr/19 09:32
+Resolved date:
+06/Nov/13 20:34

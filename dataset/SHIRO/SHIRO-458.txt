@@ -1,0 +1,57 @@
+Summary:
+Possible leaked timing information from DefaultPasswordService
+Description:
+Use of the String equals comparison for the password hash comparison could leak timing information since it returns false as soon a character does not match.
+DefaultPasswordService>>passwordsMatch(Object submittedPlaintext, String saved)
+Last line is:
+return saved.equals(formatted); //saved and formatted are strings
+A possible constant time equals could be:
+private boolean constantEquals(String s1, String s2)
+{
+/*
+Alternative option (simpler but I'm not sure about the intern 'cost'):
+s1.intern();
+s2.intern();
+s1 == s2
+*/
+int result = 0;
+byte[] a = s1.getBytes();
+byte[] b = s2.getBytes();
+// Also leaks timing information but probably ok...
+if (a.length != b.length)
+{ return false; }
+/*
+XOR each byte. If each byte is the
+same the XOR will result in 0.
+*/
+for (int i = 0; i < a.length; i++) { result |= a[i] ^ b[i]; }
+return result == 0;
+}
+Status:
+OPEN
+Priority:
+Trivial
+Resolution:
+Unresolved
+Affects_version:
+1.2.2
+Fix_version:
+None
+Component:
+Cryptography & Hashing
+Label:
+None
+Environment:
+mac os x, java 1.6
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Stuart Broad
+Create date:
+16/Sep/13 09:16
+Update date:
+30/May/17 07:46
+Resolved date:
+

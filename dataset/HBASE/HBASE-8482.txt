@@ -1,0 +1,43 @@
+Summary:
+TestHBaseFsck#testCheckTableLocks broke; java.lang.AssertionError: expected:<[]> but was:<[EXPIRED_TABLE_LOCK]>
+Description:
+I've been looking into this test failure because I thought it particular to my rpc hackery.
+What I see is like the subject:
+java.lang.AssertionError: expected:<[]> but was:<[EXPIRED_TABLE_LOCK]>
+and later in same unit test:
+java.lang.AssertionError: expected:<[EXPIRED_TABLE_LOCK]> but was:<[EXPIRED_TABLE_LOCK, EXPIRED_TABLE_LOCK]>
+The test creates a write lock and then expires it. In subject failure, we are expiring the lock ahead of the time it should be. Easier for me to reproduce is that the second write lock we put in place is not allowed to happen because of the presence of the first lock EVEN THOUGH IT HAS BEEN JUDGED EXPIRED:
+ERROR: Table lock acquire attempt found:[tableName=foo, lockOwner=localhost,60000,1, threadId=387, purpose=testCheckTableLocks, isShared=false, createTime=129898749]
+2013-05-02 00:34:42,715 INFO  [Thread-183] lock.ZKInterProcessLockBase(431): Lock is held by: write-testing utility0000000000
+ERROR: Table lock acquire attempt found:[tableName=foo, lockOwner=localhost,60000,1, threadId=349, purpose=testCheckTableLocks, isShared=false, createTime=28506852]
+Above, you see the expired lock and then our hbck lock visitor has it that the second lock is expired because it is held by the first lock.
+I can keep looking at this but input would be appreciated.
+It failed in recent trunk build https://builds.apache.org/view/H-L/view/HBase/job/HBase-TRUNK/4090/testReport/junit/org.apache.hadoop.hbase.util/TestHBaseFsck/testCheckTableLocks/
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.95.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+02/May/13 08:06
+Update date:
+23/Sep/13 19:08
+Resolved date:
+02/May/13 21:13

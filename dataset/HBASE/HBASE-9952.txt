@@ -1,0 +1,49 @@
+Summary:
+Snapshot restore may fail due to NullPointerException
+Description:
+In our QA run, certain snapshot restore request seemed to hang.
+The following was found in master log:
+2013-11-11 08:52:43,887 INFO org.apache.hadoop.hbase.util.FSVisitor: No logs under directory:hdfs://qeempress21:8020/apps/hbase/data/.hbase-snapshot/snapshot_tablethree_mod/WALs^M
+2013-11-11 08:52:43,887 INFO org.apache.hadoop.hbase.master.RegionStates: Transitioned {e048f867bbb31702dc1dd0498db53b82 state=SPLIT, ts=1384159894259, server=QEEMPRESS23,60020,1384146414618} to {e048f867bbb31702dc1dd0498db53b82 state=OFFLINE, ts=1384159963887, server=null}^M
+2013-11-11 08:52:43,896 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted [{ENCODED => 214a354a9e9f07d3c4e9420d2fdd8d28, NAME => 'tablethree_mod,,1384159891126.214a354a9e9f07d3c4e9420d2fdd8d28.', STARTKEY => '', ENDKEY => '\x5C011'}, {ENCODED => 4dad288061dac82bb420fb6dd526eea5, NAME => 'tablethree_mod,\x5C011,1384159900704.4dad288061dac82bb420fb6dd526eea5.', STARTKEY => '\x5C011', ENDKEY => '\x5C100'}, {ENCODED => e98b84924307f22d4318cfe235445ba7, NAME => 'tablethree_mod,\x5C100,1384159900704.e98b84924307f22d4318cfe235445ba7.', STARTKEY => '\x5C100', ENDKEY => ''}]^M
+2013-11-11 08:52:43,900 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Added 1^M
+2013-11-11 08:52:43,913 DEBUG org.apache.hadoop.hbase.zookeeper.lock.ZKInterProcessLockBase: Released /hbase/table-lock/tablethree_mod/write-master:600000000000006^M
+2013-11-11 08:52:43,913 ERROR org.apache.hadoop.hbase.executor.EventHandler: Caught throwable while processing event C_M_RESTORE_SNAPSHOT^M
+java.lang.NullPointerException^M
+  at org.apache.hadoop.hbase.catalog.MetaEditor.deleteRegions(MetaEditor.java:488)^M
+  at org.apache.hadoop.hbase.catalog.MetaEditor.overwriteRegions(MetaEditor.java:534)^M
+  at org.apache.hadoop.hbase.master.snapshot.RestoreSnapshotHandler.handleTableOperation(RestoreSnapshotHandler.java:160)^M
+  at org.apache.hadoop.hbase.master.handler.TableEventHandler.process(TableEventHandler.java:129)^M
+  at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:128)^M
+  at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Unknown Source)^M
+  at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)^M
+Looks like null was passed in the following call MetaEditor#overwriteRegions():
+    deleteRegions(catalogTracker, regionInfos);
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.96.0
+Fix_version:
+0.98.0, 0.96.1, 0.94.14
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Enis Soztutar
+Reporter:
+Ted Yu
+Create date:
+11/Nov/13 22:51
+Update date:
+26/Nov/13 05:53
+Resolved date:
+12/Nov/13 01:34

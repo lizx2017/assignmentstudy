@@ -1,0 +1,48 @@
+Summary:
+SSTable cleanup killed by IllegalStateException
+Description:
+Compacted SSTables were not being deleted even after a forced GC. The following stack traces were observed:
+ERROR [SSTABLE-CLEANUP-TIMER] 2010-09-01 15:54:07,254 CassandraDaemon.java (line 85) Uncaught exception in thread Thread[SSTABLE-CLEANUP-TIMER,5,main]
+java.lang.IllegalStateException: Task already scheduled or cancelled
+at java.util.Timer.sched(Timer.java:380)
+at java.util.Timer.schedule(Timer.java:192)
+at org.apache.cassandra.io.sstable.SSTableDeletingReference$CleanupTask.run(SSTableDeletingReference.java:86)
+at java.util.TimerThread.mainLoop(Timer.java:534)
+at java.util.TimerThread.run(Timer.java:484)
+ERROR [SSTABLE-DELETER] 2010-09-01 16:20:22,587 CassandraDaemon.java (line 85) Uncaught exception in thread Thread[SSTABLE-DELETER,5,main]
+java.lang.IllegalStateException: Timer already cancelled.
+at java.util.Timer.sched(Timer.java:376)
+at java.util.Timer.schedule(Timer.java:192)
+at org.apache.cassandra.io.sstable.SSTableDeletingReference.cleanup(SSTableDeletingReference.java:70)
+at org.apache.cassandra.io.sstable.SSTableReader$1$1.run(SSTableReader.java:85)
+at java.lang.Thread.run(Thread.java:636)
+If the SSTableDeletingReference$CleanupTask cannot delete a file, it reschedules itself for later. TimerTasks (which CleanupTask subclasses) are intended to be scheduled only once and will cause an IllegalStateException in the timer when it tries to schedule itself again. The exception causes timer to effectively cancel itself and the next attempt to schedule a task will cause an IllegalStateException in the SSTABLE-DELETER.
+It appears this could be fixed by scheduling a new CleanupTask instead of the same one that failed (SSTableDeletingReference.java:86).
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.6, 0.7 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Christopher Gist
+Create date:
+02/Sep/10 19:51
+Update date:
+16/Apr/19 09:33
+Resolved date:
+07/Sep/10 18:33

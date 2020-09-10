@@ -1,0 +1,43 @@
+Summary:
+If .META. offline between OPENING and OPENED, then wrong server location in .META. is possible
+Description:
+This is a good one. It happened to me testing OOME in split logging.
+Balancer moves region to new location, regionservrer X.
+New location regionserver X successfully opens the region and then goes to update .META.
+At this point, the server carrying .META. crashes.
+Regionserver X is stuck waiting on .META. to come back online. It takes so long master times out the region-in-transition
+Master assigns the region elsewhere to regionserver Y
+It opens successfully on regionserver Y and then it also parks waiting on .META. coming online
+.META. comes online
+The two servers X and Y race to update .META.
+I saw case where server X edit went in after server Ys edit which means that lookups in .META. get the wrong server. HBCK can detect this situation.
+RegionServer X when it wakes up coreeclty notices that its lost control of the region but the damage is done – where damage is .META. edit.
+Chatting with Jon, he suggested that regionserver X should 'rollback' the .META. edit – do explicit delete of what it added. This would work I think but chatting more, I'll make a fix that keeps updating the zookeeper OPENING state while edit goes on in a separate thread. Our continuous setting of OPENING will make it so region-in-transition does not timeout.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+15/Dec/10 20:50
+Update date:
+20/Nov/15 12:42
+Resolved date:
+17/Dec/10 05:42

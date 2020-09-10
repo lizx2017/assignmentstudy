@@ -1,0 +1,34 @@
+Summary:
+Every stream operation requires checking indexes in every SSTable
+Description:
+It looks like there's a streaming performance issue when leveled compaction and vnodes get together. To get the candidate set of chunks to stream, the streaming system gets references to every SSTable for a CF. This is probably a perfectly reasonable assumption for non-vnode cases, because the data being streamed is likely distributed across the full SSTable set. This is also probably a perfectly reasonable assumption for size-tiered compaction, because the data is, again, likely distributed across the full SSTable set. However, for each vnode repair performed on LCS CF's, this scan across potentially tens of thousands of SSTables is wasteful considering that only a small percentage of them will actually have data for a given range.
+This manifested itself as "hanging" repair operations with tasks backing up on the MiscStage thread pool.
+The attached patch changes the streaming code so that for a given range, only SSTables for the requested range are checked to be included in streaming.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.6
+Component:
+None
+Label:
+streaming
+Environment:
+
+Attachment number:
+0
+Assignee:
+Rick Branson
+Reporter:
+Rick Branson
+Create date:
+14/May/13 23:46
+Update date:
+16/Apr/19 09:32
+Resolved date:
+16/May/13 16:46

@@ -1,0 +1,35 @@
+Summary:
+Security: Byte arrays (and other memory) holding sensitive data (even temporarily) should be zerod-out
+Description:
+Shiro provides features related to end-users interacting with sensitive information. For instance passwords, but also the cryptography features could be used for all sorts of sensitive information, such as credit card numbers.
+Policy-driven environments require compliance with rules that include the requirement to use FIPS 140.2 compliant JCA implementations, and that the application code that works with such crypto libraries also take care to leave no sensitive data as artifacts in memory (vulnerable to core dumps, etc.). See PCI DSS, DoD Application Security STIG, etc..
+A quick review raises flags about various points in Shiro code that handle sensitive data and do not properly comply. For example within JcaCipherService copies of data are made in byte arrays which (which, base upon quick review) never get zeroed out (all of the bytes set to 0x0 or some other meaningless values). Also decryption results are returned via ByteSource. SimpleByteSource holds the byte[] of decrypted data but provides no way of clearing it. By coincidence, the internal representation is 'leaked' through the getBytes() implementation, and the end user could clear the array themselves, but reliance on the internal representation being passed out by all implmentations of ByteSource is rather risky.
+Suggest a review of all points of encrypt/decrypt to ensure temporary (internal) copies of data are always cleared, and suggest ByteSource have a new method added to the interface, such as wipe() that the end user can call when they are finished with the ByteSource.
+Status:
+OPEN
+Priority:
+Critical
+Resolution:
+Unresolved
+Affects_version:
+1.2.0
+Fix_version:
+2.0.0
+Component:
+Authentication (log-in), (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+James House
+Create date:
+09/Mar/12 17:04
+Update date:
+16/Aug/16 01:54
+Resolved date:
+

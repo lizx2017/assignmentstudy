@@ -1,0 +1,63 @@
+Summary:
+IndexOutOfBoundsException when saving a document (at random)
+Description:
+Getting the following stacktrace:
+org.apache.pdfbox.exceptions.COSVisitorException: java.lang.IndexOutOfBoundsException: Index: 28, Size: 0
+at org.apache.pdfbox.pdfwriter.COSWriter.visitFromStream(COSWriter.java:1245)
+at org.apache.pdfbox.cos.COSStream.accept(COSStream.java:201)
+at org.apache.pdfbox.cos.COSObject.accept(COSObject.java:206)
+at org.apache.pdfbox.pdfwriter.COSWriter.doWriteObject(COSWriter.java:524)
+at org.apache.pdfbox.pdfwriter.COSWriter.doWriteBody(COSWriter.java:434)
+at org.apache.pdfbox.pdfwriter.COSWriter.visitFromDocument(COSWriter.java:1056)
+at org.apache.pdfbox.cos.COSDocument.accept(COSDocument.java:496)
+at org.apache.pdfbox.pdfwriter.COSWriter.write(COSWriter.java:1392)
+at org.apache.pdfbox.pdmodel.PDDocument.save(PDDocument.java:1157)
+at org.apache.pdfbox.pdmodel.PDDocument.save(PDDocument.java:1138)
+...
+Caused by: java.lang.IndexOutOfBoundsException: Index: 28, Size: 0
+at java.util.ArrayList.rangeCheck(ArrayList.java:604)
+at java.util.ArrayList.get(ArrayList.java:382)
+at org.apache.pdfbox.io.RandomAccessBuffer.seek(RandomAccessBuffer.java:84)
+at org.apache.pdfbox.io.RandomAccessFileInputStream.read(RandomAccessFileInputStream.java:96)
+at java.io.BufferedInputStream.fill(BufferedInputStream.java:235)
+at java.io.BufferedInputStream.read1(BufferedInputStream.java:275)
+at java.io.BufferedInputStream.read(BufferedInputStream.java:334)
+at org.apache.pdfbox.pdfwriter.COSWriter.visitFromStream(COSWriter.java:1232)
+I'll add some context. We have a "data pipeline" in which a Windows Print Monitor sends postscript into a servlet which then uses GhostScript 9.05 to convert in-memory to PDF. This PDF is then loaded into PDFBox using PDDocument.load().
+At this point we split the original PDF into multiple smaller ones each of which is saved to a ByteArrayOutputStream. At the point of save() we are having serious reliability issues.
+Taking an original PDF from Ghostscript we have saved this into a unit test to replicate the problem without success. If we attempt to re-execute the pipeline to take the original PDF and split it, we get apparently random percentages of saved documents.
+For instance, on a 990 page document (text, no images), to be split into 990 1-page documents using Tomcat 7 with -Xmx=512m:
+Pass 1: 50% were saved, 50% ended with stack traces
+Pass 2: 100% were saved
+Pass 3: 100% were saved
+The same test with -Xmx=128m ended several times with just 1 document saved, the rest were stack traces.
+We have also seen this randomly hit a sample document consisting of four pages to be split into two two-page documents so it does not appear to be memory related. We also added code to catch the IndexOutOfBoundsException and make up to ten attempts to repeat, but it seems the save() either works the first time or not at all.
+We're thinking there are environmental factors here but we're now focused on getting this nailed. Any advice or assistance will be welcomed.
+Status:
+REOPENED
+Priority:
+Critical
+Resolution:
+Unresolved
+Affects_version:
+1.8.1
+Fix_version:
+None
+Component:
+Writing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+James Green
+Create date:
+30/Apr/13 08:52
+Update date:
+02/Oct/15 07:37
+Resolved date:
+

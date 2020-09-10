@@ -1,0 +1,76 @@
+Summary:
+The region server can crash at startup
+Description:
+I have this stack when I start a fresh region server. 5% of the time I would say (per region server).
+2013-07-04 12:00:22,609 FATAL [regionserver60020] regionserver.HRegionServer: ABORTING region server ip-10-137-7-67.ec2.internal,60020,1372939221819: Initialization of RS failed.  Hence aborting RS.
+java.util.ConcurrentModificationException
+ at java.util.Hashtable$Enumerator.next(Hashtable.java:1200)
+ at org.apache.hadoop.conf.Configuration.iterator(Configuration.java:1820)
+ at org.apache.hadoop.hbase.zookeeper.ZKConfig.makeZKProps(ZKConfig.java:92)
+ at org.apache.hadoop.hbase.zookeeper.ZKConfig.getZKQuorumServersString(ZKConfig.java:267)
+ at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.<init>(ZooKeeperWatcher.java:158)
+ at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.<init>(ZooKeeperWatcher.java:133)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.initializeZooKeeper(HRegionServer.java:667)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.preRegistrationInitialization(HRegionServer.java:647)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:778)
+ at java.lang.Thread.run(Thread.java:722)
+2013-07-04 12:00:22,614 FATAL [regionserver60020] regionserver.HRegionServer: RegionServer abort: loaded coprocessors are: []
+2013-07-04 12:00:22,614 INFO  [regionserver60020] regionserver.HRegionServer: STOPPED: Initialization of RS failed.  Hence aborting RS.
+2013-07-04 12:00:22,616 FATAL [regionserver60020] regionserver.HRegionServer: ABORTING region server ip-10-137-7-67.ec2.internal,60020,1372939221819: Unhandled: null
+java.lang.NullPointerException
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:798)
+ at java.lang.Thread.run(Thread.java:722)
+2013-07-04 12:00:22,616 FATAL [regionserver60020] regionserver.HRegionServer: RegionServer abort: loaded coprocessors are: []
+2013-07-04 12:00:22,617 INFO  [regionserver60020] regionserver.HRegionServer: STOPPED: Unhandled: null
+2013-07-04 12:00:22,767 INFO  [main] regionserver.ShutdownHook: Installed shutdown hook thread: Shutdownhook:regionserver60020
+2013-07-04 12:00:22,768 ERROR [main] regionserver.HRegionServerCommandLine: Region server exiting
+java.lang.RuntimeException: HRegionServer Aborted
+ at org.apache.hadoop.hbase.regionserver.HRegionServerCommandLine.start(HRegionServerCommandLine.java:66)
+ at org.apache.hadoop.hbase.regionserver.HRegionServerCommandLine.run(HRegionServerCommandLine.java:85)
+ at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:70)
+ at org.apache.hadoop.hbase.util.ServerCommandLine.doMain(ServerCommandLine.java:78)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.main(HRegionServer.java:2309)
+2013-07-04 12:00:22,770 INFO  [Thread-4] regionserver.ShutdownHook: Shutdown hook starting; hbase.shutdown.hook=true; fsShutdownHook=org.apache.hadoop.fs.FileSystem$Cache$ClientFinalizer@21f0dbb9
+There is one bug here in the region server: we should not start the snapshot if the machine is supposed to stop:
+      // start the snapshot handler, since the server is ready to run
+      this.snapshotManager.start();
+and the root cause is here in ZKConfig:
+    for (Entry<String, String> entry : conf) { // <=== BUG
+      String key = entry.getKey();
+      if (key.startsWith(HConstants.ZK_CFG_PROPERTY_PREFIX)) {
+        String zkKey = key.substring(HConstants.ZK_CFG_PROPERTY_PREFIX_LEN);
+        String value = entry.getValue();
+        // If the value has variables substitutions, need to do a get.
+        if (value.contains(VARIABLE_START)) {
+          value = conf.get(key);
+        }
+        zkProperties.put(zkKey, value);
+      }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.95.2
+Fix_version:
+0.98.0, 0.95.2
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Nicolas Liochon
+Create date:
+04/Jul/13 13:19
+Update date:
+23/Sep/13 19:22
+Resolved date:
+05/Jul/13 07:35

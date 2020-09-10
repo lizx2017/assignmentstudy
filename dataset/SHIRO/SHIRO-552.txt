@@ -1,0 +1,48 @@
+Summary:
+JdbcRealm in SaltStyle.COLUMN assumes that password column is Base64 but salt column is utf8 bytes
+Description:
+The org.apache.shiro.realm.jdbc.JdbcRealm class, when configured with SaltStyle.COLUMN, assumes that password column is Base64 but salt column is utf8 bytes.
+The password is returned as a char[] (see JdbcRealm.java:241), which org.apache.shiro.authc.credential.HashedCredentialsMatcher (see HashedCredentialsMatcher.java:353):
+        if (credentials instanceof String || credentials instanceof char[]) {
+            //account.credentials were a char[] or String, so
+            //we need to do text decoding first:
+            if (isStoredCredentialsHexEncoded()) {
+                storedBytes = Hex.decode(storedBytes);
+            } else {
+                storedBytes = Base64.decode(storedBytes);
+            }
+        }
+However, the salt is returned as a ByteSource, by converting the DB-returned String into its UTF-8 bytes. See JdbcRealm.java:224:
+            if (salt != null) {
+                info.setCredentialsSalt(ByteSource.Util.bytes(salt));
+            }
+This is broken and inconsistent.
+Not all salt byte[]s are valid UTF8 strings, so the default assumption should be that the salt column is Base64 encoded.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+1.2.4
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Richard Bradley
+Create date:
+17/Dec/15 15:01
+Update date:
+20/Jun/17 09:04
+Resolved date:
+

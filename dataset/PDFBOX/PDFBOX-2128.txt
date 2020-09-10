@@ -1,0 +1,108 @@
+Summary:
+CMYK images are not supported correctly
+Description:
+I have a PDF with CMYK images inside and i need to extract the images in the RGB format. But the PDJpeg class seems to not work correctly; the colors are bad. Example:
+Original image in te PDF : http://ludoda.free.fr/IMAGE_IN_PDF.jpg
+Extracted image: http://ludoda.free.fr/IMAGE_EXTRACTED.jpg
+You can download the PDF : http://ludoda.free.fr/PORSCHE_CMYK.PDF
+and try my simple Test Case (I'm using PDFbox 1.8.5):
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import javax.imageio.ImageIO;
+
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDResources;
+import org.apache.pdfbox.pdmodel.graphics.xobject.PDJpeg;
+import org.apache.pdfbox.pdmodel.graphics.xobject.PDXObject;
+import org.apache.pdfbox.pdmodel.graphics.xobject.PDXObjectImage;
+
+public class TestCase {
+ 
+ public static void main(String[] args) 
+ {
+  try 
+  {
+   System.out.println("START EXTRACTING IMAGES...");
+   read_pdf();
+   System.out.println("COMPLETE");
+  }
+  catch (IOException ex) 
+  {
+      System.out.println("" + ex);
+  }
+
+ }
+
+ public static void read_pdf() throws IOException 
+ {
+      PDDocument document = null; 
+      document = PDDocument.load("C:\\temp\\PORSCHE_CMYK.pdf");
+
+      @SuppressWarnings("unchecked")
+      List<PDPage> pages = document.getDocumentCatalog().getAllPages();
+      Iterator<PDPage> iter = pages.iterator(); 
+      int i =1;
+
+      while (iter.hasNext())
+      {
+          PDPage page = (PDPage) iter.next();
+          PDResources resources = page.getResources();
+          Map<String, PDXObject> pageImages = resources.getXObjects();
+          if (pageImages != null)
+          { 
+              Iterator<String> imageIter = pageImages.keySet().iterator();
+              while (imageIter.hasNext())
+              {
+               String key = (String) imageIter.next();
+               if(pageImages.get(key) instanceof PDXObjectImage)
+                  {
+                   PDJpeg image = (PDJpeg) pageImages.get(key);
+                   
+                   // Test 1 : write2file
+                   image.write2file("C:\\workspace\\JAVA_PDFTools\\temp\\image" + i);
+                   
+                   // Test 2: getRGBImage
+                   BufferedImage bimage=image.getRGBImage();
+                   File outputfile = new File("C:\\workspace\\JAVA_PDFTools\\temp\\image" + i+"_buffered.jpg");
+                   ImageIO.write(bimage, "jpg", outputfile);
+                   i ++;
+                  }
+              }
+          }
+      }
+  }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.5, 1.8.6, 2.0.0
+Fix_version:
+2.0.0
+Component:
+PDModel
+Label:
+PDJpeg cmyk images
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ludovic Davoine
+Create date:
+10/Jun/14 12:03
+Update date:
+03/Jul/18 06:28
+Resolved date:
+26/Feb/15 18:15

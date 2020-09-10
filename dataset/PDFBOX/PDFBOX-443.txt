@@ -1,0 +1,80 @@
+Summary:
+Wrong length in stream decoding after exception (results in endless loop)
+Description:
+When reading streams from PDF files PDFBox may get stuck and don't return. This happens for instance if a stream with FlateDecode filter is read but flate decoder is unable to read encoded data.
+The reason is that in COSStream in method doDecode(COSName, int) the filter is first applied using length specified by PDF and in case of an error the filter is applied with length parameter set to 'writtenLength'. However 'writtenLength' is read from unfilteredStream which was newly created in first try - so written length is 0 which results in some endless loop in flate decoder.
+The solution: read written length before first try and (in case we have several filter) make sure that writtenLength is not 0.
+The fixed method:
+private void doDecode( COSName filterName, int filterIndex ) throws IOException
+{
+FilterManager manager = getFilterManager();
+Filter filter = manager.getFilter( filterName );
+InputStream input;
+boolean done = false;
+IOException exception = null;
+long position = unFilteredStream.getPosition();
+long length = unFilteredStream.getLength();
+long writtenLength = unFilteredStream.getLengthWritten(); // TB: in case we need it later
+if( length == 0 )
+{ //if the length is zero then don't bother trying to decode //some filters don't work when attempting to decode //with a zero length stream. See zlib_error_01.pdf unFilteredStream = new RandomAccessFileOutputStream( file ); done = true; }
+else
+{
+//ok this is a simple hack, sometimes we read a couple extra
+//bytes that shouldn't be there, so we encounter an error we will just
+//try again with one less byte.
+for( int tryCount=0; !done && tryCount<5; tryCount++ )
+{
+try
+{ input = new BufferedInputStream( new RandomAccessFileInputStream( file, position, length ), BUFFER_SIZE ); unFilteredStream = new RandomAccessFileOutputStream( file ); filter.decode( input, unFilteredStream, this, filterIndex ); done = true; }
+catch( IOException io )
+{ length--; exception = io; }
+}
+if( !done )
+{
+//if no good stream was found then lets try again but with the
+//length of data that was actually read and not length
+//defined in the dictionary
+length = writtenLength;
+if( length != 0 )
+{
+for( int tryCount=0; !done && tryCount<5; tryCount++ )
+{
+try
+{ input = new BufferedInputStream( new RandomAccessFileInputStream( file, position, length ), BUFFER_SIZE ); unFilteredStream = new RandomAccessFileOutputStream( file ); filter.decode( input, unFilteredStream, this, filterIndex ); done = true; }
+catch( IOException io )
+{ length--; exception = io; }
+}
+}
+}
+}
+if( !done )
+{ throw exception; }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.8.0-incubator
+Fix_version:
+1.0.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Timo Boehme
+Create date:
+19/Mar/09 09:49
+Update date:
+18/May/12 16:52
+Resolved date:
+18/May/12 16:51

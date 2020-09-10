@@ -1,0 +1,96 @@
+Summary:
+Error in FlateFilter?
+Description:
+[imported from SourceForge]
+http://sourceforge.net/tracker/index.php?group_id=78314&atid=552832&aid=1291763
+Originally submitted by yves_bussard on 2005-09-15 01:58.
+Hi Ben,
+While debugging a problem I had I found the following
+line in the method FlateFilter.decode():
+if (predictor==-1 || predictor == 1 && predictor == 10)
+This is on line 95. Shouldn't the && operator be a || ?
+cheers
+Yves
+[comment on SourceForge]
+Originally sent by thib_gc.
+Logged In: YES
+user_id=736114
+I agree with reporter yves_bussard that the && in line 94 is
+highly likely supposed to be ||. Clearly, the three-boolean
+statement has no non-trivial meaning, even with parentheses.
+The Fifth Edition (PDF 1.6) states the following about the
+possible value of (what is in that Java code) the variable
+"predictor":
+1 No prediction (the default value)
+2 TIFF Predictor 2
+10 PNG prediction (on encoding, PNG None on all rows)
+11 PNG prediction (on encoding, PNG Sub on all rows)
+12 PNG prediction (on encoding, PNG Up on all rows)
+13 PNG prediction (on encoding, PNG Average on all rows)
+14 PNG prediction (on encoding, PNG Paeth on all rows)
+15 PNG prediction (on encoding, PNG optimum)
+(Table 3.8, page 52) The value 10 isn't very significant;
+though it flags the data as PNG, it declares that there is
+no prediction. The value 1 is the canonical declaration that
+there is no prediction. Thus it seems quite normal that -1,
+1 and 10 (-1 being the default in the code) all go down the
+same code path.
+As it stands in 0.7.3, the "else" branch that start line 102
+never gets executed, yet it seems to deal with images. So
+while I don't have a sample file on hand, it would seem that
+some particular encodings of PNG images may trigger a
+problem by going down a path with no prediction even though
+they require a predictor function. (I don't know what the
+0.7.4 code looks like.)
+[comment on SourceForge]
+Originally sent by yves_bussard.
+Logged In: YES
+user_id=908162
+This line actually is not the source of my problem. I just
+stumbled over it. It is a logical problem (or I really need
+to start learning java again from scratch): How can a
+variable be equal to 1 AND 10. The line just doesn't make sense.
+[comment on SourceForge]
+Originally sent by yves_bussard.
+Logged In: YES
+user_id=908162
+This line actually is not the source of my problem. I just
+stumbled over it. It is a logical problem (or I really need
+to start learning java again from scratch): How can a
+variable be equal to 1 AND 10. The line just doesn't make sense.
+[comment on SourceForge]
+Originally sent by benlitchfield.
+Logged In: YES
+user_id=601708
+The predictor section of code was actually a contribution, so I
+will need to take a little while to verify what is going on. Can
+you attach/upload a PDF that exhibits this issue?
+Ben
+Status:
+CLOSED
+Priority:
+
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.8.0-incubator
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Anonymous
+Create date:
+15/Sep/05 08:58
+Update date:
+21/Oct/09 09:52
+Resolved date:
+06/Feb/09 15:18

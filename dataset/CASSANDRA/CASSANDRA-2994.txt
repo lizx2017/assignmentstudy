@@ -1,0 +1,71 @@
+Summary:
+OutOfBounds in CompressedSequentialWriter.flushData
+Description:
+Near the beginning of a wide row test with CASSANDRA-47 compression enabled on a counter column family, I see the following exception:
+ WARN [CompactionExecutor:5] 2011-08-04 21:50:14,558 FileUtils.java (line 95) Failed closing org.apache.cassandra.io.compress.CompressedSequentialWriter@28f01347
+java.lang.IndexOutOfBoundsException
+ at java.io.RandomAccessFile.writeBytes(Native Method)
+ at java.io.RandomAccessFile.write(RandomAccessFile.java:466)
+ at org.apache.cassandra.io.compress.CompressedSequentialWriter.flushData(CompressedSequentialWriter.java:88)
+ at org.apache.cassandra.io.util.SequentialWriter.flushInternal(SequentialWriter.java:174)
+ at org.apache.cassandra.io.util.SequentialWriter.syncInternal(SequentialWriter.java:150)
+ at org.apache.cassandra.io.util.SequentialWriter.close(SequentialWriter.java:283)
+ at org.apache.cassandra.io.compress.CompressedSequentialWriter.close(CompressedSequentialWriter.java:159)
+ at org.apache.cassandra.io.util.FileUtils.closeQuietly(FileUtils.java:91)
+ at org.apache.cassandra.io.sstable.SSTableWriter.cleanupIfNecessary(SSTableWriter.java:201)
+ at org.apache.cassandra.db.compaction.CompactionTask.execute(CompactionTask.java:176)
+ at org.apache.cassandra.db.compaction.CompactionManager$1.call(CompactionManager.java:120)
+ at org.apache.cassandra.db.compaction.CompactionManager$1.call(CompactionManager.java:103)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+ERROR [CompactionExecutor:5] 2011-08-04 21:50:14,561 AbstractCassandraDaemon.java (line 146) Fatal exception in thread Thread[CompactionExecutor:5,1,main]
+java.lang.IndexOutOfBoundsException
+ at java.io.RandomAccessFile.writeBytes(Native Method)
+ at java.io.RandomAccessFile.write(RandomAccessFile.java:466)
+ at org.apache.cassandra.io.compress.CompressedSequentialWriter.flushData(CompressedSequentialWriter.java:88)
+ at org.apache.cassandra.io.util.SequentialWriter.flushInternal(SequentialWriter.java:174)
+ at org.apache.cassandra.io.util.SequentialWriter.reBuffer(SequentialWriter.java:226)
+ at org.apache.cassandra.io.util.SequentialWriter.writeAtMost(SequentialWriter.java:117)
+ at org.apache.cassandra.io.util.SequentialWriter.write(SequentialWriter.java:101)
+ at java.io.DataOutputStream.write(DataOutputStream.java:90)
+ at org.apache.cassandra.db.compaction.PrecompactedRow.write(PrecompactedRow.java:105)
+ at org.apache.cassandra.io.sstable.SSTableWriter.append(SSTableWriter.java:150)
+ at org.apache.cassandra.db.compaction.CompactionTask.execute(CompactionTask.java:153)
+ at org.apache.cassandra.db.compaction.CompactionManager$1.call(CompactionManager.java:120)
+ at org.apache.cassandra.db.compaction.CompactionManager$1.call(CompactionManager.java:103)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Stu Hood
+Create date:
+04/Aug/11 22:07
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Aug/11 14:16

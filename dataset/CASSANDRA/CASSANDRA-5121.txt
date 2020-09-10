@@ -1,0 +1,51 @@
+Summary:
+system.peers.tokens is empty after node restart
+Description:
+Using a 2 nodes fresh cluster (127.0.0.1 & 127.0.0.2) running latest 1.2, I’m querying system.peers to get the nodes of the cluster and their respective token. But it seems there is a problem after either node restart.
+When both node starts up, querying system.peers seems ok:
+127.0.0.1> select * from system.peers;
++-----------------+------------------------------------------+---------------+-----------+---------------------+-----------------+------------------------------------------+-------------------------------------------+
+| data_center     | host_id                                  | peer          | rack      | release_version     | rpc_address     | schema_version                           | tokens                                    |
++=================+==========================================+===============+===========+=====================+=================+==========================================+===========================================+
+| datacenter1     | 4819cbb0-9741-4fe0-8d7d-95941b0247bf     | 127.0.0.2     | rack1     | 1.2.0               | 127.0.0.2       | 59adb24e-f3cd-3e02-97f0-5b395827453f     | 56713727820156410577229101238628035242    |
++-----------------+------------------------------------------+---------------+-----------+---------------------+-----------------+------------------------------------------+-------------------------------------------+
+But as soon as one node is restarted (let’s say 127.0.0.2), tokens column is then empty:
+127.0.0.1> select * from system.peers;
++-----------------+------------------------------------------+---------------+-----------+---------------------+-----------------+------------------------------------------+-------------+
+| data_center     | host_id                                  | peer          | rack      | release_version     | rpc_address     | schema_version                           | tokens      |
++=================+==========================================+===============+===========+=====================+=================+==========================================+=============+
+| datacenter1     | 4819cbb0-9741-4fe0-8d7d-95941b0247bf     | 127.0.0.2     | rack1     | 1.2.0               | 127.0.0.2       | 59adb24e-f3cd-3e02-97f0-5b395827453f     |             |
++-----------------+------------------------------------------+---------------+-----------+---------------------+-----------------+------------------------------------------+-------------+
+Log server side:
+DEBUG 22:08:01,608 Responding: ROWS [peer(system, peers), org.apache.cassandra.db.marshal.InetAddressType][data_center(system, peers), org.apache.cassandra.db.marshal.UTF8Type][host_id(system, peers), org.apache.cassandra.db.marshal.UUIDType][rack(system, peers), org.apache.cassandra.db.marshal.UTF8Type][release_version(system, peers), org.apache.cassandra.db.marshal.UTF8Type][rpc_address(system, peers), org.apache.cassandra.db.marshal.InetAddressType][schema_version(system,
+peers), org.apache.cassandra.db.marshal.UUIDType][tokens(system, peers), org.apache.cassandra.db.marshal.SetType(org.apache.cassandra.db.marshal.UTF8Type)]
+ | 127.0.0.2 | datacenter1 | 4819cbb0-9741-4fe0-8d7d-95941b0247bf | rack1 | 1.2.0 | 127.0.0.2 | 59adb24e-f3cd-3e02-97f0-5b395827453f | null
+Restarting the other node (127.0.0.1) restore back the tokens column.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.1
+Component:
+None
+Label:
+None
+Environment:
+windows 8, java 1.6
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Pierre Chalamet
+Create date:
+06/Jan/13 21:32
+Update date:
+16/Apr/19 09:32
+Resolved date:
+15/Jan/13 15:26

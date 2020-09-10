@@ -1,0 +1,44 @@
+Summary:
+Testcase TestHeapSize#testMutations is wrong
+Description:
+I happened to check this test case and there are several existing errors to make it pass. You can reproduce the test case failure by adding a new field into Mutation, the test case will either fail on a 64 bit system or 32 bit one.
+Below are errors I found in the test case:
+1) The test case is using
+row=new byte[]{0}
+which is an array with length=1 while ClassSize.estimateBase can only calculate base class size(without counting field array length)
+2) Add ClassSize.REFERENCE twice in the following code because ClassSize.estimateBase adds all reference fields already.
+expected += ClassSize.align(ClassSize.TREEMAP + ClassSize.REFERENCE);
+3) ClassSize.estimateBase round up the sum of length of reference fields + primitive fields + Array while Mutation.MUTATION_OVERHEAD aligns the sum of length of a different set of fields. Therefore, there will be round up differences for class Increment because it introduces a new reference field TimeRange tr when the test case runs on a 32bit and 64 bit system.
+...
+    long prealign_size = coeff[0] + align(coeff[1] * ARRAY) + coeff[2] * REFERENCE;
+    // Round up to a multiple of 8
+    long size = align(prealign_size);
+...
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.1
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeffrey Zhong
+Reporter:
+Jeffrey Zhong
+Create date:
+23/Apr/13 01:54
+Update date:
+23/Sep/13 19:08
+Resolved date:
+26/Apr/13 20:31

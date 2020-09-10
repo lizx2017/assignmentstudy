@@ -1,0 +1,56 @@
+Summary:
+-ROOT-/.META. regions are hanging if master restarted while closing -ROOT-/.META. regions on dead RS
+Description:
+ROOT/META are not getting assigned if master restarted while closing ROOT/META.
+Lets suppose catalog table regions in M_ZK_REGION_CLOSING state during master initialization and then just we are adding the them to RIT and waiting for TM.
+        if (isOnDeadServer(regionInfo, deadServers) &&
+            (data.getOrigin() == null || !serverManager.isServerOnline(data.getOrigin()))) {
+          // If was on dead server, its closed now. Force to OFFLINE and this
+          // will get it reassigned if appropriate
+          forceOffline(regionInfo, data);
+        } else {
+          // Just insert region into RIT.
+          // If this never updates the timeout will trigger new assignment
+          regionsInTransition.put(encodedRegionName, new RegionState(
+            regionInfo, RegionState.State.CLOSING,
+            data.getStamp(), data.getOrigin()));
+        }
+isOnDeadServer always return false to ROOT/META because deadServers is null.
+Even TM cannot close them properly because its not available in online regions since its not yet assigned.
+    synchronized (this.regions) {
+      // Check if this region is currently assigned
+      if (!regions.containsKey(region)) {
+        LOG.debug("Attempted to unassign region " +
+          region.getRegionNameAsString() + " but it is not " +
+          "currently assigned anywhere");
+        return;
+      }
+    }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.94.6
+Fix_version:
+None
+Component:
+Region Assignment
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+rajeshbabu
+Create date:
+16/Apr/13 16:21
+Update date:
+20/Oct/13 21:04
+Resolved date:
+20/Oct/13 21:04

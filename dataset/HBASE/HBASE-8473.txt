@@ -1,0 +1,44 @@
+Summary:
+add note to ref guide about snapshots and ec2 reverse dns requirements.
+Description:
+From IRC from mighty Jeremy Carroll.
+17:10 <jeremy_carroll> jmhsieh: I think I found the root cuase. All my region servers reach the barrier, but it does not continue.
+17:11 <jeremy_carroll> jmhsieh: All RS have this in their logs: 2013-05-01 00:04:56,356 DEBUG org.apache.hadoop.hbase.procedure.Subprocedure: Subprocedure 'backup1' coordinator notified of 'acquire', waiting on 'reached' or 'abort' from coordinator.
+17:11 <jeremy_carroll> jmhsieh: Then the coordinator (Master) never sends anything. They just sit until the timeout.
+17:12 <jeremy_carroll> jmhsieh: So basically 'reached' is never obtained. Then abort it set, and it fails.
+...
+17:24 <jeremy_carroll> jmhsieh: Found the bug. The hostnames dont match the master due to DNS resolution
+17:25 <jeremy_carroll> jmhsieh: The barrier aquired is putting in the local hostname from the regionservers. In EC2 (Where reverse DNS does not work well), the master hands the internal name to the client.
+17:25 <jeremy_carroll> jmhsieh: https://s3.amazonaws.com/uploads.hipchat.com/23947/185789/au94meik0h3y5ii/Screen%20Shot%202013-04-30%20at%2017.25.50.png 
+17:26 <jeremy_carroll> jmhsieh: So it's waiting for something like 'ip-10-155-208-202.ec2.internal,60020,1367366580066' zNode to show up, but instead 'hbasemetaclustera-d1b0a484,60020,1367366580066,' is being inserted. Barrier is not reached
+17:27 <jeremy_carroll> jmhsieh: Reason being in our environment the master does not have a reverse DNS entry. So we get stuff like this on RegionServer startup in our logs.
+17:27 <jeremy_carroll> jmhsieh: 2013-05-01 00:03:00,614 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Master passed us hostname to use. Was=hbasemetaclustera-d1b0a484, Now=ip-10-155-208-202.ec2.internal
+17:54 <jeremy_carroll> jmhsieh: That was it. Verified. Now that Reverse DNS is working, snapshots are working. Now how to figure out how to get Reverse DNS working on Route53. I wished there was something like 'slave.host.name' inside of Hadoop for this. Looking at source code.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.94.6.1, 0.95.0
+Fix_version:
+2.0.0
+Component:
+documentation, snapshots
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Misty Linville
+Reporter:
+Jonathan Hsieh
+Create date:
+01/May/13 01:15
+Update date:
+14/Jul/14 07:14
+Resolved date:
+14/Jul/14 04:57

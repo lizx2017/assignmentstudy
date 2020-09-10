@@ -1,0 +1,74 @@
+Summary:
+Master stuck with ServerShutdownHandler doing a waitForMeta
+Description:
+Messing around w/ 0.92 on cluster I got myself into a situation where the master would not go down because we were hung as follows in an infinite wait on meta to come up:
+"MASTER_SERVER_OPERATIONS-sv4r11s38,7001,1321897362552-2" prio=10 tid=0x000000004205d800 nid=0x19f6 waiting for monitor entry [0x00007fe4eb3f1000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMeta(CatalogTracker.java:457)
+        - waiting to lock <0x00000000ca199190> (a java.util.concurrent.atomic.AtomicBoolean)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMeta(CatalogTracker.java:426)
+        at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.process(ServerShutdownHandler.java:253)
+        at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:168)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+
+"MASTER_SERVER_OPERATIONS-sv4r11s38,7001,1321897362552-1" prio=10 tid=0x000000004237b000 nid=0x19f4 waiting for monitor entry [0x00007fe4ebefc000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMeta(CatalogTracker.java:457)
+        - waiting to lock <0x00000000ca199190> (a java.util.concurrent.atomic.AtomicBoolean)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMeta(CatalogTracker.java:426)
+        at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.process(ServerShutdownHandler.java:253)
+        at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:168)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+
+"MASTER_SERVER_OPERATIONS-sv4r11s38,7001,1321897362552-0" prio=10 tid=0x00007fe4ec610800 nid=0x18e1 waiting on condition [0x00007fe4eb4f2000]
+   java.lang.Thread.State: TIMED_WAITING (sleeping)
+        at java.lang.Thread.sleep(Native Method)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getRegionServerWithRetries(HConnectionManager.java:1295)
+        at org.apache.hadoop.hbase.client.HTable.get(HTable.java:655)
+        at org.apache.hadoop.hbase.catalog.MetaReader.get(MetaReader.java:245)
+        at org.apache.hadoop.hbase.catalog.MetaReader.getRegion(MetaReader.java:347)
+        at org.apache.hadoop.hbase.catalog.MetaReader.readRegionLocation(MetaReader.java:287)
+        at org.apache.hadoop.hbase.catalog.MetaReader.getMetaRegionLocation(MetaReader.java:274)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.getMetaServerConnection(CatalogTracker.java:399)
+        - locked <0x00000000ca199190> (a java.util.concurrent.atomic.AtomicBoolean)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMeta(CatalogTracker.java:458)
+        - locked <0x00000000ca199190> (a java.util.concurrent.atomic.AtomicBoolean)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMeta(CatalogTracker.java:426)
+        at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.process(ServerShutdownHandler.java:253)
+        at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:168)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+This bit of code needs a bit of refactor such that we can get in state of hosting server – whether its stopped/stopping or not.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+delete
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+21/Nov/11 18:04
+Update date:
+06/Jan/15 16:44
+Resolved date:
+06/Jan/15 16:44

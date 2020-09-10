@@ -1,0 +1,105 @@
+Summary:
+Solr/Lucene 5.4.1: FastVectorHighlighter still fails with StringIndexOutOfBoundsException
+Description:
+I have reported issues with highlighting of EdgeNGram fields in SOLR-7926.
+As a workaround I now try to use an NGramField and the FastVectorHighlighter, but I often hit the FastVectorHighlighter StringIndexOutOfBoundsException-issue.
+Note that I use luceneMatchVersion="4.3". Without this, the whole term is highlighted, not just the search-term, as I reported in SOLR-7926.
+Any help with this would be highly appreciated! (Or tips on how otherwise to achieve proper highlighting of EdgeNGram and NGram-fields.)
+The issue can easily be reproduced by following these steps:
+Download and start Solr 5.4.1, create a core:
+-------------------------------------------------------------
+$ wget http://apache.uib.no/lucene/solr/5.4.1/solr-5.4.1.tgz
+$ tar xvf solr-5.4.1.tgz
+$ cd solr-5.4.1
+$ bin/solr start -f
+$ bin/solr create_core -c test -d server/solr/configsets/basic_configs
+(in a second terminal window)
+Add dynamic field and fieldtype to server/solr/test/conf/schema.xml:
+-----------------------------------------------------------------------------------------
+<dynamicField name="*_ngram" type="text_ngram" indexed="true" stored="true" termVectors="true" termPositions="true" termOffsets="true"/>
+<fieldType name="text_ngram" class="solr.TextField">
+<analyzer type="index">
+<tokenizer class="solr.WhitespaceTokenizerFactory"/>
+<filter class="solr.LowerCaseFilterFactory"/>
+<filter class="solr.NGramFilterFactory" minGramSize="1" maxGramSize="20" luceneMatchVersion="4.3"/>
+</analyzer>
+<analyzer type="query">
+<tokenizer class="solr.StandardTokenizerFactory"/>
+<filter class="solr.LowerCaseFilterFactory"/>
+</analyzer>
+</fieldType>
+Replace existing /select requestHandler in server/solr/test/conf/solrconfig.xml with:
+-------------------------------------------------------------------------------------
+<requestHandler name="/select" class="solr.SearchHandler">
+<lst name="defaults">
+<str name="echoParams">explicit</str>
+<int name="rows">10</int>
+<str name="df">name_ngram</str>
+<str name="mm">100%</str>
+<str name="defType">edismax</str>
+<str name="qf">
+name_ngram
+</str>
+<str name="fl">*</str>
+<str name="hl">true</str>
+<str name="hl.fl">name_ngram </str>
+<str name="hl.useFastVectorHighlighter">true</str>
+</lst>
+</requestHandler>
+Stop and restart Solr
+-----------------------
+Create and index this document:
+------------------------------
+$ more doc.xml
+<add>
+<doc>
+<field name="id">1</field>
+<field name="name_ngram">Jan-Ole Pedersen</field>
+</doc>
+</add>
+$ bin/post -c test doc.xml
+Execute search:
+$ curl "http://localhost:8983/solr/test/select?q=jan+ol&wt=json&indent=true"
+{
+"responseHeader":{
+"status":500,
+"QTime":3,
+"params":{
+"q":"jan ol",
+"indent":"true",
+"wt":"json"}},
+"response":{"numFound":1,"start":0,"docs":[
+{ "id":"1", "name_ngram":"Jan-Ole Pedersen", "_version_":1525256012582354944}
+]
+},
+"error":
+{ "msg":"String index out of range: -6", "trace":"java.lang.StringIndexOutOfBoundsException: String index out of range: -6\n\tat java.lang.String.substring(String.java:1954)\n\tat org.apache.lucene.search.vectorhighlight.BaseFragmentsBuilder.makeFragment(BaseFragmentsBuilder.java:180)\n\tat org.apache.lucene.search.vectorhighlight.BaseFragmentsBuilder.createFragments(BaseFragmentsBuilder.java:145)\n\tat org.apache.lucene.search.vectorhighlight.FastVectorHighlighter.getBestFragments(FastVectorHighlighter.java:187)\n\tat org.apache.solr.highlight.DefaultSolrHighlighter.doHighlightingByFastVectorHighlighter(DefaultSolrHighlighter.java:479)\n\tat org.apache.solr.highlight.DefaultSolrHighlighter.doHighlighting(DefaultSolrHighlighter.java:426)\n\tat org.apache.solr.handler.component.HighlightComponent.process(HighlightComponent.java:143)\n\tat org.apache.solr.handler.component.SearchHandler.handleRequestBody(SearchHandler.java:273)\n\tat org.apache.solr.handler.RequestHandlerBase.handleRequest(RequestHandlerBase.java:156)\n\tat org.apache.solr.core.SolrCore.execute(SolrCore.java:2073)\n\tat org.apache.solr.servlet.HttpSolrCall.execute(HttpSolrCall.java:658)\n\tat org.apache.solr.servlet.HttpSolrCall.call(HttpSolrCall.java:457)\n\tat org.apache.solr.servlet.SolrDispatchFilter.doFilter(SolrDispatchFilter.java:223)\n\tat org.apache.solr.servlet.SolrDispatchFilter.doFilter(SolrDispatchFilter.java:181)\n\tat org.eclipse.jetty.servlet.ServletHandler$CachedChain.doFilter(ServletHandler.java:1652)\n\tat org.eclipse.jetty.servlet.ServletHandler.doHandle(ServletHandler.java:585)\n\tat org.eclipse.jetty.server.handler.ScopedHandler.handle(ScopedHandler.java:143)\n\tat org.eclipse.jetty.security.SecurityHandler.handle(SecurityHandler.java:577)\n\tat org.eclipse.jetty.server.session.SessionHandler.doHandle(SessionHandler.java:223)\n\tat org.eclipse.jetty.server.handler.ContextHandler.doHandle(ContextHandler.java:1127)\n\tat org.eclipse.jetty.servlet.ServletHandler.doScope(ServletHandler.java:515)\n\tat org.eclipse.jetty.server.session.SessionHandler.doScope(SessionHandler.java:185)\n\tat org.eclipse.jetty.server.handler.ContextHandler.doScope(ContextHandler.java:1061)\n\tat org.eclipse.jetty.server.handler.ScopedHandler.handle(ScopedHandler.java:141)\n\tat org.eclipse.jetty.server.handler.ContextHandlerCollection.handle(ContextHandlerCollection.java:215)\n\tat org.eclipse.jetty.server.handler.HandlerCollection.handle(HandlerCollection.java:110)\n\tat org.eclipse.jetty.server.handler.HandlerWrapper.handle(HandlerWrapper.java:97)\n\tat org.eclipse.jetty.server.Server.handle(Server.java:499)\n\tat org.eclipse.jetty.server.HttpChannel.handle(HttpChannel.java:310)\n\tat org.eclipse.jetty.server.HttpConnection.onFillable(HttpConnection.java:257)\n\tat org.eclipse.jetty.io.AbstractConnection$2.run(AbstractConnection.java:540)\n\tat org.eclipse.jetty.util.thread.QueuedThreadPool.runJob(QueuedThreadPool.java:635)\n\tat org.eclipse.jetty.util.thread.QueuedThreadPool$3.run(QueuedThreadPool.java:555)\n\tat java.lang.Thread.run(Thread.java:745)\n", "code":500}
+}
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+5.4.1
+Fix_version:
+None
+Component:
+modules/highlighter
+Label:
+fastvectorhighlighte
+Environment:
+mac os x
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Bjørn Hjelle
+Create date:
+05/Feb/16 10:13
+Update date:
+21/Mar/16 10:33
+Resolved date:
+

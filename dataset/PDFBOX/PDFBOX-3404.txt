@@ -1,0 +1,51 @@
+Summary:
+Threads using PDFBox getting stuck when using standard 14 fonts
+Description:
+user Patrick Stahle reports:
+We have a relatively heavily threaded application which is calling pdfbox to stamp certain
+pdf files. We have been in production for a little over a week and have run into a few threads
+getting stuck. The stack trace is the following:
+### Thread id=34, name="dispatch_2_20160626211454_1064"
+# ThreadInfo: "dispatch_2_20160626211454_1064" Id=34 RUNNABLE
+# CPU: threadCpuTime=49,541,548.824 ms, threadUserTime=49,538,533.066 ms
+# Contention: blockedCount=33 , blockedTime=123 ms
+# Contention: lockName=null , lockOwnerId=-1, lockOwnerName=null
+java.util.HashMap.put(HashMap.java:473)
+java.util.HashSet.add(HashSet.java:217)
+java.util.AbstractCollection.addAll(AbstractCollection.java:334)
+org.apache.pdfbox.pdmodel.font.encoding.Encoding.contains(Encoding.java:109)
+org.apache.pdfbox.pdmodel.font.PDType1Font.encode(PDType1Font.java:343)
+org.apache.pdfbox.pdmodel.font.PDFont.encode(PDFont.java:286)
+org.apache.pdfbox.pdmodel.font.PDFont.getStringWidth(PDFont.java:315)
+com.tycoelectronics.emcs.stamppdf.StampEnginePDFBox.getLongestTextWidth(StampEnginePDFBox.java:1369)
+We seem to be getting stuck in PDFont classes HashMap which is unsynchronized class.
+We are using "PDType1Font.HELVETICA".
+The problem is that for the standard 14 fonts, each font is a singleton, but its code is being used multithreaded, so we have to secure that.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0, 2.0.2, 2.0.3, (1)
+Fix_version:
+2.0.3, 3.0.0 PDFBox
+Component:
+PDModel
+Label:
+multithreading
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+28/Jun/16 15:36
+Update date:
+25/Mar/17 18:12
+Resolved date:
+08/Jul/16 15:48

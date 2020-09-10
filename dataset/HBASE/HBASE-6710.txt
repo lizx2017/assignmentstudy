@@ -1,0 +1,53 @@
+Summary:
+0.92/0.94 compatibility issues due to HBASE-5206
+Description:
+HBASE-5206 introduces some compatibility issues between
+{0.94,0.94.1}
+and
+{0.92.0,0.92.1}. The release notes of HBASE-5155 describes the issue (HBASE-5206 is a backport of HBASE-5155).
+
+I think we can make 0.94.2 compatible with both {0.94.0,0.94.1} and {0.92.0,0.92.1}
+, although one of those sets will require configuration changes.
+The basic problem is that there is a znode for each table "zookeeper.znode.tableEnableDisable" that is handled differently.
+On 0.92.0 and 0.92.1 the states for this table are:
+[ disabled, disabling, enabling ] or deleted if the table is enabled
+On 0.94.1 and 0.94.2 the states for this table are:
+[ disabled, disabling, enabling, enabled ]
+What saves us is that the location of this znode is configurable. So the basic idea is to have the 0.94.2 master write two different znodes, "zookeeper.znode.tableEnableDisabled92" and "zookeeper.znode.tableEnableDisabled94" where the 92 node is in 92 format, the 94 node is in 94 format. And internally, the master would only use the 94 format in order to solve the original bug HBASE-5155 solves.
+We can of course make one of these the same default as exists now, so we don't need to make config changes for one of 0.92 or 0.94 clients. I argue that 0.92 clients shouldn't have to make config changes for the same reason I argued above. But that is debatable.
+Then, I think the only question left is the question of how to bring along the
+{0.94.0, 0.94.1} crew. A {0.94.0, 0.94.1}
+client would work against a 0.94.2 cluster by just configuring "zookeeper.znode.tableEnableDisable" in the client to be whatever "zookeeper.znode.tableEnableDisabled94" is in the cluster. A 0.94.2 client would work against both a
+{0.94.0, 0.94.1} and {0.92.0, 0.92.1} cluster if it had HBASE-6268 applied. About rolling upgrade from {0.94.0, 0.94.1}
+to 0.94.2 – I'd have to think about that. Do the regionservers ever read the tableEnableDisabled znode?
+On the mailing list, Lars H suggested the following:
+"The only input I'd have is that format we'll use going forward will not have a version attached to it.
+So maybe the 92 version would still be called "zookeeper.znode.tableEnableDisable" and the new node could have a different name "zookeeper.znode.tableEnableDisableNew" (or something)."
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gregory Chanan
+Reporter:
+Gregory Chanan
+Create date:
+01/Sep/12 04:26
+Update date:
+05/Jan/13 00:42
+Resolved date:
+13/Sep/12 01:42

@@ -1,0 +1,43 @@
+Summary:
+Container uses label instead of automationName
+Description:
+ContainerAutomationImpl prefers using the label as automationName instead of an explicitly set automationName. This means that setting an automationName on a container simply doesn't work if it also has a label.
+For example with <mx:HBox label="some function" automationName="foobarBox" />, the "foobarBox" is never used.
+When a container has both a label and an automationName set, the expected behaviour is clearly that it would use the automationName (you wouldn't set an automationName if you wanted it to figure out a name automatically).
+The solution is to change ContainerAutomationImpl.automationValue getter to first check if container.automationName is non-empty, and if it is return that (just like super.automationValue would):
+override public function get automationValue():Array
+{
+if (container.automationName && container.automationName.length != 0)
+return [container.automationName];
+if (container.label ...
+}
+With that change it uses the automationName if it was explicitly set, and still uses the label (or a combination of its children automation values,...) if there is no automationName.
+(Note that the ContainerAutomationImpl.automationName getter should not be changed, it should still prefer container.label over super.automationName.)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+AgentAPI
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+17/Dec/09 08:21
+Update date:
+03/Mar/10 02:55
+Resolved date:
+03/Mar/10 02:55

@@ -1,0 +1,52 @@
+Summary:
+GossipFilePropertySnitch and EC2MultiRegionSnitch when used in AWS/GCE clusters doesnt use the PRIVATE IPS for Intra-DC communications - When running nodetool repair
+Description:
+Neither of these snitches(GossipFilePropertySnitch and EC2MultiRegionSnitch ) used the PRIVATE IPS for communication between INTRA-DC nodes in my multi-region multi-dc cluster in cloud(on both AWS and GCE) when I ran "nodetool repair -local". It works fine during regular reads.
+Here are the various cluster flavors I tried and failed-
+AWS + Multi-REGION + Multi-DC + GossipPropertyFileSnitch + (Prefer_local=true) in rackdc-properties file.
+AWS + Multi-REGION + Multi-DC + EC2MultiRegionSnitch + (Prefer_local=true) in rackdc-properties file.
+GCE + Multi-REGION + Multi-DC + GossipPropertyFileSnitch + (Prefer_local=true) in rackdc-properties file.
+GCE + Multi-REGION + Multi-DC + EC2MultiRegionSnitch + (Prefer_local=true) in rackdc-properties file.
+I am expecting with the above setup all of my nodes in a given DC all communicate via private ips since the cloud providers dont charge us for using the private ips and they charge for using public ips.
+But they can use PUBLIC IPs for INTER-DC communications which is working as expected.
+Here is a snippet from my log files when I ran the "nodetool repair -local" -
+Node responding to 'node running repair'
+INFO [AntiEntropyStage:1] 2014-10-08 14:47:51,628 Validator.java (line 254) repair #1439f290-4efa-11e4-bf3a-df845ecf54f8 Sending completed merkle tree to /54.172.118.222 for system_traces/sessions
+INFO [AntiEntropyStage:1] 2014-10-08 14:47:51,741 Validator.java (line 254) repair #1439f290-4efa-11e4-bf3a-df845ecf54f8 Sending completed merkle tree to /54.172.118.222 for system_traces/events
+Node running repair -
+INFO [AntiEntropyStage:1] 2014-10-08 14:47:51,927 RepairSession.java (line 166) repair #1439f290-4efa-11e4-bf3a-df845ecf54f8 Received merkle tree for events from /54.172.118.222
+Note: The IPs its communicating is all PUBLIC Ips and it should have used the PRIVATE IPs starting with 172.x.x.x
+YAML file values :
+The listen address is set to: PRIVATE IP
+The broadcast address is set to: PUBLIC IP
+The SEEDs address is set to: PUBLIC IPs from both DCs
+The SNITCHES tried: GPFS and EC2MultiRegionSnitch
+RACK-DC: Had prefer_local set to true.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.11, 2.1.2
+Component:
+Local/Config
+Label:
+features
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Jana
+Create date:
+08/Oct/14 16:02
+Update date:
+16/Apr/19 09:31
+Resolved date:
+20/Oct/14 15:54

@@ -1,0 +1,79 @@
+Summary:
+Exception filtering data in a collection and compound primary key
+Description:
+I'm trying to query using compound primary key and then collection. Is possible to use partition key in the query, but as soon as you include the clustering column will receive a timeout.
+SELECT * FROM playlists WHERE user_id = 91d8eb60-4db1-11e4-b217-f96a8b2e7d2e AND tags CONTAINS 'blues';
+ user_id                              | id                                   | song_order | album        | artist | song_id                              | tags                                           | title
+--------------------------------------+--------------------------------------+------------+--------------+--------+--------------------------------------+------------------------------------------------+-----------
+ 91d8eb60-4db1-11e4-b217-f96a8b2e7d2e | 62c36092-82a1-3a00-93d1-46196ee77204 |          1 | Tres Hombres | ZZ Top | a3e64f8f-bd44-4f28-b8d9-6938726e34d4 | {'blues', 'boogie rock', 'rock', 'rock blues'} | La Grange
+
+(1 rows)
+SELECT * FROM playlists WHERE user_id = 91d8eb60-4db1-11e4-b217-f96a8b2e7d2e AND id = 62c36092-82a1-3a00-93d1-46196ee77204 AND tags CONTAINS 'blues';
+errors={}, last_host=127.0.0.1
+See below the log:
+WARN  [SharedPool-Worker-2] 2014-10-07 10:23:56,437 AbstractTracingAwareExecutorService.java:167 - Uncaught exception on thread Thread[SharedPool-Worker-2,5,main]: {}
+java.lang.RuntimeException: java.lang.NullPointerException
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:2047) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471) ~[na:1.7.0_67]
+ at org.apache.cassandra.concurrent.AbstractTracingAwareExecutorService$FutureTask.run(AbstractTracingAwareExecutorService.java:163) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.concurrent.SEPWorker.run(SEPWorker.java:103) [apache-cassandra-2.1.0.jar:2.1.0]
+ at java.lang.Thread.run(Thread.java:745) [na:1.7.0_67]
+Caused by: java.lang.NullPointerException: null
+ at org.apache.cassandra.db.marshal.Int32Type.compare(Int32Type.java:38) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.marshal.Int32Type.compare(Int32Type.java:28) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.composites.AbstractCType.compare(AbstractCType.java:136) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.composites.AbstractCType.compare(AbstractCType.java:40) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.AtomicBTreeColumns$3.compare(AtomicBTreeColumns.java:234) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.utils.btree.BTree.find(BTree.java:277) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.utils.btree.Path.find(Path.java:122) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.utils.btree.Cursor._reset(Cursor.java:107) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.utils.btree.Cursor.reset(Cursor.java:91) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.utils.btree.BTree.slice(BTree.java:238) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.AtomicBTreeColumns.slice(AtomicBTreeColumns.java:453) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.AtomicBTreeColumns.iterator(AtomicBTreeColumns.java:283) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.filter.SliceQueryFilter.getColumnIterator(SliceQueryFilter.java:138) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.filter.QueryFilter.getIterator(QueryFilter.java:57) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:206) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:59) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1872) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1680) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.index.composites.CompositesSearcher$1.computeNext(CompositesSearcher.java:183) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.index.composites.CompositesSearcher$1.computeNext(CompositesSearcher.java:121) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:143) ~[guava-16.0.jar:na]
+ at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:138) ~[guava-16.0.jar:na]
+ at org.apache.cassandra.db.ColumnFamilyStore.filter(ColumnFamilyStore.java:2076) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.index.composites.CompositesSearcher.search(CompositesSearcher.java:68) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.index.SecondaryIndexManager.search(SecondaryIndexManager.java:579) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.ColumnFamilyStore.search(ColumnFamilyStore.java:2064) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.db.PagedRangeCommand.executeLocally(PagedRangeCommand.java:114) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.service.StorageProxy$LocalRangeSliceRunnable.runMayThrow(StorageProxy.java:1382) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:2044) ~[apache-cassandra-2.1.0.jar:2.1.0]
+ ... 4 common frames omitted
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.1
+Component:
+None
+Label:
+None
+Environment:
+mac os, datastax
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Ozéias Sant'ana
+Create date:
+07/Oct/14 17:42
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/Oct/14 17:16

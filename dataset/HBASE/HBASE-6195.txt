@@ -1,0 +1,37 @@
+Summary:
+Increment data will be lost when the memstore is flushed
+Description:
+There are two problems in increment() now:
+First:
+I see that the timestamp(the variable now) in HRegion's Increment() is generated before got the rowLock, so when there are multi-thread increment the same row, although it generate earlier, it may got the lock later. Because increment just store one version, so till now, the result will still be right.
+When the region is flushing, these increment will read the kv from snapshot and memstore with whose timestamp is larger, and write it back to memstore. If the snapshot's timestamp larger than the memstore, the increment will got the old data and then do the increment, it's wrong.
+Secondly:
+Also there is a risk in increment. Because it writes the memstore first and then HLog, so if it writes HLog failed, the client will also read the incremented value.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.1, 0.95.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ShiXing
+Reporter:
+ShiXing
+Create date:
+11/Jun/12 03:00
+Update date:
+04/Dec/13 17:47
+Resolved date:
+29/Jun/12 11:14

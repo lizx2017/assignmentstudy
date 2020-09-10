@@ -1,0 +1,59 @@
+Summary:
+Text extraction ignores bookmarks
+Description:
+As reported by Noam S. on the user mailing list:
+My problem is that when trying to getText(doc) form a certain section of the pdf using setStartBookmark(item) and setEndBookmark(item) I get all the text rather than just the text from the specified section.
+WhiIe trying to resolve this I realized that the writeText(doc, outputStream) method always calls resetEngine() method. That will reset all the parameters and delete the bookmarks I set.
+The two lines that reset the bookmarks were added to resetEngine in PDFBOX-1808 in [ https://svn.apache.org/r1553175 ] in an attempt to save some memory.
+Another weird segment can be found in the trunk:
+I also found another weird piece of code in the trunk, which would mean that text extraction would fail if start and end bookmarks are identical:
+        if (startPage != null && endPage != null &&
+            startBookmark.getCOSObject() == endBookmark.getCOSObject())
+        {
+            // this is a special case where both the start and end bookmark
+            // are the same but point to nothing.  In this case
+            // we will not extract any text.
+            startBookmarkPageNumber = 0;
+            endBookmarkPageNumber = 0;
+        }
+earlier, that segment was:
+       if( startBookmarkPageNumber == -1 && startBookmark != null &&
+                endBookmarkPageNumber == -1 && endBookmark != null &&
+                startBookmark.getCOSObject() == endBookmark.getCOSObject() )
+        {
+            //this is a special case where both the start and end bookmark
+            //are the same but point to nothing.  In this case
+            //we will not extract any text.
+            startBookmarkPageNumber = 0;
+            endBookmarkPageNumber = 0;
+        }
+which makes more sense. The change was made last year in rev [ https://svn.apache.org/r1634252 ] as part of the pagetree refactoring.
+I am writing a test to prevent this from breaking in the future.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.9, 2.0.0
+Fix_version:
+1.8.10, 2.0.0
+Component:
+Text extraction
+Label:
+regression
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+10/May/15 05:42
+Update date:
+23/Jul/15 06:35
+Resolved date:
+10/May/15 14:27

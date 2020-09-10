@@ -1,0 +1,51 @@
+Summary:
+ImportTsv does not check for table existence
+Description:
+The usage statement for the "importtsv" command to hbase claims this:
+"Note: if you do not use this option, then the target table must already exist in HBase" (in reference to the "importtsv.bulk.output" command-line option)
+The truth is, the table must exist no matter what, importtsv cannot and will not create it for you.
+This is the case because the createSubmittableJob method of ImportTsv does not even attempt to check if the table exists already, much less create it:
+(From org.apache.hadoop.hbase.mapreduce.ImportTsv.java)
+305 HTable table = new HTable(conf, tableName);
+The HTable method signature in use there assumes the table exists and runs a meta scan on it:
+(From org.apache.hadoop.hbase.client.HTable.java)
+142 * Creates an object to access a HBase table.
+...
+151 public HTable(Configuration conf, final String tableName)
+What we should do inside of createSubmittableJob is something similar to what the "completebulkloads" command would do:
+(Taken from org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles.java)
+690 boolean tableExists = this.doesTableExist(tableName);
+691 if (!tableExists) this.createTable(tableName,dirPath);
+Currently the docs are misleading, the table in fact must exist prior to running importtsv. We should check if it exists rather than assume it's already there and throw the below exception:
+12/03/14 17:15:42 WARN client.HConnectionManager$HConnectionImplementation: Encountered problems when prefetch META table:
+org.apache.hadoop.hbase.TableNotFoundException: Cannot find row in .META. for table: myTable2, row=myTable2,,99999999999999
+at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:150)
+...
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.94.1, 0.95.0
+Component:
+mapreduce
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Himanshu Vashishtha
+Reporter:
+Clint Heath
+Create date:
+06/Apr/12 20:11
+Update date:
+26/Feb/13 08:16
+Resolved date:
+17/May/12 16:44

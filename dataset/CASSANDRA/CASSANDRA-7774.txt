@@ -1,0 +1,33 @@
+Summary:
+CqlRecordReader creates wrong cluster if the first replica of a split is down
+Description:
+For a given split, CqlRecordReader gets a list of replicas of that split. Then, it tries to create a Cluster object with a ClusterBuilder for each replica separately in a loop, so that if the cluster creation fails for a certain replica, the next replica is tried. Unfortunately it does not work, because the cluster creation does not fail if the provided contact point is down. So, it always selects the first replica regardless of its state.
+The solution is quite simple - ClusterBuilder accepts a collection of contact points - at least one of them must be up. So instead of iterating over the replicas we can pass the whole set of them and the driver will select the working one. It will follow some changes in the load balancing policy - I'm going to switch to use the same similar balancing policy as to the one we use in OSS Spark Connector.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10, 2.1.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jacek Lewandowski
+Reporter:
+Jacek Lewandowski
+Create date:
+15/Aug/14 06:41
+Update date:
+16/Apr/19 09:31
+Resolved date:
+20/Aug/14 17:44

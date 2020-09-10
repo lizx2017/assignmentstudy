@@ -1,0 +1,70 @@
+Summary:
+Cassandra seems to insert twice in custom PerColumnSecondaryIndex
+Description:
+When inserting data into Cassandra 2.1.0 into table with custom secondary index, the Cell is inserted twice, if inserting new entry into row with same rowId, but different cluster index columns.
+====
+CREATE KEYSPACE fulltext WITH replication =
+{'class': 'SimpleStrategy', 'replication_factor' : 1}
+;
+CREATE TABLE fulltext.test ( id uuid, name text, name2 text, json varchar, lucene text, primary key ( id , name));
+s"CREATE CUSTOM INDEX lucene_idx on fulltext.test(lucene) using 'com.spinoco.fulltext.cassandra.TestIndex'; "
+// this causes only one insert
+insertInto("fulltext","test")
+.value("id", id1.uuid)
+.value("name", "goosh1")
+.value("json", TestContent.message1.asJson)
+// this causes 2 inserts to be done
+insertInto("fulltext","test")
+.value("id", id1.uuid)
+.value("name", "goosh2")
+.value("json", TestContent.message2.asJson)
+/// stacktraces for inserts (always same, for 1st and 2nd insert)
+<custom indexer stacktraces> and then
+at org.apache.cassandra.db.index.SecondaryIndexManager$StandardUpdater.insert(SecondaryIndexManager.java:707)
+at org.apache.cassandra.db.AtomicBTreeColumns$ColumnUpdater.apply(AtomicBTreeColumns.java:344)
+at org.apache.cassandra.db.AtomicBTreeColumns$ColumnUpdater.apply(AtomicBTreeColumns.java:319)
+at org.apache.cassandra.utils.btree.NodeBuilder.addNewKey(NodeBuilder.java:323)
+at org.apache.cassandra.utils.btree.NodeBuilder.update(NodeBuilder.java:191)
+at org.apache.cassandra.utils.btree.Builder.update(Builder.java:74)
+at org.apache.cassandra.utils.btree.BTree.update(BTree.java:186)
+at org.apache.cassandra.db.AtomicBTreeColumns.addAllWithSizeDelta(AtomicBTreeColumns.java:189)
+at org.apache.cassandra.db.Memtable.put(Memtable.java:194)
+at org.apache.cassandra.db.ColumnFamilyStore.apply(ColumnFamilyStore.java:1142)
+at org.apache.cassandra.db.Keyspace.apply(Keyspace.java:394)
+at org.apache.cassandra.db.Keyspace.apply(Keyspace.java:351)
+at org.apache.cassandra.db.Mutation.apply(Mutation.java:214)
+at org.apache.cassandra.service.StorageProxy$7.runMayThrow(StorageProxy.java:970)
+at org.apache.cassandra.service.StorageProxy$LocalMutationRunnable.run(StorageProxy.java:2080)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+at org.apache.cassandra.concurrent.AbstractTracingAwareExecutorService$FutureTask.run(AbstractTracingAwareExecutorService.java:163)
+at org.apache.cassandra.concurrent.SEPWorker.run(SEPWorker.java:103)
+at java.lang.Thread.run(Thread.java:744)
+//// Note that cell, rowkey and Group in public abstract void insert(ByteBuffer rowKey, Cell col, OpOrder.Group opGroup); are having for both successive calls same identity
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Pavel Chlupacek
+Create date:
+29/Sep/14 16:08
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Dec/14 17:19

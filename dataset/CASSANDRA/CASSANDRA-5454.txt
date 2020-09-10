@@ -1,0 +1,35 @@
+Summary:
+Changing column_index_size_in_kb on different nodes might corrupt files
+Description:
+RangeTombstones requires that we sometimes repeat a few markers in the data file at index boundaries. Meaning that the same row with different column_index_size_in_kb will not have the same data size.
+This is a problem for streaming, because if the column_index_size_in_kb is different in the source and the destination, the resulting row should have a different size on the destination, but streaming rely on the data size not changing in 1.2.
+Now, while having different column_index_size on different nodes is probably not extremely useful in the long run, you may still have temporal discrepancies because there is no real way to change the setting on all node atomically. Besides, it's not to hard to get different setting on different nodes due to human error. And currently, the result is that if a file is stream while the setting is not consistent, then we'll end up corrupting the received file (due to the fix from CASSANDRA-5418 to be precise).
+I don't see a good way to fix this in 1.2, so users will have to be careful not to have streaming happening while they change the column_index_size_in_kb setting. But in 2.0, once CASSANDRA-4180 is committed, we won't have the problem of having to respect the dataSize from the source on the destination anymore. So basically we should revert the fix from CASSANDRA-5418 (though we may still want to avoid repeating unneeded marker, but the tombstoneTracker can give us that easily).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.7, 2.0 beta 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+11/Apr/13 12:29
+Update date:
+16/Apr/19 09:32
+Resolved date:
+01/Jul/13 07:41

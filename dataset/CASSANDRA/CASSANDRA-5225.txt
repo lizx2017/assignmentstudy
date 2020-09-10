@@ -1,0 +1,54 @@
+Summary:
+Missing columns, errors when requesting specific columns from wide rows
+Description:
+With Cassandra 1.2.1 (and probably 1.2.0), I'm seeing some problems with Thrift queries that request a set of specific column names when the row is very wide.
+To reproduce, I'm inserting 10 million columns into a single row and then randomly requesting three columns by name in a loop. It's common for only one or two of the three columns to be returned. I'm also seeing stack traces like the following in the Cassandra log:
+ERROR 13:12:01,017 Exception in thread Thread[ReadStage:76,5,main]
+java.lang.RuntimeException: org.apache.cassandra.io.sstable.CorruptSSTableException: org.apache.cassandra.db.ColumnSerializer$CorruptColumnException: invalid column name length 0 (/var/lib/cassandra/data/Keyspace1/CF1/Keyspace1-CF1-ib-5-Data.db, 14035168 bytes remaining)
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1576)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: org.apache.cassandra.io.sstable.CorruptSSTableException: org.apache.cassandra.db.ColumnSerializer$CorruptColumnException: invalid column name length 0 (/var/lib/cassandra/data/Keyspace1/CF1/Keyspace1-CF1-ib-5-Data.db, 14035168 bytes remaining)
+ at org.apache.cassandra.db.columniterator.SSTableNamesIterator.<init>(SSTableNamesIterator.java:69)
+ at org.apache.cassandra.db.filter.NamesQueryFilter.getSSTableColumnIterator(NamesQueryFilter.java:81)
+ at org.apache.cassandra.db.filter.QueryFilter.getSSTableColumnIterator(QueryFilter.java:68)
+ at org.apache.cassandra.db.CollationController.collectTimeOrderedData(CollationController.java:133)
+ at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:65)
+ at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1358)
+ at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1215)
+ at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1127)
+ at org.apache.cassandra.db.Table.getRow(Table.java:355)
+ at org.apache.cassandra.db.SliceByNamesReadCommand.getRow(SliceByNamesReadCommand.java:64)
+ at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:1052)
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1572)
+ ... 3 more
+This doesn't seem to happen when the row is smaller, so it might have something to do with incremental large row compaction.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Tyler Hobbs
+Create date:
+06/Feb/13 19:19
+Update date:
+16/Apr/19 09:32
+Resolved date:
+13/Feb/13 08:21

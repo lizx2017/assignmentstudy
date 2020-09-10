@@ -1,0 +1,43 @@
+Summary:
+HBaseAdmin addColumn, modifyColumn, deleteColumn are documented as asynchronous but are actually synchronous.
+Description:
+The javadoc states is asynchronous, but we can see in the implementation on HMaster that the implementation does not use executorService but calls directly process(). This is not true for all methods: enableTable, modifyTable, disableTable are truly asynchronous.
+The other impact is that the listeners are not called, as this is done by the executorService.
+I don't known if we have to change the documentation or the implementation. For consistency; I would change the implementation, but it may breaks existing code.
+Two other comments:
+1) There is no real naming pattern here, while it would be useful:
+HBaseAdmin#createTable is synchrounous and calls the asynchronous HMaster#createTable
+HBaseAdmin#createTableAsync is asynchrounous and calls the asynchronous HMaster#createTable
+HBaseAdmin#modifyTable is asynchrounous and calls the asynchronous HMaster#modifyTable
+HBaseAdmin#modifyColumn is documented as asynchrounous and calls the synchronous HMaster#modifyColumn
+2) the coprocessor "post" semantic is not consistent across the services.
+when the service is synchronous, post is called after the services execution (ex: addColumn with the current implementation).
+when the service is asynchronous, post is called after the executorService has registered the service to execute, but the service itself is not executed yet.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Not A Problem
+Affects_version:
+0.94.0
+Fix_version:
+None
+Component:
+Client, master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Nicolas Liochon
+Create date:
+24/Nov/11 14:33
+Update date:
+11/Apr/15 00:57
+Resolved date:
+11/Apr/15 00:57

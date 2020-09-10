@@ -1,0 +1,51 @@
+Summary:
+sstableloader does not support client encryption on Cassandra 2.0
+Description:
+We have been testing backup/restore from one ring to another and we recently stumbled upon an issue with sstableloader. When client_enc_enable: true, the exception below is generated. However, when client_enc_enable is set to false, the sstableloader is able to get to the point where it is discovers endpoints, connects to stream data, etc.
+==============BEGIN EXCEPTION==============
+sstableloader --debug -d x.x.x.248,x.x.x.108,x.x.x.113 /tmp/import/keyspace_name/columnfamily_name
+Exception in thread "main" java.lang.RuntimeException: Could not retrieve endpoint ranges:
+at org.apache.cassandra.tools.BulkLoader$ExternalClient.init(BulkLoader.java:226)
+at org.apache.cassandra.io.sstable.SSTableLoader.stream(SSTableLoader.java:149)
+at org.apache.cassandra.tools.BulkLoader.main(BulkLoader.java:68)
+Caused by: org.apache.thrift.transport.TTransportException: Frame size (352518400) larger than max length (16384000)!
+at org.apache.thrift.transport.TFramedTransport.readFrame(TFramedTransport.java:137)
+at org.apache.thrift.transport.TFramedTransport.read(TFramedTransport.java:101)
+at org.apache.thrift.transport.TTransport.readAll(TTransport.java:84)
+at org.apache.thrift.protocol.TBinaryProtocol.readAll(TBinaryProtocol.java:362)
+at org.apache.thrift.protocol.TBinaryProtocol.readI32(TBinaryProtocol.java:284)
+at org.apache.thrift.protocol.TBinaryProtocol.readMessageBegin(TBinaryProtocol.java:191)
+at org.apache.thrift.TServiceClient.receiveBase(TServiceClient.java:69)
+at org.apache.cassandra.thrift.Cassandra$Client.recv_describe_partitioner(Cassandra.java:1292)
+at org.apache.cassandra.thrift.Cassandra$Client.describe_partitioner(Cassandra.java:1280)
+at org.apache.cassandra.tools.BulkLoader$ExternalClient.init(BulkLoader.java:199)
+... 2 more
+==============END EXCEPTION==============
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.4
+Component:
+None
+Label:
+client encryption ss
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+David Laube
+Create date:
+19/Nov/13 18:44
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Dec/13 10:02

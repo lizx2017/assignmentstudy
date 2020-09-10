@@ -1,0 +1,53 @@
+Summary:
+SimpleSession cannot be deserialized
+Description:
+org.apache.shiro.session.mgt.SimpleSession fails deserialization with the following error:
+at java.io.ObjectInputStream$BlockDataInputStream.readByte(ObjectInputStream.java:2666)
+at java.io.ObjectInputStream$BlockDataInputStream.readUTFChar(ObjectInputStream.java:3058)
+at java.io.ObjectInputStream$BlockDataInputStream.readUTFBody(ObjectInputStream.java:2955)
+at java.io.ObjectInputStream$BlockDataInputStream.readUTF(ObjectInputStream.java:2764)
+at java.io.ObjectInputStream.readUTF(ObjectInputStream.java:1032)
+at org.apache.shiro.session.mgt.SimpleSession.readObject(SimpleSession.java:481)
+There is a problem with the way the 'expired' flag is managed. In writeObject the 'expired' flag is written if it's set:
+if (expired) {
+out.writeBoolean(expired);
+}
+But, in getAlteredFieldsBitMask, the bit in the bit mask is only set when the 'exprired' flag is not set:
+bitMask = !expired ? bitMask | EXPIRED_BIT_MASK : bitMask;
+A short test:
+SimpleSession session = new SimpleSession("localhost");
+// This doesn't work either
+// session.setExpired(true);
+ByteArrayOutputStream serialized = new ByteArrayOutputStream();
+ObjectOutputStream serializer = new ObjectOutputStream(serialized);
+serializer.writeObject(session);
+serializer.close();
+new ObjectInputStream(new ByteArrayInputStream(serialized.toByteArray())).readObject();
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.0.0
+Fix_version:
+1.1.0
+Component:
+Caching , (1)
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Kalle Korhonen
+Reporter:
+Favio D. DeMarco
+Create date:
+05/Jul/10 14:29
+Update date:
+26/Jun/11 21:51
+Resolved date:
+07/Jul/10 04:19

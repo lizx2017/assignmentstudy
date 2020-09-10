@@ -1,0 +1,69 @@
+Summary:
+HMaster is unable to start of HFile V1 is used
+Description:
+This was reported by HH Zhu (zhh200910@gmail.com)
+If the following is specified in hbase-site.xml：
+    <property>
+        <name>hfile.format.version</name>
+        <value>1</value>
+    </property>
+Clear the hdfs directory "hbase.rootdir" so that MasterFileSystem.bootstrap() is executed.
+You would see:
+java.lang.NullPointerException
+    at org.apache.hadoop.hbase.io.hfile.HFileReaderV1.close(HFileReaderV1.java:358)
+    at org.apache.hadoop.hbase.regionserver.StoreFile$Reader.close(StoreFile.java:1083)
+    at org.apache.hadoop.hbase.regionserver.StoreFile.closeReader(StoreFile.java:570)
+    at org.apache.hadoop.hbase.regionserver.Store.close(Store.java:441)
+    at org.apache.hadoop.hbase.regionserver.HRegion.doClose(HRegion.java:782)
+    at org.apache.hadoop.hbase.regionserver.HRegion.close(HRegion.java:717)
+    at org.apache.hadoop.hbase.regionserver.HRegion.close(HRegion.java:688)
+    at org.apache.hadoop.hbase.master.MasterFileSystem.bootstrap(MasterFileSystem.java:390)
+    at org.apache.hadoop.hbase.master.MasterFileSystem.checkRootDir(MasterFileSystem.java:356)
+    at org.apache.hadoop.hbase.master.MasterFileSystem.createInitialFileSystemLayout(MasterFileSystem.java:128)
+    at org.apache.hadoop.hbase.master.MasterFileSystem.<init>(MasterFileSystem.java:113)
+    at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:435)
+    at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:314)
+    at java.lang.Thread.run(Thread.java:619)
+The above exception would lead to:
+java.lang.RuntimeException: HMaster Aborted
+    at org.apache.hadoop.hbase.master.HMasterCommandLine.startMaster(HMasterCommandLine.java:152)
+    at org.apache.hadoop.hbase.master.HMasterCommandLine.run(HMasterCommandLine.java:103)
+    at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:65)
+    at org.apache.hadoop.hbase.util.ServerCommandLine.doMain(ServerCommandLine.java:76)
+    at org.apache.hadoop.hbase.master.HMaster.main(HMaster.java:1512)
+In org.apache.hadoop.hbase.master.HMaster.HMaster(Configuration conf), we have:
+this.conf.setFloat(CacheConfig.HFILE_BLOCK_CACHE_SIZE_KEY, 0.0f);
+When CacheConfig is instantiated, the following is called:
+org.apache.hadoop.hbase.io.hfile.CacheConfig.instantiateBlockCache(Configuration conf)
+Since "hfile.block.cache.size" is 0.0, instantiateBlockCache() would return null, resulting in blockCache field of CacheConfig to be null.
+When master closes Root region, org.apache.hadoop.hbase.io.hfile.HFileReaderV1.close(boolean evictOnClose) would be called. cacheConf.getBlockCache() returns null, leading to master abort.
+The following should be called in HFileReaderV1.close(), similar to the code in HFileReaderV2.close():
+if (evictOnClose && cacheConf.isBlockCacheEnabled())
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0, 0.94.0
+Component:
+io
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Honghua Zhu
+Reporter:
+Ted Yu
+Create date:
+03/Dec/11 21:19
+Update date:
+12/Oct/12 05:34
+Resolved date:
+05/Dec/11 04:22

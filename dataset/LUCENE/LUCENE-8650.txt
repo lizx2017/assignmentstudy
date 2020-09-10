@@ -1,0 +1,37 @@
+Summary:
+ConcatenatingTokenStream does not end() nor reset() properly
+Description:
+All (I think) TokenStream implementations set a "final offset" after calling super.end() in their end() methods. ConcatenatingTokenStream fails to do this. Because of this, it's final offset is not readable and DefaultIndexingChain in turn fails to set the lastStartOffset properly. This results in problems with indexing which can include unsearchable content or IllegalStateExceptions.
+ConcatenatingTokenStream also fails to reset() properly. Specifically, it does not set its currentSource and offsetIncrement back to 0. Because of this, copyField directives (in the schema) do not work and content becomes unsearchable.
+I've created a few patches that illustrate the problem and then provide a fix.
+The first patch enhances the TestConcatenatingTokensStream to check for finalOffset, which as you can see ends up being 0.
+I created the next patch separately because it includes extra classes used for the testing that Lucene may or may not want to merge in. This patch adds an integration test that loads some content into the 'text' field. The schema then copies it to 'content' using a copyField directive. The test searches in the content field for the loaded text and fails to find it even though the field does contain the content. Flip the debug flag to see a nicer printout of the response and what's in the index. Notice that the added class I alluded to is KeywordTokenStream .This class had to be added because of another (ultimately unrelated) problem: ConcatenatingTokenStream cannot concatenate Tokenziers. This is because Tokenizer violates the contract put forth by TokenStream.reset(). This separate problem warrants its own ticket, though. However, ultimately KeywordTokenStream may be useful to others and could be considered for adding to the repo.
+The third patch finally fixes ConcatenatingTokenStream by storing and setting a finalOffset as the last task in the end() method, and resetting currentSource, offsetIncrement and finalOffset when reset() is called.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+modules/analysis
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alan Woodward
+Reporter:
+Dan Meehl
+Create date:
+3 days ago
+Update date:
+13 hours ago
+Resolved date:
+

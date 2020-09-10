@@ -1,0 +1,52 @@
+Summary:
+NPE for null embedded UDT inside set
+Description:
+An NPE is thrown parsing an INSERT statement when a embedded UDT inside another UDT is set to null inside a set.
+This sounds very convoluted, but the examples below will hopefully make it clear...
+With the following definitions:
+CREATE TYPE ut1 (a int, b int);
+CREATE TYPE ut2 (j frozen<ut1>, k int);
+CREATE TYPE ut3 (i int, j frozen<ut1>);
+CREATE TABLE tab1 (x int PRIMARY KEY, y set<frozen<ut2>>);
+CREATE TABLE tab2 (x int PRIMARY KEY, y list<frozen<ut2>>);
+CREATE TABLE tab3 (x int PRIMARY KEY, y set<frozen<ut3>>);
+This query throws a NullPointerException:
+INSERT INTO tab1 (x, y) VALUES (1, {
+{ k: 1 }
+});
+These however doesn't:
+INSERT INTO tab2 (x, y) VALUES (1, [
+{ k: 1 }
+]);
+INSERT INTO tab3 (x, y) VALUES (1, {
+{ i: 1 }
+});
+So, the bug seems to be triggered only when the UDT is in a set, lists are fine. If the embedded UDT is after the value specified in the query, the bug doesn't seem to trigger.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.1
+Component:
+None
+Label:
+cql
+Environment:
+
+Attachment number:
+0
+Assignee:
+Robert Stupp
+Reporter:
+Andy Ketskes
+Create date:
+12/Oct/14 14:48
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/Oct/14 18:50

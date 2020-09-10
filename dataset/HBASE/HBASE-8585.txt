@@ -1,0 +1,47 @@
+Summary:
+AssignmentManager should handle RejectedExecutionException
+Description:
+In test output, I noticed the following:
+2013-05-21 03:39:37,015 DEBUG [Thread-1446-EventThread] zookeeper.ZooKeeperWatcher(307): master:35255-0x13ec52b4ce30000 Received ZooKeeper Event, type=NodeDataChanged, state=SyncConnected, path=/hbase/region-in-transition/8b6ce00aafd483a6ed7a76425009ebf8
+2013-05-21 03:39:37,015 ERROR [Thread-1446-EventThread] zookeeper.ClientCnxn$EventThread(521): Error while calling watcher
+java.util.concurrent.RejectedExecutionException
+        at java.util.concurrent.ThreadPoolExecutor$AbortPolicy.rejectedExecution(ThreadPoolExecutor.java:1768)
+        at java.util.concurrent.ThreadPoolExecutor.reject(ThreadPoolExecutor.java:767)
+        at java.util.concurrent.ThreadPoolExecutor.execute(ThreadPoolExecutor.java:658)
+        at java.util.concurrent.AbstractExecutorService.submit(AbstractExecutorService.java:78)
+        at org.apache.hadoop.hbase.master.AssignmentManager.zkEventWorkersSubmit(AssignmentManager.java:1136)
+        at org.apache.hadoop.hbase.master.AssignmentManager.handleAssignmentEvent(AssignmentManager.java:1306)
+        at org.apache.hadoop.hbase.master.AssignmentManager.nodeDataChanged(AssignmentManager.java:1095)
+        at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.process(ZooKeeperWatcher.java:338)
+        at org.apache.zookeeper.ClientCnxn$EventThread.processEvent(ClientCnxn.java:519)
+        at org.apache.zookeeper.ClientCnxn$EventThread.run(ClientCnxn.java:495)
+By default, ThreadPoolExecutor.AbortPolicy is used for zkEventWorkers, leading to the above exception.
+We should examine the calls to zkEventWorkersSubmit() and devise proper handling for RejectedExecutionException.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Later
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Ted Yu
+Create date:
+21/May/13 17:03
+Update date:
+24/May/13 16:30
+Resolved date:
+24/May/13 16:30

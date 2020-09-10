@@ -1,0 +1,48 @@
+Summary:
+CrcCheckChanceTest.testChangingCrcCheckChance fails with stack overflow
+Description:
+http://cassci.datastax.com/job/trunk_utest/212/testReport/junit/org.apache.cassandra.cql3/CrcCheckChanceTest/testChangingCrcCheckChance/
+java.lang.StackOverflowError
+ at org.apache.cassandra.io.compress.CompressionParameters.validateCrcCheckChance(CompressionParameters.java:138)
+ at org.apache.cassandra.io.compress.CompressionParameters.setCrcCheckChance(CompressionParameters.java:110)
+ at org.apache.cassandra.io.compress.CompressionParameters.setCrcCheckChance(CompressionParameters.java:114)
+ at org.apache.cassandra.io.compress.CompressionParameters.setCrcCheckChance(CompressionParameters.java:114)
+ at org.apache.cassandra.io.compress.CompressionParameters.setCrcCheckChance(CompressionParameters.java:114)
+The code is
+    public void setCrcCheckChance(double crcCheckChance) throws ConfigurationException
+    {
+        validateCrcCheckChance(crcCheckChance);
+        this.crcCheckChance = crcCheckChance;
+
+        if (liveMetadata != null)
+            liveMetadata.compressionParameters.setCrcCheckChance(crcCheckChance);
+    }
+Looks like it is just following itself circularly. Should definitely add an assertion that they are not the same compression parameters. Will run it in a loop for a while to see if it reproduces.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.16
+Component:
+Legacy/Local Write-Read Paths
+Label:
+test
+Environment:
+
+Attachment number:
+0
+Assignee:
+T Jake Luciani
+Reporter:
+Ariel Weisberg
+Create date:
+26/May/15 23:27
+Update date:
+16/Apr/19 09:31
+Resolved date:
+27/May/15 20:22

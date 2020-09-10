@@ -1,0 +1,35 @@
+Summary:
+HStore#get and HStore#getFull may not return expected values by timestamp when there is more than one MapFile
+Description:
+Ok, this one is a little tricky. Let's say that you write a row with some value without a timestamp, thus meaning right now. Then, the memcache gets flushed out to a MapFile. Then, you write another value to the same row, this time with a timestamp that is in the past, ie, before the "now" timestamp of the first put.
+Some time later, but before there is a compaction, if you do a get for this row, and only ask for a single version, you will logically be expecting the latest version of the cell, which you would assume would be the one written at "now" time. Instead, you will get the value written into the "past" cell, because even though it is tagged as having happened in the past, it actually was written after the "now" cell, and thus when #get searches for satisfying values, it runs into the one most recently written first.
+The result of this problem is inconsistent data results. Note that this problem only ever exists when there's an uncompacted HStore, because during compaction, these cells will all get sorted into the correct order by timestamp and such. In a way, this actually makes the problem worse, because then you could easily get inconsistent results from HBase about the same (unchanged) row depending on whether there's been a flush/compaction.
+The only solution I can think of for this problem at the moment is to scan all the MapFiles and Memcache for possible results, sort them, and then select the desired number of versions off of the top. This is unfortunate because it means you never get the snazzy shortcircuit logic except within a single mapfile or memcache.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Invalid
+Affects_version:
+0.1.2, 0.2.0
+Fix_version:
+None
+Component:
+Client, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Bryan Duxbury
+Create date:
+03/Jan/08 01:08
+Update date:
+07/Sep/10 22:25
+Resolved date:
+07/Sep/10 22:25

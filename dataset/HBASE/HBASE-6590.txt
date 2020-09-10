@@ -1,0 +1,43 @@
+Summary:
+[0.89-fb] Assign sequence number to bulk loaded data
+Description:
+Currently bulk loaded files are not assigned a sequence number. Thus, they can only be used to import historical data, dating to the past. There are cases where we want to bulk load "current data"; but the bulk load mechanism does not support this, as the bulk loaded files are always sorted behind the non-bulkloaded hfiles. Assigning Sequence Id to bulk loaded files should solve this issue.
+StoreFiles within a store are sorted based on the sequenceId. SequenceId is a monotonically increasing number that accompanies every edit written to the WAL. For entries that update the same cell, we would like the latter edit to win. This comparision is accomplished using memstoreTS, at the KV level; and sequenceId at the StoreFile level (to order scanners in the KeyValueHeap).
+BulkLoaded files are generated outside of HBase/RegionServer, so they do not have a sequenceId written in the file. This causes HBase to lose track of the point in time, when the BulkLoaded file was imported to HBase. Resulting in a behavior, that *only* supports viewing bulkLoaded files as files back-filling data from the begining of time.
+By assigning a sequence number to the file, we can allow the bulk loaded file to fit in where we want. Either at the "current time" or the "begining of time". The latter is the default, to maintain backward compatibility.
+Design approach:
+Store files keep track of the sequence Id in the trailer. Since we do not wish to edit/rewrite the bulk loaded file upon import, we will encode the assigned sequenceId into the fileName. The filename RegEx is updated for this regard. If the sequenceId is encoded in the filename, the sequenceId will be used as the sequenceId for the file. If none is found, the sequenceId will be considered 0 (as per the default, backward-compatible behavior).
+To enable clients to request pre-existing behavior, the command line utility allows for 2 ways to import BulkLoaded Files: to assign or not assign a sequence Number.
+If a sequence Number is assigned, the imporeted file will be imported with the "current sequence Id".
+if the sequence Number is not assigned, it will be as if it was backfilling old data, from the begining of time.
+Compaction behavior:
+With the current compaction algorithm, bulk loaded files – that backfill data, to the begining of time – can cause a compaction storm, converting every minor compaction to a major compaction. To address this, these files are excluded from minor compaction, based on a config param. (enabled for the messages use case).
+Since, bulk loaded files that are not back-filling data do not cause this issue, they will not be ignored during minor compactions based on the config parameter. This is also required to ensure that there are no holes in the set of files selected for compaction – this is necessary to preserve the order of KV's comparision before and after compaction.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.89-fb
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Amitanand Aiyer
+Reporter:
+Amitanand Aiyer
+Create date:
+15/Aug/12 15:54
+Update date:
+08/Sep/12 23:40
+Resolved date:
+17/Aug/12 18:24

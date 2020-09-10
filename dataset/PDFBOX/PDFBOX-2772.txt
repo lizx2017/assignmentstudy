@@ -1,0 +1,40 @@
+Summary:
+EI token lost for rewrite
+Description:
+From Lukas S. in the dev mailing list:
+a co-worker and i are currently developing a service for searching and replacing content in pdf documents based on pdfbox. We started our project with the 1.8.2 version of pdfbox and just trying to migrated to 1.8.8 recently.
+On changing to version 1.8.8 we are running into troubles with pdf content concerning inline images. Our code study of the differences between those versions of pdfbox led us to the handling of the EI operator as reason of our troubles.
+In version 1.8.2 the method parseNextToken() of the org.apache.pdfbox.pdfparser.PDFStreamParser does an unread of the EI token on inline images. In newer versions this unread of the EI token doesn't exist anymore with the following comment "// the EI operator isn't unread, as it won't be processed anyway".
+As a consequence the token sets of a document containing an inline image delivered by the PDFStreamParser can't be used to (re)render a valid pdf document by the ContentStreamWriter.
+The reason is the missing token for the EI operator. Maybe, that the EI token doesn't trigger any further processing, but it is still necessary to represent the delimiter in the token sequence.
+On the other side if a inline image should be part of a pdf page and is inserted as a token set manually, the EI token must also be present in the token set, so that the ContentStreamWriter is able to create a correct pdf document.
+From our point of view there are two simple approaches to get a more consistent internal representation of pdf documents with pdfbox concerning inline images. Either represent the EI operator as a token (revert to handling in version 1.8.2.) explicitly or extend the writeObject method in the ContentStreamWriter to append the EI operator implicitly.
+THAT is what I call an excellent bug report I think that the 2nd solution you suggested is the better one.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.9, 1.8.10, 2.0.0
+Fix_version:
+1.8.10, 2.0.0
+Component:
+Parsing, Writing
+Label:
+regression
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+22/Apr/15 16:55
+Update date:
+23/Jul/15 06:35
+Resolved date:
+22/Apr/15 17:14

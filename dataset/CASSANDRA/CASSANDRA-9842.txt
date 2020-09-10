@@ -1,0 +1,54 @@
+Summary:
+Inconsistent behavior for '= null' conditions on static columns
+Description:
+Both inserting a row (in a non-existent partition) and updating a static column in the same LWT fails. Creating the partition before performing the LWT works.
+Table Definition
+create table txtable(pcol bigint, ccol bigint, scol bigint static, ncol text, primary key((pcol), ccol));
+Inserting row in non-existent partition and updating static column in one LWT
+begin batch
+    insert into txtable (pcol, ccol, ncol) values (1, 1, 'A');
+    update txtable set scol = 1 where pcol = 1 if scol = null;
+apply batch;
+
+[applied]
+-----------
+     False
+Creating partition before LWT
+insert into txtable (pcol, scol) values (1, null) if not exists;
+
+begin batch
+    insert into txtable (pcol, ccol, ncol) values (1, 1, 'A');
+    update txtable set scol = 1 where pcol = 1 if scol = null;
+apply batch;
+
+[applied]
+-----------
+     True
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.15, 2.2.7, 3.0.8, 3.8
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Alex Petrov
+Reporter:
+Chandra Sekar
+Create date:
+18/Jul/15 03:39
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/Jun/16 14:36

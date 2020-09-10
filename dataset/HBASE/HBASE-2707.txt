@@ -1,0 +1,47 @@
+Summary:
+Can't recover from a dead ROOT server if any exceptions happens during log splitting
+Description:
+There's an almost easy way to get stuck after a RS holding ROOT dies, usually from a GC-like event. It happens frequently to my TestReplication in HBASE-2223.
+Some logs:
+2010-06-10 11:35:52,090 INFO  [master] wal.HLog(1175): Spliting is done. Removing old log dir hdfs://localhost:55814/user/jdcryans/.logs/10.10.1.63,55846,1276194933831
+2010-06-10 11:35:52,095 WARN  [master] master.RegionServerOperationQueue(183): Failed processing: ProcessServerShutdown of 10.10.1.63,55846,1276194933831; putting onto delayed todo queue
+java.io.IOException: Cannot delete: hdfs://localhost:55814/user/jdcryans/.logs/10.10.1.63,55846,1276194933831
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.splitLog(HLog.java:1179)
+        at org.apache.hadoop.hbase.master.ProcessServerShutdown.process(ProcessServerShutdown.java:298)
+        at org.apache.hadoop.hbase.master.RegionServerOperationQueue.process(RegionServerOperationQueue.java:149)
+        at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:456)
+Caused by: java.io.IOException: java.io.IOException: /user/jdcryans/.logs/10.10.1.63,55846,1276194933831 is non empty
+2010-06-10 11:35:52,097 DEBUG [master] master.RegionServerOperationQueue(126): -ROOT- isn't online, can't process delayedToDoQueue items
+2010-06-10 11:35:53,098 DEBUG [master] master.RegionServerOperationQueue(126): -ROOT- isn't online, can't process delayedToDoQueue items
+2010-06-10 11:35:53,523 INFO  [main.serverMonitor] master.ServerManager$ServerMonitor(131): 1 region servers, 1 dead, average load 14.0[10.10.1.63,55846,1276194933831]
+2010-06-10 11:35:54,099 DEBUG [master] master.RegionServerOperationQueue(126): -ROOT- isn't online, can't process delayedToDoQueue items
+2010-06-10 11:35:55,101 DEBUG [master] master.RegionServerOperationQueue(126): -ROOT- isn't online, can't process delayedToDoQueue items
+The last lines are my own debug. Since we don't process the delayed todo if ROOT isn't online, we'll never reassign the regions.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Jean-Daniel Cryans
+Create date:
+10/Jun/10 18:44
+Update date:
+20/Nov/15 12:42
+Resolved date:
+26/Jun/10 00:06

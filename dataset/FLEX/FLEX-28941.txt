@@ -1,0 +1,154 @@
+Summary:
+ADT packager failing on ipa-debug
+Description:
+We're building our project for iPad using Flash Builder 4.5 using Flex SDK 4.5.1 with Air 3.0. Setting it to compile a debug version with the standard packaging method instead of fast will cause the jvm to crash with an error. The error log file would be removed before we were able to extract it. We worked around the issue by settling for the fast packaging method.
+Now that we are using Air Native Extensions we need to use packaging again and we need to be able to debug them (which we can do with the about:blank technique). Since we were using the command line we were able to keep the log file, which is below.
+Actual Results:
+#
+A fatal error has been detected by the Java Runtime Environment:
+#
+Internal Error (0xe06d7363), pid=7584, tid=7592
+#
+JRE version: 6.0_16-b01
+Java VM: Java HotSpot(TM) Client VM (14.2-b01 mixed mode windows-x86 )
+Problematic frame:
+C [KERNELBASE.dll+0xb9bc]
+#
+If you would like to submit a bug report, please visit:
+http://java.sun.com/webapps/bugreport/crash.jsp
+The crash happened outside the Java Virtual Machine in native code.
+See problematic frame for where to report the bug.
+#
+--------------- T H R E A D ---------------
+Current thread (0x0024a000): JavaThread "main" [_thread_in_native, id=7592, stack(0x02640000,0x027c0000)]
+siginfo: ExceptionCode=0xe06d7363, ExceptionInformation=0x19930520 0x027bf750 0x05d674a4
+Registers:
+EAX=0x027bf6b8, EBX=0x00400000, ECX=0x00000003, EDX=0x00000000
+ESP=0x027bf6b8, EBP=0x027bf708, ESI=0x05e3666c, EDI=0x77480020
+EIP=0x769fb9bc, EFLAGS=0x00000216
+Top of Stack: (sp=0x027bf6b8)
+0x027bf6b8: e06d7363 00000001 00000000 769fb9bc
+0x027bf6c8: 00000003 19930520 027bf750 05d674a4
+0x027bf6d8: 0628b80c 0628b80c 77480020 00400000
+0x027bf6e8: 05e3666c 027bf6f8 05c3cad0 05e36aa0
+0x027bf6f8: 027bf738 05c35542 00000008 05c33a0e
+0x027bf708: 027bf740 05c33439 e06d7363 00000001
+0x027bf718: 00000003 027bf734 e06d7363 00000001
+0x027bf728: 00000000 00000000 00000003 19930520
+Instructions: (pc=0x769fb9bc)
+0x769fb9ac: 0c eb 03 89 45 c0 8d 45 b0 50 ff 15 5c 11 9f 76
+0x769fb9bc: c9 c2 10 00 cc cc cc cc cc 8b ff 55 8b ec 56 8b
+Stack: [0x02640000,0x027c0000], sp=0x027bf6b8, free space=1533k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C [KERNELBASE.dll+0xb9bc]
+C [llvm.dll+0x443439]
+C [llvm.dll+0x4429d5]
+Java frames: (J=compiled Java code, j=interpreted, Vv=VM code)
+j llvm.llvmJNI.WriteModuleToFile(Ljava/lang/String;JLllvm/Module;J)V+0
+j llvm.LLVM.WriteModuleToFile(Ljava/lang/String;Lllvm/Module;J)V+7
+j com.adobe.air.ipa.AOTCompiler.writeBitcode(Ljava/lang/String;Lllvm/Module;)Ljava/io/File;+52
+j com.adobe.air.ipa.AOTCompiler.convertAbcToLlvmBitcodeImpl()V+594
+j com.adobe.air.ipa.BitcodeGenerator.main([Ljava/lang/String;)V+114
+v ~StubRoutines::call_stub
+--------------- P R O C E S S ---------------
+Java Threads: ( => current thread )
+0x00525000 JavaThread "Low Memory Detector" daemon [_thread_blocked, id=7620, stack(0x053e0000,0x05560000)]
+0x00520c00 JavaThread "CompilerThread0" daemon [_thread_blocked, id=7616, stack(0x05350000,0x053a0000)]
+0x0051f400 JavaThread "Attach Listener" daemon [_thread_blocked, id=7612, stack(0x05190000,0x05310000)]
+0x00514000 JavaThread "Signal Dispatcher" daemon [_thread_blocked, id=7608, stack(0x04fd0000,0x05150000)]
+0x004e2800 JavaThread "Finalizer" daemon [_thread_blocked, id=7604, stack(0x04e10000,0x04f90000)]
+0x004e1400 JavaThread "Reference Handler" daemon [_thread_blocked, id=7600, stack(0x04c50000,0x04dd0000)]
+=>0x0024a000 JavaThread "main" [_thread_in_native, id=7592, stack(0x02640000,0x027c0000)]
+Other Threads:
+0x004dd800 VMThread [stack: 0x00990000,0x009e0000] [id=7596]
+0x00526000 WatcherThread [stack: 0x055a0000,0x055f0000] [id=7624]
+VM state:not at safepoint (normal execution)
+VM Mutex/Monitor currently owned by a thread: None
+Heap
+def new generation total 52928K, used 27430K [0x10050000, 0x139b0000, 0x14f10000)
+eden space 47104K, 56% used [0x10050000, 0x11a5c988, 0x12e50000)
+from space 5824K, 12% used [0x13400000, 0x134bd010, 0x139b0000)
+to space 5824K, 0% used [0x12e50000, 0x12e50000, 0x13400000)
+tenured generation total 704536K, used 704455K [0x14f10000, 0x3ff16000, 0x50050000)
+the space 704536K, 99% used [0x14f10000, 0x3ff01ea0, 0x3ff02000, 0x3ff16000)
+compacting perm gen total 12288K, used 5387K [0x50050000, 0x50c50000, 0x54050000)
+the space 12288K, 43% used [0x50050000, 0x50592d90, 0x50592e00, 0x50c50000)
+No shared spaces configured.
+Dynamic libraries:
+0x00400000 - 0x00424000 E:\Program Files\Adobe\Adobe Flash Builder 4.5\jre\bin\java.exe
+0x77300000 - 0x77480000 C:\Windows\SysWOW64\ntdll.dll
+0x764e0000 - 0x765f0000 C:\Windows\syswow64\kernel32.dll
+0x769f0000 - 0x76a36000 C:\Windows\syswow64\KERNELBASE.dll
+0x74fd0000 - 0x75070000 C:\Windows\syswow64\ADVAPI32.dll
+0x752d0000 - 0x7537c000 C:\Windows\syswow64\msvcrt.dll
+0x74df0000 - 0x74e09000 C:\Windows\SysWOW64\sechost.dll
+0x76900000 - 0x769f0000 C:\Windows\syswow64\RPCRT4.dll
+0x749f0000 - 0x74a50000 C:\Windows\syswow64\SspiCli.dll
+0x749e0000 - 0x749ec000 C:\Windows\syswow64\CRYPTBASE.dll
+0x7c340000 - 0x7c396000 E:\Program Files\Adobe\Adobe Flash Builder 4.5\jre\bin\msvcr71.dll
+0x6d800000 - 0x6da8b000 E:\Program Files\Adobe\Adobe Flash Builder 4.5\jre\bin\client\jvm.dll
+0x765f0000 - 0x766f0000 C:\Windows\syswow64\USER32.dll
+0x763b0000 - 0x76440000 C:\Windows\syswow64\GDI32.dll
+0x75500000 - 0x7550a000 C:\Windows\syswow64\LPK.dll
+0x76440000 - 0x764dd000 C:\Windows\syswow64\USP10.dll
+0x74770000 - 0x747a2000 C:\Windows\system32\WINMM.dll
+0x75230000 - 0x75290000 C:\Windows\system32\IMM32.DLL
+0x74d20000 - 0x74dec000 C:\Windows\syswow64\MSCTF.dll
+0x72e00000 - 0x72e4c000 C:\Windows\system32\apphelp.dll
+0x10000000 - 0x1004d000 C:\Windows\SysWOW64\guard32.dll
+0x74910000 - 0x74919000 C:\Windows\system32\VERSION.dll
+0x748a0000 - 0x748a7000 C:\Windows\system32\fltlib.dll
+0x6d7b0000 - 0x6d7bc000 E:\Program Files\Adobe\Adobe Flash Builder 4.5\jre\bin\verify.dll
+0x6d330000 - 0x6d34f000 E:\Program Files\Adobe\Adobe Flash Builder 4.5\jre\bin\java.dll
+0x6d290000 - 0x6d298000 E:\Program Files\Adobe\Adobe Flash Builder 4.5\jre\bin\hpi.dll
+0x74fc0000 - 0x74fc5000 C:\Windows\syswow64\PSAPI.DLL
+0x6d7f0000 - 0x6d7ff000 E:\Program Files\Adobe\Adobe Flash Builder 4.5\jre\bin\zip.dll
+0x057f0000 - 0x05e72000 E:\Program Files\Adobe\Adobe Flash Builder 4.5\sdks\4.5.1-Air3.0\lib\aot\lib\llvm.dll
+0x69510000 - 0x695fb000 C:\Windows\system32\dbghelp.dll
+VM Arguments:
+jvm_args: -Xss1500K -Xms256m -Xmx1024m
+java_command: com.adobe.air.ipa.BitcodeGenerator G:\Work\Server\HOYS Frontend Repository\HOYS-iPad-native\bin-debug\AOTBuildOutput8489266844307784084.tmp\BitcodeGenerator_opts.ser G:\Work\Server\HOYS Frontend Repository\HOYS-iPad-native\bin-debug\AOTBuildOutput8489266844307784084.tmp\ABCFiles
+Launcher Type: SUN_STANDARD
+Environment Variables:
+PATH=E:/Program Files/Adobe/Adobe Flash Builder 4.5/jre/bin/client;E:/Program Files/Adobe/Adobe Flash Builder 4.5/jre/bin;E:/Program Files/Adobe/Adobe Flash Builder 4.5/jre/lib/i386;E:\Program Files\Adobe\Adobe Flash Builder 4.5\;E:\Program Files\PHP\;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Program Files\Intel\DMIX;E:\Program Files\TortoiseSVN\bin;E:\Program Files (x86)\Extensis Suitcase\;E:\Program Files\MySQL\bin;"E:\Program Files\Adobe\Adobe Flash Builder 4.5\eclipse\..\sdks\4.5.1-Air3.0\bin"
+USERNAME=Development
+OS=Windows_NT
+PROCESSOR_IDENTIFIER=Intel64 Family 6 Model 42 Stepping 7, GenuineIntel
+--------------- S Y S T E M ---------------
+OS: Windows 7 Build 7601 Service Pack 1
+CPU:total 8 (8 cores per cpu, 2 threads per core) family 6 model 42 stepping 7, cmov, cx8, fxsr, mmx, sse, sse2, sse3, ssse3, sse4.1, sse4.2, ht
+Memory: 4k page, physical 4194303k(4194303k free), swap 4194303k(4194303k free)
+vm_info: Java HotSpot(TM) Client VM (14.2-b01) for windows-x86 JRE (1.6.0_16-b01), built on Jul 31 2009 11:26:58 by "java_re" with MS VC++ 7.1
+time: Fri Nov 04 17:49:29 2011
+elapsed time: 103 seconds
+Workaround (if any):
+Using ipa-test seems to work fine but doesn't seem useful for debugging.
+Removing files seems to avoid the problem, but no individual/group of files can be isolated as the problem.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.5.1
+Fix_version:
+None
+Component:
+.Unspecified - Compiler
+Label:
+None
+Environment:
+Affected OS(s): Apple IOS
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+04/Nov/11 00:36
+Update date:
+04/Nov/11 00:36
+Resolved date:
+

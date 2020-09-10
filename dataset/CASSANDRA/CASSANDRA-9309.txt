@@ -1,0 +1,41 @@
+Summary:
+Wrong interpretation of Config.getOutboundBindAny depending on using SSL or not
+Description:
+In function OutboundTcpConnectionPool.newSocket(), it appears the binding behavior of client sockets is different depending on the encryption setting.
+If encryption is enabled, and Config.getOutboundBindAny() is true, then no address is passed to SSLFactory.getSocket (so I assume it binds to any address).
+If encryption is enabled, and Config.getOutboundBindAny() is false, then FBUtilities.getLocalAddress() is passed to SSLFactory.getSocket (so I assume the new socket will be bound to that address).
+If encryption is disabled, and Config.getOutboundBindAny() is true (and socket.isBound() returns false) then the socket is bound to FBUtilities.getLocalAddress().
+If encryption is disabled, and Config.getOutboundBindAny() is false, the socket is not bound.
+The case of encryption disabled appears to be wrong, and the Config.getOutboundBindAny() flag gets inverted depending on the encryption setting. Shouldn't
+if (Config.getOutboundBindAny() && !socket.isBound())
+be this:
+if (!Config.getOutboundBindAny() && !socket.isBound())
+This is in my copy of the 2.0.11 tag, and appears to be the same in trunk.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.13, 2.2.5, 3.0.3, 3.2
+Component:
+Legacy/Streaming and Messaging
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Casey Marshall
+Create date:
+05/May/15 20:29
+Update date:
+16/Apr/19 09:31
+Resolved date:
+31/Dec/15 19:02

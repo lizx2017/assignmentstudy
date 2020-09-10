@@ -1,0 +1,51 @@
+Summary:
+get_range_slice doesn't support wrapping (start_key, end_token) range
+Description:
+I am trying to achieve a linear scan on the data contained in a cassandra node by exploiting tokens. The idea behind my approach is to request through the pycassa SystemManager a list of tokens that the cluster is responsible of, and then for each token, issue a key_range command specifying start and end interval. The problem is that apparently some tokens returned by the server does not respect the property start < end. I think that the bug is due to the fact that Murmur3RandomPartitioner is used, but I am just guessing here.
+Anyway here are the steps to reproduce the bug:
+Triggering the bug
+$ pycassaShell -k KEYSPACE
+In [1]: tokens = map(lambda x: (int(x.start_token), int(x.end_token)), SYSTEM_MANAGER.describe_ring('KEYSPACE'))
+
+In [2]: len(filter(lambda x: x[0] < x[1], tokens))
+Out[2]: 255
+
+In [3]: len(filter(lambda x: x[0] > x[1], tokens))
+Out[3]: 1
+
+In [4]: filter(lambda x: x[0] > x[1], tokens)
+Out[4]: [(9207458196362321348, -9182599474778206823)]
+
+In [5]: for i in CF.get_range(start_token="9207458196362321348", finish_token="-9182599474778206823"): print i
+# ...
+# after some objects are printed
+# ...
+InvalidRequestException: InvalidRequestException(why="Start key's token sorts after end token")
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Francesco Piccinno
+Create date:
+03/Dec/13 17:01
+Update date:
+16/Apr/19 09:31
+Resolved date:
+23/Feb/15 23:55

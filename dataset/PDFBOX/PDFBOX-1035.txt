@@ -1,0 +1,49 @@
+Summary:
+DateConverter badly handles date with minus sign in TimeZone
+Description:
+In a PDF where CreationDate is like "D:20110603085808-04'00'" (American West Coast), the method PDDocumentInformation.getCreationDate does not return a calendar with a correctly set timezone : offset remains 0.
+There is no problem with "D:20110603085808+04'00'" where offset is correct.
+The problem is in org.apache.pdfbox.util.DateConverter that does not handle '-'.
+Obvisouly, same problem with getModificationDate
+I made this patch to fix my problem :
+— DateConverter.java (revision 1133573)
++++ DateConverter.java (working copy)
+@@ -251,6 +251,10 @@
+//parseInt cannot handle the + sign
+hours = Integer.parseInt( date.substring( 15, 17 ) );
+}
++ else if (sign == '-')
++
+{ + hours = -Integer.parseInt(date.substring(15,17)); + }
+else
+{
+hours = -Integer.parseInt( date.substring( 14, 16 ) );
+It works, but I think there is much work to do on this method.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+1.5.0, 1.6.0
+Fix_version:
+1.6.0
+Component:
+Parsing
+Label:
+None
+Environment:
+windows 7, fedora
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Guillaume Bailleul
+Create date:
+08/Jun/11 22:56
+Update date:
+02/Jul/11 16:28
+Resolved date:
+13/Jun/11 15:34

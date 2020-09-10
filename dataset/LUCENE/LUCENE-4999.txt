@@ -1,0 +1,68 @@
+Summary:
+Lucene test (testCambridgeMA) fails when JVM 64-bit does not use memory compression
+Description:
+When I ran the Lucene (4.2.1/4.3) test suite with IBM Java I get the following error:
+[junit4:junit4] Suite: org.apache.lucene.search.postingshighlight.TestPostingsHighlighter
+[junit4:junit4] 2> NOTE: reproduce with: ant test -Dtestcase=TestPostingsHighlighter -Dtests.method=testCambridgeMA -Dtests.seed=571E16AEAF72C9F9 -Dtests.s
+low=true -Dtests.locale=mt_MT -Dtests.timezone=Pacific/Kiritimati -Dtests.file.encoding=UTF-8
+[junit4:junit4] ERROR 0.71s J2 | TestPostingsHighlighter.testCambridgeMA <<<
+[junit4:junit4] > Throwable #1: java.lang.ArrayIndexOutOfBoundsException: Array index out of range: 37
+[junit4:junit4] > at __randomizedtesting.SeedInfo.seed([571E16AEAF72C9F9:D60B7505C1DC91F8]:0)
+[junit4:junit4] > at org.apache.lucene.search.postingshighlight.Passage.addMatch(Passage.java:53)
+[junit4:junit4] > at org.apache.lucene.search.postingshighlight.PostingsHighlighter.highlightDoc(PostingsHighlighter.java:547)
+[junit4:junit4] > at org.apache.lucene.search.postingshighlight.PostingsHighlighter.highlightField(PostingsHighlighter.java:425)
+[junit4:junit4] > at org.apache.lucene.search.postingshighlight.PostingsHighlighter.highlightFields(PostingsHighlighter.java:364)
+[junit4:junit4] > at org.apache.lucene.search.postingshighlight.PostingsHighlighter.highlightFields(PostingsHighlighter.java:268)
+[junit4:junit4] > at org.apache.lucene.search.postingshighlight.PostingsHighlighter.highlight(PostingsHighlighter.java:198)
+[junit4:junit4] > at org.apache.lucene.search.postingshighlight.TestPostingsHighlighter.testCambridgeMA(TestPostingsHighlighter.java:373)
+[junit4:junit4] > at java.lang.Thread.run(Thread.java:738)
+[junit4:junit4] 2> NOTE: test params are: codec=FastDecompressionCompressingStoredFields(storedFieldsFormat=CompressingStoredFieldsFormat(compressionMode=FA
+ST_DECOMPRESSION, chunkSize=386), termVectorsFormat=CompressingTermVectorsFormat(compressionMode=FAST_DECOMPRESSION, chunkSize=386)), sim=RandomSimilarityProv
+ider(queryNorm=false,coord=yes):
+{body=DFR I(n)Z(0.3), title=DFR I(F)Z(0.3), id=DFR I(n)2}
+, locale=mt_MT, timezone=Pacific/Kiritimati
+[junit4:junit4] 2> NOTE: Linux 2.6.32-279.el6.x86_64 amd64/IBM Corporation 1.6.0 (64-bit)/cpus=4,threads=1,free=10783032,total=24030208
+[junit4:junit4] 2> NOTE: All tests run in this JVM: [FieldQueryTest, FieldPhraseListTest, SimpleFragListBuilderTest, FieldTermStackTest, OffsetLimitTokenFil
+terTest, TokenSourcesTest, TestPostingsHighlighter]
+[junit4:junit4] Completed on J2 in 2.46s, 23 tests, 1 error <<< FAILURES!
+This error is not seen with Oracle Java.
+A Google search showed that this error has already occurred in community builds and the solution proposed was disable the IBM Java in the community tests.
+I took a look in the code and found that the root of the problem is due to the assignment of the variable "referenceSize" in RamUsageEstimator.java:
+// get object reference size by getting scale factor of Object[] arrays:
+try
+{ final Method arrayIndexScaleM = unsafeClass.getMethod("arrayIndexScale", Class.class); referenceSize = ((Number) arrayIndexScaleM.invoke(theUnsafe, Object[].class)).intValue(); supportedFeatures.add(JvmFeature.OBJECT_REFERENCE_SIZE); }
+catch (Exception e)
+{ // ignore. }
+The Java Object reference size for arrays have 8 bytes in 64-bit machines (Oracle or IBM) and can be reduced to 4 bytes (like 32-bit JVMs) using Compressed References and Compressed Ordinary Object Pointers (OOPs).
+This options seems to be enabled by default in Oracle Java when the heap size is under 32GB, but is not in IBM Java.
+As workaround, when testing with IBM JVM I can pass the options "-Xcompressedrefs" or "-XX:+UseCompressedOops" to Junit.
+Similarly, you can reproduce the error if you pass the option "-XX:-UseCompressedOops" when testing with Oracle Java.
+The bug is in oversize method of ArrayUtil.java. It does nothing when the object reference size (bytesPerElement) is 8.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Duplicate
+Affects_version:
+4.3, 4.2.1
+Fix_version:
+4.4, 4.3.1
+Component:
+None
+Label:
+None
+Environment:
+redhat
+Attachment number:
+0
+Assignee:
+Uwe Schindler
+Reporter:
+Rodrigo Trujillo
+Create date:
+14/May/13 02:46
+Update date:
+18/Jun/13 16:55
+Resolved date:
+01/Jun/13 12:23

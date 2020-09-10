@@ -1,0 +1,50 @@
+Summary:
+Validation fails if ModifyDate and ModDate are specified using different time zones
+Description:
+I have a test PDF with this metadata:
+/ModDate (D:20180817115837+02'00')
+<xmp:ModifyDate>2018-08-17T09:58:37Z</xmp:ModifyDate>
+  According to the specification this is valid and should be considered as equivalent:
+For properties that map between the PDF date type, defined by PDF
+Reference, 3.8.2, and the XMP Date type, defined by Date and Time Formats, value equivalence shall be on a
+component-by-component basis, relative to Coordinated Universal Time (UTC), i.e., correcting for local time
+zone offset.
+EXAMPLE The document information dictionary entries:
+/CreationDate (D:20040402)
+/ModDate (D:200404080+91132-05'00')
+are equivalent to the XMP properties:
+<xmp:CreateDate>2004-04-02</xmp:CreateDate>
+<xmp:ModifyDate>2004-04-08T14:11:32Z</xmp:ModifyDate>
+  In org.apache.pdfbox.preflight.metadata.SynchronizedMetaDataValidation#analyzeModifyDateProperty the calendar objects are formatted as strings and then compared:
+else if(!DateConverter.toISO8601(xmpModifyDate).equals(DateConverter.toISO8601(modifyDate))) {
+  ve.add(this.unsynchronizedMetaDataError("ModificationDate"));
+}
+In my testcase DateConverter.toISO8601(modifyDate) yields "2018-08-17T11:58:37+02:00" while DateConverter.toISO8601(xmpModifyDate) yields "2018-08-17T09:58:37+00:00". These timestamps are semantically equal (xmpModifyDate.compareTo(modifyDate) yields 0) and therefore the PDF should be considered as valid PDF-A1b.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.11
+Fix_version:
+2.0.12, 3.0.0 PDFBox
+Component:
+Preflight
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Alonso Gonzalez
+Create date:
+20/Aug/18 08:47
+Update date:
+05/Oct/18 04:53
+Resolved date:
+22/Aug/18 20:29

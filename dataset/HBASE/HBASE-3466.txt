@@ -1,0 +1,94 @@
+Summary:
+runtime exception -- cached an already cached block -- during compaction
+Description:
+Happened while running ycsb against a single RS. BlockSize was set to 64M to tickle more splits. No compression, and replication factor set to 1.
+I noticed that https://issues.apache.org/jira/browse/HBASE-2455 applied to 0.20.4, so opened this new one (didn't check to see if the code was the same in 0.20.4 and 0.90.0)
+YCSB was run as follows:
+java -mx3000m -cp conf/:build/ycsb.jar:db/hbase/lib/* com.yahoo.ycsb.Client -t -db com.yahoo.ycsb.db.HBaseClient -P workloads/workloada -p columnfamily=family -p operationcount=10000000 -s -threads 30 -target 30000
+workloada was modified to do 1 billion records:
+----------
+recordcount=1000000000
+operationcount=1000
+workload=com.yahoo.ycsb.workloads.CoreWorkload
+readallfields=true
+readproportion=0.5
+updateproportion=0.4
+scanproportion=0
+insertproportion=0.1
+requestdistribution=zipfian
+---------------
+Relevant portions from the RS's log:
+2011-01-23 10:48:20,719 INFO org.apache.hadoop.hbase.regionserver.SplitTransaction [regionserver60020.compactor]: Starting split of region usertable,,1295808232386.44386ab6079bd5b497a6de3ab95e850c.
+2011-01-23 10:48:20,788 INFO org.apache.hadoop.hbase.regionserver.Store [regionserver60020.compactor]: Renaming flushed file at maprfs:/hbase/usertable/44386ab6079bd5b497a6de3ab95e850c/.tmp/3202441284831392385 to maprfs:/hbase/usertable/44386ab6079bd5b497a6de3ab95e850c/family/1800354539520698957
+2011-01-23 10:48:20,791 INFO org.apache.hadoop.hbase.regionserver.Store [regionserver60020.compactor]: Added maprfs:/hbase/usertable/44386ab6079bd5b497a6de3ab95e850c/family/1800354539520698957, entries=10943, sequenceid=128924, memsize=3.4m, filesize=1.5m
+2011-01-23 10:48:20,792 INFO org.apache.hadoop.hbase.regionserver.HRegion [regionserver60020.compactor]: Closed usertable,,1295808232386.44386ab6079bd5b497a6de3ab95e850c.
+2011-01-23 10:48:20,828 INFO org.apache.hadoop.hbase.catalog.MetaEditor [regionserver60020.compactor]: Offlined parent region usertable,,1295808232386.44386ab6079bd5b497a6de3ab95e850c. in META
+2011-01-23 10:48:20,856 INFO org.apache.hadoop.hbase.regionserver.HRegion [perfnode15.perf.lab,60020,1295807975391-daughterOpener=89e0f70da1e5ce2d5c4024ca6cc1addb]: Onlined usertable,,1295808500713.89e0f70da1e5ce2d5c4024ca6cc1addb.; next sequenceid=128925
+2011-01-23 10:48:20,791 INFO org.apache.hadoop.hbase.regionserver.Store [regionserver60020.compactor]: Added maprfs:/hbase/usertable/44386ab6079bd5b497a6de3ab95e850c/family/1800354539520698957, entries=10943, sequenceid=128924, memsize=3.4m, filesize=1.5m
+2011-01-23 10:48:20,792 INFO org.apache.hadoop.hbase.regionserver.HRegion [regionserver60020.compactor]: Closed usertable,,1295808232386.44386ab6079bd5b497a6de3ab95e850c.
+2011-01-23 10:48:20,828 INFO org.apache.hadoop.hbase.catalog.MetaEditor [regionserver60020.compactor]: Offlined parent region usertable,,1295808232386.44386ab6079bd5b497a6de3ab95e850c. in META
+2011-01-23 10:48:20,856 INFO org.apache.hadoop.hbase.regionserver.HRegion [perfnode15.perf.lab,60020,1295807975391-daughterOpener=89e0f70da1e5ce2d5c4024ca6cc1addb]: Onlined usertable,,1295808500713.89e0f70da1e5ce2d5c4024ca6cc1addb.; next sequenceid=128925
+2011-01-23 10:48:20,863 INFO org.apache.hadoop.hbase.catalog.MetaEditor [perfnode15.perf.lab,60020,1295807975391-daughterOpener=89e0f70da1e5ce2d5c4024ca6cc1addb]: Added daughter usertable,,1295808500713.89e0f70da1e5ce2d5c4024ca6cc1addb. in region .META.,,1, serverInfo=perfnode15.perf.lab,60020,1295807975391
+2011-01-23 10:48:20,868 INFO org.apache.hadoop.hbase.regionserver.HRegion [perfnode15.perf.lab,60020,1295807975391-daughterOpener=fd1d4e71c9a7e262a6e26adc0742414e]: Onlined usertable,user1907848630,1295808500713.fd1d4e71c9a7e262a6e26adc0742414e.; next sequenceid=128926
+2011-01-23 10:48:20,869 INFO org.apache.hadoop.hbase.catalog.MetaEditor [perfnode15.perf.lab,60020,1295807975391-daughterOpener=fd1d4e71c9a7e262a6e26adc0742414e]: Added daughter usertable,user1907848630,1295808500713.fd1d4e71c9a7e262a6e26adc0742414e. in region .META.,,1, serverInfo=perfnode15.perf.lab,60020,1295807975391
+2011-01-23 10:48:20,870 INFO org.apache.hadoop.hbase.regionserver.CompactSplitThread [regionserver60020.compactor]: Region split, META updated, and report to master. Parent=usertable,,1295808232386.44386ab6079bd5b497a6de3ab95e850c., new regions: usertable,,1295808500713.89e0f70da1e5ce2d5c4024ca6cc1addb., usertable,user1907848630,1295808500713.fd1d4e71c9a7e262a6e26adc0742414e.. Split took 0sec
+2011-01-23 10:48:20,871 INFO org.apache.hadoop.hbase.regionserver.HRegion [regionserver60020.compactor]: Starting compaction on region usertable,,1295808500713.89e0f70da1e5ce2d5c4024ca6cc1addb.
+2011-01-23 10:48:20,873 INFO org.apache.hadoop.hbase.regionserver.Store [regionserver60020.compactor]: Started compaction of 4 file(s) in cf=family, hasReferences=true, into maprfs:/hbase/usertable/89e0f70da1e5ce2d5c4024ca6cc1addb/.tmp, seqid=128924, totalSize=271.3m
+2011-01-23 10:48:21,822 ERROR org.apache.hadoop.hbase.regionserver.HRegionServer [IPC Server handler 1 on 60020]:
+java.lang.RuntimeException: Cached an already cached block
+at org.apache.hadoop.hbase.io.hfile.LruBlockCache.cacheBlock(LruBlockCache.java:252)
+at org.apache.hadoop.hbase.io.hfile.HFile$Reader.readBlock(HFile.java:1056)
+at org.apache.hadoop.hbase.io.hfile.HFile$Reader$Scanner.seekTo(HFile.java:1433)
+at org.apache.hadoop.hbase.io.HalfStoreFileReader$1.seekTo(HalfStoreFileReader.java:160)
+at org.apache.hadoop.hbase.regionserver.StoreFileScanner.seekAtOrAfter(StoreFileScanner.java:139)
+at org.apache.hadoop.hbase.regionserver.StoreFileScanner.seek(StoreFileScanner.java:96)
+at org.apache.hadoop.hbase.regionserver.StoreScanner.<init>(StoreScanner.java:77)
+at org.apache.hadoop.hbase.regionserver.Store.getScanner(Store.java:1338)
+at org.apache.hadoop.hbase.regionserver.HRegion$RegionScanner.<init>(HRegion.java:2229)
+at org.apache.hadoop.hbase.regionserver.HRegion.instantiateInternalScanner(HRegion.java:1119)
+at org.apache.hadoop.hbase.regionserver.HRegion.getScanner(HRegion.java:1111)
+at org.apache.hadoop.hbase.regionserver.HRegion.getScanner(HRegion.java:1095)
+at org.apache.hadoop.hbase.regionserver.HRegion.get(HRegion.java:2951)
+at org.apache.hadoop.hbase.regionserver.HRegion.get(HRegion.java:2853)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.get(HRegionServer.java:1623)
+at sun.reflect.GeneratedMethodAccessor3.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:570)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1036)
+2011-01-23 10:48:28,877 INFO org.apache.hadoop.hbase.regionserver.Store [regionserver60020.compactor]: Completed compaction of 4 file(s), new file=maprfs:/hbase/usertable/89e0f70da1e5ce2d5c4024ca6cc1addb/family/1639385306246002272, size=125.9m; total size for store is 125.9m
+2011-01-23 10:48:28,877 INFO org.apache.hadoop.hbase.regionserver.HRegion [regionserver60020.compactor]: completed compaction on region usertable,,1295808500713.89e0f70da1e5ce2d5c4024ca6cc1addb. after 8sec
+2011-01-23 10:48:28,879 INFO org.apache.hadoop.hbase.regionserver.HRegion [regionserver60020.compactor]: Starting compaction on region usertable,user1907848630,1295808500713.fd1d4e71c9a7e262a6e26adc0742414e.
+2011-01-23 10:48:28,881 INFO org.apache.hadoop.hbase.regionserver.Store [regionserver60020.compactor]: Started compaction of 4 file(s) in cf=family, hasReferences=true, into maprfs:/hbase/usertable/fd1d4e71c9a7e262a6e26adc0742414e/.tmp, seqid=128925, totalSize=271.3m
+2011-01-23 10:48:33,880 INFO org.apache.hadoop.hbase.regionserver.Store [regionserver60020.compactor]: Completed compaction of 4 file(s), new file=maprfs:/hbase/usertable/fd1d4e71c9a7e262a6e26adc0742414e/family/7964093352375224080, size=141.2m; total size for store is 141.2m
+2011-01-23 10:48:33,880 INFO org.apache.hadoop.hbase.regionserver.HRegion [regionserver60020.compactor]: completed compaction on region usertable,user1907848630,1295808500713.fd1d4e71c9a7e262a6e26adc0742414e. after 5sec
+2011-01-23 10:48:44,117 INFO org.apache.hadoop.hbase.regionserver.Store [regionserver60020.cacheFlusher]: Renaming flushed file at maprfs:/hbase/usertable/fd1d4e71c9a7e262a6e26adc0742414e/.tmp/8006640041641015018 to maprfs:/hbase/usertable/fd1d4e
+71c9a7e262a6e26adc0742414e/family/2931765299907917041
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.90.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+M. C. Srivas
+Create date:
+23/Jan/11 21:21
+Update date:
+26/Jan/12 18:27
+Resolved date:
+04/Mar/11 15:33

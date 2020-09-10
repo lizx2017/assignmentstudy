@@ -1,0 +1,45 @@
+Summary:
+While dropping and recreating an index, incremental snapshotting can hang
+Description:
+When creating a hard link (at list with JNA), link() hang if the target of the
+link already exists. In theory though, we should not hit that situation
+because we use a new directory for each manual snapshot and the generation
+number of the sstables should prevent this from hapenning with increment
+snapshot.
+However, when you drop, then recreate a secondary index, if the sstables are
+deleted after the drop and before we recreate the index, the recreated index
+sstables will start with a generation to 0. Thus, when we start backuping them
+incrementally, it will conflict with the sstables of the previously dropped
+index.
+First, we should check for the target existance because calling link() to at
+least avoid hanging. But then we must make sure that when we drop, then
+recreate an index, we will either not name the sstables the same way or the
+incremental snapshot use a different directory.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.8, 0.8.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Sylvain Lebresne
+Create date:
+08/Jul/11 08:59
+Update date:
+16/Apr/19 09:32
+Resolved date:
+19/Jul/11 18:08

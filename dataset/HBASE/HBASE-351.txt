@@ -1,0 +1,36 @@
+Summary:
+[hbase] Compactions should not block updates
+Description:
+Currently, compactions take a long time. During compaction, updates are carried by the HRegions' memcache (+ backing HLog). memcache is unable to flush to disk until compaction completes.
+Under sustained, substantial – rows that contain multiple columns one of which is a web page – updates by multiple concurrent clients (10 in this case), a common hbase usage scenario, the memcache grows fast and often to orders of magnitude in excess of the configured 'flush-to-disk' threshold.
+This throws the whole system out of kilter. When memcache does get to run after compaction completes – assuming you have sufficent RAM and the region server doesn't OOME – then the resulting on-disk file will be way larger than any other on-disk HStoreFile bringing on a region split ..... but the resulting split will produce regions that themselves need to be immediately split because each half is beyond the configured limit, and so on...
+In another issue yet to be posted, tuning and some pointed memcache flushes makes the above condition less extreme but until compaction durations come close to the memcache flush threshold compactions will remain disruptive.
+Its allowed that compactions may never be fast enough as per bigtable paper (This is a 'wish' issue).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+20/Jul/07 17:57
+Update date:
+04/Feb/08 18:41
+Resolved date:
+16/Aug/07 01:09

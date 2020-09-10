@@ -1,0 +1,41 @@
+Summary:
+Race between CatalogJanitor and LoadBalancer
+Description:
+It is possible for the LoadBalancer to try to assign an offline/split region while it is waiting to be CatalogJanitor'ed. It goes like this:
+2011-08-25 00:32:07,137 INFO org.apache.hadoop.hbase.master.ServerManager: Received REGION_SPLIT: parent: Daughters; d1, d2 from sv4r22s16,60020,1314211225331
+...
+(cleaning never happens or whatever)
+...
+2011-08-29 13:45:14,561 INFO org.apache.hadoop.hbase.master.HMaster: balance hri=parent, src=sv4r22s16,60020,1314211225331, dest=sv4r19s17,60020,1314218170402
+2011-08-29 13:45:14,561 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region parent (offlining)
+2011-08-29 13:45:14,588 INFO org.apache.hadoop.hbase.master.AssignmentManager: Server serverName=sv4r22s16,60020,1314211225331, load=(requests=0, regions=0, usedHeap=0, maxHeap=0) returned org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Received close for parent but we are not serving it for parent
+Here it took 4 days of balancing to finally get to try to balance the parent (that was never deleted because of HBASE-4238), but it can also happen if the balancer decides to balance the parent just before it's cleaned. The end effect is that the balancer will be disabled forever until that's fixed.
+The culprit here is that the master keeps the region "online" until AssignmentManager.regionOffline is called by the CJ, which means it's still treated like any other region although it's offline.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Invalid
+Affects_version:
+0.90.4
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jean-Daniel Cryans
+Create date:
+30/Aug/11 23:00
+Update date:
+24/Dec/14 19:50
+Resolved date:
+24/Dec/14 19:50

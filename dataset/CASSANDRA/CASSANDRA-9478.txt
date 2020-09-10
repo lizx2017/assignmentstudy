@@ -1,0 +1,38 @@
+Summary:
+SSTables are not always properly marked suspected
+Description:
+There is 2 problems:
+During compaction, SSTableIdentityIterator doesn't always mark sstables suspect (nor always throws CorruptSSTableException in 2.0) This affects versions at least since 2.0 and up to trunk.
+Since 2.1, with CASSANDRA-916, SSTableReader.cloneWithNewStart doesn't preserve the isSuspect flag. This a problem because when a CorruptSSTableException is thrown, the SSTableRewriter is aborted, which replace SSTableReader by a clone of themselves and for the sstables that have just been marked suspected this (wrongly) clears the flag.
+The reason none of this has be caught so far is that the test that tests sstable blacklisting, BlacklistingCompactionsTest, always corrupts the very beginning of sstables (the first 3 bytes). This conspire in hiding the 2 problems above because:
+the CorruptSSTableException is always thrown when we read the very first partition key, which is actually properly covered in SSTableIdentityIterator.
+due to MergeIterator greediness, the exception is throw in CompactionTask.runMayThrow on the creation of the iterator (on Iterator<AbstractCompactedRow> iter = ci.iterator()), which is before the SSTableRewriter is even created, and so it's not aborted (and the suspected flag is not cleared).
+I've made some simple changes to BlacklistingCompactionsTest so it corrupts files a little bit more randomly. At least on 2.1, the updated test pretty reliably find the 2 problems above. On 2.2/trunk however, this doesn't find the 2nd one because since CASSANDRA-8568, SSTableRewriter.doAbort do nothing if no early opening was actually perform, which will be the case in the test. We would need a fancier test that ensure the corruption is far enough in the file that some early opening has been done when it's thrown. But I don't have time for writing that test right now so I'm gonna push that to a follow-up ticket.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.16, 2.1.6, 2.2.0 rc1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+26/May/15 09:22
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Jun/15 13:29

@@ -1,0 +1,64 @@
+Summary:
+AdobePDFSchema.getProducer() returns empty string
+Description:
+I experienced this bug while PDF/A validation process. The document is not considered valid because the producer value is not in sync with PDDocumentInformation.
+PDDocumentInformation.getProducer() = ` ' (one space)
+AdobePDFSchema.getProducer() = `' (empty)
+Below the metadata extracted from the PDF document:
+<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+<rdf:Description rdf:about="" xmlns:xap="http://ns.adobe.com/xap/1.0/">
+<xap:CreatorTool>Canon </xap:CreatorTool>
+<xap:CreateDate>2014-01-23T20:09:45+01:00</xap:CreateDate>
+</rdf:Description>
+<rdf:Description rdf:about="" xmlns:pdf="http://ns.adobe.com/pdf/1.3/">
+<pdf:Producer> </pdf:Producer>
+</rdf:Description>
+<rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">
+<pdfaid:part>1</pdfaid:part>
+<pdfaid:conformance>B</pdfaid:conformance>
+</rdf:Description>
+</rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>
+As you can see the Producer value should be equal to ` ' (one space).
+The bug is located within the method DomXmpParser.removeComments. This method is invoked during the unmarshalling process and removes much more than comments, text nodes too!
+I can fix (badly) MY issue by changing the code base from :
+Text t = (Text) node;
+if (t.getTextContent().trim().length() == 0)
+Unknown macro: { // XXX is there a better way to remove useless Text ? node.getParentNode().removeChild(node); }
+into :
+Text t = (Text) node;
+if (t.getTextContent().startsWith("\n"))
+Unknown macro: { // XXX is there a better way to remove useless Text ? node.getParentNode().removeChild(node); }
+But this is not a long term fix.
+IMHO, the unmarshalling process should be reworked.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.4
+Fix_version:
+1.8.12, 2.0.0
+Component:
+XmpBox
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Guillaume Bailleul
+Reporter:
+Alexandre Garino
+Create date:
+22/Mar/14 13:11
+Update date:
+17/Mar/16 19:08
+Resolved date:
+20/Jun/14 20:59

@@ -1,0 +1,50 @@
+Summary:
+PDFMergerUtility with scratch file generates result with blank pages for certain source files.
+Description:
+My team uses PDFMergerUtility to attach cover pages to various pdfs . We recently we tried utilizing a scratch file (e.g. PDFMergerUtility.mergeDocumentsNonSeq()) to cut down on the amount of RAM we are using. This approach works for the majority of pdf's in our system, but some files cause the merger utility to generate resultant pdf's with a blank page. Specifically, the result pdf contains a blank page after the coverpage instead of the first page of the second document sent to merger utility.
+Whenever this problem occurs, we see the following line in our logs:
+org.apache.pdfbox.pdfparser.NonSequentialPDFParser - Can't find the object 52 0 (origin offset 7187557)
+I'll try to attach/link an example pdf soon, but currently I don't have permission to redistribute any files that exhibit the problem. However, here's a simple snippet that replicates the problem - it's pretty straightforward.
+    @Test
+    public void testMergeNonSeq() throws IOException, COSVisitorException {
+        destinationPdf = new File(TMP_FOLDER, "result-nonseq.pdf");
+        PDFMergerUtility ut = new PDFMergerUtility();
+        RandomAccess ram = new RandomAccessFile(File.createTempFile("mergeram", ".bin"), "rw");
+        ut.addSource(coverpagePdf);
+        ut.addSource(documentPdf);
+        ut.setDestinationFileName(destinationPdf.getCanonicalPath());
+
+        ut.mergeDocumentsNonSeq(ram);  
+        
+        //the only automated way we have to tell that something went wrong is to check the size of the result
+        assertThat("destination pdf should be larger than the original pdf", destinationPdf.length(), is( greaterThan(documentPdf.length())));
+    }
+Note we only see this problem with PDFMergerUtility.mergeDocumentsNonSeq(). Using PDFMergerUtility.mergeDocuments() does not exhibit any problems.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.10
+Fix_version:
+2.0.0
+Component:
+Utilities
+Label:
+None
+Environment:
+ubuntu, java 1.8
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Jim deVos
+Create date:
+01/Dec/15 01:28
+Update date:
+17/Mar/16 19:08
+Resolved date:
+01/Feb/16 18:41

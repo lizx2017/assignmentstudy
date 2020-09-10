@@ -1,0 +1,40 @@
+Summary:
+Installation shouldn't fail if /etc/sysctl.d/cassandra is deleted
+Description:
+The Debian package's postinst currently has this snippet code, under the "configure" action (i.e. what runs when installing or upgrading):
+        if ! sysctl -p /etc/sysctl.d/cassandra.conf; then
+            [...]
+            rm -v /etc/sysctl.d/cassandra.conf
+        fi
+/etc/sysctl.d/cassandra.conf is a conffile and might be removed by the system administrator. The sysadmin might not want this sysctl setting or have an entirely different system of managing the /etc/sysctl.d hierarchy (in our case that would be puppet).
+Since this piece of code doesn't check for the existence and doesn't use rm's "-f" argument, if the file doesn't exist the rm call fails and the package installation is aborted.
+I'd propose checking for the file's existence instead of just "sysctl -p", so that you can avoid the nasty warnings too, but adding -f to rm shouldn't hurt either.
+Note that this would probably fail on package upgrades under OpenVZ too, which according to the error message should be a supported configuration.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.12, 2.0.3
+Component:
+Packaging
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Faidon Liambotis
+Create date:
+23/Oct/13 01:03
+Update date:
+16/Apr/19 09:32
+Resolved date:
+24/Oct/13 19:48

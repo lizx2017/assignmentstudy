@@ -1,0 +1,34 @@
+Summary:
+NumericFields + SlowCompositeReaderWrapper + UninvertedReader + -Dtests.codec=random can results in incorrect SortedSetDocValues
+Description:
+Digging into SOLR-7631 and SOLR-7605 I became fairly confident that the only explanation of the behavior i was seeing was some sort of bug in either the randomized codec/postings-format or the UninvertedReader, that was only evident when two were combined and used on a multivalued Numeric Field using precision steps. But since i couldn't find any -Dtests.codec or -Dtests.postings.format options that would cause the bug 100% regardless of seed, I switched tactices and focused on reproducing the problem using UninvertedReader directly and checking the SortedSetDocValues.getValueCount().
+I now have a test that fails frequently (and consistently for any seed i find), but only with -Dtests.codec=random – override it with -Dtests.codec=default and everything works fine (based on the exhaustive testing I did in the linked issues, i suspect every named codec works fine - but i didn't re-do that testing here)
+The failures only seem to happen when checking the SortedSetDocValues.getValueCount() of a SlowCompositeReaderWrapper around the UninvertedReader – which suggests the root bug may actually be in SlowCompositeReaderWrapper? (but still has some dependency on the random codec)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.3, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Hoss Man
+Reporter:
+Hoss Man
+Create date:
+06/Jun/15 01:35
+Update date:
+09/May/16 18:38
+Resolved date:
+12/Jun/15 23:27

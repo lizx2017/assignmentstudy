@@ -1,0 +1,37 @@
+Summary:
+CLASSPATH logic from init script is unused, JNA isn't loaded
+Description:
+The init script has a classpath() function that collects all the jars and even includes this piece of code to work with the standard Debian/Ubuntu libjna-jar:
+    # use JNA if installed in standard location
+    [ -r /usr/share/java/jna.jar ] && cp="$cp:/usr/share/java/jna.jar"
+This seems very nice and correct, however the classpath() function is never called and is entirely unused Instead, /usr/bin/cassandra is called, which in turn includes /usr/share/cassandra/cassandra.in.sh, which has basically similar code to collect the jars for CLASSPATH but a) without the JNA standard path trick b) without using EXTRA_CLASSPATH (from /etc/default/cassandra) at all, so Cassandra boots without either JNA nor EXTRA_CLASSPATH, contrary to expectations.
+There are various suggestions on the web to do "ln -s /usr/share/java/jna.jar /usr/share/cassandra/lib/"; I suspect this bug to be the reason for that.
+/usr/share/cassandra/cassandra.in.sh seems smart enough to append but not overwrite CLASSPATH, so fixing the init script's classpath() to only include JNA + EXTRA_CLASSPATH (and making sure it's actually getting called ) should be enough for a fix.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+Packaging
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Eric Evans
+Reporter:
+Faidon Liambotis
+Create date:
+24/Oct/13 20:47
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Oct/13 20:19

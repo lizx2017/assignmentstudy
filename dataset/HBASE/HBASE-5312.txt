@@ -1,0 +1,88 @@
+Summary:
+Closed parent region present in Hlog.lastSeqWritten
+Description:
+This is in reference to the mail sent in the dev mailing list
+"Closed parent region present in Hlog.lastSeqWritten".
+The sceanrio described is
+We had a region that was split into two daughters. When the hlog roll tried to flush the region there was an entry in the HLog.lastSeqWritten that was not flushed or removed from the lastSeqWritten during the parent close.
+Because this flush was not happening subsequent flushes were getting blocked
+ 05:06:44,422 INFO org.apache.hadoop.hbase.regionserver.wal.HLog: Too many
+ hlogs: logs=122, maxlogs=32; forcing flush of 1 regions(s):
+ 2acaf8e3acfd2e8a5825a1f6f0aca4a8
+ 05:06:44,422 WARN org.apache.hadoop.hbase.regionserver.LogRoller: Failed
+ to schedule flush of 2acaf8e3acfd2e8a5825a1f6f0aca4a8r=null,
+requester=null
+ 05:10:48,666 INFO org.apache.hadoop.hbase.regionserver.wal.HLog: Too many
+ hlogs: logs=123, maxlogs=32; forcing flush of 1 regions(s):
+ 2acaf8e3acfd2e8a5825a1f6f0aca4a8
+ 05:10:48,666 WARN org.apache.hadoop.hbase.regionserver.LogRoller: Failed
+ to schedule flush of 2acaf8e3acfd2e8a5825a1f6f0aca4a8r=null,
+requester=null
+ 05:14:46,075 INFO org.apache.hadoop.hbase.regionserver.wal.HLog: Too many
+ hlogs: logs=124, maxlogs=32; forcing flush of 1 regions(s):
+ 2acaf8e3acfd2e8a5825a1f6f0aca4a8
+ 05:14:46,075 WARN org.apache.hadoop.hbase.regionserver.LogRoller: Failed
+ to schedule flush of 2acaf8e3acfd2e8a5825a1f6f0aca4a8r=null,
+requester=null
+ 05:15:41,584 INFO org.apache.hadoop.hbase.regionserver.wal.HLog: Too many
+ hlogs: logs=125, maxlogs=32; forcing flush of 1 regions(s):
+ 2acaf8e3acfd2e8a5825a1f6f0aca4a8
+ 05:15:41,584 WARN org.apache.hadoop.hbase.regionserver.LogRoller: Failed
+ to schedule flush of 2acaf8e3acfd2e8a5825a1f6f0aca4a8r=null,
+Lets see what happened for the region 2acaf8e3acfd2e8a5825a1f6f0aca4a8
+2012-01-06 00:30:55,214 INFO org.apache.hadoop.hbase.regionserver.Store: Renaming flushed file at hdfs://192.168.1.103:9000/hbase/Htable_UFDR_031/2acaf8e3acfd2e8a5825a1f6f0aca4a8/.tmp/1755862026714756815 to hdfs://192.168.1.103:9000/hbase/Htable_UFDR_031/2acaf8e3acfd2e8a5825a1f6f0aca4a8/value/973789709483406123
+2012-01-06 00:30:58,946 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Instantiated Htable_UFDR_016,049790700093168-04565200000,1325809837958.0ebe5bd7fcbc09ee074d5600b9d4e062.
+2012-01-06 00:30:59,614 INFO org.apache.hadoop.hbase.regionserver.Store: Added hdfs://192.168.1.103:9000/hbase/Htable_UFDR_031/2acaf8e3acfd2e8a5825a1f6f0aca4a8/value/973789709483406123, entries=7537, sequenceid=20312223, memsize=4.2m, filesize=2.9m
+2012-01-06 00:30:59,787 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Finished snapshotting, commencing flushing stores
+2012-01-06 00:30:59,787 INFO org.apache.hadoop.hbase.regionserver.HRegion: Finished memstore flush of ~133.5m for region Htable_UFDR_031,00332,1325808823997.2acaf8e3acfd2e8a5825a1f6f0aca4a8. in 21816ms, sequenceid=20312223, compaction requested=true
+2012-01-06 00:30:59,787 DEBUG org.apache.hadoop.hbase.regionserver.CompactSplitThread: Compaction requested for Htable_UFDR_031,00332,1325808823997.2acaf8e3acfd2e8a5825a1f6f0aca4a8. because regionserver20020.cacheFlusher; priority=0, compaction queue size=5840
+A user triggered split has been issued to this region which can be seen in the above logs.
+The flushing of this region has resulted in a seq id 20312223.
+The region has been splitted and the parent region has been closed
+00:31:12,607 INFO org.apache.hadoop.hbase.regionserver.SplitTransaction: Starting split of region Htable_UFDR_031,00332,1325808823997.2acaf8e3acfd2e8a5825a1f6f0aca4a8.
+00:31:13,694 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Closing Htable_UFDR_031,00332,1325808823997.2acaf8e3acfd2e8a5825a1f6f0aca4a8.: disabling compactions & flushes
+00:31:13,694 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Updates disabled for region Htable_UFDR_031,00332,1325808823997.2acaf8e3acfd2e8a5825a1f6f0aca4a8.
+00:31:13,718 INFO org.apache.hadoop.hbase.regionserver.HRegion: Closed Htable_UFDR_031,00332,1325808823997.2acaf8e3acfd2e8a5825a1f6f0aca4a8.
+00:31:39,552 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Offlined parent region Htable_UFDR_031,00332,1325808823997.2acaf8e3acfd2e8a5825a1f6f0aca4a8. in META
+00:31:41,374 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://192.168.1.103:9000/hbase/Htable_UFDR_031/259d0c620c9105928e52713f4a5a252e/value/239119195230239381.2acaf8e3acfd2e8a5825a1f6f0aca4a8, isReference=true, isBulkLoadResult=false, seqid=20201181, majorCompaction=false
+
+
+2012-01-06 00:31:42,529 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://192.168.1.103:9000/hbase/Htable_UFDR_031/52ff3c7c6df6e0337876bbca29cee84a/value/973789709483406123.2acaf8e3acfd2e8a5825a1f6f0aca4a8, isReference=true, isBulkLoadResult=false, seqid=20312224, majorCompaction=false
+
+2012-01-06 00:31:42,532 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://192.168.1.103:9000/hbase/Htable_UFDR_031/259d0c620c9105928e52713f4a5a252e/value/973789709483406123.2acaf8e3acfd2e8a5825a1f6f0aca4a8, isReference=true, isBulkLoadResult=false, seqid=20312223, majorCompaction=false
+
+INFO org.apache.hadoop.hbase.regionserver.CompactSplitThread: Region split, META updated, and report to master. Parent=Htable_UFDR_031,00332,1325808823997.2acaf8e3acfd2e8a5825a1f6f0aca4a8., new regions: Htable_UFDR_031,00332,1325809872607.259d0c620c9105928e52713f4a5a252e., Htable_UFDR_031,003732800093168-03594291912,1325809872607.52ff3c7c6df6e0337876bbca29cee84a.. Split took 29sec
+In the above logs we can also see that the new daugher regions have the next seq id as 20312223 and 20312224.
+DEBUG org.apache.hadoop.hbase.regionserver.wal.HLog: Found 1 hlogs to remove out of total 4; oldest outstanding sequenceid is 20312224 from region 2acaf8e3acfd2e8a5825a1f6f0aca4a8
+Now we see that the parent region which was clsoed has a seq id 20312224 which is not flushed.
+So further flush are failing as the region is already removed from onlineRegionList.
+The doubt here is before the region could be closed, a put has arrived for this region. But due to some reason the flush has not happened for that. We tried to dig this, but not able to get this problem again.
+0.90.5 version + few 0.90.6 patches ( before 0.90.6RC0)
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.90.5
+Fix_version:
+0.90.7
+Component:
+None
+Label:
+delete
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+01/Feb/12 06:08
+Update date:
+10/Jan/15 02:17
+Resolved date:
+10/Jan/15 02:17

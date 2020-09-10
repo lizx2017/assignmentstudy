@@ -1,0 +1,81 @@
+Summary:
+Uncaught UnknownHostException prevents HBase from starting
+Description:
+If a host gets decommissioned and its hostname no longer resolves, and it was previously hosting ROOT or META, HBase won't be able to start up. This easily happens when moving across networks (e.g. developing HBase on a laptop), but can also happen during cluster-wide maintenances where HBase is shut down, then one or more nodes get decommissioned such that their hostnames no longer resolve.
+2012-02-26 20:05:48,339 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region -ROOT-,,0.70236052 to nowwhat.tsunanet.net,54092,1330315542087
+[...]
+2012-02-26 20:05:48,456 INFO org.apache.hadoop.hbase.regionserver.HRegion: Onlined -ROOT-,,0.70236052; next sequenceid=268
+2012-02-26 20:05:48,456 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:54092-0x135bcfbb0580001 Attempting to transition node 70236052/-ROOT- from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2012-02-26 20:05:48,458 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:54092-0x135bcfbb0580001 Successfully transitioned node 70236052 from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2012-02-26 20:05:48,459 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=nowwhat.tsunanet.net,54092,1330315542087, region=70236052/-ROOT-
+2012-02-26 20:05:48,459 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Post open deploy tasks for region=-ROOT-,,0.70236052, daughter=false
+2012-02-26 20:05:48,460 INFO org.apache.hadoop.hbase.catalog.RootLocationEditor: Setting ROOT region location in ZooKeeper as nowwhat.tsunanet.net,54092,1330315542087
+2012-02-26 20:05:48,466 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Done with post open deploy task for region=-ROOT-,,0.70236052, daughter=false
+2012-02-26 20:05:48,466 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:54092-0x135bcfbb0580001 Attempting to transition node 70236052/-ROOT- from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENED
+2012-02-26 20:05:48,468 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:54092-0x135bcfbb0580001 Successfully transitioned node 70236052 from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENED
+2012-02-26 20:05:48,468 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: region transitioned to opened in zookeeper: {NAME => '-ROOT-,,0', STARTKEY => '', ENDKEY => '', ENCODED => 70236052,}, server: nowwhat.tsunanet.net,54092,1330315542087
+2012-02-26 20:05:48,468 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Opened -ROOT-,,0.70236052 on server:nowwhat.tsunanet.net,54092,1330315542087
+2012-02-26 20:05:48,468 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=nowwhat.tsunanet.net,54092,1330315542087, region=70236052/-ROOT-
+2012-02-26 20:05:48,470 INFO org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Handling OPENED event for -ROOT-,,0.70236052 from nowwhat.tsunanet.net,54092,1330315542087; deleting unassigned node
+2012-02-26 20:05:48,470 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:54081-0x135bcfbb0580000 Deleting existing unassigned node for 70236052 that is in expected state RS_ZK_REGION_OPENED
+2012-02-26 20:05:48,472 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: The znode of region -ROOT-,,0.70236052 has been deleted.
+2012-02-26 20:05:48,472 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:54081-0x135bcfbb0580000 Successfully deleted unassigned node for region 70236052 in expected state RS_ZK_REGION_OPENED
+2012-02-26 20:05:48,472 INFO org.apache.hadoop.hbase.master.AssignmentManager: The master has opened the region -ROOT-,,0.70236052 that was online on nowwhat.tsunanet.net,54092,1330315542087
+2012-02-26 20:05:48,473 INFO org.apache.hadoop.hbase.master.HMaster: -ROOT- assigned=1, rit=false, location=nowwhat.tsunanet.net,54092,1330315542087
+2012-02-26 20:05:48,486 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Lookedup root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@16d0a6a3; serverName=nowwhat.tsunanet.net,54092,1330315542087
+2012-02-26 20:05:48,488 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Lookedup root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@16d0a6a3; serverName=nowwhat.tsunanet.net,54092,1330315542087
+2012-02-26 20:05:48,620 FATAL org.apache.hadoop.hbase.master.HMaster: Master server abort: loaded coprocessors are: []
+2012-02-26 20:05:48,621 FATAL org.apache.hadoop.hbase.master.HMaster: Unhandled exception. Starting shutdown.
+java.net.UnknownHostException: unknown host: h-27-1.sfo.stumble.net
+        at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.<init>(HBaseClient.java:227)
+        at org.apache.hadoop.hbase.ipc.HBaseClient.getConnection(HBaseClient.java:1016)
+        at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:878)
+        at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Invoker.invoke(WritableRpcEngine.java:150)
+        at $Proxy12.getProtocolVersion(Unknown Source)
+        at org.apache.hadoop.hbase.ipc.WritableRpcEngine.getProxy(WritableRpcEngine.java:183)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC.getProxy(HBaseRPC.java:303)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC.getProxy(HBaseRPC.java:280)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC.getProxy(HBaseRPC.java:332)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC.waitForProxy(HBaseRPC.java:236)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getHRegionConnection(HConnectionManager.java:1278)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getHRegionConnection(HConnectionManager.java:1235)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getHRegionConnection(HConnectionManager.java:1222)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.getCachedConnection(CatalogTracker.java:564)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.getMetaServerConnection(CatalogTracker.java:422)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMeta(CatalogTracker.java:478)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMetaServerConnection(CatalogTracker.java:503)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.verifyMetaRegionLocation(CatalogTracker.java:674)
+        at org.apache.hadoop.hbase.master.HMaster.assignRootAndMeta(HMaster.java:575)
+        at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:491)
+        at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:326)
+        at org.apache.hadoop.hbase.master.HMasterCommandLine$LocalHMaster.run(HMasterCommandLine.java:218)
+        at java.lang.Thread.run(Thread.java:680)
+2012-02-26 20:05:48,626 INFO org.apache.hadoop.hbase.master.HMaster: Aborting
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.1, 0.94.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benoit Sigoure
+Reporter:
+Benoit Sigoure
+Create date:
+27/Feb/12 04:19
+Update date:
+12/Oct/12 05:35
+Resolved date:
+27/Feb/12 16:52

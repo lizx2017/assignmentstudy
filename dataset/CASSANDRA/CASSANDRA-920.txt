@@ -1,0 +1,73 @@
+Summary:
+Deleting and re-inserting row causes error in get_slice count parameter
+Description:
+I've found that when I delete an entire row in a column family with super columns, and then re-insert values with the same row and super column keys, the count parameter to the get_slice call no longer works properly. Its like it is still counting the deleted columns, but only returning the new columns.
+The following example uses the Ruby Cassandra client (see link below), but I've seen the same behavior with the Java Thrift interface.
+Test code:
+--------------
+require 'rubygems'
+require 'cassandra'
+cc = Cassandra.new('Keyspace1')
+cc.insert(:Super1,'test-key1',{'bucket1' => {'1' => 'Item 1', '2' => 'Item 2', '5' => 'Item 5'}})
+items = cc.get(:Super1,'test-key1','bucket1')
+puts "returned #
+{items.size} items, should be 3"
+cc.remove(:Super1,'test-key1')
+items = cc.get(:Super1,'test-key1','bucket1')
+puts "returned #{items.size}
+items, should be 0"
+cc.insert(:Super1,'test-key1',{'bucket1' => {'3' => 'Item 3', '4' => 'Item 4', '6' => 'Item 6'}})
+items = cc.get(:Super1,'test-key1','bucket1')
+puts "returned #
+{items.size} items, should be 3"
+items = cc.get(:Super1,'test-key1','bucket1',:count => 3)
+puts "returned #{items.size}
+items, should be 3"
+items = cc.get(:Super1,'test-key1','bucket1',:count => 4)
+puts "returned #
+{items.size} items, should be 3"
+items = cc.get(:Super1,'test-key1','bucket1',:count => 5)
+puts "returned #{items.size}
+items, should be 3"
+items = cc.get(:Super1,'test-key1','bucket1',:count => 6)
+puts "returned #
+{items.size}
+items, should be 3"
+Output:
+returned 3 items, should be 3
+returned 0 items, should be 0
+returned 3 items, should be 3
+returned 1 items, should be 3
+returned 2 items, should be 3
+returned 2 items, should be 3
+returned 3 items, should be 3
+Ruby library link:
+http://blog.evanweaver.com/files/doc/fauna/cassandra/files/README_rdoc.html
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.1
+Component:
+None
+Label:
+None
+Environment:
+mac os, java 1.6
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Bob Florian
+Create date:
+25/Mar/10 22:52
+Update date:
+16/Apr/19 09:33
+Resolved date:
+12/Apr/10 21:14

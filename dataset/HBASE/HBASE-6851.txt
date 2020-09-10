@@ -1,0 +1,52 @@
+Summary:
+Race condition in TableAuthManager.updateGlobalCache()
+Description:
+When new global permissions are assigned, there is a race condition, during which further authorization checks relying on global permissions may fail.
+In TableAuthManager.updateGlobalCache(), we have:
+    USER_CACHE.clear();
+    GROUP_CACHE.clear();
+    try {
+      initGlobal(conf);
+    } catch (IOException e) {
+      // Never happens
+      LOG.error("Error occured while updating the user cache", e);
+    }
+    for (Map.Entry<String,TablePermission> entry : userPerms.entries()) {
+      if (AccessControlLists.isGroupPrincipal(entry.getKey())) {
+        GROUP_CACHE.put(AccessControlLists.getGroupName(entry.getKey()),
+                        new Permission(entry.getValue().getActions()));
+      } else {
+        USER_CACHE.put(entry.getKey(), new Permission(entry.getValue().getActions()));
+      }
+    }
+If authorization checks come in following the .clear() but before repopulating, they will fail.
+We should have some synchronization here to serialize multiple updates and use a COW type rebuild and reassign of the new maps.
+This particular issue crept in with the fix in HBASE-6157, so I'm flagging for 0.94 and 0.96.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.1, 0.95.2
+Fix_version:
+0.94.2
+Component:
+security
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Helmling
+Reporter:
+Gary Helmling
+Create date:
+20/Sep/12 23:03
+Update date:
+07/Apr/13 05:02
+Resolved date:
+22/Sep/12 21:18

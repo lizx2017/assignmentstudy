@@ -1,0 +1,76 @@
+Summary:
+NullPointerException during IndexWriter.mergeSegments
+Description:
+Last commit on culprit org.apache.lucene.index.FieldsReader: Sun Oct 30 05:38:46 2005.
+---------------------------------------------------------
+Offending code in FieldsReader.java:
+...
+final Document doc(int n) throws IOException {
+indexStream.seek(n * 8L);
+long position = indexStream.readLong();
+fieldsStream.seek(position);
+Document doc = new Document();
+int numFields = fieldsStream.readVInt();
+for (int i = 0; i < numFields; i++) {
+int fieldNumber = fieldsStream.readVInt();
+FieldInfo fi = fieldInfos.fieldInfo(fieldNumber);
+//
+// This apparently returns null, presumably either as a result of:
+// catch (IndexOutOfBoundsException ioobe)
+{ // return null; // }
+// in fieldInfos.fieldInfo(int fieldNumber)
+// - or -
+// because there's a null member of member ArrayList byNumber of FieldInfos
+byte bits = fieldsStream.readByte();
+boolean compressed = (bits & FieldsWriter.FIELD_IS_COMPRESSED) != 0;
+....
+Field.Store store = Field.Store.YES;
+//
+// Here --v is where the NPE is thrown.
+if (fi.isIndexed && tokenize)
+index = Field.Index.TOKENIZED;
+...
+---------------------------------------------------------
+Proposed Patch:
+I'm not sure what the behavior should be in this case, but if it's no big deal that there's null field info for an index and we should just ignore that index, an obvious patch could be:
+In FieldsReader.java:
+...
+for (int i = 0; i < numFields; i++) {
+int fieldNumber = fieldsStream.readVInt();
+FieldInfo fi = fieldInfos.fieldInfo(fieldNumber);
+// vvvPatchvvv
+if(fi == null)
+{continue;}
+byte bits = fieldsStream.readByte();
+...
+---------------------------------------------------------
+Other observations:
+In my search prior to submitting this issue, I found LUCENE-168, which looks similar, and is perhaps related, but if so, I'm not sure exactly how.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+1.9
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+ubuntu, java 1.5
+Attachment number:
+0
+Assignee:
+Yonik Seeley
+Reporter:
+Jeremy Calvert
+Create date:
+09/Dec/05 01:44
+Update date:
+02/Jun/11 22:03
+Resolved date:
+09/Dec/05 08:49

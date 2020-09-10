@@ -1,0 +1,72 @@
+Summary:
+Could not find file for class: Error
+Description:
+Create the following class and instantiate it with new CustomError()
+CustomError.as
+package
+{
+ public class CustomError extends Error
+ {
+ }
+}
+When you try to compile, the following error will appear in the compiler output:
+Could not find file for class: Error
+File not found: Error
+org.apache.flex.compiler.internal.graph.GoogDepsWriter.addDeps(GoogDepsWriter.java:366)org.apache.flex.compiler.internal.graph.GoogDepsWriter.addDeps(GoogDepsWriter.java:382)org.apache.flex.compiler.internal.graph.GoogDepsWriter.addDeps(GoogDepsWriter.java:391)org.apache.flex.compiler.internal.graph.GoogDepsWriter.addDeps(GoogDepsWriter.java:391)org.apache.flex.compiler.internal.graph.GoogDepsWriter.buildDB(GoogDepsWriter.java:206)org.apache.flex.compiler.internal.graph.GoogDepsWriter.getListOfFiles(GoogDepsWriter.java:96)org.apache.flex.compiler.internal.codegen.mxml.flexjs.MXMLFlexJSPublisher.publish(MXMLFlexJSPublisher.java:319)org.apache.flex.compiler.clients.MXMLJSCNode.compile(MXMLJSCNode.java:380)org.apache.flex.compiler.clients.MXMLJSCNode._mainNoExit(MXMLJSCNode.java:238)org.apache.flex.compiler.clients.MXMLJSCNode.mainNoExit(MXMLJSCNode.java:195)org.apache.flex.compiler.clients.MXMLJSC._mainNoExit(MXMLJSC.java:365)org.apache.flex.compiler.clients.MXMLJSC.mainNoExit(MXMLJSC.java:282)org.apache.flex.compiler.clients.MXMLJSC.staticMainNoExit(MXMLJSC.java:242)org.apache.flex.compiler.clients.MXMLJSC.main(MXMLJSC.java:224)
+It appears to be related to the following code in GoogDepsWriter.java (and the section above for @implements is probably also affected):
+c = line.indexOf("@extends");
+if (c > -1)
+{
+ if (fi.impls == null)
+  fi.impls = new ArrayList<String>();
+ c2 = line.indexOf("}", c);
+ String impl = line.substring(c + 10, c2);
+ fi.impls.add(impl);
+}
+Using NativeUtils.isJSNative() seems to help for this particular case with the Error class:
+c = line.indexOf("@extends");
+if (c > -1)
+{
+ if (fi.impls == null)
+  fi.impls = new ArrayList<String>();
+ c2 = line.indexOf("}", c);
+ String impl = line.substring(c + 10, c2);
+ if(!NativeUtils.isJSNative(impl))
+ {
+  fi.impls.add(impl);
+ }
+}
+I don't think that this is the correct solution, though. Other classes defined in externs can also give us this error and return false for isJSNative(). For instance, I randomly tried extending child_process.ChildProcess from node.swc, and I got the same error.
+Could not find file for class: child_process.ChildProcess
+File not found: child_process.ChildProcess
+org.apache.flex.compiler.internal.graph.GoogDepsWriter.addDeps(GoogDepsWriter.java:367)org.apache.flex.compiler.internal.graph.GoogDepsWriter.addDeps(GoogDepsWriter.java:383)org.apache.flex.compiler.internal.graph.GoogDepsWriter.addDeps(GoogDepsWriter.java:392)org.apache.flex.compiler.internal.graph.GoogDepsWriter.buildDB(GoogDepsWriter.java:207)org.apache.flex.compiler.internal.graph.GoogDepsWriter.getListOfFiles(GoogDepsWriter.java:97)org.apache.flex.compiler.internal.codegen.mxml.flexjs.MXMLFlexJSPublisher.publish(MXMLFlexJSPublisher.java:319)org.apache.flex.compiler.clients.MXMLJSCNode.compile(MXMLJSCNode.java:380)org.apache.flex.compiler.clients.MXMLJSCNode._mainNoExit(MXMLJSCNode.java:238)org.apache.flex.compiler.clients.MXMLJSCNode.mainNoExit(MXMLJSCNode.java:195)org.apache.flex.compiler.clients.MXMLJSC._mainNoExit(MXMLJSC.java:365)org.apache.flex.compiler.clients.MXMLJSC.mainNoExit(MXMLJSC.java:282)org.apache.flex.compiler.clients.MXMLJSC.staticMainNoExit(MXMLJSC.java:242)org.apache.flex.compiler.clients.MXMLJSC.main(MXMLJSC.java:224)
+Something more robust than NativeUtils.isJSNative() that accounts for whether the class is extern seems required here.
+This issue was not present in FlexJS 0.7.0. The issue exists in both the develop and dual branches.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Apache FalconJX 0.8.
+Fix_version:
+Apache FalconJX 0.8.
+Component:
+FalconJX
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Harui
+Reporter:
+Josh Tynjala
+Create date:
+27/Apr/17 21:11
+Update date:
+08/May/17 19:41
+Resolved date:
+02/May/17 00:51

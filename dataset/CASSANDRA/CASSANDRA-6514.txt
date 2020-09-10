@@ -1,0 +1,46 @@
+Summary:
+Nodetool Refresh / CFS.loadNewSSTables() can Lose New SSTables
+Description:
+When nodetool refresh / CFS.loadNewSSTables() renames the newly loaded SSTables, it doesn't check to make sure the new name doesn't already exist. It's easy for one of the newly loaded files themselves to have one of these names, so the rename will wipe out one of the SSTables you intended to load.
+For example, if you create a new, empty table, move two SSTables with generations 1 and 2 into the data directory, and then call nodetool refresh, you might see this:
+INFO 15:37:42,587 Loading new SSTables for duration_test/ints...
+ INFO 15:37:42,601 Renaming new SSTable /var/lib/cassandra/data/duration_test/ints/duration_test-ints-jb-2 to /var/lib/cassandra/data/duration_test/ints/duration_test-ints-jb-1
+ INFO 15:37:42,605 Opening /var/lib/cassandra/data/duration_test/ints/duration_test-ints-jb-1 (424005 bytes)
+ INFO 15:37:42,614 Renaming new SSTable /var/lib/cassandra/data/duration_test/ints/duration_test-ints-jb-1 to /var/lib/cassandra/data/duration_test/ints/duration_test-ints-jb-2
+ INFO 15:37:42,615 Opening /var/lib/cassandra/data/duration_test/ints/duration_test-ints-jb-2 (424005 bytes)
+ INFO 15:37:42,617 Loading new SSTables and building secondary indexes for duration_test/ints: [SSTableReader(path='/var/lib/cassandra/data/duration_test/ints/duration_test-ints-jb-1-Data.db'), SSTableReader(path='/var/lib/cassandra/data/duration_test/ints/duration_test-ints-jb-2-Data.db')]
+ INFO 15:37:42,618 Done loading load new SSTables for duration_test/ints
+ERROR 15:38:09,428 Exception in thread Thread[ReadStage:40,5,main]
+java.lang.RuntimeException: java.lang.RuntimeException: java.io.FileNotFoundException: /var/lib/cassandra/data/duration_test/ints/duration_test-ints-jb-1-Data.db (No such file or directory)
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1939)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:724)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7, 2.1 beta2
+Component:
+Tool/nodetool
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Tyler Hobbs
+Create date:
+19/Dec/13 22:40
+Update date:
+16/Apr/19 09:31
+Resolved date:
+18/Mar/14 23:17

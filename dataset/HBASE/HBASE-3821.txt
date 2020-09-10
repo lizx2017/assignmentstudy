@@ -1,0 +1,54 @@
+Summary:
+"NOT flushing memstore for region" keep on printing for half an hour
+Description:
+"NOT flushing memstore for region" keep on printing for half an hour in the regionserver. Then I restart hbase. I think there may be deadlock or cycling.
+I know that when splitting region, it will doclose of region, and set writestate.writesEnabled = false and may run close preflush. This will make flush fail and print "NOT flushing memstore for region". But It should be finished after a while.
+logs:
+2011-04-18 16:28:27,960 DEBUG org.apache.hadoop.hbase.regionserver.CompactSplitThread: Compaction requested for ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610. because regionserver60020.cacheFlusher; priority=-1, compaction queue size=1
+2011-04-18 16:28:30,171 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Flush requested on ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610.
+2011-04-18 16:28:30,171 WARN org.apache.hadoop.hbase.regionserver.MemStoreFlusher: Region ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610. has too many store files; delaying flush up to 90000ms
+2011-04-18 16:28:32,119 INFO org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogWriter: Using syncFs – HDFS-200
+2011-04-18 16:28:32,285 INFO org.apache.hadoop.hbase.regionserver.wal.HLog: Roll /hbase/.logs/linux253,60020,1303123943360/linux253%3A60020.1303124206693, entries=5226, filesize=255913736. New hlog /hbase/.logs/linux253,60020,1303123943360/linux253%3A60020.1303124311822
+2011-04-18 16:28:32,287 DEBUG org.apache.hadoop.hbase.regionserver.wal.HLog: Found 1 hlogs to remove out of total 2; oldest outstanding sequenceid is 11037 from region 031f37c9c23fcab17797b06b90205610
+2011-04-18 16:28:32,288 INFO org.apache.hadoop.hbase.regionserver.wal.HLog: moving old hlog file /hbase/.logs/linux253,60020,1303123943360/linux253%3A60020.1303123945481 whose highest sequenceid is 6052 to /hbase/.oldlogs/linux253%3A60020.1303123945481
+2011-04-18 16:28:42,701 INFO org.apache.hadoop.hbase.regionserver.Store: Completed major compaction of 4 file(s), new file=hdfs://10.18.52.108:9000/hbase/ufdr/031f37c9c23fcab17797b06b90205610/value/4398465741579485290, size=281.4m; total size for store is 468.8m
+2011-04-18 16:28:42,712 INFO org.apache.hadoop.hbase.regionserver.HRegion: completed compaction on region ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610. after 1mins, 40sec
+2011-04-18 16:28:42,741 INFO org.apache.hadoop.hbase.regionserver.SplitTransaction: Starting split of region ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610.
+2011-04-18 16:28:42,770 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Closing ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610.: disabling compactions & flushes
+2011-04-18 16:28:42,770 INFO org.apache.hadoop.hbase.regionserver.HRegion: Running close preflush of ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610.
+2011-04-18 16:28:42,771 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memstore flush for ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610., current region memstore size 105.6m
+2011-04-18 16:28:42,818 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Finished snapshotting, commencing flushing stores
+2011-04-18 16:28:42,846 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: NOT flushing memstore for region ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610., flushing=false, writesEnabled=false
+2011-04-18 16:28:42,849 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Flush requested on ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610.
+2011-04-18 16:28:42,849 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: NOT flushing memstore for region ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610., flushing=false, writesEnabled=false ......
+2011-04-18 17:04:08,803 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: NOT flushing memstore for region ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610., flushing=false, writesEnabled=false
+2011-04-18 17:04:08,803 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Flush requested on ufdr,,1303124043153.031f37c9c23fcab17797b06b90205610.
+Mon Apr 18 17:04:24 IST 2011 Starting regionserver on linux253 ulimit -n 1024
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.1
+Fix_version:
+0.90.3
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+zhoushuaifeng
+Reporter:
+zhoushuaifeng
+Create date:
+26/Apr/11 07:10
+Update date:
+20/Nov/15 12:41
+Resolved date:
+04/May/11 03:53

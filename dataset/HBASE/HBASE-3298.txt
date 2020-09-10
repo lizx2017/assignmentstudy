@@ -1,0 +1,114 @@
+Summary:
+Regionserver can close during a split causing double assignment
+Description:
+A regionserver got a close message during a split, which seemed to cause the split to fail, and also caused a double assignment and orphaned region.
+The log:
+2010-11-30 18:29:24,310 INFO org.apache.hadoop.hbase.regionserver.HRegion: completed compaction on region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0
+f01. after 40sec
+2010-11-30 18:29:24,310 INFO org.apache.hadoop.hbase.regionserver.SplitTransaction: Starting split of region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd
+5f0f01.
+2010-11-30 18:29:24,312 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Closing usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01.: disabling compac
+tions & flushes
+2010-11-30 18:29:24,312 INFO org.apache.hadoop.hbase.regionserver.HRegion: Running close preflush of usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01.
+2010-11-30 18:29:24,312 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memstore flush for usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01
+., current region memstore size 256.1m
+2010-11-30 18:29:24,312 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Finished snapshotting, commencing flushing stores
+2010-11-30 18:29:24,700 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: NOT flushing memstore for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd
+5f0f01., flushing=false, writesEnabled=false
+2010-11-30 18:29:27,291 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Flush requested on usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01.
+2010-11-30 18:29:27,291 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: NOT flushing memstore for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd
+5f0f01., flushing=false, writesEnabled=false
+2010-11-30 18:29:27,961 INFO org.apache.hadoop.hbase.regionserver.Store: Renaming flushed file at hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01
+/.tmp/1673662210031989562 to hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/1156800948892817282
+2010-11-30 18:29:27,966 INFO org.apache.hadoop.hbase.regionserver.Store: Added hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/1156800948892
+817282, entries=1157300, sequenceid=14819, memsize=256.1m, filesize=59.4m
+2010-11-30 18:29:27,966 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f
+01. 'IPC Server handler 1 on 60020'
+2010-11-30 18:29:27,966 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01. 'IPC Server handler 0 on 60020'
+2010-11-30 18:29:27,967 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01. 'IPC Server handler 9 on 60020'
+2010-11-30 18:29:27,967 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01. 'IPC Server handler 4 on 60020'
+2010-11-30 18:29:27,967 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01. 'IPC Server handler 8 on 60020'
+2010-11-30 18:29:27,967 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01. 'IPC Server handler 5 on 60020'
+2010-11-30 18:29:27,966 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01. 'IPC Server handler 6 on 60020'
+2010-11-30 18:29:27,966 INFO org.apache.hadoop.hbase.regionserver.HRegion: Finished memstore flush of ~256.1m for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01. in 3654ms, sequenceid=14819, compaction requested=true
+2010-11-30 18:29:27,967 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01. 'IPC Server handler 7 on 60020'
+2010-11-30 18:29:27,967 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01. 'IPC Server handler 3 on 60020'
+2010-11-30 18:29:27,967 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01. 'IPC Server handler 2 on 60020'
+2010-11-30 18:29:28,005 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Received close region: usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01.
+2010-11-30 18:29:28,011 DEBUG org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler: Processing close of usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01.
+2010-11-30 18:29:28,012 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x2c765e0da906eb Creating unassigned node for 6e260cb69fda466a97f650debd5f0f01 in a CLOSING state
+2010-11-30 18:29:28,074 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Updates disabled for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01.
+2010-11-30 18:29:28,074 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memstore flush for usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01., current region memstore size 4.8m
+2010-11-30 18:29:28,074 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Finished snapshotting, commencing flushing stores
+2010-11-30 18:29:28,079 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Closing usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01.: disabling compactions & flushes
+2010-11-30 18:29:28,332 INFO org.apache.hadoop.hbase.regionserver.Store: Renaming flushed file at hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/.tmp/1412284505922212951 to hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/3835216797592840515
+2010-11-30 18:29:28,345 INFO org.apache.hadoop.hbase.regionserver.Store: Added hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/3835216797592840515, entries=21600, sequenceid=14835, memsize=4.8m, filesize=1.1m
+2010-11-30 18:29:28,365 INFO org.apache.hadoop.hbase.regionserver.HRegion: Finished memstore flush of ~4.8m for region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01. in 291ms, sequenceid=14835, compaction requested=true
+2010-11-30 18:29:28,381 DEBUG org.apache.hadoop.hbase.regionserver.Store: closed data
+2010-11-30 18:29:28,381 INFO org.apache.hadoop.hbase.regionserver.HRegion: Closed usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01.
+2010-11-30 18:29:28,382 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x2c765e0da906eb Attempting to transition node 6e260cb69fda466a97f650debd5f0f01 from RS_ZK_REGION_CLOSING to RS_ZK_REGION_CLOSED
+2010-11-30 18:29:28,466 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x2c765e0da906eb Successfully transitioned node 6e260cb69fda466a97f650debd5f0f01 from RS_ZK_REGION_CLOSING to RS_ZK_REGION_CLOSED
+2010-11-30 18:29:28,466 DEBUG org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler: Closed region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01.
+2010-11-30 18:29:29,000 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Received close region: usertable,user1476676931,1291170472014.829c72aa4c47a31bd71b735da7e33883.
+2010-11-30 18:29:29,001 DEBUG org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler: Processing close of usertable,user1476676931,1291170472014.829c72aa4c47a31bd71b735da7e33883.
+2010-11-30 18:29:29,013 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x2c765e0da906eb Creating unassigned node for 829c72aa4c47a31bd71b735da7e33883 in a CLOSING state
+2010-11-30 18:29:29,079 INFO org.apache.hadoop.hbase.regionserver.CompactSplitThread: Running rollback of failed split of usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01.; org.apache.hadoop.hdfs.server.namenode.LeaseExpiredException: No lease on /hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/splits/019cf676872050ee05c15a6a37655e8a/data/5976204784865149447.6e260cb69fda466a97f650debd5f0f01 File does not exist. [Lease. Holder: DFSClient_hb_rs_sv4borg226,60020,1291168733786_1291168755622, pendingcreates: 1]
+at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.checkLease(FSNamesystem.java:1378)
+at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.checkLease(FSNamesystem.java:1369)
+at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.completeFileInternal(FSNamesystem.java:1424)
+at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.completeFile(FSNamesystem.java:1412)
+at org.apache.hadoop.hdfs.server.namenode.NameNode.complete(NameNode.java:491)
+at sun.reflect.GeneratedMethodAccessor14.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:512)
+at org.apache.hadoop.ipc.Server$Handler$1.run(Server.java:968)
+at org.apache.hadoop.ipc.Server$Handler$1.run(Server.java:964)
+at java.security.AccessController.doPrivileged(Native Method)
+at javax.security.auth.Subject.doAs(Subject.java:396)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:962)
+2010-11-30 18:29:29,107 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Closing usertable,user1476676931,1291170472014.829c72aa4c47a31bd71b735da7e33883.: disabling compactions & flushes
+2010-11-30 18:29:29,107 INFO org.apache.hadoop.hbase.regionserver.HRegion: Running close preflush of usertable,user1476676931,1291170472014.829c72aa4c47a31bd71b735da7e33883.
+2010-11-30 18:29:29,108 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memstore flush for usertable,user1476676931,1291170472014.829c72aa4c47a31bd71b735da7e33883., current region memstore size 63.4m
+2010-11-30 18:29:29,108 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Finished snapshotting, commencing flushing stores
+2010-11-30 18:29:29,118 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/1156800948892817282, isReference=false, isBulkLoadResult=false, seqid=14819, majorCompaction=false
+2010-11-30 18:29:29,163 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/1485319185163827758, isReference=false, isBulkLoadResult=false, seqid=12873, majorCompaction=false
+2010-11-30 18:29:29,179 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/2866498733799966821, isReference=false, isBulkLoadResult=false, seqid=12619, majorCompaction=false
+2010-11-30 18:29:29,219 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/3835216797592840515, isReference=false, isBulkLoadResult=false, seqid=14835, majorCompaction=false
+2010-11-30 18:29:29,237 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/444462617223715350, isReference=false, isBulkLoadResult=false, seqid=12005, majorCompaction=false
+2010-11-30 18:29:29,247 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/5536858845826091476, isReference=false, isBulkLoadResult=false, seqid=13173, majorCompaction=false
+2010-11-30 18:29:29,254 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/5976204784865149447, isReference=false, isBulkLoadResult=false, seqid=13427, majorCompaction=false
+2010-11-30 18:29:29,275 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/8614929289191582955, isReference=false, isBulkLoadResult=false, seqid=6111, majorCompaction=false
+2010-11-30 18:29:29,281 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://sv4borg235:9000/hbase-rc1/usertable/6e260cb69fda466a97f650debd5f0f01/data/9150811729171627958, isReference=false, isBulkLoadResult=false, seqid=12265, majorCompaction=false
+2010-11-30 18:29:29,283 INFO org.apache.hadoop.hbase.regionserver.HRegion: Onlined usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01.; next sequenceid=14836
+2010-11-30 18:29:29,284 INFO org.apache.hadoop.hbase.regionserver.CompactSplitThread: Successful rollback of failed split of usertable,user877196232,1291170014467.6e260cb69f
+da466a97f650debd5f0f01.
+2010-11-30 18:29:29,284 INFO org.apache.hadoop.hbase.regionserver.HRegion: NOT compacting region usertable,user877196232,1291170014467.6e260cb69fda466a97f650debd5f0f01.: compacting=false, writesEnabled=false
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ryan rawson
+Reporter:
+ryan rawson
+Create date:
+01/Dec/10 21:38
+Update date:
+20/Nov/15 12:43
+Resolved date:
+03/Dec/10 22:54

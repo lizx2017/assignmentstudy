@@ -1,0 +1,67 @@
+Summary:
+Exceptions while decoding native protocol messages are not handled correctly
+Description:
+If there's an exception during decoding of a native protocol message (such as the check for non-UTF-8 chars in CASSANDRA-8101), it gets wrapped by Netty and may not be handled correctly. Additionally, the stream ID is not set for the error response, which makes it nearly impossible for a driver to handle correctly.
+For an example, run the attached repro.py with the latest cassandra-2.1. You'll see a stacktrace like this:
+ERROR 18:36:25 Unexpected exception during request; channel = [id: 0xf7754f26, /127.0.0.1:56789 => /127.0.0.1:9042]
+io.netty.handler.codec.DecoderException: org.apache.cassandra.transport.messages.ErrorMessage$WrappedException: org.apache.cassandra.transport.ProtocolException: Cannot decode string as UTF8: 'c2012729'; java.nio.charset.MalformedInputException: Input length = 1
+ at io.netty.handler.codec.MessageToMessageDecoder.channelRead(MessageToMessageDecoder.java:99) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:333) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:319) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.handler.codec.MessageToMessageDecoder.channelRead(MessageToMessageDecoder.java:103) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:333) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:319) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:163) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:333) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:319) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:787) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollSocketChannel$EpollSocketUnsafe.epollInReady(EpollSocketChannel.java:722) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollEventLoop.processReady(EpollEventLoop.java:326) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.channel.epoll.EpollEventLoop.run(EpollEventLoop.java:264) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.util.concurrent.SingleThreadEventExecutor$2.run(SingleThreadEventExecutor.java:116) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at io.netty.util.concurrent.DefaultThreadFactory$DefaultRunnableDecorator.run(DefaultThreadFactory.java:137) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ at java.lang.Thread.run(Thread.java:745) [na:1.7.0_65]
+Caused by: org.apache.cassandra.transport.messages.ErrorMessage$WrappedException: org.apache.cassandra.transport.ProtocolException: Cannot decode string as UTF8: 'c2012729'; java.nio.charset.MalformedInputException: Input length = 1
+ at org.apache.cassandra.transport.messages.ErrorMessage.wrap(ErrorMessage.java:243) ~[main/:na]
+ at org.apache.cassandra.transport.Message$ProtocolDecoder.decode(Message.java:273) ~[main/:na]
+ at org.apache.cassandra.transport.Message$ProtocolDecoder.decode(Message.java:235) ~[main/:na]
+ at io.netty.handler.codec.MessageToMessageDecoder.channelRead(MessageToMessageDecoder.java:89) ~[netty-all-4.0.23.Final.jar:4.0.23.Final]
+ ... 15 common frames omitted
+Caused by: org.apache.cassandra.transport.ProtocolException: Cannot decode string as UTF8: 'c2012729'; java.nio.charset.MalformedInputException: Input length = 1
+ at org.apache.cassandra.transport.CBUtil.readString(CBUtil.java:81) ~[main/:na]
+ at org.apache.cassandra.transport.CBUtil.readLongString(CBUtil.java:138) ~[main/:na]
+ at org.apache.cassandra.transport.messages.QueryMessage$1.decode(QueryMessage.java:45) ~[main/:na]
+ at org.apache.cassandra.transport.messages.QueryMessage$1.decode(QueryMessage.java:42) ~[main/:na]
+ at org.apache.cassandra.transport.Message$ProtocolDecoder.decode(Message.java:247) ~[main/:na]
+ ... 17 common frames omitted
+The driver does get an error message, but it has the problems mentioned above:
+2014-10-14 13:36:25,855 [DEBUG] cassandra.connection: Processing message for stream id 0: <ErrorMessage code=0000 [Server error] message="io.netty.handler.codec.DecoderException: org.apache.cassandra.transport.messages.ErrorMessage$WrappedException: org.apache.cassandra.transport.ProtocolException: Cannot decode string as UTF8: 'c2012729'; java.nio.charset.MalformedInputException: Input length = 1">
+(I added a log statement by hand to the driver to expose this. The normal error-handling mechanisms don't work because of the bad stream ID.)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Tyler Hobbs
+Create date:
+14/Oct/14 18:41
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/Oct/14 16:38

@@ -1,0 +1,46 @@
+Summary:
+Major compact should be done when there is only one storefile and some keyvalue is outdated.
+Description:
+In the function store.isMajorCompaction:
+if (filesToCompact.size() == 1) {
+// Single file
+StoreFile sf = filesToCompact.get(0);
+long oldest =
+(sf.getReader().timeRangeTracker == null) ?
+Long.MIN_VALUE :
+now - sf.getReader().timeRangeTracker.minimumTimestamp;
+if (sf.isMajorCompaction() &&
+(this.ttl == HConstants.FOREVER || oldest < this.ttl)) {
+if (LOG.isDebugEnabled())
+{ LOG.debug("Skipping major compaction of " + this.storeNameStr + " because one (major) compacted file only and oldestTime " + oldest + "ms is < ttl=" + this.ttl); }
+}
+} else {
+When there is only one storefile in the store, and some keyvalues' TTL are overtime, the majorcompactchecker should send this region to the compactquene and run a majorcompact to clean these outdated data. But according to the code in 0.90.1, it will do nothing.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.0, 0.90.1
+Fix_version:
+0.90.2
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+zhoushuaifeng
+Reporter:
+zhoushuaifeng
+Create date:
+01/Apr/11 08:03
+Update date:
+20/Nov/15 12:40
+Resolved date:
+07/Apr/11 04:06

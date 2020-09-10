@@ -1,0 +1,87 @@
+Summary:
+Region goes offline, perhaps after failed flush and subsuquent attempt to split
+Description:
+We've been dealing with a problem where regions go offline for no apparent reason. Usually restarting the whole system clears things up, but that's not a desired workaround. After some digging on one of the region servers with a region that is offline that should not be I found the following:
+2008-02-13 17:43:31,357 INFO org.apache.hadoop.hbase.HRegion: starting compaction on region webdb,com.geocities.www/Paris/1685/,1202919182718
+2008-02-13 17:45:09,004 INFO org.apache.hadoop.hbase.HRegionServer: Rolling hlog. Number of entries: 30006
+2008-02-13 17:45:09,071 INFO org.apache.hadoop.hbase.HLog: new log writer created at hdfs://node-3-34.isc.swlabs.org:9000/u01/hbase-data/hbase/log_10.2
+.3.32_1202914711919_60020/hlog.dat.010
+2008-02-13 17:47:51,606 INFO org.apache.hadoop.hbase.HRegion: compaction completed on region webdb,com.geocities.www/Paris/1685/,1202919182718. Took 4m
+ins, 20sec
+2008-02-13 17:48:20,273 INFO org.apache.hadoop.hbase.HRegionServer: Rolling hlog. Number of entries: 30007
+2008-02-13 17:48:20,315 INFO org.apache.hadoop.hbase.HLog: new log writer created at hdfs://node-3-34.isc.swlabs.org:9000/u01/hbase-data/hbase/log_10.2
+.3.32_1202914711919_60020/hlog.dat.011
+2008-02-13 17:48:20,315 INFO org.apache.hadoop.hbase.HLog: removing old log file hdfs://node-3-34.isc.swlabs.org:9000/u01/hbase-data/hbase/log_10.2.3.3
+2_1202914711919_60020/hlog.dat.008 whose highest sequence/edit id is 1286138
+2008-02-13 17:48:34,959 ERROR org.apache.hadoop.hbase.HRegionServer: Cache flush failed for region webdb,com.geocities.www/Paris/1685/,1202919182718
+java.lang.NullPointerException
+at org.apache.hadoop.dfs.DFSClient$DFSOutputStream.close(DFSClient.java:2262)
+at org.apache.hadoop.fs.FSDataOutputStream$PositionCache.close(FSDataOutputStream.java:51)
+at org.apache.hadoop.fs.FSDataOutputStream.close(FSDataOutputStream.java:67)
+at org.apache.hadoop.io.SequenceFile$Writer.close(SequenceFile.java:932)
+at org.apache.hadoop.io.MapFile$Writer.close(MapFile.java:172)
+at org.apache.hadoop.hbase.HStore.internalFlushCache(HStore.java:1117)
+at org.apache.hadoop.hbase.HStore.flushCache(HStore.java:1081)
+at org.apache.hadoop.hbase.HRegion.internalFlushcache(HRegion.java:939)
+at org.apache.hadoop.hbase.HRegion.flushcache(HRegion.java:837)
+at org.apache.hadoop.hbase.HRegionServer$Flusher.run(HRegionServer.java:417)
+2008-02-13 17:51:02,705 INFO org.apache.hadoop.hbase.HRegionServer: Rolling hlog. Number of entries: 30006
+2008-02-13 17:52:07,221 INFO org.apache.hadoop.hbase.HRegion: starting compaction on region webdb,,1202919182716
+2008-02-13 17:56:19,028 INFO org.apache.hadoop.hbase.HRegion: compaction completed on region webdb,,1202919182716. Took 4mins, 11sec
+2008-02-13 17:56:19,167 INFO org.apache.hadoop.hbase.HRegion: Splitting webdb,com.geocities.www/Paris/1685/,1202919182718 because largest aggregate siz
+e is 264.7m and desired size is 256.0m
+2008-02-13 17:57:36,060 INFO org.apache.hadoop.ipc.Server: IPC Server handler 7 on 60020, call batchUpdate(webdb,com.geocities.www/Paris/1685/,12029191
+82718, 1202921443000, org.apache.hadoop.hbase.io.BatchUpdate@7262b6) from 10.2.3.34:43471: error: org.apache.hadoop.hbase.NotServingRegionException: we
+bdb,com.geocities.www/Paris/1685/,1202919182718
+org.apache.hadoop.hbase.NotServingRegionException: webdb,com.geocities.www/Paris/1685/,1202919182718
+at org.apache.hadoop.hbase.HRegionServer.getRegion(HRegionServer.java:1610)
+at org.apache.hadoop.hbase.HRegionServer.getRegion(HRegionServer.java:1582)
+at org.apache.hadoop.hbase.HRegionServer.batchUpdate(HRegionServer.java:1431)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:413)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:910)
+2008-02-13 17:57:46,082 INFO org.apache.hadoop.ipc.Server: IPC Server handler 2 on 60020, call batchUpdate(webdb,com.geocities.www/Paris/1685/,12029191
+82718, 1202921443000, org.apache.hadoop.hbase.io.BatchUpdate@cac02f) from 10.2.3.34:43476: error: org.apache.hadoop.hbase.NotServingRegionException: we
+bdb,com.geocities.www/Paris/1685/,1202919182718
+org.apache.hadoop.hbase.NotServingRegionException: webdb,com.geocities.www/Paris/1685/,1202919182718
+at org.apache.hadoop.hbase.HRegionServer.getRegion(HRegionServer.java:1610)
+at org.apache.hadoop.hbase.HRegionServer.getRegion(HRegionServer.java:1582)
+at org.apache.hadoop.hbase.HRegionServer.batchUpdate(HRegionServer.java:1431)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:413)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:910)
+...
+And so on. The region has been offline for 2-3 hours now...so it's not a split that just taking too long.
+I'm not much of a java developer, tho I'll attempt to dig into the code myself. Please, any help here would really be appreciated.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.2.0
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+debian, java
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Seth Hartbecke
+Create date:
+13/Feb/08 19:14
+Update date:
+22/Aug/08 21:35
+Resolved date:
+12/Aug/08 23:40

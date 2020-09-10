@@ -1,0 +1,51 @@
+Summary:
+FD incorrectly using RPC timeout to ignore gossip heartbeats
+Description:
+Short version: You can't run a cluster with short RPC timeouts because nodes just constantly flap up/down.
+Long version:
+CASSANDRA-3273 tried to fix a problem resulting from the way the failure detector works, but did so by introducing a much more sever bug: With low RPC timeouts, that are lower than the typical gossip propagation time, a cluster will just constantly have all nodes flapping other nodes up and down.
+The cause is this:
++    // in the event of a long partition, never record an interval longer than the rpc timeout,
++    // since if a host is regularly experiencing connectivity problems lasting this long we'd
++    // rather mark it down quickly instead of adapting
++    private final double MAX_INTERVAL_IN_MS = DatabaseDescriptor.getRpcTimeout();
+And then:
+-        tLast_ = value;            
+-        arrivalIntervals_.add(interArrivalTime);        
++        if (interArrivalTime <= MAX_INTERVAL_IN_MS)
++            arrivalIntervals_.add(interArrivalTime);
++        else
++            logger_.debug("Ignoring interval time of {}", interArrivalTime);
+Using the RPC timeout to ignore unreasonably long intervals is not correct, as the RPC timeout is completely orthogonal to gossip propagation delay (see CASSANDRA-3927 for a quick description of how the FD works).
+In practice, the propagation delay ends up being in the 0-3 second range on a cluster with good local latency. With a low RPC timeout of say 200 ms, very few heartbeat updates come in fast enough that it doesn't get ignored by the failure detector. This in turn means that the FD records a completely skewed average heartbeat interval, which in turn means that nodes almost always get flapped on interpret() unless they happen to just have had their heartbeat updated. Then they flap back up whenever the next heartbeat comes in (since it gets brought up immediately).
+In our build, we are replacing the FD with an implementation that simply uses a fixed N second time to convict, because this is just one of many ways in which the current FD hurts, while we still haven't found a way it actually helps relative to the trivial fixed-second conviction policy.
+For upstream, assuming people won't agree on changing it to a fixed timeout, I suggest, at minimum, never using a value lower than something like 10 seconds or something, when determining whether to ignore. Slightly better is to make it a config option.
+(I should note that if propagation delays are significantly off from the expected level, other things than the FD already breaks - such as the whole concept of RING_DELAY, which assumes the propagation time is roughly constant with e.g. cluster size.)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.14, 2.0.5
+Component:
+None
+Label:
+gossip
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Peter Schuller
+Create date:
+26/Jun/12 04:41
+Update date:
+16/Apr/19 09:32
+Resolved date:
+22/Jan/14 19:45

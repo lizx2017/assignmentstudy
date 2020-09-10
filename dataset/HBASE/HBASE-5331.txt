@@ -1,0 +1,58 @@
+Summary:
+Off by one bug in util.HMerge
+Description:
+It looks like there's an off by one bug in the OfflineMerger constructor in util.HMerge:
+InternalScanner rootScanner =
+root.getScanner(scan);
+try {
+List<KeyValue> results = new ArrayList<KeyValue>();
+while(rootScanner.next(results)) {
+for(KeyValue kv: results) {
+HRegionInfo info = Writables.getHRegionInfoOrNull(kv.getValue());
+if (info != null)
+{ metaRegions.add(info); }
+}
+}
+} finally
+{ ... }
+That call to InternalScanner.next() in the while condition returns true if there's another result after the one it just loaded into the out param. That is, after it reads the last row into the 'results' collection, it returns false and the loop exits with that last row unread. It probably wants to be structured more like this:
+final InternalScanner metaScanner = meta.getScanner(scan); List<KeyValue> results = Lists.newArrayList();
+while (true) {
+boolean hasMore = metaScanner.next(results);
+for (KeyValue kv : results) {
+HRegionInfo hri = Writables.getHRegionInfoOrNull(kv.getValue());
+if (hri != null)
+{ regionInfo.add(hri); }
+}
+if (!hasMore)
+{ break; }
+}
+The loop in util.HMerge is scanning ROOT for META regions. So this bug will only be hit when there is more than one region of META. Personally, I don't have any installations with more than one META region, and I'm not sure if anyone does, so this might be a moot point.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+0.90.1
+Fix_version:
+0.94.0
+Component:
+util
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Sandy Pratt
+Create date:
+03/Feb/12 20:15
+Update date:
+12/Oct/12 05:34
+Resolved date:
+03/Feb/12 20:20

@@ -1,0 +1,39 @@
+Summary:
+[replication] NPE in SequenceFileLogReader because ReplicationSource doesn't nullify the reader
+Description:
+Here's a NPE I get half the time I run TestReplication:
+2012-12-20 08:59:17,259 ERROR [RegionServer:1;192.168.10.135,49168,1356011734418-EventThread.replicationSource,2] regionserver.ReplicationSource$1(727): Unexpected exception in ReplicationSource, currentPath=hdfs://localhost:65533/user/jdcryans/hbase/.logs/192.168.10.135,49168,1356011734418/192.168.10.135%2C49168%2C1356011734418.1356011956626
+java.lang.NullPointerException
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.seek(SequenceFileLogReader.java:261)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationHLogReaderManager.seek(ReplicationHLogReaderManager.java:103)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.readAllEntriesToReplicateOrNextFile(ReplicationSource.java:414)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.run(ReplicationSource.java:332)
+The issue happens after an IOE was caught while opening the reader, the issue is that it isn't set to null after that then the rest of the code assumes the reader is usable.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.5, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+10/Jan/13 18:54
+Update date:
+26/Feb/13 08:27
+Resolved date:
+11/Jan/13 00:55

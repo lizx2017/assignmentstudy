@@ -1,0 +1,60 @@
+Summary:
+DateConverter needs to work
+Description:
+Most of the tests for org/apache/pdfbox/util/DateConverter.java in src/test/java/org/apache/pdfbox/util/TestDateUtil.java have been commented out. DateConverter was broken.
+The attached patch fixes the problems. Extensive comments document the problems. Here's a copy:
+/* the former version of DateConverter had these bugs:
+- In toISO8601 the conversion from millis to minutes was with 1000/1000;
+should have been 1000/60.
+- PDFBox-402 was not completely implemented. The calendar fields in the
+POTENTIAL_FORMATS are shared among threads. Hence we must create new
+SimpleThreadFormats for each test. (Or synchronize somehow).
+- Some formats with hh did not have an a field. I changed them to HH.
+these questionable features:
+- A timezone with neither plus sign nor minus is assumed to be minus.
+This seems wrong, but I have not changed it.
+- toCalendar() returned a value in the default Locale.
+PDF files do not have locales (I think) and even if they do
+there is no reason to assume the Java default.
+I have switched to Locale.ENGLISH which was already assumed
+in the date formats and toString.
+and these infelicities:
+- Constants 60 and 1000 appeared.
+- zeroAppend was not used where applicable.
+In one case it was inapplicable only because TimeZone.getOffset
+was suspected of returning a long. It does not.
+- Manually computed constants were used to in date.substring
+thus reducing flexibility and maintainability.
+- The TimeZone name reported by toCalendar was always "Unknown"
+It is easy enough to compute a name.
+- Time zones were not accepted with most of the alternate parsing formats.
+The new code allows a timezone after any format.
+*/
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.2
+Fix_version:
+1.8.3, 2.0.0
+Component:
+Utilities
+Label:
+None
+Environment:
+java
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Fred Hansen
+Create date:
+09/Jun/13 05:46
+Update date:
+30/Nov/13 17:02
+Resolved date:
+11/Nov/13 18:52

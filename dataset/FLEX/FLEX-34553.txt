@@ -1,0 +1,103 @@
+Summary:
+flex2.compiler.util.MultiName is not thread safe causing problem in case of parallel compilation
+Description:
+Intellij IDEA includes a feature that permits to compile many Flex project in parallel. In some situations the compilation threads are stucks in the MultiName class when querying the internal cache of MultiName. See the following stack trace
+"Thread-33" daemon prio=10 tid=0x000000000a649000 nid=0x2514 runnable [0x000000000925e000]
+   java.lang.Thread.State: RUNNABLE
+    at java.util.HashMap.get(HashMap.java:303)
+    at flex2.compiler.util.MultiName.<init>(MultiName.java:48)
+    at flex2.compiler.CompilerSwcContext.createSource(CompilerSwcContext.java:381)
+    at flex2.compiler.CompilerSwcContext.getSource(CompilerSwcContext.java:337)
+    at flex2.compiler.API.findDefinition(API.java:2706)
+    at flex2.compiler.API.resolveMultiName(API.java:3371)
+    at flex2.compiler.API.getIncludeClasses(API.java:3638)
+    at flex2.compiler.API.compile(API.java:1317)
+    at flex2.compiler.API.compile(API.java:1213)
+    at flex2.tools.Compiler.mxmlc(Compiler.java:275)
+    at com.intellij.flex.compiler.flex3.Flex3Handler.compileSwf(Flex3Handler.java:20)
+    at com.intellij.flex.compiler.CompilationThread.run(CompilationThread.java:48)
+
+   Locked ownable synchronizers:
+    - None
+
+"Thread-31" daemon prio=10 tid=0x000000000a64a800 nid=0x2f28 runnable [0x000000000915e000]
+   java.lang.Thread.State: RUNNABLE
+    at java.util.HashMap.get(HashMap.java:303)
+    at flex2.compiler.util.MultiName.<init>(MultiName.java:48)
+    at flex2.compiler.CompilerSwcContext.createSource(CompilerSwcContext.java:381)
+    at flex2.compiler.CompilerSwcContext.getSource(CompilerSwcContext.java:337)
+    at flex2.compiler.API.findDefinition(API.java:2706)
+    at flex2.compiler.API.resolveMultiName(API.java:3371)
+    at flex2.compiler.API.getIncludeClasses(API.java:3638)
+    at flex2.compiler.API.compile(API.java:1317)
+    at flex2.compiler.API.compile(API.java:1213)
+    at flex2.tools.Compiler.mxmlc(Compiler.java:275)
+    at com.intellij.flex.compiler.flex3.Flex3Handler.compileSwf(Flex3Handler.java:20)
+    at com.intellij.flex.compiler.CompilationThread.run(CompilationThread.java:48)
+
+   Locked ownable synchronizers:
+    - None
+
+"Thread-29" daemon prio=10 tid=0x000000000ab71000 nid=0x383c runnable [0x000000000c6ce000]
+   java.lang.Thread.State: RUNNABLE
+    at java.util.HashMap.get(HashMap.java:303)
+    at flex2.compiler.util.MultiName.<init>(MultiName.java:48)
+    at flex2.compiler.CompilerSwcContext.createSource(CompilerSwcContext.java:381)
+    at flex2.compiler.CompilerSwcContext.getSource(CompilerSwcContext.java:337)
+    at flex2.compiler.API.findDefinition(API.java:2706)
+    at flex2.compiler.API.resolveMultiName(API.java:3371)
+    at flex2.compiler.API.resolveInheritance(API.java:2611)
+    at flex2.compiler.API.batch2(API.java:373)
+    at flex2.compiler.API.batch(API.java:1120)
+    at flex2.compiler.API.compile(API.java:1311)
+    at flex2.compiler.API.compile(API.java:1213)
+    at flex2.tools.Compc.compc(Compc.java:262)
+    at com.intellij.flex.compiler.flex3.Flex3Handler.compileSwc(Flex3Handler.java:25)
+    at com.intellij.flex.compiler.CompilationThread.run(CompilationThread.java:51)
+
+   Locked ownable synchronizers:
+    - None
+
+"Thread-27" daemon prio=10 tid=0x000000000a648800 nid=0xfa4 runnable [0x000000000945f000]
+   java.lang.Thread.State: RUNNABLE
+    at java.util.HashMap.get(HashMap.java:303)
+    at flex2.compiler.util.MultiName.<init>(MultiName.java:48)
+    at flex2.compiler.API.getIncludeClasses(API.java:3637)
+    at flex2.compiler.API.compile(API.java:1317)
+    at flex2.compiler.API.compile(API.java:1213)
+    at flex2.tools.Compiler.mxmlc(Compiler.java:275)
+    at com.intellij.flex.compiler.flex3.Flex3Handler.compileSwf(Flex3Handler.java:20)
+    at com.intellij.flex.compiler.CompilationThread.run(CompilationThread.java:48)
+
+   Locked ownable synchronizers:
+    - None
+The cache (MultiName#nsMap) is an HashMap that can be corrupted when many put operations are done in parallel on it. I successfully patch the class to avoid this problem with Flex 3 compiler.
+For more information see http://youtrack.jetbrains.com/issue/IDEA-130128
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+MXML Compiler
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Xavier Fournet
+Create date:
+22/Sep/14 19:45
+Update date:
+23/Sep/14 08:27
+Resolved date:
+

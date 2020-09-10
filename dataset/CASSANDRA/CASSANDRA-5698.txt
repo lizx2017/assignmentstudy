@@ -1,0 +1,145 @@
+Summary:
+cqlsh should support collections in COPY FROM
+Description:
+Concrete operation is as follows.
+----------------------------------------------------------
+(1)map type's export/import
+<export>
+[root@castor bin]# ./cqlsh
+Connected to Test Cluster at localhost:9160.
+[cqlsh 3.0.2 | Cassandra 1.2.5 | CQL spec 3.0.0 | Thrift protocol 19.36.0]
+Use HELP for help.
+cqlsh> create keyspace maptestks with replication =
+{ 'class' : 'SimpleStrategy', 'replication_factor' : '1' }
+;
+cqlsh> use maptestks;
+cqlsh:maptestks> create table maptestcf (rowkey varchar PRIMARY KEY, targetmap map<varchar,varchar>);
+cqlsh:maptestks> insert into maptestcf (rowkey, targetmap) values ('rowkey',
+{'mapkey':'mapvalue'}
+);
+cqlsh:maptestks> select * from maptestcf;
+rowkey | targetmap
+-------+-------------------
+rowkey |
+{mapkey: mapvalue}
+cqlsh:maptestks> copy maptestcf to 'maptestcf-20130619.txt';
+1 rows exported in 0.008 seconds.
+cqlsh:maptestks> exit;
+[root@castor bin]# cat maptestcf-20130619.txt
+rowkey,
+{mapkey: mapvalue}
+<------------------------(a)
+<import>
+[root@castor bin]# ./cqlsh
+Connected to Test Cluster at localhost:9160.
+[cqlsh 3.0.2 | Cassandra 1.2.5 | CQL spec 3.0.0 | Thrift protocol 19.36.0]
+Use HELP for help.
+cqlsh> create keyspace mapimptestks with replication =
+{ 'class' : 'SimpleStrategy', 'replication_factor' : '1' }
+;
+cqlsh> use mapimptestks;
+cqlsh:mapimptestks> create table mapimptestcf (rowkey varchar PRIMARY KEY, targetmap map<varchar,varchar>);
+cqlsh:mapimptestks> copy mapimptestcf from ' maptestcf-20130619.txt ';
+Bad Request: line 1:83 no viable alternative at input '}'
+Aborting import at record #0 (line 1). Previously-inserted values still present.
+0 rows imported in 0.025 seconds.
+----------------------------------------------------------
+(2)list type's export/import
+<export>
+[root@castor bin]#./cqlsh
+Connected to Test Cluster at localhost:9160.
+[cqlsh 3.0.2 | Cassandra 1.2.5 | CQL spec 3.0.0 | Thrift protocol 19.36.0]
+Use HELP for help.
+cqlsh> create keyspace listtestks with replication =
+{ 'class' : 'SimpleStrategy', 'replication_factor' : '1' }
+;
+cqlsh> use listtestks;
+cqlsh:listtestks> create table listtestcf (rowkey varchar PRIMARY KEY, value list<varchar>);
+cqlsh:listtestks> insert into listtestcf (rowkey,value) values ('rowkey',['value1','value2']);
+cqlsh:listtestks> select * from listtestcf;
+rowkey | value
+-------+-----------------
+rowkey | [value1, value2]
+cqlsh:listtestks> copy listtestcf to 'listtestcf-20130619.txt';
+1 rows exported in 0.014 seconds.
+cqlsh:listtestks> exit;
+[root@castor bin]# cat listtestcf-20130619.txt
+rowkey,"[value1, value2]"
+<------------------------(b)
+<export>
+[root@castor bin]# ./cqlsh
+Connected to Test Cluster at localhost:9160.
+[cqlsh 3.0.2 | Cassandra 1.2.5 | CQL spec 3.0.0 | Thrift protocol 19.36.0]
+Use HELP for help.
+cqlsh> create keyspace listimptestks with replication =
+{ 'class' : 'SimpleStrategy', 'replication_factor' : '1' }
+;
+cqlsh> use listimptestks;
+cqlsh:listimptestks> create table listimptestcf (rowkey varchar PRIMARY KEY, value list<varchar>);
+cqlsh:listimptestks> copy listimptestcf from ' listtestcf-20130619.txt ';
+Bad Request: line 1:79 no viable alternative at input ']'
+Aborting import at record #0 (line 1). Previously-inserted values still present.
+0 rows imported in 0.030 seconds.
+----------------------------------------------------------
+Reference: (correct, or error, in another dimension)
+Manually, I have rewritten the export file.
+[root@castor bin]# cat nlisttestcf-20130619.txt
+rowkey,"['value1',' value2']"
+....
+cqlsh:listimptestks> copy listimptestcf from 'nlisttestcf-20130619.txt';
+1 rows imported in 0.035 seconds.
+cqlsh:listimptestks> select * from implisttestcf;
+rowkey | value
+-------+-----------------
+rowkey | [value1, value2]
+cqlsh:implisttestks> exit;
+[root@castor bin]# cat nmaptestcf-20130619.txt
+rowkey,”
+{'mapkey': 'mapvalue'}
+”
+[root@castor bin]# ./cqlsh
+Connected to Test Cluster at localhost:9160.
+[cqlsh 3.0.2 | Cassandra 1.2.5 | CQL spec 3.0.0 | Thrift protocol 19.36.0]
+Use HELP for help.
+cqlsh> use mapimptestks;
+cqlsh:mapimptestks> copy mapimptestcf from 'nmaptestcf-20130619.txt';
+1 rows imported in 0.023 seconds.
+cqlsh:mapimptestks> select * from mapimptestcf;
+rowkey | targetmap
+-------+-------------------
+rowkey |
+{mapkey: mapvalue}
+(It appears to be as normal processing.)
+----------------------------------------------------------
+Please confirm from the operation described above.
+Comparing the above (a) and (b), in the data format of export file,
+only the presence or absence of ("),
+it suggests a lack of consistency of the treatment.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.8, 2.0 rc1
+Component:
+Legacy/Tools
+Label:
+collections cqlsh
+Environment:
+cqlsh
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Hiroshi Kise
+Create date:
+25/Jun/13 01:12
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Jul/13 18:48

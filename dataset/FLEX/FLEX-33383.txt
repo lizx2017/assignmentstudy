@@ -1,0 +1,81 @@
+Summary:
+List is Flickering on mobile when different number of lines in message
+Description:
+On a List with an IconItemRenderer in it. When beginning to scroll on mobile, the list is flickering on the first time you scroll (gets white for one frame). This only happens when the messageField/messageFunction is set and there is a different number of lines in the message areas.
+Sample Code:
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark" title="HomeView">
+<s:actionContent>
+<s:Button label="Set List" click="btn_click(event)"/>
+</s:actionContent>
+<s:List width="100%" height="100%" id="list">
+<s:itemRenderer>
+<fx:Component>
+<s:IconItemRenderer messageField="text"/>
+</fx:Component>
+</s:itemRenderer>
+</s:List>
+<fx:Script>
+<![CDATA[
+import mx.collections.ArrayList;
+protected function btn_click(event:MouseEvent):void
+{
+var al:ArrayList = new ArrayList;
+var obj:Object;
+var str:String = "blablablablablablablablablablablablablablablablablablablablabblablablablablablablablablablablablablablablablablablablablabblablablablablablablablablablablablablablablablablablablablablablablablablablablablablablablablablablablabla";
+for(var i:int = 0; i < 20; i++)
+{ obj = new Object; obj.text = str.substr(0, Math.random()*str.length); al.addItem(obj); }
+list.dataProvider = al;
+}
+]]>
+</fx:Script>
+</s:View>
+Workaround:
+I eventually found a workaround. Basically it's just faking a drag event when the list dispatches the updateComplete event. This prevents the flickering when the user first starts to scroll and since updateComplete is called before the list is initially shown, there is no flickering at all. The positive side effect is that every time you change to a view with this list in it or when the list gets another data provider, the scroll bar is shown for a moment, so you can guess how large the list is without touching it.
+So here's the code. I use this list as a superclass for all of my lists:
+import mx.events.FlexEvent;
+import mx.events.TouchInteractionEvent;
+import spark.components.List;
+public class MyList extends List
+{
+public function MyList()
+{ super(); //add event listeners addEventListener(FlexEvent.UPDATE_COMPLETE, updateCompleteHandler); }
+//update complete
+protected function updateCompleteHandler(event:FlexEvent):void
+{ //fake touch start fakeTouchEvent(TouchInteractionEvent.TOUCH_INTERACTION_START); callLater(endTouch); }
+//quit touch event
+protected function endTouch():void
+{ //fake touch end fakeTouchEvent(TouchInteractionEvent.TOUCH_INTERACTION_END); }
+//fake touch event
+protected function fakeTouchEvent(type:String):void
+{ var evt:TouchInteractionEvent = new TouchInteractionEvent(type); evt.relatedObject = scroller; scroller.dispatchEvent(evt); }
+}
+See: http://stackoverflow.com/questions/10490117/flex-mobile-list-flickers/14714690 for more info
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Apache Flex 4.9.0
+Fix_version:
+None
+Component:
+Mobile: List
+Label:
+flicker list listski
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Merten P.
+Create date:
+05/Feb/13 19:39
+Update date:
+07/Feb/13 22:08
+Resolved date:
+

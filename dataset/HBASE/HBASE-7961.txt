@@ -1,0 +1,52 @@
+Summary:
+truncate on disabled table should throw TableNotEnabledException.
+Description:
+presently truncate on disabled table is deleting existing table and recreating(ENABLED)
+disable(table_name) call in truncate returing if table is disabled without nofifying to user.
+    def disable(table_name)
+      tableExists(table_name)
+      return if disabled?(table_name)
+      @admin.disableTable(table_name)
+    end
+one more thing is we are calling tableExists in disable(table_name) as well as drop(table_name) which is un necessary.
+Any way below HTable object creation will check whether table exists or not.
+h_table = org.apache.hadoop.hbase.client.HTable.new(conf, table_name)
+We can change it to
+      h_table = org.apache.hadoop.hbase.client.HTable.new(conf, table_name)
+      table_description = h_table.getTableDescriptor()
+      yield 'Disabling table...' if block_given?
+      @admin.disableTable(table_name)
+
+      yield 'Dropping table...' if block_given?
+      @admin.deleteTable(table_name)
+
+      yield 'Creating table...' if block_given?
+      @admin.createTable(table_description)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.94.7, 0.95.0
+Component:
+Admin
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+rajeshbabu
+Create date:
+28/Feb/13 04:49
+Update date:
+27/Apr/13 15:55
+Resolved date:
+06/Apr/13 05:16

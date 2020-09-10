@@ -1,0 +1,68 @@
+Summary:
+Negative Outlines COUNT and various issues
+Description:
+Hi,
+I started playing with the outline package few days ago mostly writing unit tests but I found the current implementation has a number of issues and started fixing them. I ended up with a quite substantial patch I'm going to attach.
+So far I only addressed the addition of nodes.
+Current implementation suffers of some issues:
+insertSiblingAfter doesn't set the LAST on its parent in case it's the last node
+Outlines COUNT can be negative (and often is) despite the spec table 152 states "The value cannot be negative."
+invalid outline hierarchy with wrong COUNT can be created with no warning with code like:
+ PDDocumentOutline outline = new PDDocumentOutline();
+        PDOutlineItem root = new PDOutlineItem();
+        root.setTitle("Root");
+        PDOutlineItem child1 = new PDOutlineItem();
+        child1.setTitle("child1");
+        PDOutlineItem child11 = new PDOutlineItem();
+        child11.setTitle("child11");
+        PDOutlineItem child12 = new PDOutlineItem();
+        child12.setTitle("child12");
+        PDOutlineItem child13 = new PDOutlineItem();
+        child13.setTitle("child13");
+        child11.insertSiblingAfter(child12);
+        child12.insertSiblingAfter(child13);
+        child1.appendChild(child12);
+        root.appendChild(child1);
+        outline.appendChild(root);
+ 
+I'm going to attach a couple of generated pdf showing the mentioned issues.
+The patch addresses:
+PDFBOX-156
+PDFBOX-996
+PDFBOX-1209
+Outlines COUNT is always positive (table 152 "Total number of visible outline items at all levels of the outline")
+Outline items COUNT is correctly calculated
+NEXT, PREV, LAST and FIRST are are consistently set
+unit tested
+I added a restriction to methods adding nodes (children or siblings) that throws an exception in case the node is already part of a list (i.e it has a prev or a next) so basically with the patch you cannot create a list of nodes and then add one of them as last child of another node but you'll have to first add the first child and then add siblings to the child.
+Those scenarios are currently silently accepted creating invalid outlines (see the attached outline_wrong_first_has_prev.pdf) and would require quite some work to handle all of them so, I'm not sure it's the best solution but at least the user is guided with a message instead of creating an outline where the FIRST item has a PREV.
+It breaks the current API and it might be reworked to be less intrusive but since you are on 2.0.0-SNAPSHOT I thought it was ok.
+Please let me know if there's anything I can help with.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+PDModel
+Label:
+outline
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Andrea Vacondio
+Create date:
+11/Feb/15 16:32
+Update date:
+17/Mar/16 19:08
+Resolved date:
+14/Feb/15 13:27

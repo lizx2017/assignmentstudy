@@ -1,0 +1,41 @@
+Summary:
+AbstractRangeQueryNode toQueryString not working as intended
+Description:
+It is my understanding that for a given QueryNode node, parse(node.toQueryString()); should return a QueryNode which is functionally identical to the original node.
+That is not the case with AbstractQueryNode:
+if we have a range query on FIELD from "A" to "B" (node = parse("FIELD:[A B]")), then node.toQueryString() will return "[FIELD:A FIELD:B]" which, in turn, is parsed as a range query on the default field from "FIELD:A" to "FIELD:B".
+As far as I know, this affects all versions of lucene.
+I believe I have the knowledge to provide the patch, so I will be working on that today.
+As of now, I have thought of two options to implement this fix, both of which involve modifying the ValueQueryNode interface to include a method which returns value as a CharSequence.
+The first option is to add a new method to the interface which returns (formatted if necessary) the value as a CharSequence and implement it in all implementing classes (FieldQueryNode and NumericQueryNode). Then in AbstractQueryNode#toQueryString() we will call that method and escape the values using the provided EscapeQuerySyntax.
+The second option is to make the protected method getTermEscaped(), which is already present in all implementing classes, public, and add it to the interface.
+While I think that the second option is certainly cleaner, I do not know why this method is protected in the first place, so I will proceed with the first option until someone who is more familiar with the lucene project than I am can comment on the matter.
+As I am writing this, it occurs to me that implementing the first option is essentially just bypassing the protected scope on getTermEscapeed(), so maybe it is correct to just review whether or not that method needs to be protected. It also occurred to me to use the existing getValue() method, and format and escape the toString() of that, but that depends on a generic class having implemented toString() in a way that plays nicely with the query parser, so, to me, this is below the two previously mentioned options.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+5.3
+Fix_version:
+None
+Component:
+core/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Peter Barna
+Create date:
+15/Sep/15 18:03
+Update date:
+13/Mar/16 09:39
+Resolved date:
+

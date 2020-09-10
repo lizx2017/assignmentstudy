@@ -1,0 +1,35 @@
+Summary:
+Slice Queries Can Skip Intersecting SSTables
+Description:
+Investigating another problem, I needed to do COUNT on the several partitions of a table immediately after a test case ran, and I discovered that count on the full table and on each of the partitions returned different counts.
+In particular case, SELECT COUNT FROM sr LIMIT 1000000; returned the expected count from the test 99999 rows. The composite primary key splits the logical row into six distinct partitions, and when I issue a query asking for the total across all six partitions, the returned result is only 83999. Drilling down, I find that SELECT * from sr WHERE s = 5 AND l = 11 AND partition = 0; returns 30,000 rows, but a SELECT COUNT with the identical WHERE predicate reports only 14,000.
+This is failing immediately after running a single small test, such that there are only two SSTables, sr-jb-1 and sr-jb-2. Compaction never needed to run.
+In selectrowcounts.txt is a copy of the cqlsh output showing the incorrect count results.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7, 2.1 beta2
+Component:
+None
+Label:
+None
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Bill Mitchell
+Create date:
+07/Mar/14 21:57
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Apr/14 20:03

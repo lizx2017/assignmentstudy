@@ -1,0 +1,57 @@
+Summary:
+More Like This Query: keep fields separated
+Description:
+Currently the query is generated :
+org.apache.lucene.queries.mlt.MoreLikeThis#retrieveTerms(int)
+1) we extract the terms from the interesting fields, adding them to a map :
+Map<String, Int> termFreqMap = new HashMap<>();
+( we lose the relation field-> term, we don't know anymore where the term was coming ! )
+org.apache.lucene.queries.mlt.MoreLikeThis#createQueue
+2) we build the queue that will contain the query terms, at this point we connect again there terms to some field, but :
+...
+// go through all the fields and find the largest document frequency
+String topField = fieldNames[0];
+int docFreq = 0;
+for (String fieldName : fieldNames) {
+int freq = ir.docFreq(new Term(fieldName, word));
+topField = (freq > docFreq) ? fieldName : topField;
+docFreq = (freq > docFreq) ? freq : docFreq;
+}
+...
+We identify the topField as the field with the highest document frequency for the term t .
+Then we build the termQuery :
+queue.add(new ScoreTerm(word, topField, score, idf, docFreq, tf));
+In this way we lose a lot of precision.
+Not sure why we do that.
+I would prefer to keep the relation between terms and fields.
+The MLT query can improve a lot the quality.
+If i run the MLT on 2 fields : weSell and weDontSell for example.
+It is likely I want to find documents with similar terms in the weSell and similar terms in the weDontSell, without mixing up the things and loosing the semantic of the terms.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+5.4
+Fix_version:
+6.1
+Component:
+modules/other
+Label:
+morelikethis
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tommaso Teofili
+Reporter:
+Alessandro Benedetti
+Create date:
+31/Dec/15 16:05
+Update date:
+17/Jun/16 13:11
+Resolved date:
+28/Mar/16 08:12

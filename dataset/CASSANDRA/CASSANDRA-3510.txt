@@ -1,0 +1,101 @@
+Summary:
+Incorrect query results due to invalid SSTable.maxTimestamp
+Description:
+related to CASSANDRA-3446
+(sorry this is so long, took me a bit to work through it all and there is a lot of new code )
+Summary
+SSTable.maxTimestamp for files created before 1.0 defaults to Long.MIN_VALUE, and this means the wrong data is returned from queries.
+Details
+Noticed on a cluster that was upgraded from 0.8.X to 1.X, it then had trouble similar to CASSANDRA-3446. It was rolled back to 0.8 and the migrated to 1.0.3.
+4 Node cluster, all files upgraded to "hb" format.
+In a super CF there are situations where a get for a sub columns returns a different value than a get for the column. .e.g.
+[default@XXX] get Users[ascii('username')]['meta']['password'];
+=> (column=password, value=3130323130343130, timestamp=1307352647576000)
+
+[default@XX] get Users[ascii('username')]['meta'];     
+(snip)       
+=> (column=password, value=3034323131303034, timestamp=1319563673493000)
+The correct value is the second one.
+I added logging after line 109 in o.a.c.db.CollectionController.collectTimeOrderedData() to log the sstable name and the file max timestamp, this is what I got:
+for (SSTableReader sstable : view.sstables)
+{
+    long currentMaxTs = sstable.getMaxTimestamp();
+    logger.debug(String.format("Got sstable %s and max TS %d", sstable, currentMaxTs));
+    reduceNameFilter(reducedFilter, container, currentMaxTs);
+DEBUG 14:08:46,012 Got sstable SSTableReader(path='/var/lib/cassandra/data/X/Users-hb-12348-Data.db') and max TS 1321824847534000
+DEBUG 14:08:47,231 Got sstable SSTableReader(path='/var/lib/cassandra/data/X/Users-hb-12346-Data.db') and max TS 1321813380793000
+DEBUG 14:08:49,879 Got sstable SSTableReader(path='/var/lib/cassandra/data/X/Users-hb-12330-Data.db') and max TS -9223372036854775808
+DEBUG 14:08:49,880 Got sstable SSTableReader(path='/var/lib/cassandra/data/X/Users-hb-12325-Data.db') and max TS -9223372036854775808
+The key I was reading is present in files 12330 and 12325, the first contains the old / wrong value with timestamp 1307352647576000 above. The second contains the new / correct value with timestamp 1319563673493000.
+*Updated:* Incorrect, it was a later file that had the correct value, see the first comment.
+When CollectionController.collectTimeOrderedData() processes the 12325 file (after processing the 12330 file) while looping over the sstables the call to reduceNameFilter() removes the column from the filter because the column read from the 12330 file has a time stamp of 1307352647576000 and the 12325 file incorrectly has a max time stamp of -9223372036854775808 .
+SSTableMetadata is reading the max time stamp from the stats file, but it is Long.MIN_VALUE. I think this happens because scrub creates the SSTableWriter using cfs.createCompactionWriter() which sets the maxTimestamp in the meta data collector according to the maxTimestamp in the meta data for the file(s) that will be scrubbed / compacted. But for pre 1.0 format files the default in SSTableMetadata is Long.MIN_VALUE, (see SSTableMetaData.deserialize() and the ctor). So scrubbing a pre 1.0 file will write stats files that have maxTimestamp as Long.MIN_VALUE.
+During scrubbing the SSTableWriter does not update the maxTimestamp because append(AbstractCompactedRow) is called which expects the that cfs.createCompactionWriter() was able to set the correct maxTimestamp on the meta data. Compaction also uses append(AbstractCompactedRow) so may create an SSTable with an incorrect maxTimestamp if one of the input files started life as a pre 1.0 file and has a bad maxTimestamp.
+It looks like the only time the maxTimestamp is calculated is when the SSTable is originally written. So the error from the old files will be carried along.
+e.g. If the files a,b and c have the maxTimestamps 10, 100 and Long.MIN_VALUE compaction will write a SSTable with maxTimestamp 100. However file c may actually contain columns with a timestamp > 100 which will be in the compacted file.
+Reproduce
+1. Start a clean 0.8.7
+2. Add a schema (details of the schema do not matter):
+[default@unknown] create keyspace dev;   
+5f834620-140b-11e1-0000-242d50cf1fdf
+Waiting for schema agreement...
+... schemas agree across the cluster
+[default@unknown] 
+[default@unknown] use dev;
+Authenticated to keyspace: dev
+[default@dev] 
+[default@dev] create column family super_dev with column_type = 'Super' 
+... and key_validation_class = 'AsciiType' and comparator = 'AsciiType' and 
+... subcomparator = 'AsciiType' and default_validation_class = 'AsciiType';
+60490720-140b-11e1-0000-242d50cf1fdf
+Waiting for schema agreement...
+... schemas agree across the cluster
+3. Shutdown 0.8.7
+4. Start 1.0.3 using the same data. Check the schema version loaded, example below shows the wrong schema is loaded. I stepped the code and the wrong value was read from Migration.getLastMigrationId() due to this bug.
+ INFO [main] 2011-11-21 19:39:08,546 DatabaseDescriptor.java (line 501) Loading schema version 5f834620-140b-11e1-0000-242d50cf1fdf
+5. Check the schema using the 1.0.3 CLI
+[default@unknown] use dev;
+Authenticated to keyspace: dev
+[default@dev] describe;
+Keyspace: dev:
+  Replication Strategy: org.apache.cassandra.locator.NetworkTopologyStrategy
+  Durable Writes: true
+    Options: [datacenter1:1]
+  Column Families:
+[default@dev] 
+6. I then did a 1.0.3 scrub and re-started. The correct schema version was read, but stepping the code both Schema SSTables had Long.MIN_VALUE as the maxTimestamp so I think it was only the random order of the files that made it work.
+DEBUG 19:52:30,744 Got sstable SSTableReader(path='/var/lib/cassandra/data/system/Schema-hb-4-Data.db') and max TS -9223372036854775808
+DEBUG 19:52:30,744 Got sstable SSTableReader(path='/var/lib/cassandra/data/system/Schema-hb-3-Data.db') and max TS -9223372036854775808
+Fixes
+Not sure, (wanted to get the ticket opened and find out if I was imagining things), guessing...
+Use Long.MIN_VALUE as a magic maxTimestamp that means the value is not know. This would not fix issues where the incorrect maxTimestamp been included in compaction.
+Looking at making scrub re-calculate the maxTimestamp.
+Also wondering if the maxTimestamp should default to Long.MAX_VALUE if read from a file format that does not support maxTimestamp ?
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+amorton
+Create date:
+21/Nov/11 07:15
+Update date:
+16/Apr/19 09:32
+Resolved date:
+22/Nov/11 09:40

@@ -1,0 +1,59 @@
+Summary:
+The CQL3 binary protocol does not allow a user to bind an empty buffer to signify the start of the token range
+Description:
+Using CQL2 or CQL3 over thrift, one can issue a query which starts at the beginning of the table by binding an empty buffer. The same is true for CQL2 using calls like get_range_slice. This is not allowed with the binary protocol. Here is working sample code for CQL3 over thrift:
+    CqlPreparedResult stmt = _client.prepare_cql3_query(ByteBuffer.wrap("SELECT \" Sequence number\" from \"nhanes52simple\" where TOKEN (\" Sequence number\") > TOKEN(?) limit 15".getBytes()), Compression.NONE);
+
+    // Bind empty buffer to get query to start at the beginning of 
+    // the table
+    ByteBuffer b = ByteBuffer.wrap(new byte[0]);
+    bindVars.add(b);
+
+    int cnt = 0;
+    CqlResult result;
+
+    do {
+      result =  _client.execute_prepared_cql3_query(stmt.itemId, bindVars, ConsistencyLevel.ONE);
+      // Set up the next chunk, by setting the bind var to the last received key
+      bindVars.set(0, ByteBuffer.wrap(result.getRows()
+              .get(result.getRows().size() - 1).getColumns().get(0).getValue()));
+
+      // Count rows
+      cnt += result.getRows().size();
+
+      if (cnt > 100)
+        Assert.fail("Running past the end of the table: cnt = " + cnt + ", size() =  " + result.getRows().size());
+
+    } while (result.getRows().size() >= CHUNK_SIZE);
+
+    Assert.assertEquals("Wrong count", 100, cnt);
+
+  } 
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Steven Lowenthal
+Create date:
+13/May/13 19:18
+Update date:
+16/Apr/19 09:32
+Resolved date:
+09/Jul/13 15:04

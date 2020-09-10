@@ -1,0 +1,50 @@
+Summary:
+Unhandled ClassCastException Around Migrations
+Description:
+I'm having trouble reproducing this, but a run of the pycassa integration tests against the latest 2.1 left this in the logs:
+INFO  [MigrationStage:1] 2014-04-29 18:42:22,088 DefsTables.java:388 - Loading org.apache.cassandra.config.CFMetaData@52f225c1[cfId=e8c08650-cff7-11e3-8109-6b09a6cc3d5a,ksName=PycassaTestKeyspace,cfName=SingleComposite,cfType=Standard,comparator=org.apache.cassandra.db.marshal.CompositeType(org.apache.cassandra.db.marshal.IntegerType),comment=,readRepairChance=0.1,dclocalReadRepairChance=0.0,gcGraceSeconds=864000,defaultValidator=org.apache.cassandra.db.marshal.BytesType,keyValidator=org.apache.cassandra.db.marshal.BytesType,minCompactionThreshold=4,maxCompactionThreshold=32,columnMetadata={java.nio.HeapByteBuffer[pos=0 lim=3 cap=3]=ColumnDefinition{name=key, type=org.apache.cassandra.db.marshal.BytesType, kind=PARTITION_KEY, componentIndex=null, indexName=null, indexType=null}, java.nio.HeapByteBuffer[pos=0 lim=5 cap=5]=ColumnDefinition{name=value, type=org.apache.cassandra.db.marshal.BytesType, kind=COMPACT_VALUE, componentIndex=null, indexName=null, indexType=null}, java.nio.HeapByteBuffer[pos=0 lim=7 cap=7]=ColumnDefinition{name=column1, type=org.apache.cassandra.db.marshal.IntegerType, kind=CLUSTERING_COLUMN, componentIndex=0, indexName=null, indexType=null}},compactionStrategyClass=class org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy,compactionStrategyOptions={},compressionParameters={sstable_compression=org.apache.cassandra.io.compress.LZ4Compressor},bloomFilterFpChance=<null>,memtableFlushPeriod=0,caching={"keys":"ALL", "rows_per_partition":"NONE"},defaultTimeToLive=0,minIndexInterval=128,maxIndexInterval=2048,speculativeRetry=NONE,droppedColumns={},triggers={}]
+INFO  [MigrationStage:1] 2014-04-29 18:42:22,090 ColumnFamilyStore.java:285 - Initializing PycassaTestKeyspace.SingleComposite
+INFO  [CompactionExecutor:9] 2014-04-29 18:42:22,096 CompactionTask.java:252 - Compacted 4 sstables to [/var/lib/cassandra/data/system/schema_columns-296e9c049bec3085827dc17d3df2122a/system-schema_columns-ka-169,].  18,036 bytes to 17,507 (~97% of original) in 23ms = 0.725912MB/s.  7 total partitions merged to 4.  Partition merge counts were {1:3, 4:1, }
+ERROR [Thrift:24] 2014-04-29 18:42:22,109 CustomTThreadPoolServer.java:219 - Error occurred during processing of message.
+java.lang.ClassCastException: null
+ERROR [Thrift:34] 2014-04-29 18:42:22,130 CustomTThreadPoolServer.java:219 - Error occurred during processing of message.
+java.lang.ClassCastException: null
+ERROR [Thrift:25] 2014-04-29 18:42:22,173 CustomTThreadPoolServer.java:219 - Error occurred during processing of message.
+java.lang.ClassCastException: null
+ERROR [Thrift:11] 2014-04-29 18:42:22,258 CustomTThreadPoolServer.java:219 - Error occurred during processing of message.
+java.lang.ClassCastException: null
+ERROR [Thrift:16] 2014-04-29 18:42:22,422 CustomTThreadPoolServer.java:219 - Error occurred during processing of message.
+java.lang.ClassCastException: null
+ERROR [Thrift:26] 2014-04-29 18:42:22,747 CustomTThreadPoolServer.java:219 - Error occurred during processing of message.
+java.lang.ClassCastException: null
+INFO  [Thrift:7] 2014-04-29 18:42:22,790 MigrationManager.java:220 - Create new ColumnFamily: org.apache.cassandra.config.CFMetaData@461a7048[cfId=e9380040-cff7-11e3-8109-6b09a6cc3d5a,ksName=PycassaTestKeyspace,cfName=UUIDComposite,cfType=Standard,comparator=org.apache.cassandra.db.marshal.CompositeType(org.apache.cassandra.db.marshal.ReversedType(org.apache.cassandra.db.marshal.IntegerType),org.apache.cassandra.db.marshal.TimeUUIDType),comment=,readRepairChance=0.1,dclocalReadRepairChance=0.0,gcGraceSeconds=864000,defaultValidator=org.apache.cassandra.db.marshal.UTF8Type,keyValidator=org.apache.cassandra.db.marshal.TimeUUIDType,minCompactionThreshold=4,maxCompactionThreshold=32,columnMetadata={java.nio.HeapByteBuffer[pos=0 lim=3 cap=3]=ColumnDefinition{name=key, type=org.apache.cassandra.db.marshal.TimeUUIDType, kind=PARTITION_KEY, componentIndex=null, indexName=null, indexType=null}, java.nio.HeapByteBuffer[pos=0 lim=7 cap=7]=ColumnDefinition{name=column2, type=org.apache.cassandra.db.marshal.TimeUUIDType, kind=CLUSTERING_COLUMN, componentIndex=1, indexName=null, indexType=null}, java.nio.HeapByteBuffer[pos=0 lim=5 cap=5]=ColumnDefinition{name=value, type=org.apache.cassandra.db.marshal.UTF8Type, kind=COMPACT_VALUE, componentIndex=null, indexName=null, indexType=null}, java.nio.HeapByteBuffer[pos=0 lim=7 cap=7]=ColumnDefinition{name=column1, type=org.apache.cassandra.db.marshal.ReversedType(org.apache.cassandra.db.marshal.IntegerType), kind=CLUSTERING_COLUMN, componentIndex=0, indexName=null, indexType=null}},compactionStrategyClass=class org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy,compactionStrategyOptions={},compressionParameters={sstable_compression=org.apache.cassandra.io.compress.LZ4Compressor},bloomFilterFpChance=<null>,memtableFlushPeriod=0,caching={"keys":"ALL", "rows_per_partition":"NONE"},defaultTimeToLive=0,minIndexInterval=128,maxIndexInterval=2048,speculativeRetry=NONE,droppedColumns={},triggers={}]
+INFO  [MigrationStage:1] 2014-04-29 18:42:22,794 ColumnFamilyStore.java:857 - Enqueuing flush of schema_keyspaces: 510 (0%) on-heap, 0 (0%) off-heap
+I'm not sure exactly where the errors happened, but it probably had something to do with the schema migration. We need to fix the error logging here as well as fix whatever the original cause is.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Tyler Hobbs
+Create date:
+29/Apr/14 23:55
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/Apr/15 23:14

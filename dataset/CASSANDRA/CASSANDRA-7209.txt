@@ -1,0 +1,37 @@
+Summary:
+Consider changing UDT serialization format before 2.1 release.
+Description:
+The current serialization format of UDT is the one of CompositeType. This was initially done on purpose, so that users that were using CompositeType for values in their thrift schema could migrate smoothly to UDT (it was also convenient code wise but that's a weak point).
+I'm having serious doubt about this being wise however for 2 reasons:
+for each component, CompositeType stores an addition byte (the end-of-component) for reasons that only pertain to querying. This byte is basically wasted for UDT and makes no sense. I'll note that outside the inefficiency, there is also the fact that it will likely be pretty surprising/error-prone for driver authors.
+it uses an unsigned short for the length of each component. While it's certainly not advisable in the current implementation to use values too big inside an UDT, having this limitation hard-coded in the serialization format is wrong and we've been bitten by this with collection already which we've had to fix in the protocol v3. It's probably worth no doing that mistake again. Furthermore, if we use an int for the size, we can use a negative size to represent a null value (the main point being that it's consistent with how we serialize values in the native protocol), which can be useful (CASSANDRA-7206).
+Of course, if we change that serialization format, we'd better do it before the 2.1 release. But I think the advantages outweigh the cons especially in the long run so I think we should do it. I'll try to work out a patch quickly so if you have a problem with the principle of this issue, it would be nice to voice it quickly.
+I'll note that doing that change will mean existing CompositeType values won't be able to be migrated transparently to UDT. I think this was anecdotal in the first place at best, I don't think using CompositeType for values is that popular in thrift tbh. Besides, if we really really want to, it might not be too hard to re-introduce that compatibility later by having some protocol level trick. We can't change the serialization format without breaking people however.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc1
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+12/May/14 16:11
+Update date:
+16/Apr/19 09:31
+Resolved date:
+20/May/14 16:43

@@ -1,0 +1,53 @@
+Summary:
+bug in rewrite function of boolean query
+Description:
+when optimize boolean query. When the only query sub clause has a boost with 1.0, it should be cloned too.
+if (minNrShouldMatch == 0 && clauses.size() == 1) { // optimize 1-clause queries
+BooleanClause c = clauses.get(0);
+if (!c.isProhibited()) { // just return clause
+Query query = c.getQuery().rewrite(reader); // rewrite first
+if (getBoost() != 1.0f) { // incorporate boost
+if (query == c.getQuery())
+{ // if rewrite was no-op query = query.clone(); // then clone before boost }
+// Since the BooleanQuery only has 1 clause, the BooleanQuery will be
+// written out. Therefore the rewritten Query's boost must incorporate both
+// the clause's boost, and the boost of the BooleanQuery itself
+query.setBoost(getBoost() * query.getBoost());
+}
+
+return query;
+}
+}
+
+when boolean query nested in a disjunction query, rewrite function return the original term query without clone and may cause bad boost value in upper queries. Delete the if statement and always do
+if (query == c.getQuery()) { // if rewrite was no-op query = query.clone(); // then clone before boost }
+can fix this bug.
+sample query may cause this bug: ((((title:at)~1^2.0)))^4.5 after rewrite the query will be changed to ((((title:at)~1^9.0)))^4.5 and Query.clone() won't work for this problem because your lazy clone strategy.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Wang Han
+Create date:
+16/Jun/14 12:41
+Update date:
+06/May/15 15:22
+Resolved date:
+06/May/15 15:22

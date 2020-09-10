@@ -1,0 +1,47 @@
+Summary:
+Exception while recovering commitlog when debug logging enabled
+Description:
+On a cluster with debug logging enabled the commit log fails to recover on start. An UTF8 exception is thrown when trying to toString a column from the system column family LocationInfo. That CF is using UTF8Type but I suspect the column name in this specific case is a byte representation of an ip address, and as such not a valid UTF8 string. That column is most perhaps created in SystemTable line 74.
+Full exception stack trace:
+ERROR [main] 2010-07-13 11:03:17,050 AbstractCassandraDaemon.java (line 107) Exception encountered during startup.
+org.apache.cassandra.db.marshal.MarshalException: invalid UTF8 bytes [10, -48, 40, -124]
+at org.apache.cassandra.db.marshal.UTF8Type.getString(UTF8Type.java:43)
+at org.apache.cassandra.db.Column.getString(Column.java:200)
+at org.apache.cassandra.db.marshal.AbstractType.getColumnsString(AbstractType.java:85)
+at org.apache.cassandra.db.ColumnFamily.toString(ColumnFamily.java:393)
+at org.apache.commons.lang.ObjectUtils.toString(ObjectUtils.java:241)
+at org.apache.commons.lang.StringUtils.join(StringUtils.java:3073)
+at org.apache.commons.lang.StringUtils.join(StringUtils.java:3133)
+at org.apache.cassandra.db.commitlog.CommitLog.recover(CommitLog.java:250)
+at org.apache.cassandra.db.commitlog.CommitLog.recover(CommitLog.java:171)
+at org.apache.cassandra.thrift.CassandraDaemon.setup(CassandraDaemon.java:120)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:90)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:221)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Matthew F. Dennis
+Reporter:
+Johan Oskarsson
+Create date:
+13/Jul/10 17:10
+Update date:
+16/Apr/19 09:33
+Resolved date:
+27/Jul/10 12:46

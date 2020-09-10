@@ -1,0 +1,33 @@
+Summary:
+Region close needs to be fast; e.g. if compacting, abandon it
+Description:
+Over last week or so i've seen slow closes cause regions be off line for a good amount of time. Just now, i saw a big compaction go into effect because "too many store files". This compaction took nearly two minutes on loaded server. But during this time flushing was held up. When the order to close came in (overloaded), we started the close – so incoming writes were rejected – but then we had to wait on the compaction to finish before the close went ahead... though incoming clients by now are being turned away. Eventually the compaction completed and then the held-up flush was allowed run..... 91M in about 5 seconds. Only now was the close allowed complete and the region deployed elsewhere.
+Another time I saw the flush take a good long time because hdfs was running slow. Probably not much we can do about this one but we should at least look into the above. Interrupt an ongoing compaction and abandon it... or else keep region open while the compaction is going on and only when compete, then start up the close (Would require new state of CLOSING keeping up a progressable with the master).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Spiegelberg
+Reporter:
+stack
+Create date:
+15/Feb/10 05:32
+Update date:
+20/Nov/15 12:42
+Resolved date:
+05/Oct/10 23:56

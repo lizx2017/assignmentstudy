@@ -1,0 +1,50 @@
+Summary:
+Investigate sync 'voodoo' splitting WALs
+Description:
+The sequence file sync seems to actually help for some weird reason when recovering parts of edits (odd – it looks like it just adds a marker to the file). Investigate. This comes of review of hbase-2437. Below is copied from http://review.hbase.org/r/74/
+no point to call .sync() here, it just wastes a bunch of IO to write "sync markers" which we don't make any real use of.
+Cosmin Lehene 6 days, 23 hours ago (May 25th, 2010, 9:07 a.m.)
+sync() used to call syncFs(). It looks like HBASE-2544 changed things a bit, but it doesn't only add the SequenceFile sync marker.
+
+I added this after I've seen inconsistent results when running splitLog on bigger hlogs. Try copying a log from the cluster locally and run splitLog from the command line a few times without flushing it after each append. I used to get inconsistent results between runs and calling sync fixed it.
+
+There's this "//TODO: test the split of a large (lots of regions > 500 file). In my tests it seems without hflush"  in the TestHLogSplit. 
+
+We could do some testing to figure out why would log entries be lost when running locally.
+
+What would be a better way to flush the writer?
+Todd Lipcon 5 days, 19 hours ago (May 26th, 2010, 1:31 p.m.)
+This seems really voodoo.. if anything we're probably masking a real bug by doing this. Can you write a unit test which shows this problem (even if it takes 30 minutes to run, would be good to have in our arsenal)
+Cosmin Lehene 2 days, 18 hours ago (May 29th, 2010, 2:13 p.m.)
+I can't reproduce it on hdfs-0.20. I can't compile hdfs-0.21 (again) for some reason. I'll give it another try some other time. 
+
+Added the test. Also tried with a real 60MB log file. 
+I'm not sure if we should leave the test active.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+01/Jun/10 17:10
+Update date:
+20/Nov/15 12:41
+Resolved date:
+05/Oct/10 22:24

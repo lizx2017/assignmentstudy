@@ -1,0 +1,48 @@
+Summary:
+Unbounded (?) thread growth connecting to an removed node
+Description:
+The following lines started repeating every minute in the log file
+ INFO [GossipStage:1] 2013-01-19 19:35:43,929 Gossiper.java (line 831) InetAddress /10.238.x.y is now dead.
+ INFO [GossipStage:1] 2013-01-19 19:35:43,930 StorageService.java (line 1291) Removing token 170141183460469231731687303715884105718 for /10.238.x.y
+Also, I got about 3000 threads which all look like this:
+Name: WRITE-/10.238.x.y
+State: WAITING on java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject@1bb65c0f
+Total blocked: 0  Total waited: 3
+
+Stack trace: 
+ sun.misc.Unsafe.park(Native Method)
+java.util.concurrent.locks.LockSupport.park(LockSupport.java:186)
+java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2043)
+java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.java:442)
+org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:104)
+A new thread seems to be created every minute, and they never go away.
+The endpoint in question had been a part of the cluster weeks ago, and the node exhibiting the thread growth was added yesterday.
+Anyway, assassinating the endpoint in question stopped thread growth (but kept the existing threads running), so this isn't a huge issue. But I don't think the thread count is supposed to be increasing like this...
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.10, 1.2.1
+Component:
+None
+Label:
+None
+Environment:
+java 1.7, ubuntu
+Attachment number:
+0
+Assignee:
+Vijay
+Reporter:
+Janne Jalkanen
+Create date:
+19/Jan/13 19:52
+Update date:
+16/Apr/19 09:32
+Resolved date:
+23/Jan/13 06:48

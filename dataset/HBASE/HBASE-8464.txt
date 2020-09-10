@@ -1,0 +1,57 @@
+Summary:
+FastDiffEncoder - valueOffset calculation is incorrect
+Description:
+In FastDiffEncoder
+Inside compressSingleKeyValue()
+ currentState.prevOffset = in.position();
+    int keyLength = in.getInt();
+    int valueOffset =
+        currentState.prevOffset + keyLength + KeyValue.ROW_OFFSET;
+    int valueLength = in.getInt();
+    byte flag = 0;
+Before seeing the bug, whenever we write something into encoders, we take the ByteBuffer that is created by Writer.append().
+This basically writes
+keyLength, valueLength, keyarray, valuearray, <memstoreTS>
+Now consider a case where the keyarray size is 20 and valuearray size is 20.
+As per the above code for the first KV
+Read keyLength (4 bytes), value length (4 bytes).
+First time the prevOffset is 0 so our value Offset is - 0+20+8 =28.
+This is correct.
+After the first KV is read when we take up the next KV,
+Now the currentState.prevOffset => 28+20 = 48 (the value is also read)
+The above calculation will give us
+28+20+8 = 56.
+But the bytebuffer has only 48 bytes in it.
+Why our testcases did not catch this bug?
+========================================
+It is because in the TestDataBlockEncoders we create a ByteBuffer directly from the KVs and we do not create the way the HFileWriterV2 does it.
+See RedundantKVGenerator.convertKvToByteBuffer().
+Pls correct me if am wrong. I can provide a patch for the same if my above analysis is correct.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+0.94.7, 0.95.0
+Fix_version:
+0.98.0, 0.94.8, 0.95.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudevan
+Reporter:
+ramkrishna.s.vasudevan
+Create date:
+30/Apr/13 07:05
+Update date:
+04/Jun/13 00:07
+Resolved date:
+30/Apr/13 08:39

@@ -1,0 +1,74 @@
+Summary:
+TestUpgradeFromHFileV1ToEncoding.testUpgrade hangs
+Description:
+I'm having a look. Here is the stack I got locally:
+"pool-1-thread-1" prio=10 tid=0x00007f27c8406000 nid=0xf908 in Object.wait() [0x00007f27cec5b000]
+   java.lang.Thread.State: WAITING (on object monitor)
+        at java.lang.Object.wait(Native Method)
+        - waiting on <0x00000000e88b19b0> (a org.apache.hadoop.hbase.util.JVMClusterUtil$RegionServerThread)
+        at java.lang.Thread.join(Thread.java:1186)
+        - locked <0x00000000e88b19b0> (a org.apache.hadoop.hbase.util.JVMClusterUtil$RegionServerThread)
+        at java.lang.Thread.join(Thread.java:1239)
+        at org.apache.hadoop.hbase.util.JVMClusterUtil.shutdown(JVMClusterUtil.java:245)
+        at org.apache.hadoop.hbase.LocalHBaseCluster.shutdown(LocalHBaseCluster.java:430)
+        at org.apache.hadoop.hbase.MiniHBaseCluster.shutdown(MiniHBaseCluster.java:501)
+        at org.apache.hadoop.hbase.HBaseTestingUtility.shutdownMiniHBaseCluster(HBaseTestingUtility.java:856)
+        at org.apache.hadoop.hbase.io.encoding.TestUpgradeFromHFileV1ToEncoding.testUpgrade(TestUpgradeFromHFileV1ToEncoding.java:83)
+"RegionServer:0;localhost,35592,1357148534219-splits-1357148554209" daemon prio=10 tid=0x0000000040ed1000 nid=0x1178 waiting on condition [0x00007f27b3d3c000]
+   java.lang.Thread.State: TIMED_WAITING (sleeping)
+        at java.lang.Thread.sleep(Native Method)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:1164)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:966)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:919)
+        at org.apache.hadoop.hbase.client.HTable.finishSetup(HTable.java:246)
+        at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:187)
+        at org.apache.hadoop.hbase.catalog.MetaReader.getHTable(MetaReader.java:198)
+        at org.apache.hadoop.hbase.catalog.MetaReader.getMetaHTable(MetaReader.java:224)
+        at org.apache.hadoop.hbase.catalog.MetaEditor.offlineParentInMeta(MetaEditor.java:229)
+        at org.apache.hadoop.hbase.regionserver.SplitTransaction.createDaughters(SplitTransaction.java:341)
+        at org.apache.hadoop.hbase.regionserver.SplitTransaction.execute(SplitTransaction.java:471)
+        at org.apache.hadoop.hbase.regionserver.SplitRequest.run(SplitRequest.java:68)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+"RegionServer:0;localhost,35592,1357148534219" prio=10 tid=0x00007f27c0929000 nid=0x5a7 waiting on condition [0x00007f27be5e3000]
+   java.lang.Thread.State: TIMED_WAITING (parking)
+        at sun.misc.Unsafe.park(Native Method)
+        - parking to wait for  <0x00000000e88b1978> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+        at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:196)
+        at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.awaitNanos(AbstractQueuedSynchronizer.java:2025)
+        at java.util.concurrent.ThreadPoolExecutor.awaitTermination(ThreadPoolExecutor.java:1253)
+        at org.apache.hadoop.hbase.regionserver.CompactSplitThread.waitFor(CompactSplitThread.java:252)
+        at org.apache.hadoop.hbase.regionserver.CompactSplitThread.join(CompactSplitThread.java:261)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:948)
+        at org.apache.hadoop.hbase.MiniHBaseCluster$MiniHBaseClusterRegionServer.runRegionServer(MiniHBaseCluster.java:151)
+        at org.apache.hadoop.hbase.MiniHBaseCluster$MiniHBaseClusterRegionServer.access$000(MiniHBaseCluster.java:103)
+        at org.apache.hadoop.hbase.MiniHBaseCluster$MiniHBaseClusterRegionServer$1.run(MiniHBaseCluster.java:135)
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.95.0
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Nicolas Liochon
+Create date:
+02/Jan/13 18:50
+Update date:
+23/Sep/13 18:30
+Resolved date:
+04/Jan/13 10:30

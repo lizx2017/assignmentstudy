@@ -1,0 +1,57 @@
+Summary:
+Region would be assigned twice in the case of all RS offline
+Description:
+In the TimeoutMonitor, we would act on time out for the regions if (this.allRegionServersOffline && !noRSAvailable)
+The code is as the following:
+ if (regionState.getStamp() + timeout <= now ||
+          (this.allRegionServersOffline && !noRSAvailable)) {
+          //decide on action upon timeout or, if some RSs just came back online, we can start the
+          // the assignment
+          actOnTimeOut(regionState);
+        }
+But we found it exists a bug that it would act on time out for the region which was assigned just now , and cause assigning the region twice.
+Master log for the region 277b9b6df6de2b9be1353b4fa25f4222:
+2012-08-14 20:42:54,367 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Unable to determine a plan to assign .META.,,1.1028785192 state=OFFLINE, ts=1
+344948174367, server=null
+2012-08-14 20:44:31,640 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan was found (or we are ignoring an existing plan) for writete
+st,VHXYHJN0BL48HMR4DI1L,1344925649429.277b9b6df6de2b9be1353b4fa25f4222. so generated a random one; hri=writetest,VHXYHJN0BL48HMR4DI1L,1344925649429.277b9b6df6de2b9be13
+53b4fa25f4222., src=, dest=dw92.kgb.sqa.cm4,60020,1344948267642; 1 (online=1, available=1) available servers
+2012-08-14 20:44:31,640 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x438f53bbf9b0acd Creating (or updating) unassigned node for 277b9b6df6de2b9be13
+53b4fa25f4222 with OFFLINE state
+2012-08-14 20:44:31,643 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region writetest,VHXYHJN0BL48HMR4DI1L,1344925649429.277b9b6df6de2b9be1353b4fa
+25f4222. to dw92.kgb.sqa.cm4,60020,1344948267642
+2012-08-14 20:44:32,291 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=dw92.kgb.sqa.cm4,60020,1344948267642, 
+region=277b9b6df6de2b9be1353b4fa25f4222
+// 异常的超时
+2012-08-14 20:44:32,518 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: writetest,VHXYHJN0BL48HMR4DI1L,1344925649429.277b9b6df
+6de2b9be1353b4fa25f4222. state=OPENING, ts=1344948272279, server=dw92.kgb.sqa.cm4,60020,1344948267642
+2012-08-14 20:44:32,518 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been OPENING for too long, reassigning region=writetest,VHXYHJN0BL48HMR4DI1L,
+1344925649429.277b9b6df6de2b9be1353b4fa25f4222.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.1
+Fix_version:
+0.94.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+15/Aug/12 06:56
+Update date:
+07/Apr/13 04:48
+Resolved date:
+31/Aug/12 01:01

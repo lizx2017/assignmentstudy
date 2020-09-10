@@ -1,0 +1,74 @@
+Summary:
+Multiple text operations on multiple pages cause NPE in TTFSubsetter
+Description:
+Problem seems to be of the same nature as in PDFBOX-2605, in a slightly different scenario.
+NullPTest.java
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.edit.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
+import org.junit.Test;
+
+public class NullPTest {
+
+    @Test
+    public void testMultipageUnicodePDF() throws Exception {
+        PDDocument document = new PDDocument();
+
+        PDFont titleFont = PDType0Font.load(document, this.getClass().getResourceAsStream("/Arial Unicode.ttf"));
+
+        PDPage page = new PDPage(PDRectangle.A4);
+        document.addPage(page);
+        PDPageContentStream contentStream = new PDPageContentStream(document, page);
+
+        contentStream.beginText();
+        contentStream.setFont(titleFont, 12);
+        contentStream.newLineAtOffset(0, 100);
+        contentStream.showText("Pěkný žluťoučký kůň úpěl ďábelské ódy");
+        contentStream.endText();
+        contentStream.close();
+        
+
+        page = new PDPage(PDRectangle.A4);
+        document.addPage(page);
+        contentStream = new PDPageContentStream(document, page);
+        contentStream.beginText();
+        contentStream.setFont(titleFont, 12);
+        contentStream.newLineAtOffset(0, 200);
+        contentStream.showText("Pěkný žluťoučký kůň úpěl ďábelské ódy");
+        contentStream.endText();
+        contentStream.close();
+
+        document.close();
+    }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+FontBox
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+John Hewson
+Reporter:
+Alex Nevidomsky
+Create date:
+27/Jan/15 23:09
+Update date:
+17/Mar/16 19:08
+Resolved date:
+29/Jan/15 02:49

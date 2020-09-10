@@ -1,0 +1,44 @@
+Summary:
+ContextQuery with empty RegexCompletionQuery produces an assertion failure
+Description:
+When an empty RegexCompletionQuery is provided to ContextQuery, the following assertion failure occurs:
+java.lang.AssertionError: input should not end with the context separator
+at org.apache.lucene.search.suggest.document.ContextQuery$ContextCompletionWeight.setInnerWeight(ContextQuery.java:296)
+at org.apache.lucene.search.suggest.document.ContextQuery$ContextCompletionWeight.setNextMatch(ContextQuery.java:275)
+at org.apache.lucene.search.suggest.document.NRTSuggester.lookup(NRTSuggester.java:221)
+at org.apache.lucene.search.suggest.document.CompletionScorer.score(CompletionScorer.java:70)
+at org.apache.lucene.search.BulkScorer.score(BulkScorer.java:39)
+at org.apache.lucene.search.suggest.document.SuggestIndexSearcher.suggest(SuggestIndexSearcher.java:78)
+at org.apache.lucene.search.suggest.document.SuggestIndexSearcher.suggest(SuggestIndexSearcher.java:58)
+at org.apache.lucene.search.suggest.document.TestContextQuery.testEmptyRegexQuery(TestContextQuery.java:193)
+This is a bit of an edge case, but may be concerning since without assertions enabled, you can go on to access IntsRef indices that are out of bounds.
+The attached patch provides a reproduction of the issue, as the test case TestContextQuery#testEmptyRegexQuery. Note that to reproduce, Java assertions must be enabled (as in the default configuration for tests).
+The patch also provides a test case for the normal behavior of an empty RegexCompletionQuery, when it is not wrapped in ContextQuery (TestRegexCompletionQuery#testEmptyRegexQuery). In this case, there is no error, and all suggestions are returned. 
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+7.4, 8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Julie Tibshirani
+Create date:
+01/May/18 21:11
+Update date:
+27/Jun/18 08:30
+Resolved date:
+17/May/18 08:37

@@ -1,0 +1,56 @@
+Summary:
+flush makes rows invisible to cluster key equality query
+Description:
+CREATE KEYSPACE test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1 };
+USE test;
+CREATE TYPE point_t (x double, y double);
+CREATE TABLE points (partitionkey int, b boolean static, clusteringkey point_t, PRIMARY KEY (partitionkey, clusteringkey) );
+INSERT INTO points (partitionkey, clusteringkey) VALUES (1, {x:-104.9925100000,y:39.7476520000});
+select * from points WHERE partitionkey=1 AND clusteringkey = {x:-104.9925100000,y:39.7476520000};
+ partitionkey | clusteringkey           | b
+--------------+-------------------------+------
+            1 | {x: -104.99, y: 39.748} | null
+(1 rows)
+cqlsh:test> update points set b = true where partitionkey=1;
+cqlsh:test> select * from points WHERE partitionkey=1 AND clusteringkey = {x:-104.9925100000,y:39.7476520000};
+ partitionkey | clusteringkey           | b
+--------------+-------------------------+------
+            1 | {x: -104.99, y: 39.748} | True
+(1 rows)
+// run bin/nodetool flush here
+cqlsh:test> select * from points WHERE partitionkey=1 AND clusteringkey = {x:-104.9925100000,y:39.7476520000};
+(0 rows)
+cqlsh:test> select * from points WHERE partitionkey=1;
+ partitionkey | clusteringkey           | b
+--------------+-------------------------+------
+            1 | {x: -104.99, y: 39.748} | True
+(1 rows)
+i.e. the data is not lost, it's just invisible when read from sstable, but visible when read from memtable.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Jonathan Halliday
+Create date:
+04/Aug/14 13:45
+Update date:
+16/Apr/19 09:31
+Resolved date:
+06/Aug/14 09:09

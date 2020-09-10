@@ -1,0 +1,55 @@
+Summary:
+Setting column metadata for non-string comparator CFs breaks
+Description:
+For example, use a comparator of LongType and try to create an index on a column named 2 (0x0000000000000002). You'll get a stracktrace in the logs similar to this:
+java.lang.RuntimeException: java.nio.charset.MalformedInputException: Input length = 2
+ at org.apache.cassandra.cql3.ColumnIdentifier.<init>(ColumnIdentifier.java:50)
+ at org.apache.cassandra.cql3.CFDefinition.<init>(CFDefinition.java:115)
+ at org.apache.cassandra.config.CFMetaData.updateCfDef(CFMetaData.java:1278)
+ at org.apache.cassandra.config.CFMetaData.columnMetadata(CFMetaData.java:225)
+ at org.apache.cassandra.config.CFMetaData.fromThrift(CFMetaData.java:636)
+ at org.apache.cassandra.thrift.CassandraServer.system_update_column_family(CassandraServer.java:1061)
+ at org.apache.cassandra.thrift.Cassandra$Processor$system_update_column_family.getResult(Cassandra.java:3436)
+ at org.apache.cassandra.thrift.Cassandra$Processor$system_update_column_family.getResult(Cassandra.java:3424)
+ at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+ at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:186)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: java.nio.charset.MalformedInputException: Input length = 2
+ at java.nio.charset.CoderResult.throwException(CoderResult.java:260)
+ at java.nio.charset.CharsetDecoder.decode(CharsetDecoder.java:781)
+ at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:163)
+ at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:120)
+ at org.apache.cassandra.cql3.ColumnIdentifier.<init>(ColumnIdentifier.java:46)
+ ... 13 more
+This works in Cassandra 0.8 and 1.0.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Tyler Hobbs
+Create date:
+21/May/12 21:39
+Update date:
+16/Apr/19 09:32
+Resolved date:
+22/May/12 15:13

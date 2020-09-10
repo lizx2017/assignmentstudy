@@ -1,0 +1,133 @@
+Summary:
+Tiff image problems
+Description:
+[imported from SourceForge]
+http://sourceforge.net/tracker/index.php?group_id=78314&atid=552832&aid=1559168
+Originally submitted by wolf12 on 2006-09-15 02:02.
+Hi everyone!!!
+PDFBox doesn't write tiff images propertly.
+In tiff documentation there are many fields that are
+not suported by this library.
+1. DPI (XResolution, YResolution, ResoulutionUnit)
+XResolution and YResolution IFDFields are hardcoded
+(300 dpi value for both), ResolutionUnit is not even
+taken into account. User is forced to write those
+values by hisself.
+2. FillOrder
+It is a logical order of bits within a byte (ref.
+TIFF6.pdf document page 32). In PDFBox this entry is
+allways 1 (because of lack it in library this field has
+default value 1 - available are 1 and 2). The efect of
+this is that the data is not properly recognized by pdf
+viewers - error shown:
+"No sufficient data for the image".
+Here is code for creating pdf page with tiff image:
+1. >>>>>>>>>>> create COSDictionary <<<<<<<<<<<
+IFDEntry columns =
+ifd.directoryEntries.get(IFDName.ImageWidth);
+IFDEntry rows =
+ifd.directoryEntries.get(IFDName.ImageLength);
+IFDEntry t4compression =
+ifd.directoryEntries.get(IFDName.Compression);
+IFDEntry blackIs1 =
+ifd.directoryEntries.get(IFDName.PhotometricInterpretation);
+IFDEntry t42d =
+ifd.directoryEntries.get(IFDName.T4Options);
+int k = -1000;
+if (t4compression != null)
+{
+if (t4compression.getValue() == 4)
+{ k = -1; }
+if (t4compression.getValue() == 3)
+{ k = 0; }
+}
+if (t42d != null && t42d.getValue() == 1)
+{ k = 50; }
+if (k == -1000)
+{ throw new IOException("First image in tiff is not CCITT T4 or T6 compressed"); }
+boolean bi1 = (blackIs1.getValue() == 1) ? true : false;
+cosDictParms.setInt(COLUMNS, columns.getValue());
+cosDictParms.setInt(ROWS, rows.getValue());
+if (bi1)
+{ cosDictParms.setBoolean("BlackIs1", true); }
+cosDictParms.setInt("K", k);
+cosDictParms.setFloat("XRes", this.getXRes());
+cosDictParms.setFloat("YRes", this.getYRes());
+this.checkCOSDictionary = true;
+2. >>>>>>>>>>> create PDStream <<<<<<<<<<<
+PDStream stream = new PDStream(doc);
+COSStream dic = stream.getStream();
+COSDictionary decodeParms =
+tiffImage.getCosDictionaryParams();
+OutputStream os = null;
+try
+{ os = dic.createFilteredStream(); os.write(tiffImage.getStripsByte()); }
+finally
+{
+try
+{
+if (os != null)
+{ os.close(); }
+}
+catch (IOException e)
+{ // ignore error }
+}
+dic.setItem(COSName.FILTER, COSName.CCITTFAX_DECODE);
+dic.setItem(COSName.SUBTYPE, COSName.IMAGE);
+dic.setItem(COSName.TYPE, COSName.getPDFName("XObject"));
+dic.setItem("DecodeParms", decodeParms);
+3. >>>>>>>>>>> create PDXObjectImage <<<<<<<<<<<
+COSDictionary decodeParms =
+tiffImage.getCosDictionaryParams();
+PDCcitt ccitt = new PDCcitt(stream);
+ccitt.setBitsPerComponent(1);
+ccitt.setColorSpace(new PDDeviceGray());
+ccitt.setWidth(decodeParms.getInt(TiffImage.COLUMNS));
+ccitt.setHeight(decodeParms.getInt(TiffImage.ROWS));
+4. >>>>>>>>>> create pdf page with image <<<<<<<<<
+PDPageContentStream contentStream = new
+PDPageContentStream(document, page);
+PDFPageImageFormat pdfFormat =
+PDFPageImageFormat.newPDFPageImageFormat(0, 0,
+PDFPageImageFormat.FIT_TO_IMAGE, imageObject);
+page.setMediaBox(new
+PDRectangle(tiffImage.getOryginalWidth(),
+tiffImage.getOryginalHeight()));
+contentStream.drawImage(imageObject,
+pdfFormat.getX(), pdfFormat.getY(),
+(int)tiffImage.getOryginalWidth(),/pdfFormat.getWidth(),/
+(int)tiffImage.getOryginalHeight()/pdfFormat.getHeight()/);
+bos.write(tiffImage.toByteArray());
+>>>>>>>>>>>>> end source code <<<<<<<<<
+I cannot attach any example of pdf file because of
+security.
+I have my own tiff wraper which reads also multipage
+tiff image.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Duplicate
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jukka Zitting
+Reporter:
+Anonymous
+Create date:
+15/Sep/06 09:02
+Update date:
+21/Oct/09 10:01
+Resolved date:
+30/Dec/08 16:39

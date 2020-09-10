@@ -1,0 +1,47 @@
+Summary:
+SegmentCoreReader's "owner" reference back to the first SegmentReader causes leaks
+Description:
+Spinoff from LUCENE-5248, where Shai discovered this ...
+SegmentCoreReaders has a SegmentReader owner member, that points to the
+first SegmentReader that was opened. When that SR is reopened to SR2,
+e.g. because new deletes or NDV updates happened, the same SCR is
+shared.
+But, even if you close SR1, any thing it points to cannot be GCd
+because SCR is pointing to it.
+I think the big things are liveDocs and the NDV update maps; Shai is
+going to fix the latter in LUCENE-5248, so this issue should fix
+liveDocs.
+The simplest fix is to make liveDocs not final and null it out in
+doClose ... but that's sort of fragile (what if we add other members
+in the future and forget to null them on close?). I think it'd be better to
+eliminate the owner reference; it's only used so we can evict
+FieldCache entry once the core is closed. Maybe we can just store the
+coreCacheKey instead?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+4.6, 6.0
+Fix_version:
+4.5.1, 4.6, 5.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+02/Oct/13 15:07
+Update date:
+21/Feb/17 11:26
+Resolved date:
+04/Oct/13 11:55

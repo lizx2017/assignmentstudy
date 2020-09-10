@@ -1,0 +1,74 @@
+Summary:
+Add upper bound on threads for TThreadPoolServer; too many have run into the OOME can't create native thread because thrift spawns w/o bound
+Description:
+See tail of this thread:
+http://search-hadoop.com/m/Ooyif0dZ89/major+hdfs+issues&subj=Re+major+hdfs+issues
+We need to hack in something like the below:
+diff --git a/src/main/java/org/apache/hadoop/hbase/thrift/ThriftServer.java b/src/main/java/org/apache/hadoop/hbase/thrift/ThriftServer.java
+index 06621ab..74856af 100644
+--- a/src/main/java/org/apache/hadoop/hbase/thrift/ThriftServer.java
++++ b/src/main/java/org/apache/hadoop/hbase/thrift/ThriftServer.java
+@@ -69,6 +69,7 @@ import org.apache.hadoop.hbase.thrift.generated.TRegionInfo;
+ import org.apache.hadoop.hbase.thrift.generated.TRowResult;
+ import org.apache.hadoop.hbase.util.Bytes;
+ import org.apache.thrift.TException;
++import org.apache.thrift.TProcessorFactory;
+ import org.apache.thrift.protocol.TBinaryProtocol;
+ import org.apache.thrift.protocol.TCompactProtocol;
+ import org.apache.thrift.protocol.TProtocolFactory;
+@@ -911,9 +912,25 @@ public class ThriftServer {
+       } else {
+         transportFactory = new TTransportFactory();
+       }
+-
+-      LOG.info("starting HBase ThreadPool Thrift server on " + listenAddress + ":" + Integer.toString(listenPort));
+-      server = new TThreadPoolServer(processor, serverTransport, transportFactory, protocolFactory);
++      TThreadPoolServer.Options poolServerOptions =
++        new TThreadPoolServer.Options();
++      int maxWorkerThreads = Integer.MAX_VALUE;
++      if (cmd.hasOption("maxWorkerThreads")) {
++        try {
++          maxWorkerThreads =
++            Integer.parseInt(cmd.getOptionValue("maxWorkerThreads", "" + Integer.MAX_VALUE));
++        } catch (NumberFormatException e) {
++          LOG.error("Could not parse maxWorkerThreads option", e);
++          printUsageAndExit(options, -1);
++        }
++      }
++      poolServerOptions.maxWorkerThreads = maxWorkerThreads;
++      LOG.info("starting HBase ThreadPool Thrift server on " + listenAddress +
++        ":" + Integer.toString(listenPort) +
++        ", maxWorkerThreads=" + maxWorkerThreads);
++      server = new TThreadPoolServer(processor, serverTransport,
++        transportFactory, transportFactory, protocolFactory, protocolFactory,
++        poolServerOptions);
+     }
+...only with better factoring AND exposing other options in Options; they look useful.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+Thrift
+Label:
+thrift thrift2
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+12/Mar/11 19:28
+Update date:
+28/Jun/13 16:32
+Resolved date:
+

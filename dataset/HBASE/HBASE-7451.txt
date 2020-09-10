@@ -1,0 +1,81 @@
+Summary:
+[snapshot] regionserver will deadlock when GlobalSnapshotOperation timeout happens
+Description:
+Hi Matteo Bertozzi and Jesse Yates, My observation is base on code in github ： https://github.com/matteobertozzi/hbase/
+If we create a snapshot and meet regionserver timeout. Rs will be lock and can not put any data. Please take a look at log below :
+// regionserver snapshot timeout
+org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitException: org.apache.hadoop.hbase.server.errorhandling.exception.OperationAttemptTimeoutException: Timeout elapsed! Start:1356518666984, End:1356518667584, diff:600, max:600 ms
+at org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitErrorDispatcher.wrap(DistributedThreePhaseCommitErrorDispatcher.java:135)
+at org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitErrorDispatcher.operationTimeout(DistributedThreePhaseCommitErrorDispatcher.java:71)
+at org.apache.hadoop.hbase.server.commit.ThreePhaseCommit$1.receiveError(ThreePhaseCommit.java:92)
+at org.apache.hadoop.hbase.server.commit.ThreePhaseCommit$1.receiveError(ThreePhaseCommit.java:89)
+at org.apache.hadoop.hbase.server.errorhandling.OperationAttemptTimer$1.run(OperationAttemptTimer.java:71)
+at java.util.TimerThread.mainLoop(Timer.java:512)
+at java.util.TimerThread.run(Timer.java:462)
+Caused by: org.apache.hadoop.hbase.server.errorhandling.exception.OperationAttemptTimeoutException: Timeout elapsed! Start:1356518666984, End:1356518667584, diff:600, max:600 ms
+... 3 more
+2012-12-26 18:44:57,211 DEBUG org.apache.hadoop.hbase.server.commit.TwoPhaseCommit: Running cleanup phase.
+2012-12-26 18:44:57,211 DEBUG org.apache.hadoop.hbase.regionserver.snapshot.operation.SnapshotOperation: Cleanup snapshot - handled in sub-tasks on error
+2012-12-26 18:44:57,212 DEBUG org.apache.hadoop.hbase.serv
+//Waiting for 'commit allowed' latch and do not exist
+2012-12-26 18:44:57,211 DEBUG org.apache.hadoop.hbase.server.commit.TwoPhaseCommit: Running cleanup phase.
+2012-12-26 18:44:57,211 DEBUG org.apache.hadoop.hbase.regionserver.snapshot.operation.SnapshotOperation: Cleanup snapshot - handled in sub-tasks on error
+2012-12-26 18:44:57,212 DEBUG org.apache.hadoop.hbase.server.commit.TwoPhaseCommit: Running finish phase.
+2012-12-26 18:44:57,212 DEBUG org.apache.hadoop.hbase.regionserver.snapshot.operation.SnapshotOperation: Finish snapshot - handling in subtasks on error
+2012-12-26 18:44:57,212 WARN org.apache.hadoop.hbase.server.errorhandling.OperationAttemptTimer: Timer already marked completed, ignoring!
+2012-12-26 18:45:01,990 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:45:06,990 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:45:11,991 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:45:16,991 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:45:17,002 INFO org.apache.hadoop.hbase.server.commit.distributed.zookeeper.ZKTwoPhaseCommitCohortMemberController: Received children changed event:/hbase-TERRY-73/online-snapshot/prepare
+2012-12-26 18:45:17,002 INFO org.apache.hadoop.hbase.server.commit.distributed.zookeeper.ZKTwoPhaseCommitCohortMemberController: Recieved start event.
+2012-12-26 18:45:17,002 DEBUG org.apache.hadoop.hbase.server.commit.distributed.zookeeper.ZKTwoPhaseCommitCohortMemberController: Looking for new operations under znode:/hbase-TERRY-73/online-snapshot/prepare
+2012-12-26 18:45:17,003 INFO org.apache.hadoop.hbase.server.commit.distributed.zookeeper.ZKTwoPhaseCommitCohortMemberController: Received children changed event:/hbase-TERRY-73/online-snapshot/abort
+2012-12-26 18:45:17,003 INFO org.apache.hadoop.hbase.server.commit.distributed.zookeeper.ZKTwoPhaseCommitCohortMemberController: Recieved abort event.
+2012-12-26 18:45:17,003 DEBUG org.apache.hadoop.hbase.server.commit.distributed.zookeeper.ZKTwoPhaseCommitCohortMemberController: Checking for aborted operations on node:/hbase-TERRY-73/online-snapshot/abort
+2012-12-26 18:45:21,991 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:45:26,992 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:45:31,992 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:45:36,992 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:45:41,992 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:45:43,481 DEBUG org.apache.hadoop.hbase.io.hfile.LruBlockCache: LRU Stats: total=11.77 MB, free=1.39 GB, max=1.4 GB, blocks=5, accesses=96, hits=91, hitRatio=94.79%, cachingAccesses=96, cachingHits=91, cachingHitsRatio=94.79%, evictions=0, evicted=0, evictedPerRun=NaN
+2012-12-26 18:45:46,993 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:45:51,993 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:45:56,993 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:46:01,994 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:46:06,994 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:46:11,994 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:46:16,994 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:46:21,995 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:46:26,995 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:46:31,995 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:46:36,996 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+2012-12-26 18:46:41,996 DEBUG org.apache.hadoop.hbase.util.Threads: Waiting for 'commit allowed' latch. (sleep:5000 ms)
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+snapshots
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+terry zhang
+Reporter:
+terry zhang
+Create date:
+28/Dec/12 09:49
+Update date:
+08/Jan/15 09:34
+Resolved date:
+08/Jan/15 09:34

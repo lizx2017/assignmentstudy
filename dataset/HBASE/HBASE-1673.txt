@@ -1,0 +1,54 @@
+Summary:
+.META. regionserver died, cluster recovered but not UI
+Description:
+Getting 500 in UI:
+org.apache.hadoop.hbase.client.RetriesExhaustedException: Trying to contact region server null for region , row '', but failed after 3 attempts.
+Exceptions:
+java.net.ConnectException: Call to /208.76.44.141:60020 failed on connection exception: java.net.ConnectException: Connection refused
+...
+Doesn't recover.
+I think issue is here in HCM:
+        } catch (IOException e) {
+          if (e instanceof RemoteException) {
+            e = RemoteExceptionHandler.decodeRemoteException(
+                (RemoteException) e);
+          }
+          if (tries < numRetries - 1) {
+            if (LOG.isDebugEnabled()) {
+              LOG.debug("locateRegionInMeta attempt " + tries + " of " +
+                this.numRetries + " failed; retrying after sleep of " +
+                getPauseTime(tries), e);
+            }
+            relocateRegion(parentTable, metaKey);
+          } else {
+...
+The call to relocateRegion is going to result in an attempt at finding the .META.,,1 region in .META. which will get a ConnectionException again.
+On ConnectionException, should be backing up and going to ROOT to find new location of .META.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+19/Jul/09 07:12
+Update date:
+07/Dec/10 21:06
+Resolved date:
+07/Dec/10 21:06

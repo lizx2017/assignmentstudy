@@ -1,0 +1,38 @@
+Summary:
+DNS Configs may completely break HBase cluster
+Description:
+I recently experienced a cluster malfunction which was caused by a change in DNS config for services co-hosted on the machines running region servers.
+The RS are specified using IP addresses in the 'regionservers' file. Those machines are 1.example.com to N.example.com (there are A RRs for those names to each of the N IP addresses in 'regionservers').
+Until recently, the PTR RRs for the RS IPs were those x.example.com names.
+Then a service was deployed on some of the x.example.com machines, and new A RRs were added for svc.example.com which point to each of the IPs used for the service.
+Jointly new PTR records were added too for the given IPs. Those PTR records have 'svc.example.com' as their PTRDATA, and this is causing the HBase cluster to get completely confused.
+Since it is perfectly legal to have multiple PTR records, it seems important to make the canonicalization of RS more robust to DNS tweaks.
+Maybe generating a UUID when a RS is started would help, this UUID could be used to register the RS in ZK and we would not rely on DNS for obtaining a stable canonical name (which may not even exist...).
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.90.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Mathias Herberts
+Create date:
+05/Jan/11 07:47
+Update date:
+12/Aug/14 19:19
+Resolved date:
+12/Aug/14 19:19

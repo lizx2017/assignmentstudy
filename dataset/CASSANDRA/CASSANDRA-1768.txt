@@ -1,0 +1,51 @@
+Summary:
+UnsupportedOperationException in system_update_column_family
+Description:
+During testing I hit this section of code:
+CFMetaData.java:662
+ // remove the ones leaving.
+       for (ByteBuffer indexName : toRemove)
+           column_metadata.remove(indexName);
+but column_metadata is defined as:
+       this.column_metadata = Collections.unmodifiableMap(column_metadata);
+So remove() will throw an exception.
+java.lang.UnsupportedOperationException
+        at java.util.Collections$UnmodifiableMap.remove(Collections.java:1288)
+        at org.apache.cassandra.config.CFMetaData.apply(CFMetaData.java:662)
+        at org.apache.cassandra.db.migration.UpdateColumnFamily.<init>(UpdateColumnFamily.java:56)
+        at org.apache.cassandra.thrift.CassandraServer.system_update_column_family(CassandraServer.java:863)
+        at org.apache.cassandra.thrift.Cassandra$Processor$system_update_column_family.process(Cassandra.java:3592)
+        at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:2555)
+        at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:167)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:680)
+This was introduced by CASSANDRA-1715
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.0 rc 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+T Jake Luciani
+Create date:
+23/Nov/10 02:14
+Update date:
+16/Apr/19 09:33
+Resolved date:
+23/Nov/10 17:09

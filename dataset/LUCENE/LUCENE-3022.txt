@@ -1,0 +1,89 @@
+Summary:
+DictionaryCompoundWordTokenFilter Flag onlyLongestMatch has no affect
+Description:
+When using the DictionaryCompoundWordTokenFilter with a german dictionary, I got a strange behaviour:
+The german word "streifenbluse" (blouse with stripes) was decompounded to "streifen" (stripe),"reifen"(tire) which makes no sense at all.
+I thought the flag onlyLongestMatch would fix this, because "streifen" is longer than "reifen", but it had no effect.
+So I reviewed the sourcecode and found the problem:
+[code]
+protected void decomposeInternal(final Token token) {
+// Only words longer than minWordSize get processed
+if (token.length() < this.minWordSize)
+{ return; }
+
+char[] lowerCaseTermBuffer=makeLowerCaseCopy(token.buffer());
+
+for (int i=0;i<token.length()-this.minSubwordSize;++i) {
+Token longestMatchToken=null;
+for (int j=this.minSubwordSize-1;j<this.maxSubwordSize;++j) {
+if(i+j>token.length()) { break; }
+if(dictionary.contains(lowerCaseTermBuffer, i, j)) {
+if (this.onlyLongestMatch) {
+if (longestMatchToken!=null) {
+if (longestMatchToken.length()<j) { longestMatchToken=createToken(i,j,token); }
+} else { longestMatchToken=createToken(i,j,token); }
+} else { tokens.add(createToken(i,j,token)); }
+}
+}
+if (this.onlyLongestMatch && longestMatchToken!=null) { tokens.add(longestMatchToken); }
+}
+}
+[/code]
+
+should be changed to
+
+[code]
+protected void decomposeInternal(final Token token) {
+// Only words longer than minWordSize get processed
+if (token.termLength() < this.minWordSize) { return; }
+char[] lowerCaseTermBuffer=makeLowerCaseCopy(token.termBuffer());
+Token longestMatchToken=null;
+for (int i=0;i<token.termLength()-this.minSubwordSize;++i) {
+for (int j=this.minSubwordSize-1;j<this.maxSubwordSize;++j) {
+if(i+j>token.termLength())
+{ break; }
+if(dictionary.contains(lowerCaseTermBuffer, i, j)) {
+if (this.onlyLongestMatch) {
+if (longestMatchToken!=null) {
+if (longestMatchToken.termLength()<j)
+{ longestMatchToken=createToken(i,j,token); }
+} else
+{ longestMatchToken=createToken(i,j,token); }
+} else
+{ tokens.add(createToken(i,j,token)); }
+}
+}
+}
+if (this.onlyLongestMatch && longestMatchToken!=null)
+{ tokens.add(longestMatchToken); }
+}
+[/code]
+So, that only the longest token is really indexed and the onlyLongestMatch Flag makes sense.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+2.9.4, 3.1
+Fix_version:
+4.9, 6.0
+Component:
+modules/analysis
+Label:
+dead
+Environment:
+
+Attachment number:
+0
+Assignee:
+Robert Muir
+Reporter:
+Johann Höchtl
+Create date:
+12/Apr/11 09:15
+Update date:
+23/Feb/18 19:39
+Resolved date:
+

@@ -1,0 +1,43 @@
+Summary:
+Manifest file not fsynced
+Description:
+We had several cases where the the manifest file would get corrupted when doing power reset tests or iLO resets to mimic power failure scenarios, ungraceful resets, kernel panics etc. It wasn't clear at the time where the problem was, but I think the data below shows that Cassandra is missing an fsync call to the manifest file prior to closing it. This particular stack trace from below is on Cassandra 1.2.4.
+The trace was captured using strace options:
+strace -f -p 2200 -e trace=open,close,write,fsync,fdatasync,rename
+[pid 9710] open("/opt/mp/storage/persistent/cassandra/cassandra-lib/data/MSA/subinfo/subinfo-tmp.json", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 238
+[pid 9710] write(238, "{\n \"generations\" : [ {\n \"gen"..., 3996) = 3996
+[pid 9710] write(238, "14, 263161, 263484, 270816, 2593"..., 3996) = 3996
+[pid 9710] write(238, "275136, 275137, 275138, 275139, "..., 1173) = 1173
+[pid 9710] close(238) = 0
+[pid 9710] rename("/opt/mp/storage/persistent/cassandra/cassandra-lib/data/MSA/subinfo/subinfo.json"
+, "/opt/mp/storage/persistent/cassandra/cassandra-lib/data/MSA/subinfo/subinfo-old.json") = 0
+[pid 9710] rename("/opt/mp/storage/persistent/cassandra/cassandra-lib/data/MSA/subinfo/subinfo-tmp.j
+son", "/opt/mp/storage/persistent/cassandra/cassandra-lib/data/MSA/subinfo/subinfo.json") = 0
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.12, 1.2.5
+Component:
+None
+Label:
+None
+Environment:
+redhat
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Terry Cumaranatunge
+Create date:
+03/May/13 15:54
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/May/13 18:59

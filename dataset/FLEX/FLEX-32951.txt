@@ -1,0 +1,47 @@
+Summary:
+mx.charts.chartClasses.ChartBase: Won't be removed from memory after deletion, if tooltip is shown
+Description:
+Steps to reproduce:
+1. Add any Chart component, which extends ChartBase class. For example, mx.charts.LineChart or mx.charts.ColumnChart.
+2. Move mouse over LineChart or ColumnChart to get tooltip over trend or bar.
+3. Remove chart when it's not needed anymore with help of removeChild() method.
+Actual Results:
+Chart is not GCed.
+Expected Results:
+Chart is removed from memory with GC.
+Cause of issue:
+_tipCache property of ChartBase is created in next way:
+_tipCache = new InstanceCache(tipClass, systemManager.toolTipChildren);
+So if at least one tooltip is shown for chart, then tooltip instance will be created and chart will be holding reference to it. In addition tooltip will hold refrence to systemManager and won't be GCed. That's why chart remains in memory after removeChild() call.
+Workaround (if any):
+This issue can be fixed in next way - call this after chart is removed:
+while(systemManager.toolTipChildren.numChildren > 0)
+{ systemManager.toolTipChildren.removeChildAt(0); }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+Adobe Flex SDK 3.5 (
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+25/Mar/11 02:34
+Update date:
+12/Sep/11 02:08
+Resolved date:
+12/Sep/11 02:07

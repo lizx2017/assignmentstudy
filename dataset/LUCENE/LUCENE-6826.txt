@@ -1,0 +1,49 @@
+Summary:
+java.lang.ClassCastException: org.apache.lucene.index.TermsEnum$2 cannot be cast to org.apache.lucene.index.MultiTermsEnum when adding indexes
+Description:
+We are using addIndexes and FilterCodecReader tricks as part of index migration.
+Whether FilterCodecReader tricks are required to reproduce this is uncertain, but in any case, when migrating a particular index, I saw this exception:
+java.lang.ClassCastException: org.apache.lucene.index.TermsEnum$2 cannot be cast to org.apache.lucene.index.MultiTermsEnum
+ at org.apache.lucene.index.MappedMultiFields$MappedMultiTerms.iterator(MappedMultiFields.java:65)
+ at org.apache.lucene.codecs.blocktree.BlockTreeTermsWriter.write(BlockTreeTermsWriter.java:426)
+ at org.apache.lucene.codecs.perfield.PerFieldPostingsFormat$FieldsWriter.write(PerFieldPostingsFormat.java:198)
+ at org.apache.lucene.codecs.FieldsConsumer.merge(FieldsConsumer.java:105)
+ at org.apache.lucene.index.SegmentMerger.mergeTerms(SegmentMerger.java:193)
+ at org.apache.lucene.index.SegmentMerger.merge(SegmentMerger.java:95)
+ at org.apache.lucene.index.IndexWriter.addIndexes(IndexWriter.java:2519)
+TermsEnum$2 appears to be TermsEnum.EMPTY. The place where it creates it is here:
+MultiTermsEnum#reset:
+    if (queue.size() == 0) {
+      return TermsEnum.EMPTY;   // <- this is not a MultiTermsEnum
+    } else {
+      return this;
+    }
+A quick hack would be for MappedMultiFields to check for TermsEnum.EMPTY specifically before casting, but there might be some way to avoid the cast entirely and that would obviously be a better idea.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+5.2.1
+Fix_version:
+5.4, 6.0
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Trejkaz
+Create date:
+06/Oct/15 04:16
+Update date:
+09/May/16 18:29
+Resolved date:
+07/Oct/15 21:07

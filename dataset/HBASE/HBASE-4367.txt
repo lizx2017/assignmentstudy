@@ -1,0 +1,34 @@
+Summary:
+Deadlock in MemStore flusher due to JDK internally synchronizing on current thread
+Description:
+We observed a deadlock in production between the following threads:
+IPC handler thread holding the monitor lock on MemStoreFlusher inside reclaimMemStoreMemory, waiting to obtain MemStoreFlusher.lock (the reentrant lock member)
+cacheFlusher thread inside flushRegion holds MemStoreFlusher.lock, and then calls PriorityCompactionQueue.add, which calls PriorityCompactionQueue.addToRegionsInQueue, which calls CompactionRequest.toString(), which calls Date.toString. If this occurs just after a GC under memory pressure, Date.toString needs to reload locale information (stored in a soft reference), so it calls ResourceBundle.loadBundle, which uses Thread.currentThread() as a synchronizer (see sun bug http://bugs.sun.com/view_bug.do?bug_id=6915621). Since the current thread is the MemStoreFlusher itself, we have a lock order inversion and a deadlock.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.92.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Todd Lipcon
+Reporter:
+Todd Lipcon
+Create date:
+10/Sep/11 08:13
+Update date:
+20/Nov/15 11:53
+Resolved date:
+25/Oct/11 07:39

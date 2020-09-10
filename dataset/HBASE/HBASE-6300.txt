@@ -1,0 +1,72 @@
+Summary:
+Master should not ignore event RS_ZK_REGION_OPENED when regionState is null or unexpected.
+Description:
+When RS updates an unassigned ZK node to RS_ZK_REGION_OPENED, it will most probably proceed to update the region location in META. This would cause inconsistency between the region's location in HMaster and that in META. Not deleting this ZK node would also make further region transitions fail with ZK exception "node already exists".
+So the master should either abort or fix this inconsistency.
+        case RS_ZK_REGION_OPENED:
+          hri = checkIfInFailover(regionState, encodedName, regionName);
+          if (hri != null) {
+            regionState = new RegionState(hri, RegionState.State.OPEN, createTime, sn);
+            regionsInTransition.put(encodedName, regionState);
+            new OpenedRegionHandler(master, this, regionState.getRegion(), sn, expectedVersion).process();
+            failoverProcessedRegions.put(encodedName, hri);
+            break;
+          }
+          // Should see OPENED after OPENING but possible after PENDING_OPEN
+          if (regionState == null ||
+              (!regionState.isPendingOpen() && !regionState.isOpening())) {
+            LOG.warn("Received OPENED for region " +
+                prettyPrintedRegionName +
+                " from server " + sn + " but region was in " +
+                " the state " + regionState + " and not " +
+                "in expected PENDING_OPEN or OPENING states");
+            return;
+          }
+          // Handle OPENED by removing from transition and deleted zk node
+          regionState.update(RegionState.State.OPEN, createTime, sn);
+          this.executorService.submit(
+            new OpenedRegionHandler(master, this, regionState.getRegion(), sn, expectedVersion));
+          break;
+Error logs:
+2012-06-29 07:07:41,149 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=swbss-hadoop-164,60020,1340888346294, region=b713fd655fa02395496c5a6e39ddf568
+2012-06-29 07:07:41,150 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received OPENING for region b713fd655fa02395496c5a6e39ddf568 from server swbss-hadoop-164,60020,1340888346294 but region was in  the state null and not in expected PENDING_OPEN or OPENING states
+2012-06-29 07:07:41,296 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=swbss-hadoop-164,60020,1340888346294, region=b713fd655fa02395496c5a6e39ddf568
+2012-06-29 07:07:41,296 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received OPENING for region b713fd655fa02395496c5a6e39ddf568 from server swbss-hadoop-164,60020,1340888346294 but region was in  the state null and not in expected PENDING_OPEN or OPENING states
+2012-06-29 07:07:41,302 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=swbss-hadoop-164,60020,1340888346294, region=b713fd655fa02395496c5a6e39ddf568
+2012-06-29 07:07:41,302 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received OPENED for region b713fd655fa02395496c5a6e39ddf568 from server swbss-hadoop-164,60020,1340888346294 but region was in  the state null and not in expected PENDING_OPEN or OPENING states
+2012-06-29 07:08:38,872 INFO org.apache.hadoop.hbase.master.HMaster: balance hri=CDR_STATS_TRAFFIC,13184390567|20120508|17||2|3|913,1337256975556.b713fd655fa02395496c5a6e39ddf568., src=swbss-hadoop-006,60020,1340890678078, dest=swbss-hadoop-008,60020,1340891085175
+2012-06-29 07:08:38,872 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region CDR_STATS_TRAFFIC,13184390567|20120508|17||2|3|913,1337256975556.b713fd655fa02395496c5a6e39ddf568. (offlining)
+2012-06-29 07:08:47,875 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Sent CLOSE to serverName=swbss-hadoop-006,60020,1340890678078, load=(requests=0, regions=0, usedHeap=0, maxHeap=0) for region CDR_STATS_TRAFFIC,13184390567|20120508|17||2|3|913,1337256975556.b713fd655fa02395496c5a6e39ddf568.
+2012-06-29 08:04:37,681 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out:  CDR_STATS_TRAFFIC,13184390567|20120508|17||2|3|913,1337256975556.b713fd655fa02395496c5a6e39ddf568. state=PENDING_CLOSE, ts=1340926468331, server=null
+2012-06-29 08:04:37,681 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_CLOSE for too long, running forced unassign again on region=CDR_STATS_TRAFFIC,13184390567|20120508|17||2|3|913,1337256975556.b713fd655fa02395496c5a6e39ddf568.
+2012-06-29 08:04:47,681 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out:  CDR_STATS_TRAFFIC,13184390567|20120508|17||2|3|913,1337256975556.b713fd655fa02395496c5a6e39ddf568. state=PENDING_CLOSE, ts=1340926468331, server=null
+2012-06-29 08:04:47,682 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_CLOSE for too long, running forced unassign again on region=CDR_STATS_TRAFFIC,13184390567|20120508|17||2|3|913,1337256975556.b713fd655fa02395496c5a6e39ddf568.
+2012-06-29 08:04:57,681 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out:  CDR_STATS_TRAFFIC,13184390567|20120508|17||2|3|913,1337256975556.b713fd655fa02395496c5a6e39ddf568. state=PENDING_CLOSE, ts=1340926468331, server=null
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+0.90.6, 0.94.0
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Maryann Xue
+Reporter:
+Maryann Xue
+Create date:
+02/Jul/12 03:43
+Update date:
+03/Jul/12 06:33
+Resolved date:
+

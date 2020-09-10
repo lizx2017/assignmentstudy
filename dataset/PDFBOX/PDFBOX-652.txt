@@ -1,0 +1,64 @@
+Summary:
+ResourceLoader returns NULL on missing Resources
+Description:
+When using pdfbox-1.0.0.jar:
+---------------------------------------
+public static void main(String[] args)
+{ String mystr = org.apache.pdfbox.Version.getVersion(); System.out.println(mystr); }
+Leads to:
+Exception in thread "main" java.lang.NullPointerException
+at org.apache.pdfbox.Version.getVersion(Version.java:52)
+at Test1.main(Test1.java:10)
+Problem:
+------------
+pdfbox-1.0.0.jar is missing the "pdfbox.version"-Resource, which was still available in pdfbox-0.8.0-incubating.jar. So the "getVersion" returns, what the Resource-Loader returns: null.
+This leads to the exception descibed above.
+I am wondering, if this behaviour is ok. I think it is missleading and can be traced down to a problem in the org.apache.pdfsbox.util.ResourceLoader:
+Beginning in Line 74:
+----------------------------
+if( is == null )
+{
+File f = new File( resourceName );
+if( f.exists() )
+{ is = new FileInputStream( f ); }
+}
+
+IMHO there should be added an else-statment:
+---------------------------------------------------------------
+if( is == null )
+{
+File f = new File( resourceName );
+if( f.exists() )
+{ is = new FileInputStream( f ); }
+else
+{ throw new IOException( "Error: could not find resource '" + resourceName + "' on classpath." ); }
+}
+Perhaps it is a good idea to add a Boolean-Flag (boolean failIfNotFound) like in the loadProperties-method, so that it is still possible to query for the existence of a special Resource.
+Status:
+CLOSED
+Priority:
+Trivial
+Resolution:
+Fixed
+Affects_version:
+1.0.0
+Fix_version:
+1.4.0
+Component:
+Utilities
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Erik Scholtz
+Create date:
+09/Mar/10 10:10
+Update date:
+10/May/11 06:57
+Resolved date:
+10/May/11 06:57

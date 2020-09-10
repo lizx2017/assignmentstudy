@@ -1,0 +1,53 @@
+Summary:
+PDTextbox and PDAnnotationWidget are not correct initialized from it's own constructor .
+Description:
+I find 2 Bugs in interactive.form, And I have resolved this 2 Bug. Here are the Code
+1. I want make new Textbox in pdf. It always failed because the type flag “COSName.FT,="Tx"” never be set in the constructor.
+The PDTextbox can only be correct initialized from COSDictionary.( That is only initialized from exist pdf file) .
+I fixed this by add “getDictionary().setName(COSName.FT, "Tx");” in the constructor of PDTextbox.
+Maybe it’s not right place, but works in my project.
+public PDTextbox( PDAcroForm theAcroForm )
+{
+super( theAcroForm );
+getDictionary().setName(COSName.FT, "Tx");
+}
+public PDTextbox( PDAcroForm theAcroForm, COSDictionary field)
+{ super( theAcroForm, field); getDictionary().setName(COSName.FT, "Tx"); }
+2. Same Bug in PDAnnotationWidget. Only the default constructor initialize the type flag “COSName.SUBTYPE,= "Widget"”.
+But the default constructor were never be used. So I must use the PDAnnotationWidget to initialize the new PDTextbox, like blow.
+PDAnnotationWidget Widget = new PDAnnotationWidget();
+PDTextbox textBox = new PDTextbox(acroForm,Widget.getDictionary());
+Otherwise I got an empty PDAnnotationWidget from PDTextbox .getWidget().
+Something not correct in PDField .getWidget().
+If the the PDField create from user(not read from exist pdf file), the getWidget cannot get an correct initialized PDAnnotationWidget. The COSName.SUBTYPE will never be set.
+Maybe the similar Bug in the whole org.apache.pdfbox.pdmodel.interactive.form: the COSDictionary of element are not initialized when user create it manually (Typical to insert new acroform element).
+I hope that I can give something help to this opensource Project.
+Could you check this and fix in next Version?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.7, 2.0.0
+Fix_version:
+1.8.9, 2.0.0
+Component:
+AcroForm
+Label:
+AcroForm Widget
+Environment:
+
+Attachment number:
+0
+Assignee:
+Maruan Sahyoun
+Reporter:
+chen zhenyu
+Create date:
+17/Oct/13 15:13
+Update date:
+28/Mar/15 14:10
+Resolved date:
+11/Mar/15 07:41

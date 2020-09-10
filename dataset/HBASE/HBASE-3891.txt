@@ -1,0 +1,40 @@
+Summary:
+TaskMonitor is used wrong in some places
+Description:
+I have a long running log replay in progress but none of the updates show. This is caused by reusing the MonitorTask references wrong, and manifests itself like this in the logs:
+2011-05-16 15:22:18,127 WARN org.apache.hadoop.hbase.monitoring.TaskMonitor: Status org.apache.hadoop.hbase.monitoring.MonitoredTaskImpl@51bfa303 appears to have been leaked
+2011-05-16 15:22:18,128 DEBUG org.apache.hadoop.hbase.monitoring.MonitoredTask: cleanup.
+The cleanup sets the completion timestamp and causes the task to be purged from the list. After that the UI for example does not show any further running tasks, although from the logs I can see (with my log additions):
+2011-05-16 15:29:52,296 DEBUG org.apache.hadoop.hbase.monitoring.MonitoredTask: setStatus: Compaction complete: 103.1m in 18542ms
+2011-05-16 15:29:52,296 DEBUG org.apache.hadoop.hbase.monitoring.MonitoredTask: setStatus: Running coprocessor post-compact hooks
+2011-05-16 15:29:52,296 DEBUG org.apache.hadoop.hbase.monitoring.MonitoredTask: setStatus: Compaction complete
+2011-05-16 15:29:52,297 DEBUG org.apache.hadoop.hbase.monitoring.MonitoredTask: markComplete: Compaction complete
+They are silently ignored as the TaskMonitor has dropped their reference. We need to figure out why a supposedly completed task monitor was reused.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+0.92.0
+Fix_version:
+None
+Component:
+regionserver
+Label:
+beginner
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Lars George
+Create date:
+16/May/11 13:43
+Update date:
+05/Aug/14 20:06
+Resolved date:
+

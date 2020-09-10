@@ -1,0 +1,153 @@
+Summary:
+Local HBase does not stop properly
+Description:
+Just tried running a local hbase instance after a
+mvn -D skipTests=true package assembly:assembly
+and then unpacking the SNAPSHOT tar ball in $HBASE_HOME/target
+When trying to stop it with stop-hbase.sh it would not stop but print dots continuously.
+Thread dump shows:
+Full thread dump Java HotSpot(TM) 64-Bit Server VM (14.3-b01-101 mixed mode):
+
+"Attach Listener" daemon prio=9 tid=0x0000000102b52800 nid=0x14eb13000 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"481404130@qtp0-0-EventThread" daemon prio=5 tid=0x0000000102cf1800 nid=0x152dac000 waiting on condition [0x0000000152dab000]
+   java.lang.Thread.State: WAITING (parking)
+ at sun.misc.Unsafe.park(Native Method)
+ - parking to wait for  <0x00000001075778d8> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+ at java.util.concurrent.locks.LockSupport.park(LockSupport.java:158)
+ at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:1925)
+ at java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.java:358)
+ at org.apache.zookeeper.ClientCnxn$EventThread.run(ClientCnxn.java:477)
+
+"481404130@qtp0-0-SendThread(localhost:2181)" daemon prio=5 tid=0x0000000102914800 nid=0x152a56000 runnable [0x0000000152a55000]
+   java.lang.Thread.State: RUNNABLE
+ at sun.nio.ch.KQueueArrayWrapper.kevent0(Native Method)
+ at sun.nio.ch.KQueueArrayWrapper.poll(KQueueArrayWrapper.java:136)
+ at sun.nio.ch.KQueueSelectorImpl.doSelect(KQueueSelectorImpl.java:69)
+ at sun.nio.ch.SelectorImpl.lockAndDoSelect(SelectorImpl.java:69)
+ - locked <0x0000000107577b58> (a sun.nio.ch.Util$1)
+ - locked <0x0000000107577b70> (a java.util.Collections$UnmodifiableSet)
+ - locked <0x0000000107577ae0> (a sun.nio.ch.KQueueSelectorImpl)
+ at sun.nio.ch.SelectorImpl.select(SelectorImpl.java:80)
+ at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:1066)
+
+"LruBlockCache.EvictionThread" daemon prio=5 tid=0x0000000101eab800 nid=0x155452000 in Object.wait() [0x0000000155451000]
+   java.lang.Thread.State: WAITING (on object monitor)
+ at java.lang.Object.wait(Native Method)
+ - waiting on <0x00000001094034c0> (a org.apache.hadoop.hbase.io.hfile.LruBlockCache$EvictionThread)
+ at java.lang.Object.wait(Object.java:485)
+ at org.apache.hadoop.hbase.io.hfile.LruBlockCache$EvictionThread.run(LruBlockCache.java:509)
+ - locked <0x00000001094034c0> (a org.apache.hadoop.hbase.io.hfile.LruBlockCache$EvictionThread)
+
+"DestroyJavaVM" prio=5 tid=0x0000000102800800 nid=0x100501000 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"ProcessThread:-1" prio=5 tid=0x0000000102a5f800 nid=0x14f248000 waiting on condition [0x000000014f247000]
+   java.lang.Thread.State: WAITING (parking)
+ at sun.misc.Unsafe.park(Native Method)
+ - parking to wait for  <0x00000001091d2e40> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+ at java.util.concurrent.locks.LockSupport.park(LockSupport.java:158)
+ at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:1925)
+ at java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.java:358)
+ at org.apache.zookeeper.server.PrepRequestProcessor.run(PrepRequestProcessor.java:103)
+
+"SyncThread:0" prio=5 tid=0x0000000102a0e000 nid=0x14f145000 waiting on condition [0x000000014f144000]
+   java.lang.Thread.State: WAITING (parking)
+ at sun.misc.Unsafe.park(Native Method)
+ - parking to wait for  <0x00000001091d2d50> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+ at java.util.concurrent.locks.LockSupport.park(LockSupport.java:158)
+ at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:1925)
+ at java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.java:358)
+ at org.apache.zookeeper.server.SyncRequestProcessor.run(SyncRequestProcessor.java:94)
+
+"SessionTracker" prio=5 tid=0x00000001029be000 nid=0x14f042000 in Object.wait() [0x000000014f041000]
+   java.lang.Thread.State: TIMED_WAITING (on object monitor)
+ at java.lang.Object.wait(Native Method)
+ - waiting on <0x00000001091e42f8> (a org.apache.zookeeper.server.SessionTrackerImpl)
+ at org.apache.zookeeper.server.SessionTrackerImpl.run(SessionTrackerImpl.java:142)
+ - locked <0x00000001091e42f8> (a org.apache.zookeeper.server.SessionTrackerImpl)
+
+"NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181" daemon prio=5 tid=0x000000010297f800 nid=0x14ef3f000 runnable [0x000000014ef3e000]
+   java.lang.Thread.State: RUNNABLE
+ at sun.nio.ch.KQueueArrayWrapper.kevent0(Native Method)
+ at sun.nio.ch.KQueueArrayWrapper.poll(KQueueArrayWrapper.java:136)
+ at sun.nio.ch.KQueueSelectorImpl.doSelect(KQueueSelectorImpl.java:69)
+ at sun.nio.ch.SelectorImpl.lockAndDoSelect(SelectorImpl.java:69)
+ - locked <0x00000001091c1240> (a sun.nio.ch.Util$1)
+ - locked <0x00000001091c1228> (a java.util.Collections$UnmodifiableSet)
+ - locked <0x00000001091ea248> (a sun.nio.ch.KQueueSelectorImpl)
+ at sun.nio.ch.SelectorImpl.select(SelectorImpl.java:80)
+ at org.apache.zookeeper.server.NIOServerCnxn$Factory.run(NIOServerCnxn.java:232)
+
+"Low Memory Detector" daemon prio=5 tid=0x0000000101878000 nid=0x14e90d000 runnable [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"CompilerThread1" daemon prio=9 tid=0x0000000102840800 nid=0x14e80a000 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"CompilerThread0" daemon prio=9 tid=0x000000010283f800 nid=0x14e707000 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Signal Dispatcher" daemon prio=9 tid=0x000000010283f000 nid=0x14e604000 runnable [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Surrogate Locker Thread (CMS)" daemon prio=5 tid=0x000000010283e000 nid=0x14e501000 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Finalizer" daemon prio=8 tid=0x000000010282e800 nid=0x14e157000 in Object.wait() [0x000000014e156000]
+   java.lang.Thread.State: WAITING (on object monitor)
+ at java.lang.Object.wait(Native Method)
+ - waiting on <0x00000001091efa30> (a java.lang.ref.ReferenceQueue$Lock)
+ at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:118)
+ - locked <0x00000001091efa30> (a java.lang.ref.ReferenceQueue$Lock)
+ at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:134)
+ at java.lang.ref.Finalizer$FinalizerThread.run(Finalizer.java:159)
+
+"Reference Handler" daemon prio=10 tid=0x000000010282d800 nid=0x14e054000 in Object.wait() [0x000000014e053000]
+   java.lang.Thread.State: WAITING (on object monitor)
+ at java.lang.Object.wait(Native Method)
+ - waiting on <0x00000001091ef988> (a java.lang.ref.Reference$Lock)
+ at java.lang.Object.wait(Object.java:485)
+ at java.lang.ref.Reference$ReferenceHandler.run(Reference.java:116)
+ - locked <0x00000001091ef988> (a java.lang.ref.Reference$Lock)
+
+"VM Thread" prio=9 tid=0x0000000102826800 nid=0x14df51000 runnable 
+
+"Gang worker#0 (Parallel GC Threads)" prio=9 tid=0x0000000102802000 nid=0x106205000 runnable 
+
+"Gang worker#1 (Parallel GC Threads)" prio=9 tid=0x0000000102802800 nid=0x106308000 runnable 
+
+"Concurrent Mark-Sweep GC Thread" prio=9 tid=0x0000000101800800 nid=0x14dc5a000 runnable 
+"VM Periodic Task Thread" prio=10 tid=0x0000000101881000 nid=0x14ea10000 waiting on condition 
+
+"Exception Catcher Thread" prio=10 tid=0x0000000102801800 nid=0x103101000 runnable 
+JNI global references: 1175
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+mac os
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Lars George
+Create date:
+14/Apr/10 22:47
+Update date:
+20/Nov/15 12:41
+Resolved date:
+18/May/10 19:24

@@ -1,0 +1,48 @@
+Summary:
+ByteBuffersDirectory merge exception
+Description:
+An exception during merge for ByteBufferDirectory was reported on the lucene-dev mailinglist:
+  Exception in thread "Lucene Merge Thread #879" org.apache.lucene.index.MergePolicy$MergeException: org.apache.lucene.store.AlreadyClosedException: refusing to delete any files: this IndexWriter hit an unrecoverable exception        at org.apache.lucene.index.ConcurrentMergeScheduler.handleMergeException(ConcurrentMergeScheduler.java:705)        at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:685)Caused by: org.apache.lucene.store.AlreadyClosedException: refusing to delete any files: this IndexWriter hit an unrecoverable exception        at org.apache.lucene.index.IndexFileDeleter.ensureOpen(IndexFileDeleter.java:349)        at org.apache.lucene.index.IndexFileDeleter.deleteFiles(IndexFileDeleter.java:669)        at org.apache.lucene.index.IndexFileDeleter.deleteNewFiles(IndexFileDeleter.java:664)        at org.apache.lucene.index.IndexWriter.deleteNewFiles(IndexWriter.java:5024)        at org.apache.lucene.index.IndexWriter.mergeMiddle(IndexWriter.java:4539)        at org.apache.lucene.index.IndexWriter.merge(IndexWriter.java:4075)        at org.apache.lucene.index.ConcurrentMergeScheduler.doMerge(ConcurrentMergeScheduler.java:626)        at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:663)Caused by: java.lang.IllegalArgumentException: cannot write negative vLong (got: -4294878395)        at org.apache.lucene.store.DataOutput.writeVLong(DataOutput.java:225)        at org.apache.lucene.codecs.lucene50.Lucene50SkipWriter.writeSkipData(Lucene50SkipWriter.java:180)        at org.apache.lucene.codecs.MultiLevelSkipListWriter.bufferSkip(MultiLevelSkipListWriter.java:143)        at org.apache.lucene.codecs.lucene50.Lucene50SkipWriter.bufferSkip(Lucene50SkipWriter.java:162)        at org.apache.lucene.codecs.lucene50.Lucene50PostingsWriter.startDoc(Lucene50PostingsWriter.java:228)        at org.apache.lucene.codecs.PushPostingsWriterBase.writeTerm(PushPostingsWriterBase.java:148)        at org.apache.lucene.codecs.blocktree.BlockTreeTermsWriter$TermsWriter.write(BlockTreeTermsWriter.java:865)        at org.apache.lucene.codecs.blocktree.BlockTreeTermsWriter.write(BlockTreeTermsWriter.java:344)        at org.apache.lucene.codecs.FieldsConsumer.merge(FieldsConsumer.java:105)        at org.apache.lucene.codecs.perfield.PerFieldPostingsFormat$FieldsWriter.merge(PerFieldPostingsFormat.java:169)        at org.apache.lucene.index.SegmentMerger.mergeTerms(SegmentMerger.java:244)        at org.apache.lucene.index.SegmentMerger.merge(SegmentMerger.java:139)        at org.apache.lucene.index.IndexWriter.mergeMiddle(IndexWriter.java:4453)        ... 3 more
+Following the trace shows no apparent problems with the Lucene50SkipWripter. However, it uses getFilePointer to resolve the skip lengths, which for ByteBuffersDirectory ends in ByteBuffersDataOutput.size() with the code
+{{ public long size() {}}
+{{ long size = 0;}}
+{{ int blockCount = blocks.size();}}
+{{ if (blockCount >= 1) {}}
+{{ int fullBlockSize = (blockCount - 1) * blockSize();}}
+{{ int lastBlockSize = blocks.getLast().position();}}
+{{ size = fullBlockSize + lastBlockSize;}}
+{{ }}}
+{{ return size;}}
+{{ }}}
+One problem here is that
+int fullBlockSize = (blockCount - 1) * blockSize();
+can overflow. This should be changed to something like
+long fullBlockSize = (blockCount - 1) * (long)blockSize();
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Duplicate
+Affects_version:
+7.5
+Fix_version:
+None
+Component:
+core/store
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Toke Eskildsen
+Create date:
+03/Jan/19 10:46
+Update date:
+03/Jan/19 12:06
+Resolved date:
+03/Jan/19 11:41

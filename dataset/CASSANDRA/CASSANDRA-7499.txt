@@ -1,0 +1,75 @@
+Summary:
+Unable to update list element by index using CAS condition
+Description:
+While running IT tests for Achilles, I ran into a strange bug:
+With CQLSH
+cqlsh:test> CREATE TABLE cas_update(id int PRIMARY KEY,name text,friends list<text>);
+cqlsh:test> INSERT INTO cas_update (id, name , friends ) VALUES ( 10,'John',['Paul','George']);
+cqlsh:test> SELECT * FROM cas_update WHERE id=10;
+
+ id | friends            | name
+----+--------------------+------
+ 10 | ['Paul', 'George'] | John
+
+cqlsh:test> UPDATE cas_update SET friends[0]='Helen' WHERE id=10 IF name='John';
+Bad Request: List index 0 out of bound, list has size 0
+
+cqlsh:test> UPDATE cas_update SET friends[0]='Helen' WHERE id=10;
+cqlsh:test> SELECT * FROM cas_update WHERE id=10;
+
+ id | friends             | name
+----+---------------------+------
+ 10 | ['Helen', 'George'] | John
+It seems that we cannot update list element by index with a CAS condition.
+With Java driver 2.0.2 or 2.0.3
+ ACHILLES_DML_STATEMENT@:writeDMLStatementLog Prepared statement : [INSERT INTO CompleteBean(id,followers,friends,name,preferences) VALUES (:id,:followers,:friends,:name,:preferences) USING TTL :ttl;] with CONSISTENCY LEVEL [ONE] 
+ ACHILLES_DML_STATEMENT@:writeDMLStatementLog    bound values : [621309709026375591, [], [Paul, Andrew], John, {}, 0] 
+ ACHILLES_DML_STATEMENT@:writeDMLStartBatch  
+ ACHILLES_DML_STATEMENT@:writeDMLStartBatch  
+ ACHILLES_DML_STATEMENT@:writeDMLStartBatch ****** BATCH UNLOGGED START ****** 
+ ACHILLES_DML_STATEMENT@:writeDMLStartBatch  
+ ACHILLES_DML_STATEMENT@:writeDMLStatementLog Parameterized statement : [UPDATE CompleteBean USING TTL 100 SET friends[0]=? WHERE id=621309709026375591 IF name=?;] with CONSISTENCY LEVEL [ONE] 
+ ACHILLES_DML_STATEMENT@:writeDMLStatementLog    bound values : [100, 0, Helen, 621309709026375591, John] 
+ ACHILLES_DML_STATEMENT@:writeDMLStatementLog Parameterized statement : [UPDATE CompleteBean USING TTL 100 SET friends[1]=null WHERE id=621309709026375591 IF name=?;] with CONSISTENCY LEVEL [ONE] 
+ ACHILLES_DML_STATEMENT@:writeDMLStatementLog    bound values : [100, 1, null, 621309709026375591, John] 
+ ACHILLES_DML_STATEMENT@:writeDMLEndBatch  
+ ACHILLES_DML_STATEMENT@:writeDMLEndBatch   ****** BATCH UNLOGGED END with CONSISTENCY LEVEL [DEFAULT] ****** 
+ ACHILLES_DML_STATEMENT@:writeDMLEndBatch  
+ ACHILLES_DML_STATEMENT@:writeDMLEndBatch  
+ ACHILLES_DML_STATEMENT@:truncateTable   Simple query : [TRUNCATE entity_with_enum] with CONSISTENCY LEVEL [ALL] 
+ ACHILLES_DML_STATEMENT@:truncateTable   Simple query : [TRUNCATE CompleteBean] with CONSISTENCY LEVEL [ALL] 
+
+com.datastax.driver.core.exceptions.InvalidQueryException: List index 0 out of bound, list has size 0
+        at com.datastax.driver.core.exceptions.InvalidQueryException.copy(InvalidQueryException.java:35)
+        at com.datastax.driver.core.DefaultResultSetFuture.extractCauseFromExecutionException(DefaultResultSetFuture.java:256)
+        at com.datastax.driver.core.DefaultResultSetFuture.getUninterruptibly(DefaultResultSetFuture.java:172)
+        at com.datastax.driver.core.AbstractSession.execute(AbstractSession.java:52)
+With Cassandra 2.0.8 and Java Driver 2.0.2 or 2.0.3, the test passed so it seems that there is a regression somewhere in the CAS update code
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10, 2.1.1
+Component:
+Legacy/CQL
+Label:
+LWT
+Environment:
+java 2.0
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+DOAN DuyHai
+Create date:
+06/Jul/14 22:08
+Update date:
+16/Apr/19 09:31
+Resolved date:
+18/Aug/14 08:24

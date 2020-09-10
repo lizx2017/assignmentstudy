@@ -1,0 +1,69 @@
+Summary:
+Can't draw color border around a PDTextBox + create example
+Description:
+There's a thread "Setting a border color on a PDTextBox" in the user mailing list. This relates to version 1.8.*, but I wanted to create an example for 2.0. After doing this for 2.0 with this code
+PDAppearanceCharacteristicsDictionary fieldAppearance = 
+                new PDAppearanceCharacteristicsDictionary(new COSDictionary());
+        PDColor green = new PDColor(new float[] { 0, 1, 0 }, PDDeviceRGB.INSTANCE);
+        fieldAppearance.setBorderColour(green);
+        widget.setAppearanceCharacteristics(fieldAppearance);
+it didn't work. The reason is this in the PDF:
+5 0 obj
+<<
+/FT /Tx
+/T (SampleField)
+/Type /Annot
+/Subtype /Widget
+/Rect [50.0 750.0 250.0 800.0]
+/MK 7 0 R
+/V (English form contents)
+/AP 8 0 R
+>>
+endobj
+6 0 obj
+<<
+/Font 9 0 R
+>>
+endobj
+7 0 obj
+<<
+/BC [0.0 1.0 0.0 null]  <===================
+>>
+endobj
+The /BC color array has an extra null element which comes from a "patternName" in PDColor:
+    public COSArray toCOSArray()
+    {
+        COSArray array = new COSArray();
+        array.setFloatArray(components);
+        array.add(patternName);
+        return array;
+    }
+Removing it in the PDF brings a "good" file. I believe this is a regression that came from changing PDGamma to PDColor some time ago in PDFBOX-2629.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+AcroForm, PDModel
+Label:
+regression
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+12/Jun/15 19:55
+Update date:
+17/Mar/16 19:07
+Resolved date:
+13/Jun/15 11:49

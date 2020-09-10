@@ -1,0 +1,66 @@
+Summary:
+Endless loop in org.apache.pdfbox.pdfparser.BaseParser.parseCOSDictionary() on certain corrupt PDF streams
+Description:
+The endless loop seems to have been introduced with the changes from 01-Sep-2009 in svn revision 810122 with the addition of the loop to wait for a valid dictionary
+Index: PDFBox/src/main/java/org/apache/pdfbox/pdfparser/BaseParser.java
+===================================================================
+— PDFBox/src/main/java/org/apache/pdfbox/pdfparser/BaseParser.java (revision 793364)
++++ PDFBox/src/main/java/org/apache/pdfbox/pdfparser/BaseParser.java (revision 810122)
+@@ -183,7 +183,23 @@
+if( c == '>')
+{ done = true; - }
++ }
++ else
++ if(c != '/')
++ {
++ //an invalid dictionary, we are expecting
++ //the key, read until we can recover
++ logger().warning("Invalid dictionary, found:" + (char)c + " but expected:\''");
++ int read = pdfSource.read();
++ while(read != -1 && read != '/' && read != '>')
++
+{ + read = pdfSource.read(); + }
++ if(read != -1)
++
+{ + pdfSource.unread(read); + }
++ }
+else
+{
+COSName key = parseCOSName();
+@@ -206,9 +222,12 @@
+if( value == null )
+{ - throw new IOException("Bad Dictionary Declaration " + pdfSource ); + logger().warning("Bad Dictionary Declaration " + pdfSource ); }
+obj.setItem( key, value );
++ else
++ { + obj.setItem( key, value ); + }
+}
+}
+char ch = (char)pdfSource.read();
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.8.0-incubator
+Fix_version:
+1.0.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Hacho
+Create date:
+03/Oct/09 20:55
+Update date:
+22/Feb/10 18:28
+Resolved date:
+27/Oct/09 18:37

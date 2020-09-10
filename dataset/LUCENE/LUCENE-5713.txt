@@ -1,0 +1,48 @@
+Summary:
+FieldCache related test failure
+Description:
+The following reproduces for me and Varun V Shenoy on trunk:
+lucene/spatial %>ant test -Dtestcase=SpatialOpRecursivePrefixTreeTest -Dtests.method=testContains -Dtests.seed=3AD27D1EB168088A
+[junit4]   1> Strategy: RecursivePrefixTreeStrategy(SPG:(GeohashPrefixTree(maxLevels:2,ctx:SpatialContext.GEO)))
+   [junit4]   1> CheckReader failed
+   [junit4]   1>     test: field norms.........OK [0 fields]
+   [junit4]   1>     test: terms, freq, prox...OK [207 terms; 208 terms/docs pairs; 0 tokens]
+   [junit4]   1>     test: stored fields.......OK [8 total field count; avg 2 fields per doc]
+   [junit4]   1>     test: term vectors........OK [0 total vector count; avg 0 term/freq vector fields per doc]
+   [junit4]   1>     test: docvalues...........ERROR [dv for field: SpatialOpRecursivePrefixTreeTest has -1 ord but is not marked missing for doc: 0]
+   [junit4]   1> java.lang.RuntimeException: dv for field: SpatialOpRecursivePrefixTreeTest has -1 ord but is not marked missing for doc: 0
+   [junit4]   1>  at org.apache.lucene.index.CheckIndex.checkSortedDocValues(CheckIndex.java:1414)
+   [junit4]   1>  at org.apache.lucene.index.CheckIndex.checkDocValues(CheckIndex.java:1536)
+   [junit4]   1>  at org.apache.lucene.index.CheckIndex.testDocValues(CheckIndex.java:1367)
+   [junit4]   1>  at org.apache.lucene.util.TestUtil.checkReader(TestUtil.java:229)
+   [junit4]   1>  at org.apache.lucene.util.TestUtil.checkReader(TestUtil.java:216)
+   [junit4]   1>  at org.apache.lucene.util.LuceneTestCase.newSearcher(LuceneTestCase.java:1597)
+A 1-in-500 random condition hit to check the index on newSearcher, hitting this. DocValues used to not be enabled for this spatial test but Robert Muir added it recently as part of the move to the DocValues API in lieu of the FieldCache API, and because the DisjointSpatialFilter uses getDocsWithField (though nothing else). That probably doesn't have anything to do with whatever the problem here is, though.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+6.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+David Smiley
+Create date:
+29/May/14 04:08
+Update date:
+09/May/16 18:38
+Resolved date:
+

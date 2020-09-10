@@ -1,0 +1,37 @@
+Summary:
+log recovery: splitLog deletes old logs prematurely
+Description:
+splitLog()'s purpose is to take a bunch of commit logs of a crashed RS and create per-region logs. splitLog() runs in the master. There are two cases where splitLog() might end up deleting an old log before actually creating (sync/closing) the newly created logs. If the master crashes in between deletion of the old log and creation of the new log, then edits could be lost irrecoverably.
+More specifically here are the two issues we (Nicolas, Aravind and I) noticed:
+Issue #1: The old logs are read one at a time. An in memory structure, logEntries (a map from region name to edits for the region), is populated. And the old logs are closed. Then the in-memory map is written out to per region files. Fix: We should move the file deletion to later.
+Issue #2: There is another little case. The per-region log file is written under the region directory (named oldlogfile.log or the constant HREGION_OLDLOGFILE_NAME). Before the master creates the file, it checks to see if there is already a file with that name, and if so, it renames it to oldlogfile.log.old, and then creates file oldlogfile.log again, and copies over the contents of oldlogfile.log.old to oldlogfile.log. It then proceeds to delete "oldlogfile.log.old", even though it hasn't closed/sync'ed "oldlogfile.log" yet.
+–
+I think we should be able to restructure the code such that all deletion of old logs happens after the new logs have been created (i.e. written to & closed).
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Spiegelberg
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+17/Mar/10 17:25
+Update date:
+20/Nov/15 12:42
+Resolved date:
+05/Oct/10 21:11

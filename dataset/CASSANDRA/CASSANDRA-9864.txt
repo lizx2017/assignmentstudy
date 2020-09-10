@@ -1,0 +1,59 @@
+Summary:
+Stress leaves threads running after a fatal error
+Description:
+For some types of error, cassandra-stress is staying alive even after it shows an exception, and it will hang forever.
+Here's an example:
+[10.200.241.112] All nodes available!
+INFO:benchmark:Started cassandra on 3 nodes with git SHA: efaff1bff92fdf4cc84007a5cc1e641ebf889633
+INFO:stress_compare:Running stress operation : user profile=https://dl.dropboxusercontent.com/u/15683245/8894_tiny.yaml  ops\(insert=1,\) n=1M -rate threads=3.
+INFO:benchmark:Running stress from '/home/ryan/fab/stress/default/tools/bin/cassandra-stress' : user profile=https://dl.dropboxusercontent.com/u/15683245/8894a
+INFO  23:50:05 Did not find Netty's native epoll transport in the classpath, defaulting to NIO.
+Exception in thread "main" java.lang.RuntimeException: java.lang.IllegalArgumentException: clustering_key
+        at org.apache.cassandra.stress.settings.StressSettings.getJavaDriverClient(StressSettings.java:198)
+        at org.apache.cassandra.stress.StressProfile.maybeCreateSchema(StressProfile.java:162)
+        at org.apache.cassandra.stress.settings.StressSettings.maybeCreateKeyspaces(StressSettings.java:207)
+        at org.apache.cassandra.stress.StressAction.run(StressAction.java:55)
+        at org.apache.cassandra.stress.Stress.main(Stress.java:114)
+Caused by: java.lang.IllegalArgumentException: clustering_key
+        at com.datastax.driver.core.ColumnMetadata$Raw$Kind.fromStringV3(ColumnMetadata.java:235)
+        at com.datastax.driver.core.ColumnMetadata$Raw.fromRow(ColumnMetadata.java:263)
+        at com.datastax.driver.core.SchemaParser.groupByKeyspaceAndCf(SchemaParser.java:408)
+        at com.datastax.driver.core.SchemaParser$2.refresh(SchemaParser.java:246)
+        at com.datastax.driver.core.ControlConnection.refreshSchema(ControlConnection.java:323)
+        at com.datastax.driver.core.ControlConnection.tryConnect(ControlConnection.java:264)
+        at com.datastax.driver.core.ControlConnection.reconnectInternal(ControlConnection.java:187)
+        at com.datastax.driver.core.ControlConnection.connect(ControlConnection.java:75)
+        at com.datastax.driver.core.Cluster$Manager.init(Cluster.java:1265)
+        at com.datastax.driver.core.Cluster.getMetadata(Cluster.java:337)
+        at org.apache.cassandra.stress.util.JavaDriverClient.connect(JavaDriverClient.java:121)
+        at org.apache.cassandra.stress.settings.StressSettings.getJavaDriverClient(StressSettings.java:189)
+        ... 4 more
+So I'd love for that bug to go away, but in general, the stress process should exit when it encounters a fatal error.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+3.0 alpha 1
+Component:
+Legacy/Tools
+Label:
+stress
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Ryan McGuire
+Create date:
+22/Jul/15 14:45
+Update date:
+16/Apr/19 09:31
+Resolved date:
+22/Jul/15 22:41

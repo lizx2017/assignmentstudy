@@ -1,0 +1,82 @@
+Summary:
+Regression: HBASE_MANAGES_ZK=false broken
+Description:
+From Charles Thayer up on the list:
+I haven't seen any replies, which is probably because the master seems to
+be changing rapidly at the moment.  However, if anyone needs this for
+hbase 0.89.20100726, here's a patch to work around the issue temporarily
+until 0.90.0 (which will probably fix the problem).
+
+/charles thayer
+
+--- src/main/java/org/apache/hadoop/hbase/master/HMaster.java   2010-07-30 21:09:11.000000000 +0000
++++ src/main/java/org/apache/hadoop/hbase/master/HMaster.java   2010-10-11 20:51:30.821519000 +0000
+@@ -1297,11 +1297,18 @@
+
+              runtime.getVmVendor() + ", vmVersion=" + runtime.getVmVersion());
+            LOG.info("vmInputArguments=" + runtime.getInputArguments());
+          }
++
++         boolean hbase_manages_zk = true;
++         if (System.getenv("HBASE_MANAGES_ZK") != null
++             && System.getenv("HBASE_MANAGES_ZK").equals("false"))
++           hbase_manages_zk = false;
+
++
+          // If 'local', defer to LocalHBaseCluster instance.  Starts master
+          // and regionserver both in the one JVM.
+          if (LocalHBaseCluster.isLocal(conf)) {
+            final MiniZooKeeperCluster zooKeeperCluster =
+              new MiniZooKeeperCluster();
++           if (hbase_manages_zk) {  // thayer
+
+            File zkDataPath = new File(conf.get("hbase.zookeeper.property.dataDir"));
+            int zkClientPort = conf.getInt("hbase.zookeeper.property.clientPort", 0);
+            if (zkClientPort == 0) {
+@@ -1319,11 +1326,15 @@
+
+            }
+            conf.set("hbase.zookeeper.property.clientPort",
+              Integer.toString(clientPort));
++           } // thayer
+
++
+            // Need to have the zk cluster shutdown when master is shutdown.
+            // Run a subclass that does the zk cluster shutdown on its way out.
+            LocalHBaseCluster cluster = new LocalHBaseCluster(conf, 1,
+              LocalHMaster.class, HRegionServer.class);
++           if (hbase_manages_zk) {
+
+            ((LocalHMaster)cluster.getMaster()).setZKCluster(zooKeeperCluster);
++           }
+            cluster.startup();
+          } else {
+            HMaster master = constructMaster(masterClass, conf);
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+03/Nov/10 21:36
+Update date:
+20/Nov/15 12:41
+Resolved date:
+04/Nov/10 04:07

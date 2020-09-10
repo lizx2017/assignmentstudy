@@ -1,0 +1,71 @@
+Summary:
+Skipping RecoveredEdits may cause data loss
+Description:
+Let's see the following scenario:
+1.Region is on the server A
+2.put KV(r1->v1) to the region
+3.move region from server A to server B
+4.put KV(r2->v2) to the region
+5.move region from server B to server A
+6.put KV(r3->v3) to the region
+7.kill -9 server B and start it
+8.kill -9 server A and start it
+9.scan the region, we could only get two KV(r1->v1,r2->v2), the third KV(r3->v3) is lost.
+Let's analyse the upper scenario from the code:
+1.the edit logs of KV(r1->v1) and KV(r3->v3) are both recorded in the same hlog file on server A.
+2.when we split server B's hlog file in the process of ServerShutdownHandler, we create one RecoveredEdits file f1 for the region.
+2.when we split server A's hlog file in the process of ServerShutdownHandler, we create another RecoveredEdits file f2 for the region.
+3.however, RecoveredEdits file f2 will be skiped when initializing region
+HRegion#replayRecoveredEditsIfAny
+ for (Path edits: files) {
+      if (edits == null || !this.fs.exists(edits)) {
+        LOG.warn("Null or non-existent edits file: " + edits);
+        continue;
+      }
+      if (isZeroLengthThenDelete(this.fs, edits)) continue;
+
+      if (checkSafeToSkip) {
+        Path higher = files.higher(edits);
+        long maxSeqId = Long.MAX_VALUE;
+        if (higher != null) {
+          // Edit file name pattern, HLog.EDITFILES_NAME_PATTERN: "-?[0-9]+"
+          String fileName = higher.getName();
+          maxSeqId = Math.abs(Long.parseLong(fileName));
+        }
+        if (maxSeqId <= minSeqId) {
+          String msg = "Maximum possible sequenceid for this log is " + maxSeqId
+              + ", skipped the whole file, path=" + edits;
+          LOG.debug(msg);
+          continue;
+        } else {
+          checkSafeToSkip = false;
+        }
+      }
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.0
+Fix_version:
+0.94.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+31/Mar/12 04:57
+Update date:
+12/Oct/12 05:35
+Resolved date:
+07/Apr/12 15:32

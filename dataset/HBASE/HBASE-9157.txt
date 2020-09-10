@@ -1,0 +1,48 @@
+Summary:
+ZKUtil.blockUntilAvailable loops forever with non-recoverable errors
+Description:
+In one of integration test, I observed that a thread keeps spinning error logs "Unexpected exception handling blockUntilAvailable" due to KeeperException.ConnectionLossException. Below is the related code:
+    
+    while (!finished) {
+      try {
+        data = ZKUtil.getData(zkw, znode);
+      } catch(KeeperException e) {
+        LOG.warn("Unexpected exception handling blockUntilAvailable", e);
+      }
+
+      if (data == null && (System.currentTimeMillis() +
+        HConstants.SOCKET_RETRY_WAIT_MS < endTime)) {
+        Thread.sleep(HConstants.SOCKET_RETRY_WAIT_MS);
+      } else {
+        finished = true;
+      }
+    }
+ConnectionLossException might be recoverable but SessionExpiredException and AuthFailed are not recoverable errors, the while loop can't break.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.8, 0.99.2
+Component:
+Zookeeper
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeffrey Zhong
+Reporter:
+Jeffrey Zhong
+Create date:
+08/Aug/13 00:27
+Update date:
+21/Feb/15 23:46
+Resolved date:
+15/Oct/14 18:54

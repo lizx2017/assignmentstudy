@@ -1,0 +1,39 @@
+Summary:
+Catalog Janitor logic bug causes region leackage
+Description:
+When region split takes a significant amount of time, CatalogJanitor can cleanup one of SPLIT records, but left another in META. When another split finish, janitor cleans left SPLIT record, but parent regions haven't removed from FS and META not cleared.
+The race condition is follows:
+1. region split started
+2. one of regions splitted, i.e. A (have no reference storefiles) but other (B) doesn't
+3. janitor started and in routine checkDaughter removes SPLITA from meta, but see that SPLITB has references and does nothing.
+4. region B completes split
+5. janitor wakes up, removes SPLITB, but see that there is no records for A and does nothing again.
+Result - parent region hangs forever.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.5
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Max Lapan
+Reporter:
+Max Lapan
+Create date:
+16/Nov/11 13:36
+Update date:
+20/Nov/15 11:52
+Resolved date:
+17/Nov/11 18:18

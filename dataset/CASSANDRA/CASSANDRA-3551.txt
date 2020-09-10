@@ -1,0 +1,78 @@
+Summary:
+Timeout exception for quorum reads after upgrade from 1.0.2 to 1.0.5
+Description:
+I upgraded from 1.0.2 to 1.0.5. For some column families always got TimeoutException. I turned on debug and increase rpc_timeout to 1 minute, but still got timeout. I believe it is bug on 1.0.5.
+ConsistencyLevel is QUORUM, replicate factor is 3.
+Here are partial logs.
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,717 StorageProxy.java (line 813) RangeSliceCommand
+{keyspace='keyspaceLBSDATAPRODUS', column_family='dataProvider', super_column=null, predicate=SlicePre dicate(slice_range:SliceRange(start:80 01 00 01 00 00 00 10 67 65 74 5F 72 61 6E 67 65 5F 73 6C 69 63 65 73 00 00 00 03 0C 00 01 0B 00 03 00 00 00 0C 64 61 74 61 50 72 6F 76 69 64 65 72 00 0C 00 0 2 0C 00 02 0B 00 01 00 00 00 00, finish:80 01 00 01 00 00 00 10 67 65 74 5F 72 61 6E 67 65 5F 73 6C 69 63 65 73 00 00 00 03 0C 00 01 0B 00 03 00 00 00 0C 64 61 74 61 50 72 6F 76 69 64 65 72 00 0C 00 02 0C 00 02 0B 00 01 00 00 00 00 0B 00 02 00 00 00 00, reversed:false, count:1024)), range=[PROD/US/000/0,PROD/US/999/99999], max_keys=1024}
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,718 StorageProxy.java (line 1012) restricted ranges for query [PROD/US/000/0,PROD/US/999/99999] are [[PROD/US/000/0,PROD/US/300/~], (PROD/US/300/~,PROD/
+US/600/], (PROD/US/600/,PROD/US/999/99999]]
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,720 VoxeoStrategy.java (line 157) ReplicationFactor 3
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,720 VoxeoStrategy.java (line 33) PROD/US/300/~
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,721 VoxeoStrategy.java (line 96) End region for token PROD/US/300/~ PROD/US/300/~ 10.92.208.103
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,721 VoxeoStrategy.java (line 96) End region for token PROD/US/300/~ PROD/US/600/~ 10.72.208.103
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,721 VoxeoStrategy.java (line 96) End region for token PROD/US/300/~ PROD/US/999/~ 10.8.208.103
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,723 VoxeoStrategy.java (line 157) ReplicationFactor 3
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,724 ReadCallback.java (line 77) Blockfor/repair is 2/false; setting up requests to /10.92.208.103,/10.72.208.103
+DEBUG [WRITE-/10.92.208.103] 2011-12-01 22:25:39,725 OutboundTcpConnection.java (line 206) attempting to connect to /10.92.208.103
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,726 StorageProxy.java (line 859) reading RangeSliceCommand
+{keyspace='keyspaceLBSDATAPRODUS', column_family='dataProvider', super_column=null, predicate= SlicePredicate(slice_range:SliceRange(start:80 01 00 01 00 00 00 10 67 65 74 5F 72 61 6E 67 65 5F 73 6C 69 63 65 73 00 00 00 03 0C 00 01 0B 00 03 00 00 00 0C 64 61 74 61 50 72 6F 76 69 64 65 72 00 0C 00 02 0C 00 02 0B 00 01 00 00 00 00, finish:80 01 00 01 00 00 00 10 67 65 74 5F 72 61 6E 67 65 5F 73 6C 69 63 65 73 00 00 00 03 0C 00 01 0B 00 03 00 00 00 0C 64 61 74 61 50 72 6F 76 69 64 65 7 2 00 0C 00 02 0C 00 02 0B 00 01 00 00 00 00 0B 00 02 00 00 00 00, reversed:false, count:1024)), range=[PROD/US/000/0,PROD/US/300/~], max_keys=1024}
+from /10.92.208.103
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,726 StorageProxy.java (line 859) reading RangeSliceCommand
+{keyspace='keyspaceLBSDATAPRODUS', column_family='dataProvider', super_column=null, predicate= SlicePredicate(slice_range:SliceRange(start:80 01 00 01 00 00 00 10 67 65 74 5F 72 61 6E 67 65 5F 73 6C 69 63 65 73 00 00 00 03 0C 00 01 0B 00 03 00 00 00 0C 64 61 74 61 50 72 6F 76 69 64 65 72 00 0C 00 02 0C 00 02 0B 00 01 00 00 00 00, finish:80 01 00 01 00 00 00 10 67 65 74 5F 72 61 6E 67 65 5F 73 6C 69 63 65 73 00 00 00 03 0C 00 01 0B 00 03 00 00 00 0C 64 61 74 61 50 72 6F 76 69 64 65 7 2 00 0C 00 02 0C 00 02 0B 00 01 00 00 00 00 0B 00 02 00 00 00 00, reversed:false, count:1024)), range=[PROD/US/000/0,PROD/US/300/~], max_keys=1024}
+from /10.72.208.103
+DEBUG [WRITE-/10.8.208.103] 2011-12-01 22:25:39,727 OutboundTcpConnection.java (line 206) attempting to connect to /10.8.208.103
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,727 StorageProxy.java (line 859) reading RangeSliceCommand
+{keyspace='keyspaceLBSDATAPRODUS', column_family='dataProvider', super_column=null, predicate= SlicePredicate(slice_range:SliceRange(start:80 01 00 01 00 00 00 10 67 65 74 5F 72 61 6E 67 65 5F 73 6C 69 63 65 73 00 00 00 03 0C 00 01 0B 00 03 00 00 00 0C 64 61 74 61 50 72 6F 76 69 64 65 72 00 0C 00 02 0C 00 02 0B 00 01 00 00 00 00, finish:80 01 00 01 00 00 00 10 67 65 74 5F 72 61 6E 67 65 5F 73 6C 69 63 65 73 00 00 00 03 0C 00 01 0B 00 03 00 00 00 0C 64 61 74 61 50 72 6F 76 69 64 65 7 2 00 0C 00 02 0C 00 02 0B 00 01 00 00 00 00 0B 00 02 00 00 00 00, reversed:false, count:1024)), range=[PROD/US/000/0,PROD/US/300/~], max_keys=1024}
+from /10.8.208.103
+DEBUG [ReadStage:1] 2011-12-01 22:25:39,731 SliceQueryFilter.java (line 123) collecting 0 of 1024: active:false:1@1322777621601000
+DEBUG [ReadStage:1] 2011-12-01 22:25:39,731 SliceQueryFilter.java (line 123) collecting 1 of 1024: name:false:4@1322777621601000
+DEBUG [ReadStage:1] 2011-12-01 22:25:39,731 SliceQueryFilter.java (line 123) collecting 2 of 1024: providerData:false:2283@1321549067179000
+DEBUG [ReadStage:1] 2011-12-01 22:25:39,731 SliceQueryFilter.java (line 123) collecting 3 of 1024: providerID:false:1@1322777621601000
+DEBUG [ReadStage:1] 2011-12-01 22:25:39,732 SliceQueryFilter.java (line 123) collecting 4 of 1024: timestamp:false:13@1322777621601000
+DEBUG [ReadStage:1] 2011-12-01 22:25:39,732 SliceQueryFilter.java (line 123) collecting 5 of 1024: vendorData:false:2364@1322777621601000
+DEBUG [ReadStage:1] 2011-12-01 22:25:39,733 ColumnFamilyStore.java (line 1331) scanned DecoratedKey(PROD/US/001/1, 50524f442f55532f3030312f31)
+DEBUG [ReadStage:1] 2011-12-01 22:25:39,733 RangeSliceVerbHandler.java (line 55) Sending RangeSliceReply
+{rows=Row(key=DecoratedKey(PROD/US/001/1, 50524f442f55532f3030312f31), cf=ColumnFamily(dataP rovider [active:false:1@1322777621601000,name:false:4@1322777621601000,providerData:false:2283@1321549067179000,providerID:false:1@1322777621601000,timestamp:false:13@1322777621601000,vendorData:f alse:2364@1322777621601000,]))}
+to 72@/10.72.208.103
+DEBUG [RequestResponseStage:1] 2011-12-01 22:25:39,734 ResponseVerbHandler.java (line 44) Processing response on a callback from 72@/10.72.208.103
+DEBUG [RequestResponseStage:2] 2011-12-01 22:25:39,887 ResponseVerbHandler.java (line 44) Processing response on a callback from 71@/10.92.208.103
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,889 SliceQueryFilter.java (line 123) collecting 0 of 2147483647: active:false:1@1322777621601000
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,890 SliceQueryFilter.java (line 123) collecting 1 of 2147483647: name:false:4@1322777621601000
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,890 SliceQueryFilter.java (line 123) collecting 2 of 2147483647: providerData:false:2283@1321549067179000
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,890 SliceQueryFilter.java (line 123) collecting 3 of 2147483647: providerID:false:1@1322777621601000
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,890 SliceQueryFilter.java (line 123) collecting 4 of 2147483647: timestamp:false:13@1322777621601000
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,891 SliceQueryFilter.java (line 123) collecting 5 of 2147483647: vendorData:false:2364@1322777621601000
+DEBUG [pool-2-thread-1] 2011-12-01 22:25:39,892 StorageProxy.java (line 867) range slices read DecoratedKey(PROD/US/001/1, 50524f442f55532f3030312f31)
+DEBUG [RequestResponseStage:3] 2011-12-01 22:25:39,936 ResponseVerbHandler.java (line 44) Processing response on a callback from 73@/10.8.208.103
+DEBUG [ScheduledTasks:1] 2011-12-01 22:26:19,788 LoadBroadcaster.java (line 86) Disseminating load info ...
+DEBUG [pool-2-thread-1] 2011-12-01 22:26:39,904 StorageProxy.java (line 874) Range slice timeout: java.util.concurrent.TimeoutException: Operation timed out.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.6
+Component:
+None
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Zhong Li
+Create date:
+01/Dec/11 22:58
+Update date:
+16/Apr/19 09:32
+Resolved date:
+07/Dec/11 17:35

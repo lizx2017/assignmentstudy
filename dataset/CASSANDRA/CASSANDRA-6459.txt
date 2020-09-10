@@ -1,0 +1,48 @@
+Summary:
+Concurrency issue in Directories.getOrCreate()
+Description:
+We're seeing an FSWriteError sometimes during repairs. I think it's because two threads are calling Directories.getOrCreate() on the same directory at about the same time. File.mkdirs() returns false if the directory already exists.
+A patch is forthcoming.
+Here's the exception we get:
+ERROR 2013-12-06 09:31:45,217 [Thread-11051] CassandraDaemon Exception in thread Thread[Thread-11051,5,main]
+FSWriteError in /data-1/cassandra/data/RedDeerCollege/Binaries/backups
+at org.apache.cassandra.db.Directories.getOrCreate(Directories.java:483)
+at org.apache.cassandra.db.Directories.getBackupsDirectory(Directories.java:242)
+at org.apache.cassandra.db.DataTracker.maybeIncrementallyBackup(DataTracker.java:165)
+at org.apache.cassandra.db.DataTracker.addSSTables(DataTracker.java:237)
+at org.apache.cassandra.db.ColumnFamilyStore.addSSTables(ColumnFamilyStore.java:911)
+at org.apache.cassandra.streaming.StreamInSession.closeIfFinished(StreamInSession.java:186)
+at org.apache.cassandra.streaming.IncomingStreamReader.read(IncomingStreamReader.java:138)
+at org.apache.cassandra.net.IncomingTcpConnection.stream(IncomingTcpConnection.java:238)
+at org.apache.cassandra.net.IncomingTcpConnection.handleStream(IncomingTcpConnection.java:178)
+Someone else appears to have seen the same thing a while back:
+Here's someone that's had a similar problem:
+http://mail-archives.apache.org/mod_mbox/cassandra-user/201206.mbox/%3CA65C3B25-2866-48BE-8584-AB048663611C@thelastpickle.com%3E
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.13, 2.0.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ryan Fowler
+Reporter:
+Ryan Fowler
+Create date:
+06/Dec/13 22:52
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Dec/13 10:33

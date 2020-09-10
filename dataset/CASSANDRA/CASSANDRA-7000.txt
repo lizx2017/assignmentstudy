@@ -1,0 +1,41 @@
+Summary:
+Assertion in SSTableReader during repair.
+Description:
+I ran a git bisect run using the attached bisect script. Repro code:
+# 5dfe241: trunk as of my git bisect run
+# 345772d: empirically determined "good" commit.
+git bisect start 5dfe241 345772d
+git bisect run ./sstablereader-assertion-bisect-helper-v2
+The first failing commit is 5ebadc1 (first parent of refs/bisect/bad).
+Prior to 5ebadc1, SSTableReader#close() never checked reference count. After 5ebadc1, there was an assertion for references.get() == 0. However, since the reference count is initialized to 1, a SSTableReader#close() was always guaranteed to either throw an AssertionError or to be a second call to SSTableReader#tidy() on the same SSTableReader.
+The attached patch chooses an in-between behavior. It requires the reference count to match the initialization value of 1 for SSTableReader#close(), and the same behavior as 5ebadc1 otherwise.
+This allows repair to finish successfully, but I'm not 100% certain what the desired behavior is for SSTableReader#close(). Should it close without regard to reference count, as it did pre-5ebadc1?
+Edit: accidentally uploaded a flawed version of sstablereader-assertion-bisect-helper (doesn't work out-of-the-box with git bisect).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ben Chan
+Reporter:
+Ben Chan
+Create date:
+08/Apr/14 17:00
+Update date:
+16/Apr/19 09:31
+Resolved date:
+11/Apr/14 16:35

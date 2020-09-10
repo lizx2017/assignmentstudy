@@ -1,0 +1,58 @@
+Summary:
+Cyrillic text not supported for Windows in native extension
+Description:
+Pre-requisites:
+a simple native extension that opens a file. The file path is send by the client Air app to the native extension.
+windows environment with cyrillic text (e.g. russian)
+a file in a folder with cyrillic name is it's path. (e.g. "Сергей Голиков")
+The native extension uses this code to parse the path:
+C code:
+— START CODE ----
+FILE * hd_src = NULL;
+const uint8_t* str = 0;
+uint32_t len = -1;
+FREObject filename = argv[1 ];
+FREGetObjectAsUTF8( filename, &len, &str );
+wchar_t * filepath = (wchar_t *)str;
+fopen_s(&hd_src, transferObject->filePath.c_str(), "rb");
+if (hd_src == NULL) {
+_wfopen_s(&hd_src,filePath, L"rb, ccs=UTF-8" );
+}
+if (hd_src == NULL) {
+_wfopen_s(&hd_src,filePath, L"rb, ccs=UNICODE" );
+}
+if (hd_src == NULL) {
+_wfopen_s(&hd_src,filePath, L"rb, ccs=UTF-16LE" );
+}
+---- END CODE —
+hd_src is always null. If you save the parsed file path to a txt file, the characters are shown correctly. If you open a file without cyrillic text it opens correctly.
+In mac os, because of the Unix encoding the file opens correctly.
+Expected behavior is that the file also gets open in windows environment.
+Status:
+RESOLVED
+Priority:
+Blocker
+Resolution:
+Won't Fix
+Affects_version:
+Apache Flex 4.9.0
+Fix_version:
+None
+Component:
+None
+Label:
+air cyrillic extensi
+Environment:
+Windows / Air
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Woodwing Developer
+Create date:
+25/Apr/13 09:40
+Update date:
+29/Sep/13 06:57
+Resolved date:
+29/Sep/13 06:57

@@ -1,0 +1,65 @@
+Summary:
+Atomicity violation bugs because of misusing concurrent collections
+Description:
+My name is Yu Lin. I'm a Ph.D. student in the CS department at
+UIUC. I'm currently doing research on mining Java concurrent library
+misusages. I found some misusages of ConcurrentHashMap in Cassandra
+1.1.1, which may result in potential atomicity violation bugs or harm
+the performance.
+The code below is a snapshot of the code in file
+src/java/org/apache/cassandra/db/Table.java from line 348 to 369
+L348 if (columnFamilyStores.containsKey(cfId))
+L349
+{ L350 // this is the case when you reset local schema L351 // just reload metadata L352 ColumnFamilyStore cfs = columnFamilyStores.get(cfId); L353 assert cfs.getColumnFamilyName().equals(cfName); ... L364 }
+L365 else
+L366
+{ L367 columnFamilyStores.put(cfId, ColumnFamilyStore.createColumnFamilyStore(this, cfName)); L368 }
+In the code above, an atomicity violation may occur between line 348
+and 352. Suppose thread T1 executes line 348 and finds that the
+concurrent hashmap "columnFamilyStores" contains the key
+"cfId". Before thread T1 executes line 352, another thread T2 removes
+the "cfId" key from "columnFamilyStores". Now thread T1 resumes
+execution at line 352 and will get a null value for "cfs". Then the
+next line will throw a NullPointerException when invoking the method
+on "cfs".
+Second, the snapshot above has another atomicity violation. Let's look
+at lines 348 and 367. Suppose a thread T1 executes line 348 and finds
+out the concurrent hashmap does not contain the key "cfId". Before it
+gets to execute line 367, another thread T2 puts a pair <cfid, v> in
+the concurrent hashmap "columnFamilyStores". Now thread T1 resumes
+execution and it will overwrite the value written by thread T2. Thus,
+the code no longer preserves the "put-if-absent" semantics.
+I found some similar misusages in other files:
+In src/java/org/apache/cassandra/gms/Gossiper.java, similar atomicity
+violation may occur if thread T2 puts a value to map
+"endpointStateMap" between lines <1094 and 1099>, <1173 and 1178>. Another
+atomicity violation may occur if thread T2 removes the value on key
+"endpoint" between lines <681 and 683>.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0
+Component:
+None
+Label:
+gossip
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yu Lin
+Reporter:
+Yu Lin
+Create date:
+02/Jul/12 20:40
+Update date:
+16/Apr/19 09:32
+Resolved date:
+09/Nov/12 22:09

@@ -1,0 +1,57 @@
+Summary:
+Hanging on DocumentsWriterStallControl.waitIfStalled forever
+Description:
+In an environment where our underlying storage was timing out on various operations, we find all of our indexing threads eventually stuck in the following state (so far for 4 days):
+"Thread-0" daemon prio=5 Thread id=556 WAITING
+at java.lang.Object.wait(Native Method)
+at java.lang.Object.wait(Object.java:503)
+at org.apache.lucene.index.DocumentsWriterStallControl.waitIfStalled(DocumentsWriterStallControl.java:74)
+at org.apache.lucene.index.DocumentsWriterFlushControl.waitIfStalled(DocumentsWriterFlushControl.java:676)
+at org.apache.lucene.index.DocumentsWriter.preUpdate(DocumentsWriter.java:301)
+at org.apache.lucene.index.DocumentsWriter.updateDocument(DocumentsWriter.java:361)
+at org.apache.lucene.index.IndexWriter.updateDocument(IndexWriter.java:1484)
+at ...
+I have not yet enabled detail logging and tried to reproduce yet, but looking at the code, I see that DWFC.abortPendingFlushes does
+try
+{ dwpt.abort(); doAfterFlush(dwpt); }
+catch (Throwable ex)
+{ // ignore - keep on aborting the flush queue }
+
+(and the same for the blocked ones). Since the throwable is ignored, I can't say for sure, but I've seen DWPT.abort thrown in other cases, so if it does throw, we'd fail to call doAfterFlush and properly decrement flushBytes. This can be a problem, right? Is it possible to do this instead:
+
+try { dwpt.abort(); } catch (Throwable ex) { // ignore - keep on aborting the flush queue }
+finally {
+try
+{ doAfterFlush(dwpt); }
+catch (Throwable ex2)
+{ // ignore - keep on aborting the flush queue }
+}
+It's ugly but safer. Otherwise, maybe at least add logging for the throwable just to make sure this is/isn't happening.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+4.1
+Fix_version:
+4.3.1, 6.0
+Component:
+core/index
+Label:
+hang
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Simon Willnauer
+Reporter:
+Jessica Cheng Mallet
+Create date:
+09/May/13 00:14
+Update date:
+09/May/16 18:36
+Resolved date:
+05/Jun/13 07:41

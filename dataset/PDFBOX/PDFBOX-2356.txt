@@ -1,0 +1,71 @@
+Summary:
+Error Validating PDF Archive Document with half hour timezone
+Description:
+When trying to validate a PDF archive file (attached to this ticket) we get the following error:
+7.2   - Error on MetaData, ModificationDate present in the document catalog dictionary doesn't match with XMP information
+This is because the the Modification Date in the Dictionary is parsed differently from the XMP Metadata. The XMP Metadata is correct, but the Date from the Dictionary appends an extra 30 minutes.
+The following is the raw COSObject from the PDF File
+COSString{D:20140917122850+09'30'}
+The Long value should be 1410922730000
+The org.apache.pdfbox.util.DateConverter parseDate method returns the Date with Long 1410924530000 which is 30 minutes ahead.
+XMP Modification Date is parsed differently and returns the correct date.
+This means that validation will fail for PDF Archives.
+My suggestion would be to refactor the parseDate function to use the Standard Java library.
+Here's an example class which will be compatible with the PDF Specification:
+static class DateParser {
+
+ private Map<Integer, SimpleDateFormat> formats =
+   new HashMap<Integer, SimpleDateFormat>();
+ 
+ public DateParser() {
+   String expr = "";
+ 
+  for(String part: Arrays.asList("yyyy", "MM", "dd", "HH", "mm", "ss", "Z")) {
+     expr = expr + part;
+     formats.put(expr.length(), new SimpleDateFormat(expr));
+   }
+ }
+ 
+ public Calendar parseDate(String expr) {
+   try {
+     expr = expr.replace("D:", "").replace("'", "").replace("Z", "+0000");
+     Date date = formats.get(Math.min(expr.length(), 15)).parse(expr);
+ 
+ 
+     Calendar calendar =  Calendar.getInstance();
+     calendar.setTime(date);
+ 
+     return calendar;
+   } catch (ParseException e) {
+     return null;
+   }
+ }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.4, 1.8.5, 1.8.6, (3)
+Fix_version:
+1.8.8, 2.0.0
+Component:
+Preflight
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Cetra Free
+Create date:
+17/Sep/14 04:46
+Update date:
+13/Dec/14 14:15
+Resolved date:
+18/Sep/14 16:18

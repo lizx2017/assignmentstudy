@@ -1,0 +1,56 @@
+Summary:
+HBase integration/system tests
+Description:
+Integration and general system tests have been discussed previously, and the conclusion is that we need to unify how we do "release candidate" testing (HBASE-6091).
+In this issue, I would like to discuss and agree on a general plan, and open subtickets for execution so that we can carry out most of the tests in HBASE-6091 automatically.
+Initially, here is what I have in mind:
+1. Create hbase-it (or hbase-tests) containing forward port of HBASE-4454 (without any tests). This will allow integration test to be run with
+  mvn verify
+ 
+2. Add ability to run all integration/system tests on a given cluster. Smt like:
+  mvn verify -Dconf=/etc/hbase/conf/
+ 
+should run the test suite on the given cluster. (Right now we can launch some of the tests (TestAcidGuarantees) from command line). Most of the system tests will be client side, and interface with the cluster through public APIs. We need a tool on top of MiniHBaseCluster or improve HBaseTestingUtility, so that tests can interface with the mini cluster or the actual cluster uniformly.
+3. Port candidate unit tests to the integration tests module. Some of the candidates are:
+TestAcidGuarantees / TestAtomicOperation
+TestRegionBalancing (HBASE-6053)
+TestFullLogReconstruction
+TestMasterFailover
+TestImportExport
+TestMultiVersions / TestKeepDeletes
+TestFromClientSide
+TestShell and src/test/ruby
+TestRollingRestart
+Test**OnCluster
+Balancer tests
+These tests should continue to be run as unit tests w/o any change in semantics. However, given an actual cluster, they should use that, instead of spinning a mini cluster.
+4. Add more tests, especially, long running ingestion tests (goraci, BigTop's TestLoadAndVerify, LoadTestTool), and chaos monkey style fault tests.
+All suggestions welcome.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.95.0
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Enis Soztutar
+Reporter:
+Enis Soztutar
+Create date:
+12/Jun/12 02:33
+Update date:
+20/Nov/15 11:53
+Resolved date:
+24/Sep/13 21:21

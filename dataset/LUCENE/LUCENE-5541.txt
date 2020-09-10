@@ -1,0 +1,62 @@
+Summary:
+FileExistsCachingDirectory, to work around unreliable File.exists
+Description:
+File.exists is a dangerous method in Java, because if there is a
+low-level IOException (permission denied, out of file handles, etc.)
+the method can return false when it should return true.
+Fortunately, as of Lucene 4.x, we rely much less on File.exists,
+because we track which files the codec components created, and we know
+those files then exist.
+But, unfortunately, going from 3.0.x to 3.6.x, we increased our
+reliance on File.exists, e.g. when creating CFS we check File.exists
+on each sub-file before trying to add it, and I have a customer
+corruption case where apparently a transient low level IOE caused
+File.exists to incorrectly return false for one of the sub-files. It
+results in corruption like this:
+  java.io.FileNotFoundException: No sub-file with id .fnm found (fileName=_1u7.cfs files: [.tis, .tii, .frq, .prx, .fdt, .nrm, .fdx])
+      org.apache.lucene.index.CompoundFileReader.openInput(CompoundFileReader.java:157)
+      org.apache.lucene.index.CompoundFileReader.openInput(CompoundFileReader.java:146)
+      org.apache.lucene.index.FieldInfos.<init>(FieldInfos.java:71)
+      org.apache.lucene.index.IndexWriter.getFieldInfos(IndexWriter.java:1212)
+      org.apache.lucene.index.IndexWriter.getCurrentFieldInfos(IndexWriter.java:1228)
+      org.apache.lucene.index.IndexWriter.<init>(IndexWriter.java:1161)
+I think typically local file systems don't often hit such low level
+errors, but if you have an index on a remote filesystem, where network
+hiccups can cause problems, it's more likely.
+As a simple workaround, I created a basic Directory delegator that
+holds a Set of all created but not deleted files, and short-circuits
+fileExists to return true if the file is in that set.
+I don't plan to commit this: we aren't doing bug-fix releases on
+3.6.x anymore (it's very old by now), and this problem is already
+"fixed" in 4.x (by reducing our reliance on File.exists), but I wanted
+to post the code here in case others hit it. It looks like it was hit
+e.g. https://netbeans.org/bugzilla/show_bug.cgi?id=189571 and
+https://issues.jboss.org/browse/ISPN-2981
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/store
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Michael McCandless
+Create date:
+20/Mar/14 16:00
+Update date:
+17/Sep/14 21:33
+Resolved date:
+

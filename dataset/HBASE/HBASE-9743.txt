@@ -1,0 +1,57 @@
+Summary:
+RollingBatchRestartRsAction aborts if timeout
+Description:
+In our test rigs, we see following quiet frequently:
+2013-10-10 05:04:09,367 INFO  [Thread-6] actions.Action: Killing region server:a1809.halxg.cloudera.com,60020,1381404629253
+2013-10-10 05:04:09,367 INFO  [Thread-6] hbase.HBaseCluster: Aborting RS: a1809.halxg.cloudera.com,60020,1381404629253
+2013-10-10 05:04:09,367 INFO  [Thread-6] hbase.ClusterManager: Executing remote command: ps aux | grep proc_regionserver | grep -v grep | tr -s ' ' | cut -d ' ' -f2 | xargs kill -s SIGKILL , hostname:a1809.halxg.cloudera.com
+2013-10-10 05:04:09,367 INFO  [Thread-6] util.Shell: Executing full command [/usr/bin/ssh -o ConnectTimeout=1 -o StrictHostKeyChecking=no a1809.halxg.cloudera.com "ps aux | grep proc_regionserver | grep -v grep | tr -s ' ' | cut -d ' ' -f2 | xargs kill -s SIGKILL"]
+2013-10-10 05:04:09,621 DEBUG [Thread-5] client.HBaseAdmin: Getting current status of snapshot from master...
+2013-10-10 05:04:09,623 DEBUG [Thread-5] client.HBaseAdmin: (#6) Sleeping: 1714ms while waiting for snapshot completion.
+2013-10-10 05:04:10,381 WARN  [Thread-6] policies.Policy: Exception occured during performing action: org.apache.hadoop.util.Shell$ExitCodeException: Connection timed out during banner exchange
+
+ at org.apache.hadoop.util.Shell.runCommand(Shell.java:458)
+ at org.apache.hadoop.util.Shell.run(Shell.java:373)
+ at org.apache.hadoop.util.Shell$ShellCommandExecutor.execute(Shell.java:578)
+ at org.apache.hadoop.hbase.HBaseClusterManager$RemoteShell.execute(HBaseClusterManager.java:111)
+ at org.apache.hadoop.hbase.HBaseClusterManager.exec(HBaseClusterManager.java:187)
+ at org.apache.hadoop.hbase.HBaseClusterManager.signal(HBaseClusterManager.java:216)
+ at org.apache.hadoop.hbase.ClusterManager.kill(ClusterManager.java:97)
+ at org.apache.hadoop.hbase.DistributedHBaseCluster.killRegionServer(DistributedHBaseCluster.java:110)
+ at org.apache.hadoop.hbase.chaos.actions.Action.killRs(Action.java:84)
+ at org.apache.hadoop.hbase.chaos.actions.RollingBatchRestartRsAction.perform(RollingBatchRestartRsAction.java:60)
+ at org.apache.hadoop.hbase.chaos.policies.PeriodicRandomActionPolicy.runOneIteration(PeriodicRandomActionPolicy.java:59)
+ at org.apache.hadoop.hbase.chaos.policies.PeriodicPolicy.run(PeriodicPolicy.java:41)
+ at org.apache.hadoop.hbase.chaos.policies.CompositeSequentialPolicy.run(CompositeSequentialPolicy.java:42)
+ at java.lang.Thread.run(Thread.java:724)
+...
+So, we went to kill a RS and we timed out. Server was busy at the time. We see the kill usually going through.
+When above happens in a RollingBatchRestartRsAction, we'll usually 'lose' a server for the rest of the test. That is at a minimum. We've also seen case where we kill near all servers in cluster and then the above timeout happens and we are left w/ a test limping along running real slow eventually failing.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.96.0
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+10/Oct/13 21:48
+Update date:
+20/Nov/15 11:52
+Resolved date:
+10/Oct/13 23:42

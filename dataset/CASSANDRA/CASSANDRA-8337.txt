@@ -1,0 +1,62 @@
+Summary:
+mmap underflow during validation compaction
+Description:
+During full parallel repair I often get errors like the following
+[2014-11-19 01:02:39,355] Repair session 116beaf0-6f66-11e4-afbb-c1c082008cbe for range (3074457345618263602,-9223372036854775808] failed with error org.apache.cassandra.exceptions.RepairException: repair #116beaf0-6f66-11e4-afbb-c1c082008cbe on iss/target_state_history, (3074457345618263602,-9223372036854775808] Validation failed in /95.108.242.19
+At the log of the node there are always same exceptions:
+ERROR [ValidationExecutor:2] 2014-11-19 01:02:10,847 JVMStabilityInspector.java:94 - JVM state determined to be unstable. Exiting forcefully due to:
+org.apache.cassandra.io.sstable.CorruptSSTableException: java.io.IOException: mmap segment underflow; remaining is 15 but 47 requested
+at org.apache.cassandra.io.sstable.SSTableReader.getPosition(SSTableReader.java:1518) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at org.apache.cassandra.io.sstable.SSTableReader.getPosition(SSTableReader.java:1385) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at org.apache.cassandra.io.sstable.SSTableReader.getPositionsForRanges(SSTableReader.java:1315) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at org.apache.cassandra.io.sstable.SSTableReader.getScanner(SSTableReader.java:1706) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at org.apache.cassandra.io.sstable.SSTableReader.getScanner(SSTableReader.java:1694) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at org.apache.cassandra.db.compaction.AbstractCompactionStrategy.getScanners(AbstractCompactionStrategy.java:276) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at org.apache.cassandra.db.compaction.WrappingCompactionStrategy.getScanners(WrappingCompactionStrategy.java:320) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at org.apache.cassandra.db.compaction.CompactionManager.doValidationCompaction(CompactionManager.java:917) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at org.apache.cassandra.db.compaction.CompactionManager.access$600(CompactionManager.java:97) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at org.apache.cassandra.db.compaction.CompactionManager$9.call(CompactionManager.java:557) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at java.util.concurrent.FutureTask.run(FutureTask.java:262) ~[na:1.7.0_51]
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145) ~[na:1.7.0_51]
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615) [na:1.7.0_51]
+at java.lang.Thread.run(Thread.java:744) [na:1.7.0_51]
+Caused by: java.io.IOException: mmap segment underflow; remaining is 15 but 47 requested
+at org.apache.cassandra.io.util.MappedFileDataInput.readBytes(MappedFileDataInput.java:135) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at org.apache.cassandra.utils.ByteBufferUtil.read(ByteBufferUtil.java:348) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at org.apache.cassandra.utils.ByteBufferUtil.readWithShortLength(ByteBufferUtil.java:327) ~[apache-cassandra-2.1.2.jar:2.1.2]
+at org.apache.cassandra.io.sstable.SSTableReader.getPosition(SSTableReader.java:1460) ~[apache-cassandra-2.1.2.jar:2.1.2]
+... 13 common frames omitted
+Now i'm using die disk_failure_policy to determine such conditions faster, but I get them even with stop policy.
+Streams related to host with such exception are hanged. Thread dump is attached. Only restart helps.
+After retry I get errors from other nodes.
+scrub doesn't help and report that sstables are ok.
+Sequential repairs doesn't cause such exceptions.
+Load is about 1000 write rps and 50 read rps per node.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/Streaming and Messaging
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Joshua McKenzie
+Reporter:
+Alexander Sterligov
+Create date:
+18/Nov/14 21:19
+Update date:
+16/Apr/19 09:31
+Resolved date:
+30/Oct/15 16:43

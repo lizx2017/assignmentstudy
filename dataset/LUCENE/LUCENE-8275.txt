@@ -1,0 +1,87 @@
+Summary:
+Push up #checkPendingDeletes to Directory
+Description:
+IndexWriter checks in it's ctor if the incoming directory is an
+FSDirectory. If that is the case it ensures that the directory retries
+deleting it's pending deletes and if there are pending deletes it will
+fail creating the writer. Yet, this check didn't unwrap filter directories
+or subclasses like FileSwitchDirectory such that in the case of MDW we
+never checked for pending deletes.
+There are also two places in FSDirectory that first removed the file
+that was supposed to be created / renamed to from the pending deletes set
+and then tried to clean up pending deletes which excluded the file. These
+places now remove the file from the set after the pending deletes are checked.
+  This caused some test failures lately unfortunately very timing dependent:
+  FAILED:  junit.framework.TestSuite.org.apache.lucene.search.TestSearcherManager
+
+Error Message:
+Captured an uncaught exception in thread: Thread[id=1567, name=Thread-1363, state=RUNNABLE, group=TGRP-TestSearcherManager]
+
+Stack Trace:
+com.carrotsearch.randomizedtesting.UncaughtExceptionError: Captured an uncaught exception in thread: Thread[id=1567, name=Thread-1363, state=RUNNABLE, group=TGRP-TestSearcherManager]
+Caused by: java.lang.RuntimeException: java.nio.file.FileAlreadyExistsException: /home/jenkins/workspace/Lucene-Solr-master-Linux/lucene/build/core/test/J1/temp/lucene.search.TestSearcherManager_BA998C838D219DA9-001/tempDir-001/_0.fdt
+        at __randomizedtesting.SeedInfo.seed([BA998C838D219DA9]:0)
+        at org.apache.lucene.search.TestSearcherManager$8.run(TestSearcherManager.java:590)
+Caused by: java.nio.file.FileAlreadyExistsException: /home/jenkins/workspace/Lucene-Solr-master-Linux/lucene/build/core/test/J1/temp/lucene.search.TestSearcherManager_BA998C838D219DA9-001/tempDir-001/_0.fdt
+        at java.base/sun.nio.fs.UnixException.translateToIOException(UnixException.java:94)
+        at java.base/sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:111)
+        at java.base/sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:116)
+        at java.base/sun.nio.fs.UnixFileSystemProvider.newByteChannel(UnixFileSystemProvider.java:215)
+        at java.base/java.nio.file.spi.FileSystemProvider.newOutputStream(FileSystemProvider.java:434)
+        at org.apache.lucene.mockfile.FilterFileSystemProvider.newOutputStream(FilterFileSystemProvider.java:197)
+        at org.apache.lucene.mockfile.FilterFileSystemProvider.newOutputStream(FilterFileSystemProvider.java:197)
+        at org.apache.lucene.mockfile.HandleTrackingFS.newOutputStream(HandleTrackingFS.java:129)
+        at org.apache.lucene.mockfile.HandleTrackingFS.newOutputStream(HandleTrackingFS.java:129)
+        at org.apache.lucene.mockfile.HandleTrackingFS.newOutputStream(HandleTrackingFS.java:129)
+        at org.apache.lucene.mockfile.FilterFileSystemProvider.newOutputStream(FilterFileSystemProvider.java:197)
+        at java.base/java.nio.file.Files.newOutputStream(Files.java:218)
+        at org.apache.lucene.store.FSDirectory$FSIndexOutput.<init>(FSDirectory.java:413)
+        at org.apache.lucene.store.FSDirectory$FSIndexOutput.<init>(FSDirectory.java:409)
+        at org.apache.lucene.store.FSDirectory.createOutput(FSDirectory.java:253)
+        at org.apache.lucene.store.MockDirectoryWrapper.createOutput(MockDirectoryWrapper.java:665)
+        at org.apache.lucene.store.LockValidatingDirectoryWrapper.createOutput(LockValidatingDirectoryWrapper.java:44)
+        at org.apache.lucene.store.TrackingDirectoryWrapper.createOutput(TrackingDirectoryWrapper.java:43)
+        at org.apache.lucene.codecs.compressing.CompressingStoredFieldsWriter.<init>(CompressingStoredFieldsWriter.java:116)
+        at org.apache.lucene.codecs.compressing.CompressingStoredFieldsFormat.fieldsWriter(CompressingStoredFieldsFormat.java:128)
+        at org.apache.lucene.codecs.lucene50.Lucene50StoredFieldsFormat.fieldsWriter(Lucene50StoredFieldsFormat.java:183)
+        at org.apache.lucene.codecs.asserting.AssertingStoredFieldsFormat.fieldsWriter(AssertingStoredFieldsFormat.java:48)
+        at org.apache.lucene.index.StoredFieldsConsumer.initStoredFieldsWriter(StoredFieldsConsumer.java:39)
+        at org.apache.lucene.index.StoredFieldsConsumer.startDocument(StoredFieldsConsumer.java:46)
+        at org.apache.lucene.index.DefaultIndexingChain.startStoredFields(DefaultIndexingChain.java:363)
+        at org.apache.lucene.index.DefaultIndexingChain.processDocument(DefaultIndexingChain.java:399)
+        at org.apache.lucene.index.DocumentsWriterPerThread.updateDocument(DocumentsWriterPerThread.java:251)
+        at org.apache.lucene.index.DocumentsWriter.updateDocument(DocumentsWriter.java:490)
+        at org.apache.lucene.index.IndexWriter.updateDocument(IndexWriter.java:1518)
+        at org.apache.lucene.index.IndexWriter.addDocument(IndexWriter.java:1210)
+        at org.apache.lucene.search.TestSearcherManager$8.run(TestSearcherManager.java:574)
+
+
+FAILED:  org.apache.lucene.search.TestSearcherManager.testConcurrentIndexCloseSearchAndRefresh
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+7.4, 8.0
+Fix_version:
+7.4, 8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Simon Willnauer
+Create date:
+25/Apr/18 09:15
+Update date:
+27/Jun/18 08:30
+Resolved date:
+25/Apr/18 14:58

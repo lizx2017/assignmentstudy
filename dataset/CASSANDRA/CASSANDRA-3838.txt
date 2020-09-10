@@ -1,0 +1,109 @@
+Summary:
+Repair Streaming hangs between multiple regions
+Description:
+Streaming hangs between datacenters, though there might be multiple reasons for this, a simple fix will be to add the Socket timeout so the session can retry.
+The following is the netstat of the affected node (the below output remains this way for a very long period).
+[test_abrepairtest@test_abrepair--euwest1c-i-1adfb753 ~]$ nt netstats
+Mode: NORMAL
+Streaming to: /50.17.92.159
+/mnt/data/cassandra070/data/abtests/cust_allocs-hc-2221-Data.db sections=7002 progress=1523325354/2475291786 - 61%
+/mnt/data/cassandra070/data/abtests/cust_allocs-hc-2233-Data.db sections=4581 progress=0/595026085 - 0%
+/mnt/data/cassandra070/data/abtests/cust_allocs-g-2235-Data.db sections=6631 progress=0/2270344837 - 0%
+/mnt/data/cassandra070/data/abtests/cust_allocs-hc-2239-Data.db sections=6266 progress=0/2190197091 - 0%
+/mnt/data/cassandra070/data/abtests/cust_allocs-hc-2230-Data.db sections=7662 progress=0/3082087770 - 0%
+/mnt/data/cassandra070/data/abtests/cust_allocs-hc-2240-Data.db sections=7874 progress=0/587439833 - 0%
+/mnt/data/cassandra070/data/abtests/cust_allocs-g-2226-Data.db sections=7682 progress=0/2933920085 - 0%
+"Streaming:1" daemon prio=10 tid=0x00002aaac2060800 nid=0x1676 runnable [0x000000006be85000]
+java.lang.Thread.State: RUNNABLE
+at java.net.SocketOutputStream.socketWrite0(Native Method)
+at java.net.SocketOutputStream.socketWrite(SocketOutputStream.java:92)
+at java.net.SocketOutputStream.write(SocketOutputStream.java:136)
+at com.sun.net.ssl.internal.ssl.OutputRecord.writeBuffer(OutputRecord.java:297)
+at com.sun.net.ssl.internal.ssl.OutputRecord.write(OutputRecord.java:286)
+at com.sun.net.ssl.internal.ssl.SSLSocketImpl.writeRecordInternal(SSLSocketImpl.java:743)
+at com.sun.net.ssl.internal.ssl.SSLSocketImpl.writeRecord(SSLSocketImpl.java:731)
+at com.sun.net.ssl.internal.ssl.AppOutputStream.write(AppOutputStream.java:59)
+locked <0x00000006afea1bd8> (a com.sun.net.ssl.internal.ssl.AppOutputStream)
+at com.ning.compress.lzf.ChunkEncoder.encodeAndWriteChunk(ChunkEncoder.java:133)
+at com.ning.compress.lzf.LZFOutputStream.writeCompressedBlock(LZFOutputStream.java:203)
+at com.ning.compress.lzf.LZFOutputStream.flush(LZFOutputStream.java:117)
+at org.apache.cassandra.streaming.FileStreamTask.stream(FileStreamTask.java:152)
+at org.apache.cassandra.streaming.FileStreamTask.runMayThrow(FileStreamTask.java:91)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Streaming from: /46.51.141.51
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2241-Data.db sections=7231 progress=0/1548922508 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2231-Data.db sections=4730 progress=0/296474156 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2244-Data.db sections=7650 progress=0/1580417610 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2217-Data.db sections=7682 progress=0/196689250 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2220-Data.db sections=7149 progress=0/478695185 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2171-Data.db sections=443 progress=0/78417320 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-g-2235-Data.db sections=6631 progress=0/2270344837 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2222-Data.db sections=4590 progress=0/1310718798 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2233-Data.db sections=4581 progress=0/595026085 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-g-2226-Data.db sections=7682 progress=0/2933920085 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2213-Data.db sections=7876 progress=0/3308781588 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2216-Data.db sections=7386 progress=0/2868167170 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2240-Data.db sections=7874 progress=0/587439833 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2254-Data.db sections=4618 progress=0/215989758 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2221-Data.db sections=7002 progress=1542191546/2475291786 - 62%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2239-Data.db sections=6266 progress=0/2190197091 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2210-Data.db sections=6698 progress=0/2304563183 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2230-Data.db sections=7662 progress=0/3082087770 - 0%
+abtests: /mnt/data/cassandra070/data/abtests/cust_allocs-hc-2229-Data.db sections=7386 progress=0/1324787539 - 0%
+"Thread-198896" prio=10 tid=0x00002aaac0e00800 nid=0x4710 runnable [0x000000004251b000]
+java.lang.Thread.State: RUNNABLE
+at java.net.SocketInputStream.socketRead0(Native Method)
+at java.net.SocketInputStream.read(SocketInputStream.java:129)
+at com.sun.net.ssl.internal.ssl.InputRecord.readFully(InputRecord.java:293)
+at com.sun.net.ssl.internal.ssl.InputRecord.readV3Record(InputRecord.java:405)
+at com.sun.net.ssl.internal.ssl.InputRecord.read(InputRecord.java:360)
+at com.sun.net.ssl.internal.ssl.SSLSocketImpl.readRecord(SSLSocketImpl.java:798)
+locked <0x00000005e220a170> (a java.lang.Object)
+at com.sun.net.ssl.internal.ssl.SSLSocketImpl.readDataRecord(SSLSocketImpl.java:755)
+at com.sun.net.ssl.internal.ssl.AppInputStream.read(AppInputStream.java:75)
+locked <0x00000005e220a1b8> (a com.sun.net.ssl.internal.ssl.AppInputStream)
+at com.ning.compress.lzf.LZFDecoder.readFully(LZFDecoder.java:392)
+at com.ning.compress.lzf.LZFDecoder.decompressChunk(LZFDecoder.java:190)
+at com.ning.compress.lzf.LZFInputStream.readyBuffer(LZFInputStream.java:254)
+at com.ning.compress.lzf.LZFInputStream.read(LZFInputStream.java:129)
+at java.io.DataInputStream.readFully(DataInputStream.java:178)
+at java.io.DataInputStream.readLong(DataInputStream.java:399)
+at org.apache.cassandra.utils.BytesReadTracker.readLong(BytesReadTracker.java:115)
+at org.apache.cassandra.db.ColumnSerializer.deserialize(ColumnSerializer.java:119)
+at org.apache.cassandra.db.ColumnSerializer.deserialize(ColumnSerializer.java:37)
+at org.apache.cassandra.io.sstable.SSTableWriter.appendFromStream(SSTableWriter.java:244)
+at org.apache.cassandra.streaming.IncomingStreamReader.streamIn(IncomingStreamReader.java:148)
+at org.apache.cassandra.streaming.IncomingStreamReader.read(IncomingStreamReader.java:90)
+at org.apache.cassandra.net.IncomingTcpConnection.stream(IncomingTcpConnection.java:185)
+at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:81)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.8
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jason Brown
+Reporter:
+Vijay
+Create date:
+02/Feb/12 06:10
+Update date:
+16/Apr/19 09:32
+Resolved date:
+05/Feb/12 21:40

@@ -1,0 +1,59 @@
+Summary:
+Timeuuid with CLUSTERING ORDER DESC cannot be used with the dateOf CQL3 function
+Description:
+I originally raised this issue in the mailing lists:
+http://www.mail-archive.com/user@cassandra.apache.org/msg29185.html
+Here is what I tried:
+cqlsh:location> create table test_y (message_id timeuuid, name text,
+PRIMARY KEY (name,message_id));
+cqlsh:location> insert into test_y (message_id,name) VALUES (now(),'foo');
+cqlsh:location> insert into test_y (message_id,name) VALUES (now(),'foo');
+cqlsh:location> insert into test_y (message_id,name) VALUES (now(),'foo');
+cqlsh:location> insert into test_y (message_id,name) VALUES (now(),'foo');
+cqlsh:location> select dateOf(message_id) from test_y;
+dateOf(message_id)
+--------------------------
+2013-04-13 00:33:42-0400
+2013-04-13 00:33:43-0400
+2013-04-13 00:33:43-0400
+2013-04-13 00:33:44-0400
+cqlsh:location> create table test_x (message_id timeuuid, name text,
+PRIMARY KEY (name,message_id)) WITH CLUSTERING ORDER BY (message_id DESC);
+cqlsh:location> insert into test_x (message_id,name) VALUES (now(),'foo');
+cqlsh:location> insert into test_x (message_id,name) VALUES (now(),'foo');
+cqlsh:location> insert into test_x (message_id,name) VALUES (now(),'foo');
+cqlsh:location> insert into test_x (message_id,name) VALUES (now(),'foo');
+cqlsh:location> insert into test_x (message_id,name) VALUES (now(),'foo');
+cqlsh:location> select dateOf(message_id) from test_x;
+Bad Request: Type error:
+org.apache.cassandra.cql3.statements.Selection$SimpleSelector@1e7318 cannot
+be passed as argument 0 of function dateof of type timeuuid
+It should be possible to use dateOf on message_id in table test_x
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Gareth Collins
+Create date:
+15/Apr/13 14:04
+Update date:
+16/Apr/19 09:32
+Resolved date:
+29/Apr/13 07:32

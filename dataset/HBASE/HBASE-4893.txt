@@ -1,0 +1,51 @@
+Summary:
+HConnectionImplementation is closed but not deleted
+Description:
+In abort() of HConnectionManager$HConnectionImplementation, instance of HConnectionImplementation is marked as this.closed=true.
+There is no way for client application to check the hbase client connection whether it is still opened/good (this.closed=false) or not. We need a method to validate the state of a connection like isClosed().
+public boolean isClosed(){
+   return this.closed;
+} 
+Once the connection is closed and it should get deleted. Client application still gets a connection from HConnectionManager.getConnection(Configuration) and tries to make a RPC call to RS, since connection is already closed, HConnectionImplementation.getRegionServerWithRetries throws RetriesExhaustedException with error message
+Caused by: org.apache.hadoop.hbase.client.RetriesExhaustedException: Trying to contact region server null for region , row 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxx', but failed after 10 attempts.
+Exceptions:
+java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@7eab48a7 closed
+java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@7eab48a7 closed
+java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@7eab48a7 closed
+java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@7eab48a7 closed
+java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@7eab48a7 closed
+java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@7eab48a7 closed
+java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@7eab48a7 closed
+java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@7eab48a7 closed
+java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@7eab48a7 closed
+java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@7eab48a7 closed
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getRegionServerWithRetries(HConnectionManager.java:1008)
+ at org.apache.hadoop.hbase.client.HTable.get(HTable.java:546)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.1
+Fix_version:
+0.90.6
+Component:
+Client
+Label:
+None
+Environment:
+linux,
+Attachment number:
+0
+Assignee:
+Mubarak Seyed
+Reporter:
+Mubarak Seyed
+Create date:
+29/Nov/11 19:45
+Update date:
+20/Nov/15 11:52
+Resolved date:
+26/Jan/12 07:27

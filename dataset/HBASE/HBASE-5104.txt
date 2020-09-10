@@ -1,0 +1,64 @@
+Summary:
+Provide a reliable intra-row pagination mechanism
+Description:
+Addendum:
+Doing pagination (retrieving at most "limit" number of KVs at a particular "offset") is currently supported via the ColumnPaginationFilter. However, it is not a very clean way of supporting pagination. Some of the problems with it are:
+Normally, one would expect a query with (Filter(A) AND Filter(B)) to have same results as (query with Filter(A)) INTERSECT (query with Filter(B)). This is not the case for ColumnPaginationFilter as its internal state gets updated depending on whether or not Filter(A) returns TRUE/FALSE for a particular cell.
+When this Filter is used in combination with other filters (e.g., doing AND with another filter using FilterList), the behavior of the query depends on the order of filters in the FilterList. This is not ideal.
+ColumnPaginationFilter is a stateful filter which ends up counting multiple versions of the cell as separate values even if another filter upstream or the ScanQueryMatcher is going to reject the value for other reasons.
+Seems like we need a reliable way to do pagination. The particular use case that prompted this JIRA is pagination within the same rowKey. For example, for a given row key R, get columns with prefix P, starting at offset X (among columns which have prefix P) and limit Y. Some possible fixes might be:
+1) enhance ColumnPrefixFilter to support another constructor which supports limit/offset.
+2) Support pagination (limit/offset) at the Scan/Get API level (rather than as a filter) [Like SQL].
+Original Post:
+Thanks Jiakai Liu for reporting this issue and doing the initial investigation. Email from Jiakai below:
+Assuming that we have an index column family with the following entries:
+"tag0:001:thread1"
+...
+"tag1:001:thread1"
+"tag1:002:thread2"
+...
+"tag1:010:thread10"
+...
+"tag2:001:thread1"
+"tag2:005:thread5"
+...
+To get threads with "tag1" in range [5, 10), I tried the following code:
+ColumnPrefixFilter filter1 = new ColumnPrefixFilter(Bytes.toBytes("tag1"));
+ColumnPaginationFilter filter2 = new ColumnPaginationFilter(5 /* limit /, 5 / offset */);
+FilterList filters = new FilterList(Operator.MUST_PASS_ALL);
+filters.addFilter(filter1);
+filters.addFilter(filter2);
+Get get = new Get(USER);
+get.addFamily(COLUMN_FAMILY);
+get.setMaxVersions(1);
+get.setFilter(filters);
+Somehow it didn't work as expected. It returned the entries as if the filter1 were not set.
+Turns out the ColumnPrefixFilter returns SEEK_NEXT_USING_HINT in some cases. The FilterList filter does not handle this return code properly (treat it as INCLUDE).
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Madhuwanti Vaidya
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+29/Dec/11 19:49
+Update date:
+04/Oct/12 21:52
+Resolved date:
+03/Jul/12 22:36

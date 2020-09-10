@@ -1,0 +1,35 @@
+Summary:
+compaction record (probably) can block WAL cleanup forever if region is closed without edits
+Description:
+A region is opened by a server, major compaction is performed, that triggers a split, and the region is closed and split. There's no indication of memstore flush for this region.
+After that, LogRoller repeatedly tries to request the flush of this region due to large number of HLogs, but fails to flush it for hours because the region is not in online regions.
+It seems that what's happening is that when we append entries to WAL we add the first entry after we flush/open some region to "earliest unflushed seqNums per region" map in FSHLog. However, compaction now adds compaction record to WAL, which also affects this map. If the compaction record is the first entry for this region to go into some WAL, and there are no writes to the region after that, there will be no memstore flush and the entry will never be removed.
+In fact "flushing" for compaction record doesn't make sense, there's no preservation of the record outside WAL; so, we probably should not add it to "latest unflushed" map.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.95.0
+Fix_version:
+0.98.0, 0.95.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergey Shelukhin
+Reporter:
+Sergey Shelukhin
+Create date:
+22/May/13 23:05
+Update date:
+23/Sep/13 19:08
+Resolved date:
+24/May/13 20:45

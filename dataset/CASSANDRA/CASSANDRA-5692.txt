@@ -1,0 +1,40 @@
+Summary:
+Race condition in detecting version on a mixed 1.1/1.2 cluster
+Description:
+On a mixed 1.1 / 1.2 cluster, starting 1.2 nodes fires sometimes a race condition in version detection, where the 1.2 node wrongly detects version 6 for a 1.1 node.
+It works as follows:
+1) The just started 1.2 node quickly opens an OutboundTcpConnection toward a 1.1 node before receiving any messages from the latter.
+2) Given the version is correctly detected only when the first message is received, the version is momentarily set at 6.
+3) This opens an OutboundTcpConnection from 1.2 to 1.1 at version 6, which gets stuck in the connect() method.
+Later, the version is correctly fixed, but all outbound connections from 1.2 to 1.1 are stuck at this point.
+Evidence from 1.2 logs:
+TRACE 13:48:31,133 Assuming current protocol version for /127.0.0.2
+DEBUG 13:48:37,837 Setting version 5 for /127.0.0.2
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.7, 2.0 beta 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergio Bossa
+Reporter:
+Sergio Bossa
+Create date:
+23/Jun/13 12:57
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Jun/13 20:40

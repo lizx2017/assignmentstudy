@@ -1,0 +1,78 @@
+Summary:
+incrementColumnValue edits are not persisted
+Description:
+From Irfan up on hbase-users@
+I shutdown hbase using the following command
+$ HBASE_HOME/bin/stop-hbase.sh
+and it shuts down properly after a few seconds.
+here is my observation since last night. If I user TableRecordWriter1 uses HTable.incrementColumnValue, then the table data is not persisted across restarts but if I use TableRecordWriter2 then the table data is persisted across the restarts.
+Any clues ...
+Thanks,
+Irfan
+    protected static class TableRecordWriter extends RecordWriter<ImmutableBytesWritable, Put> {
+        ...
+        ...
+        ...
+
+        /**
+        * {@inheritDoc}
+        */
+        @Override
+        public void write(ImmutableBytesWritable key, Put put) throws IOException
+        {
+            byte[] row = put.getRow();
+
+            for (Map.Entry<byte[], List<KeyValue>> familyEntry : put.getFamilyMap().entrySet()) {
+                byte[] family = familyEntry.getKey();
+
+                for (KeyValue keyValue : familyEntry.getValue()) {
+                    byte[] qualifier = keyValue.getQualifier();
+
+                    long amount = Bytes.toLong(keyValue.getValue());
+
+                    this.table_.incrementColumnValue(row, family, qualifier, amount);
+                }
+            }
+        }
+    }
+------
+    protected static class TableRecordWriter2 extends RecordWriter<ImmutableBytesWritable, Put> {
+        ...
+        ...
+        ...
+
+        /**
+        * {@inheritDoc}
+        */
+        public void write(ImmutableBytesWritable key, Put put) throws IOException {
+            this.table_.put(new Put(put));
+        }
+    }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+0.20.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Andrew Purtell
+Create date:
+20/Jun/09 19:16
+Update date:
+21/Jan/11 05:38
+Resolved date:
+22/Jun/09 18:36

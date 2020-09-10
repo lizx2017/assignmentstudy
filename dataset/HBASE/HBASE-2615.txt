@@ -1,0 +1,55 @@
+Summary:
+M/R on bulk imported tables
+Description:
+We are bulk importing using loadtable.rb and running M/R jobs using HBase as input.
+We're taking the following steps:
+1a. Load HBase with a M/R job using the normal API.
+OR
+1b. Load HBase with bulk import.
+THEN
+2a. Using the shell, do a "count" over the table.
+OR
+2b. Run a M/R job that scans the whole HBase table (and nothing else).
+Of the 4 combos, 3 are fine: 1a+2a, 1a+2b, 1b+2a. We're having trouble with 1b+2b. When we run the M/R job, it doesn't seem to read in any records, but there are no explicit errors in either the Hadoop or HBase logs.
+Any ideas on what might be wrong with the bulk import to cause this problem? We confirmed this problem exists in both hbase-0.20.3 and hbase-0.20.4.
+We have created dummy data (see attached). This is the test case:
+After loading the data into HDFS. In hbase shell:
+create 'tiny', 'values'
+Execute:
+{HBASE-HOME}/bin/hbase org.jruby.Main {HBASE-HOME}
+/bin/loadtable.rb tiny tinytable
+Then run the simple row counter
+{HADOOP-HOME}
+/bin/hadoop jar
+{HBASE-HOME}
+/hbase-0.20.x.jar rowcounter tiny values
+Notice that map input records read is always zero. We confirmed that other mapreduce jobs do not execute the map function at all, always returning 0 records.
+We also ran a major_compaction of all Hbase tables (.META. and .ROOT. as well) but this did not fix the problem.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.3, 0.20.4
+Fix_version:
+0.20.5, 0.90.0
+Component:
+None
+Label:
+None
+Environment:
+java
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Azza Abouzeid
+Create date:
+26/May/10 16:40
+Update date:
+12/Oct/12 06:15
+Resolved date:
+06/Jun/10 06:51

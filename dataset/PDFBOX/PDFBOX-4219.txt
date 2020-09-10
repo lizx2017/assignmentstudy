@@ -1,0 +1,93 @@
+Summary:
+Multithreading problem when rendering several documents with Standard 14 fonts
+Description:
+I get rendering errors and sometimes exceptions in my regression tests. It is somehow related to several threads initializing standard 14 fonts. It happens only about every 25 times in a test program I created. That one renders 2 files in 4 threads and compares the result with the existing result.
+My theory is that one thread accesses the naming table and another accesses the glyf table, and both change the stream position. I tried several things in the last months to avoid it, all were unsuccessful and I lost my notes about it last winter due to a static discharge on a usb stick. (Thank you KINGSTON!)
+Here's the output when it doesn't go well:
+11.05.2018 10:54:26.322 WARN  [pool-1-thread-4] org.apache.pdfbox.pdmodel.font.PDType1Font:296 - Using fallback font TimesNewRomanPS-BoldMT for Galliard-Bold
+11.05.2018 10:54:26.323 WARN  [pool-1-thread-2] org.apache.pdfbox.pdmodel.font.PDType1Font:296 - Using fallback font TimesNewRomanPS-BoldMT for Galliard-Bold
+11.05.2018 10:54:26.386 WARN  [pool-1-thread-2] org.apache.pdfbox.pdmodel.font.PDType1Font:296 - Using fallback font TimesNewRomanPSMT for Galliard-Roman
+11.05.2018 10:54:26.421 WARN  [pool-1-thread-4] org.apache.pdfbox.pdmodel.font.PDType1Font:296 - Using fallback font TimesNewRomanPSMT for Galliard-Roman
+11.05.2018 10:54:26.697 WARN  [pool-1-thread-2] org.apache.pdfbox.pdmodel.font.PDType1Font:296 - Using fallback font TimesNewRomanPS-ItalicMT for Galliard-Italic
+11.05.2018 10:54:26.818 WARN  [pool-1-thread-4] org.apache.pdfbox.pdmodel.font.PDType1Font:296 - Using fallback font TimesNewRomanPS-ItalicMT for Galliard-Italic
+C:\Users\XXX\Documents\Java\PDFBox reactor\pdfbox\src\test\resources\input\rendering\166292-fi-ligature.pdf
+oh oh
+C:\Users\XXX\Documents\Java\PDFBox reactor\pdfbox\src\test\resources\input\rendering\166292-fi-ligature.pdf
+oh oh
+C:\Users\XXX\Documents\Java\PDFBox reactor\pdfbox\src\test\resources\input\rendering\014261-p3-ccitt.pdf
+oh oh
+C:\Users\XXX\Documents\Java\PDFBox reactor\pdfbox\src\test\resources\input\rendering\014261-p3-ccitt.pdf
+oh oh
+done
+Sometimes in the past I got exceptions:
+Exception in thread "Thread-2" java.lang.RuntimeException: java.io.IOException: Unexpected end of TTF stream reached
+ at pdfboxpageimageextraction.MulithreadTest.run(MulithreadTest.java:87)
+Caused by: java.io.IOException: Unexpected end of TTF stream reached
+ at org.apache.fontbox.ttf.TTFDataStream.read(TTFDataStream.java:274)
+ at org.apache.fontbox.ttf.TTFDataStream.readString(TTFDataStream.java:91)
+ at org.apache.fontbox.ttf.NamingTable.read(NamingTable.java:113)
+ at org.apache.fontbox.ttf.TrueTypeFont.readTable(TrueTypeFont.java:373)
+ at org.apache.fontbox.ttf.TrueTypeFont.getTable(TrueTypeFont.java:163)
+ at org.apache.fontbox.ttf.TrueTypeFont.getNaming(TrueTypeFont.java:179)
+ at org.apache.fontbox.ttf.TrueTypeFont.getName(TrueTypeFont.java:471)
+ at org.apache.pdfbox.pdmodel.font.PDType1Font.<init>(PDType1Font.java:296)
+ at org.apache.pdfbox.pdmodel.font.PDFontFactory.createFont(PDFontFactory.java:62)
+ at org.apache.pdfbox.pdmodel.PDResources.getFont(PDResources.java:143)
+ at org.apache.pdfbox.contentstream.operator.text.SetFontAndSize.process(SetFontAndSize.java:60)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processOperator(PDFStreamEngine.java:853)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processStreamOperators(PDFStreamEngine.java:506)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processStream(PDFStreamEngine.java:478)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processPage(PDFStreamEngine.java:156)
+ at org.apache.pdfbox.rendering.PageDrawer.drawPage(PageDrawer.java:258)
+ at org.apache.pdfbox.rendering.PDFRenderer.renderImage(PDFRenderer.java:225)
+ at org.apache.pdfbox.rendering.PDFRenderer.renderImageWithDPI(PDFRenderer.java:164)
+Sometimes I get an AIOOBE:
+Exception in thread "Thread-1" java.lang.ArrayIndexOutOfBoundsException
+ at org.apache.fontbox.ttf.BufferedRandomAccessFile.read(BufferedRandomAccessFile.java:158)
+ at org.apache.fontbox.ttf.RAFDataStream.read(RAFDataStream.java:167)
+ at org.apache.fontbox.ttf.TTFDataStream.read(TTFDataStream.java:264)
+ at org.apache.fontbox.ttf.TTFDataStream.readString(TTFDataStream.java:91)
+ at org.apache.fontbox.ttf.NamingTable.read(NamingTable.java:113)
+ at org.apache.fontbox.ttf.TrueTypeFont.readTable(TrueTypeFont.java:373)
+ at org.apache.fontbox.ttf.TrueTypeFont.getTable(TrueTypeFont.java:163)
+ at org.apache.fontbox.ttf.TrueTypeFont.getNaming(TrueTypeFont.java:179)
+ at org.apache.fontbox.ttf.TrueTypeFont.getName(TrueTypeFont.java:471)
+ at org.apache.pdfbox.pdmodel.font.PDType1Font.<init>(PDType1Font.java:296)
+ at org.apache.pdfbox.pdmodel.font.PDFontFactory.createFont(PDFontFactory.java:62)
+ at org.apache.pdfbox.pdmodel.PDResources.getFont(PDResources.java:143)
+ at org.apache.pdfbox.contentstream.operator.text.SetFontAndSize.process(SetFontAndSize.java:60)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processOperator(PDFStreamEngine.java:853)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processStreamOperators(PDFStreamEngine.java:506)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processStream(PDFStreamEngine.java:478)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processPage(PDFStreamEngine.java:156)
+ at org.apache.pdfbox.rendering.PageDrawer.drawPage(PageDrawer.java:258)
+ at org.apache.pdfbox.rendering.PDFRenderer.renderImage(PDFRenderer.java:225)
+ at org.apache.pdfbox.rendering.PDFRenderer.renderImageWithDPI(PDFRenderer.java:164)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.9, 3.0.0 PDFBox
+Fix_version:
+2.0.12, 3.0.0 PDFBox
+Component:
+FontBox, Rendering
+Label:
+multi-threading mult
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+11/May/18 09:06
+Update date:
+05/Oct/18 04:53
+Resolved date:
+26/Aug/18 09:17

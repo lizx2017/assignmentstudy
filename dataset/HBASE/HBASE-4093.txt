@@ -1,0 +1,126 @@
+Summary:
+When verifyAndAssignRoot throws exception, the deadServers state cannot be changed
+Description:
+When verifyAndAssignRoot throw exception, The deadServers state can not be changed.
+The Hmaster log has a lot of 'Not running balancer because processing dead regionserver(s): []' information.
+HMaster log:
+2011-07-09 01:38:31,820 INFO org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: Closed path hdfs://162.2.16.6:9000/hbase/Htable_UFDR_035/fe7e51c0a74fac096cea8cdb3c9497a6/recovered.edits/0000000000204525422 (wrote 8 edits in 61583ms)
+2011-07-09 01:38:31,836 ERROR org.apache.hadoop.hbase.master.MasterFileSystem: Failed splitting hdfs://162.2.16.6:9000/hbase/.logs/162-2-6-187,20020,1310107719056
+java.io.IOException: hdfs://162.2.16.6:9000/hbase/.logs/162-2-6-187,20020,1310107719056/162-2-6-187%3A20020.1310143885352, entryStart=1878997244, pos=1879048192, end=2003890606, edit=80274
+at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:39)
+at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:27)
+at java.lang.reflect.Constructor.newInstance(Constructor.java:513)
+at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.addFileInfoToException(SequenceFileLogReader.java:244)
+at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.next(SequenceFileLogReader.java:200)
+at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.next(SequenceFileLogReader.java:172)
+at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.parseHLog(HLogSplitter.java:429)
+at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.splitLog(HLogSplitter.java:262)
+at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.splitLog(HLogSplitter.java:188)
+at org.apache.hadoop.hbase.master.MasterFileSystem.splitLog(MasterFileSystem.java:201)
+at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.process(ServerShutdownHandler.java:114)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:156)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Caused by: java.io.IOException: Could not obtain block: blk_1310107715558_225636 file=/hbase/.logs/162-2-6-187,20020,1310107719056/162-2-6-187%3A20020.1310143885352
+at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.chooseDataNode(DFSClient.java:2491)
+at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.blockSeekTo(DFSClient.java:2256)
+at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.read(DFSClient.java:2441)
+at java.io.DataInputStream.read(DataInputStream.java:132)
+at java.io.DataInputStream.readFully(DataInputStream.java:178)
+at org.apache.hadoop.io.DataOutputBuffer$Buffer.write(DataOutputBuffer.java:63)
+at org.apache.hadoop.io.DataOutputBuffer.write(DataOutputBuffer.java:101)
+at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1984)
+at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1884)
+at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1930)
+at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.next(SequenceFileLogReader.java:198)
+... 10 more
+2011-07-09 01:38:33,052 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [162-2-6-187,20020,1310107719056]
+2011-07-09 01:39:29,946 WARN org.apache.hadoop.hbase.master.CatalogJanitor: Failed scan of catalog table
+java.net.SocketTimeoutException: Call to /162.2.6.187:20020 failed on socket timeout exception: java.net.SocketTimeoutException: 60000 millis timeout while waiting for channel to be ready for read. ch : java.nio.channels.SocketChannel[connected local=/162.2.6.187:38721 remote=/162.2.6.187:20020]
+at org.apache.hadoop.hbase.ipc.HBaseClient.wrapException(HBaseClient.java:802)
+at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:775)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:257)
+at $Proxy6.getRegionInfo(Unknown Source)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.verifyRegionLocation(CatalogTracker.java:424)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.getMetaServerConnection(CatalogTracker.java:272)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMeta(CatalogTracker.java:331)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMetaServerConnectionDefault(CatalogTracker.java:364)
+at org.apache.hadoop.hbase.catalog.MetaReader.fullScan(MetaReader.java:255)
+at org.apache.hadoop.hbase.catalog.MetaReader.fullScan(MetaReader.java:237)
+at org.apache.hadoop.hbase.master.CatalogJanitor.scan(CatalogJanitor.java:116)
+at org.apache.hadoop.hbase.master.CatalogJanitor.chore(CatalogJanitor.java:85)
+at org.apache.hadoop.hbase.Chore.run(Chore.java:66)
+Caused by: java.net.SocketTimeoutException: 60000 millis timeout while waiting for channel to be ready for read. ch : java.nio.channels.SocketChannel[connected local=/162.2.6.187:38721 remote=/162.2.6.187:20020]
+at org.apache.hadoop.net.SocketIOWithTimeout.doIO(SocketIOWithTimeout.java:165)
+at org.apache.hadoop.net.SocketInputStream.read(SocketInputStream.java:155)
+at org.apache.hadoop.net.SocketInputStream.read(SocketInputStream.java:128)
+at java.io.FilterInputStream.read(FilterInputStream.java:116)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection$PingInputStream.read(HBaseClient.java:299)
+at java.io.BufferedInputStream.fill(BufferedInputStream.java:218)
+at java.io.BufferedInputStream.read(BufferedInputStream.java:237)
+at java.io.DataInputStream.readInt(DataInputStream.java:370)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.receiveResponse(HBaseClient.java:539)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.run(HBaseClient.java:477)
+2011-07-09 01:39:29,946 ERROR org.apache.hadoop.hbase.executor.EventHandler: Caught throwable while processing event M_META_SERVER_SHUTDOWN
+java.net.SocketTimeoutException: Call to /162.2.6.187:20020 failed on socket timeout exception: java.net.SocketTimeoutException: 60000 millis timeout while waiting for channel to be ready for read. ch : java.nio.channels.SocketChannel[connected local=/162.2.6.187:38721 remote=/162.2.6.187:20020]
+at org.apache.hadoop.hbase.ipc.HBaseClient.wrapException(HBaseClient.java:802)
+at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:775)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:257)
+at $Proxy6.getRegionInfo(Unknown Source)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.verifyRegionLocation(CatalogTracker.java:424)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.verifyRootRegionLocation(CatalogTracker.java:471)
+at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.verifyAndAssignRoot(ServerShutdownHandler.java:90)
+at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.process(ServerShutdownHandler.java:126)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:156)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Caused by: java.net.SocketTimeoutException: 60000 millis timeout while waiting for channel to be ready for read. ch : java.nio.channels.SocketChannel[connected local=/162.2.6.187:38721 remote=/162.2.6.187:20020]
+at org.apache.hadoop.net.SocketIOWithTimeout.doIO(SocketIOWithTimeout.java:165)
+at org.apache.hadoop.net.SocketInputStream.read(SocketInputStream.java:155)
+at org.apache.hadoop.net.SocketInputStream.read(SocketInputStream.java:128)
+at java.io.FilterInputStream.read(FilterInputStream.java:116)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection$PingInputStream.read(HBaseClient.java:299)
+at java.io.BufferedInputStream.fill(BufferedInputStream.java:218)
+at java.io.BufferedInputStream.read(BufferedInputStream.java:237)
+at java.io.DataInputStream.readInt(DataInputStream.java:370)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.receiveResponse(HBaseClient.java:539)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.run(HBaseClient.java:477)
+2011-07-09 01:40:26,474 DEBUG org.apache.hadoop.hbase.master.ServerManager: Server 162-2-6-187,20020,1310146825674 came back up, removed it from the dead servers list
+2011-07-09 01:40:26,515 INFO org.apache.hadoop.hbase.master.ServerManager: Registering server=162-2-6-187,20020,1310146825674, regionCount=0, userLoad=false
+2011-07-09 01:40:28,410 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=162-2-6-187:20020; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+...
+2011-07-09 01:53:33,052 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): []
+2011-07-09 01:58:33,060 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): []
+2011-07-09 02:03:33,061 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): []
+2011-07-09 02:08:33,061 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): []
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+fulin wang
+Reporter:
+fulin wang
+Create date:
+14/Jul/11 03:22
+Update date:
+19/Jul/11 09:35
+Resolved date:
+19/Jul/11 09:35

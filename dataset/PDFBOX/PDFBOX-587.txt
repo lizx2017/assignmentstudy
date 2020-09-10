@@ -1,0 +1,47 @@
+Summary:
+build script should support building without an internet connection
+Description:
+The build scripts for PDFBox currently depend on having an internet connection in order to build. This should be fixed so that the distribution can be built in cases where no internet connectivity is available.
+The purpose of the connectivity is to download various dependencies. For the most part that is fine. The scripts check for the existence of needed files and if not found retrieve them.
+So for most cases, simply manually pre-populating the /externals, /download and /tools folders with the needed files works just fine.
+The one place where the script still breaks is the dependency on the glyphlist.txt file which it looks for in the /target/classes/Resources folder. Since the initial 'clean' target at the start of the 'dist' build wipes out the 'target' folder, then that dependency never 'exists' and the build script will ALWAYS try to download that file and fail if there is no internet connection.
+The solution is fairly simple: That file should be downloaded first to the /downloads directory and then copied to the /target/classes/Resources directory. That allows you to manually seed the file into the /downloads directory and build without a connection.
+Fixing this in the build.xml script is very straightforward:
+line 115 should change
+from: <property name="adobefiles.glyph.txt" value="${dest.dir}/Resources/glyphlist.txt"/>
+to: <property name="adobefiles.glyph.txt" value="${download.dir}/glyphlist.txt"/>
+line 193 should have the following line inserted
+<copy todir="${dest.dir}/Resources/" file="${adobefiles.glyph.txt}" overwrite="true"/>
+That's it!
+To really do this nicely, it would be nice if all the downloads were first placed into /downloads and then copied to /externals, /tools, etc. , and that all such downloaded files were concisely documented or at least listed out in one place in the script so that one could know what to go retrieve manually.
+But just the above fix would be a major improvement.
+I know we are moving PDFBox to a Maven build, but unfortunately I still need to be able to build within a fairly restrictive environment.
+Thanks.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.8.0-incubator
+Fix_version:
+2.0.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Mel Martinez
+Create date:
+29/Dec/09 22:25
+Update date:
+17/Mar/16 19:07
+Resolved date:
+06/Feb/14 21:17

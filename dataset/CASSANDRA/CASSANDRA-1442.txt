@@ -1,0 +1,67 @@
+Summary:
+Get Range Slices is broken
+Description:
+HI,
+We just recently tried to use 0.6.4 and 0.6.5 in our production environment and
+had some serious problem.
+The getRangeSlices functionality is broken.
+We have a cluster of 5 machines.
+We use getRangeSlices to iterate over all of the keys in a cf (2062 keys total).
+We are using OrderPreservingPartitioner.
+We use getRangeSlices with KeyRange using keys (not tokens).
+If we set the requestBlockCount (aka: KeyRange.setCount()) to a number
+greater than 2062 we get all keys in one shot (all is good).
+If we try to fetch the keys in smaller blocks (requestBlockCount=100)
+we get BAD RESULTS.
+We get only 800 unique keys back.
+We start with (startKey="" and endKey="") then, after each iteration, we use the lastKey to set the startKey for the next page.
+Except on first page, we always skip the first item of the page (knowing that it is a repeat, the last one, of the prior page).
+To get the lastKey we tried two strategies: [1] set the lastKey to the last item in the page, and [2] use String.compareTo to get the largest ley. Neither strategy worked.
+Our keys are strings (obviously the only option in 0.6) that represent numbers.
+Some Sample keys are: (in correct lexi order)
+-1
+11113
+11457
+6831
+7035
+8060
+8839
+------
+This code (without any changes) was working correctly under 0.6.3 (we
+got same response from getRangeSlices if using requestBlockCounts of
+10,000 or 100).
+We tried it under 0.6.4 and 0.6.5 and it stopped working.
+We reverted back to 0.6.3 and (again, without changing the code) it
+started working again.
+------
+I tried inserting all the keys into a test cluster of one (1 machine) and it worked fine.
+So this must be related to how the page is build in a cluster of more than 1 nodes.
+We have a cluster of 5 nodes with replication factor of 3.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.6, 0.7 beta 3
+Component:
+None
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Stu Hood
+Reporter:
+Moleza Moleza
+Create date:
+29/Aug/10 20:18
+Update date:
+16/Apr/19 09:33
+Resolved date:
+09/Oct/10 01:37

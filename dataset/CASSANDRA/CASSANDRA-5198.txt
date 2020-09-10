@@ -1,0 +1,84 @@
+Summary:
+Fix CQL3 loose type validation of constants
+Description:
+This works as it should.
+cqlsh:movies> select * from users where token (username) > token('') ;
+
+ username  | created_date | email | firstname | lastname | password
+-----------+--------------+-------+-----------+----------+----------
+    bsmith |         null |  null |       bob |    smith |     null
+ scapriolo |         null |  null |    stacey | capriolo |     null
+ ecapriolo |         null |  null |    edward | capriolo |     null
+
+cqlsh:movies> select * from users where token (username) > token('bsmith') ;
+
+ username  | created_date | email | firstname | lastname | password
+-----------+--------------+-------+-----------+----------+----------
+ scapriolo |         null |  null |    stacey | capriolo |     null
+ ecapriolo |         null |  null |    edward | capriolo |     null
+
+cqlsh:movies> select * from users where token (username) > token('scapriolo') ;
+
+ username  | created_date | email | firstname | lastname | password
+-----------+--------------+-------+-----------+----------+----------
+ ecapriolo |         null |  null |    edward | capriolo |     null
+But look what happens when you supply numbers into the token function.
+qlsh:movies> select * from users where token (username) > token(0) ;
+ username  | created_date | email | firstname | lastname | password
+-----------+--------------+-------+-----------+----------+----------
+ ecapriolo |         null |  null |    edward | capriolo |     null
+cqlsh:movies> select * from users where token (username) > token(1134314) ;
+
+ username  | created_date | email | firstname | lastname | password
+-----------+--------------+-------+-----------+----------+----------
+    bsmith |         null |  null |       bob |    smith |     null
+ scapriolo |         null |  null |    stacey | capriolo |     null
+ ecapriolo |         null |  null |    edward | capriolo |     null
+
+cqlsh:movies> select * from users where token (username) > token(113431431) ;
+ username  | created_date | email | firstname | lastname | password
+-----------+--------------+-------+-----------+----------+----------
+ scapriolo |         null |  null |    stacey | capriolo |     null
+ ecapriolo |         null |  null |    edward | capriolo |     null
+
+cqlsh:movies> select * from users where token (username) > token(1134) ;
+ username  | created_date | email | firstname | lastname | password
+-----------+--------------+-------+-----------+----------+----------
+ ecapriolo |         null |  null |    edward | capriolo |     null
+cqlsh:movies> select * from users where token (username) > token(1134434) ;
+ username  | created_date | email | firstname | lastname | password
+-----------+--------------+-------+-----------+----------+----------
+ scapriolo |         null |  null |    stacey | capriolo |     null
+This does not make sense to me. The token function is apparently converting integers to strings leading to seemingly unpredictable results.
+However I find this syntax odd, I feel like I should be able to say
+'token(username) > 0 and token(username) < 10' because from a thrift side I can page tokens or I can page keys. In this case, I guess, I am only able to page keys because the token is not returned to the user.
+Is token 0 = ''? How do I arrive at the minimal token for and int column.
+Should the token() function at least be smart enough to reject integers for string columns?
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Edward Capriolo
+Create date:
+30/Jan/13 03:23
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Feb/13 09:53

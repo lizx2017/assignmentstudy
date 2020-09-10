@@ -1,0 +1,36 @@
+Summary:
+GossipTimerTask stops running if an Exception occurs
+Description:
+The GossipTimerTask run() method has a try/catch around its body, but it re-throws all Exceptions as RuntimeExceptions. This causes the GossipTimerTask to no longer run (due to the way the underlying Java Timer implementation works), stopping the periodic gossip status checks.
+Combine this problem with a bug like CASSANDRA-757 (not yet fixed in 0.6.x) and you get into a state where the server keeps running, but gossip is no longer occurring, preventing node addition / removal from happening.
+I see two potential choices:
+1) Log the error but don't re-throw it so that the GossipTimerTask will continue to run on its next interval.
+2) Shutdown the server, since continuing to run without gossip subtly breaks other functionality / knowledge of other nodes.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Wade Simmons
+Create date:
+16/Jul/10 20:29
+Update date:
+16/Apr/19 09:33
+Resolved date:
+18/Jul/10 02:10

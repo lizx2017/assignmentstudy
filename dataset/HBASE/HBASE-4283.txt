@@ -1,0 +1,47 @@
+Summary:
+HBaseAdmin never recovers from restarted cluster
+Description:
+While testing common scenarios that we might encounter I found that HBaseAdmin does not recover from a restarted cluster.
+It turns out HBaseClient.Connection.stop() is send into an endless loop here:
+    // wait until all connections are closed
+    while (!connections.isEmpty()) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException ignored) {
+      }
+    }
+The reason is that PoolMap.remove(k,v) does not remove empty pools, and hence connections.isEmpty() is never true if there ever was any connection in there.
+My fix is to remove the pool from the poolMap when it is empty. (Alternatively one could change PoolMap.isEmpty() to also look inside of all pools and see if their size is 0).
+When I fixed that I noticed that if the master wasn't running when HBaseAdmin is created it also will not recover from that.
+Even creating a new HBaseAdmin from the same Configuration will still use the old stale HConnection.
+In that case a MasterNotRunningException is thrown, which is not handled in HBaseAdmin's constructor.
+The HConnection handling in HConnectionManager is funky. There should never be a closed connection in the HBASE_INSTANCES.
+I might look at that as well but in a separate issue.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Lars Hofhansl
+Create date:
+29/Aug/11 22:29
+Update date:
+20/Nov/15 11:52
+Resolved date:
+31/Aug/11 21:09

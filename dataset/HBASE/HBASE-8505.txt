@@ -1,0 +1,57 @@
+Summary:
+References to split daughters should not be deleted separately from parent META entry
+Description:
+In CatalogJanitor, we clean up the parent regions whose daughters does not have any more references to their parent regions. In doing so, we do two Delete's one for removing the split daughter columns, and the other for removing the row.
+The first one seems unnecessary, and causes NPE from concurrent MetaScanner.
+Stack trace:
+2013-05-07 04:49:40,828|machine|INFO|Exception in thread "main" java.lang.NullPointerException
+2013-05-07 04:49:40,828|machine|INFO|at org.apache.hadoop.hbase.util.Writables.getWritable(Writables.java:103)
+2013-05-07 04:49:40,828|machine|INFO|at org.apache.hadoop.hbase.util.Writables.getHRegionInfo(Writables.java:147)
+2013-05-07 04:49:40,829|machine|INFO|at org.apache.hadoop.hbase.client.MetaScanner$BlockingMetaScannerVisitor.processRow(MetaScanner.java:406)
+2013-05-07 04:49:40,829|machine|INFO|at org.apache.hadoop.hbase.client.MetaScanner$TableMetaScannerVisitor.processRow(MetaScanner.java:487)
+2013-05-07 04:49:40,830|machine|INFO|at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:224)
+2013-05-07 04:49:40,830|machine|INFO|at org.apache.hadoop.hbase.client.MetaScanner.access$000(MetaScanner.java:54)
+2013-05-07 04:49:40,830|machine|INFO|at org.apache.hadoop.hbase.client.MetaScanner$1.connect(MetaScanner.java:133)
+2013-05-07 04:49:40,831|machine|INFO|at org.apache.hadoop.hbase.client.MetaScanner$1.connect(MetaScanner.java:130)
+2013-05-07 04:49:40,831|machine|INFO|at org.apache.hadoop.hbase.client.HConnectionManager.execute(HConnectionManager.java:384)
+2013-05-07 04:49:40,831|machine|INFO|at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:130)
+2013-05-07 04:49:40,832|machine|INFO|at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:105)
+2013-05-07 04:49:40,832|machine|INFO|at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:83)
+2013-05-07 04:49:40,832|machine|INFO|at org.apache.hadoop.hbase.client.MetaScanner.allTableRegions(MetaScanner.java:323)
+2013-05-07 04:49:40,833|machine|INFO|at org.apache.hadoop.hbase.client.HTable.getRegionLocations(HTable.java:485)
+2013-05-07 04:49:40,833|machine|INFO|at org.apache.hadoop.hbase.client.HTable.getStartEndKeys(HTable.java:438)
+Master is doing the CatalogJanitor concurrently:
+2013-05-07 04:49:40,636 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted daughters references, qualifier=splitA and qualifier=splitB, from parent IntegrationTestBigLinkedList,\x07\xFB\x98\xB7a\x89\xF5\xE6,1367898577620.4ef1329ff0e8911db998ac8ccd32108d.
+2013-05-07 04:49:40,666 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted region IntegrationTestBigLinkedList,\x07\xFB\x98\xB7a\x89\xF5\xE6,1367898577620.4ef1329ff0e8911db998ac8ccd32108d. from META
+2013-05-07 04:49:40,690 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted daughters references, qualifier=splitA and qualifier=splitB, from parent IntegrationTestBigLinkedList,\x0B\xF8n\xEA\xD3\xAA\xA9\x92,1367898577620.b502376df2623cb0be3f0c1664d799a6.
+2013-05-07 04:49:40,716 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted region IntegrationTestBigLinkedList,\x0B\xF8n\xEA\xD3\xAA\xA9\x92,1367898577620.b502376df2623cb0be3f0c1664d799a6. from META
+2013-05-07 04:49:40,742 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted daughters references, qualifier=splitA and qualifier=splitB, from parent IntegrationTestBigLinkedList,\x17\xF5\x11\xB9\xE3\xDB)\x0C,1367898541729.ec2df58fafb823cec6e793ba35e2241d.
+This is critical for 0.94, but not for 0.95 and trunk due to HBASE-7721.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.94.8, 0.95.1
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Enis Soztutar
+Reporter:
+Enis Soztutar
+Create date:
+08/May/13 00:16
+Update date:
+15/Oct/13 04:46
+Resolved date:
+21/May/13 23:28

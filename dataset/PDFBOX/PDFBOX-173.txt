@@ -1,0 +1,74 @@
+Summary:
+Some suggested COSString improvements
+Description:
+[imported from SourceForge]
+http://sourceforge.net/tracker/index.php?group_id=78314&atid=552832&aid=1502533
+Originally submitted by blmatthews on 2006-06-07 14:26.
+I have 3 suggested improvements to COSString. The
+first two I'd consider bugs, the 3rd is an
+enhancement. I'll attach a diff fixing all three.
+1. COSString.equals compares the underlying byte
+arrays, so a COSString read from a Unicode string in
+a PDF file will appear different than a COSString
+built programmatically, even if they contain the same
+characters.
+For example:
+COSString s1 = new COSString(new byte[]
+{ -2, -1, 0, 115, 0, 116, 0, 114}
+);
+COSString s2 = new COSString("str");
+System.out.println(s1.equals(s2));
+prints false, even though both strings consist of
+just the characters 's', 't', 'r' in that order,
+which I'd argue makes them the same.
+2. COSString.toString just does a new String(getBytes
+()), so if the bytes in the underlying byte array
+form a Unicode string, it will convert every byte to
+a character, including the BOM and 0's. Instead it
+should call getString(), which accounts for Unicode
+strings and converts using an appropriate encoding.
+3. COSString.equals will only return true if the
+object being compared against is another COSString.
+It would be handy if it fell back to comparing
+against obj.toString if the object isn't a COSString.
+In particular, this would let you do things like:
+if (acosstring.equals("hello"))
+This would be a useful change in the other
+COS*.equals methods as well, particularly with
+autoboxing, as you should be able to do things like:
+if (acosinteger.equals(42))
+The attached diff basically runs everything through
+getString(). As that could be relatively expensive, I
+have getString() cache the resulting String.
+[attachment on SourceForge]
+http://sourceforge.net/tracker/download.php?group_id=78314&atid=552832&aid=1502533&file_id=180913
+COSString.diff (text/plain), 2665 bytes
+COSString diffs
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.8.0-incubator
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Anonymous
+Create date:
+07/Jun/06 21:26
+Update date:
+21/Oct/09 09:52
+Resolved date:
+06/Feb/09 06:47

@@ -1,0 +1,35 @@
+Summary:
+Hinted Handoff - related OOM
+Description:
+One of our nodes had collected alot of hints for another node, so when the dead node came back and the row mutations were read back from disk, the node died with an OOM-exception (and kept dying after restart, even with increased heap (from 8G to 12G)). The heap dump contained alot of SuperColumns and our application does not use those (but HH does).
+I'm guessing that each mutation is big so that PAGE_SIZE*<mutation_size> does not fit in memory (will check this tomorrow)
+A simple fix (if my assumption above is correct) would be to reduce the PAGE_SIZE in HintedHandOffManager.java to something like 10 (or even 1?) to reduce the memory pressure. The performance hit would be small since we are doing the hinted handoff throttle delay sleep before sending every mutation anyway (not every page), thoughts?
+If anyone runs in to the same problem, I got the node started again by simply removing the HintsColumnFamily* files.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.7
+Component:
+None
+Label:
+hintedhandoff
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Marcus Eriksson
+Create date:
+13/Dec/11 20:34
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Jan/12 16:04

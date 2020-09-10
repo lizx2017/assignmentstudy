@@ -1,0 +1,62 @@
+Summary:
+cassandra-cli doesn't work with system allowed column family names
+Description:
+Given the following definitions for columns:
+<Keyspaces>
+<Keyspace Name="NGram">
+<KeysCachedFraction>0.01</KeysCachedFraction>
+<ColumnFamily CompareWith="UTF8Type" Name="1GramR"/>
+<ColumnFamily CompareWith="UTF8Type" Name="1GramL"/>
+</Keyspaces>
+The appropriate keyspaces are created an persisteted on startup. When executing a query or a set operation in the cassandra-cli, you end up with the following error:
+******************************************************
+cassandra> get NGram.1GramR['hte']
+line 1:10 extraneous input '1' expecting Identifier
+No such column family: GramR
+******************************************************
+Following the syntax of the grammer we can see the following:
+setStmt
+: K_SET columnFamilyExpr '=' value -> ^(NODE_THRIFT_SET columnFamilyExpr value)
+;
+...
+columnFamilyExpr
+: table DOT columnFamily '[' rowKey ']'
+( '[' a+=columnOrSuperColumn ']'
+('[' a+=columnOrSuperColumn ']')?
+)?
+-> ^(NODE_COLUMN_ACCESS table columnFamily rowKey ($a+)?)
+;
+...
+// syntactic Elements
+Identifier
+: Letter ( Alnum | '_' )*
+;
+There is a mismatch on what is appropriate values for this in the system. So either the restriction needs to be lifted in the cli, or the system must have a way of honoring the names.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.2
+Component:
+None
+Label:
+cassandra-cli
+Environment:
+windows xp
+Attachment number:
+0
+Assignee:
+Eric Evans
+Reporter:
+James Mello
+Create date:
+19/Apr/10 20:34
+Update date:
+16/Apr/19 09:33
+Resolved date:
+24/May/10 16:04

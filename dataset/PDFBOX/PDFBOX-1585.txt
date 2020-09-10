@@ -1,0 +1,70 @@
+Summary:
+org.apache.pdfbox.util.PDFTextStripper.getText() causes thread to block indefinitely
+Description:
+URL of the problematic pdf file is http://www.redalyc.org/pdf/540/54017220.pdf
+My program tries to extract the fulltext of the given pdf file in the following manner:
+String fileName = "/home/sascha/testfile.pdf"                   // 1
+PDDocument pdDoc = PDDocument.load(fileName, true); // 2
+PDFTextStripper text = new PDFTextStripper();             // 3
+String fullText = text.getText(pdDoc);                               // 4
+The call in line 4 causes the thread to block indefinitely (runs now for more than two days without making any progress). The file is stored in a local file system (no network interaction occurs).
+jstack indicates that the thread is not deadlocked:
+"main" prio=10 tid=0x000000004187d800 nid=0x6ed8 runnable [0x00007f9e28e56000]
+   java.lang.Thread.State: RUNNABLE
+        at java.io.BufferedInputStream.fill(BufferedInputStream.java:218)
+        at java.io.BufferedInputStream.read(BufferedInputStream.java:237)
+        - locked <0x00000007d73a84a0> (a java.io.BufferedInputStream)
+        at java.io.FilterInputStream.read(FilterInputStream.java:66)
+        at java.io.PushbackInputStream.read(PushbackInputStream.java:122)
+        at org.apache.pdfbox.io.PushBackInputStream.read(PushBackInputStream.java:91)
+        at org.apache.pdfbox.pdfparser.BaseParser.parseCOSHexString(BaseParser.java:1006)
+        at org.apache.pdfbox.pdfparser.BaseParser.parseCOSString(BaseParser.java:808)
+        at org.apache.pdfbox.pdfparser.PDFStreamParser.parseNextToken(PDFStreamParser.java:260)
+        at org.apache.pdfbox.pdfparser.PDFStreamParser.access$000(PDFStreamParser.java:46)
+        at org.apache.pdfbox.pdfparser.PDFStreamParser$1.tryNext(PDFStreamParser.java:182)
+        at org.apache.pdfbox.pdfparser.PDFStreamParser$1.hasNext(PDFStreamParser.java:194)
+        at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:255)
+        at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:235)
+        at org.apache.pdfbox.util.operator.Invoke.process(Invoke.java:67)
+        at org.apache.pdfbox.util.PDFStreamEngine.processOperator(PDFStreamEngine.java:554)
+        at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:268)
+        at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:235)
+        at org.apache.pdfbox.util.operator.Invoke.process(Invoke.java:67)
+        at org.apache.pdfbox.util.PDFStreamEngine.processOperator(PDFStreamEngine.java:554)
+        at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:268)
+        at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:235)
+        at org.apache.pdfbox.util.PDFStreamEngine.processStream(PDFStreamEngine.java:215)
+        at org.apache.pdfbox.util.PDFTextStripper.processPage(PDFTextStripper.java:455)
+        at org.apache.pdfbox.util.PDFTextStripper.processPages(PDFTextStripper.java:379)
+        at org.apache.pdfbox.util.PDFTextStripper.writeText(PDFTextStripper.java:335)
+        at org.apache.pdfbox.util.PDFTextStripper.getText(PDFTextStripper.java:254)
+        at de.kobv.ked.extraction.FulltextExtraction.getFulltext(FulltextExtraction.java:65)
+Any idea or advice on how to fix that problem? Is it possible to set up a timeout for the extraction operation?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.1
+Fix_version:
+1.8.4, 2.0.0
+Component:
+Swing GUI, (1)
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Sascha Szott
+Create date:
+29/Apr/13 09:41
+Update date:
+31/Jan/14 06:46
+Resolved date:
+06/Dec/13 21:05

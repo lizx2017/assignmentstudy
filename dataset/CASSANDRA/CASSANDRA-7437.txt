@@ -1,0 +1,37 @@
+Summary:
+Ensure writes have completed after dropping a table, before recycling commit log segments (CASSANDRA-7437)
+Description:
+I've noticed on unit test output that there are still assertions being raised here, so I've taken a torch to the code path to make damned certain it cannot happen in future
+We now wait for all running reads on a column family or writes on the keyspace during a dropCf call
+We wait for all appends to the prior commit log segments before recycling them
+We pass the list of dropped Cfs into the CL.forceRecycle call so that they can be markedClean definitely after they have been marked finished
+Finally, to prevent any possibility of this still happening causing any negative consequences, I've suppressed the assertion in favour of an error log message, as the assertion would break correct program flow for the drop and potentially result in undefined behaviour
+(in actuality there is the slightest possibility still of a race condition on read of a secondary index that causes a repair driven write, but this is a really tiny race window, as I force wait for all reads after unlinking the CF, so it would have to be a read that grabbed the CFS reference before it was dropped, but hadn't quite started its read op yet). In fact this is also safe, as these modifications all grab a write op from the Keyspace, which has to happen before they get the CFS, and also because we drop the data before waiting for reads to finish on the CFS.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.0
+Component:
+None
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Benedict
+Create date:
+23/Jun/14 20:13
+Update date:
+16/Apr/19 09:31
+Resolved date:
+27/Aug/14 15:08

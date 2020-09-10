@@ -1,0 +1,40 @@
+Summary:
+deletes w/ many column qualifiers overwhelm Region Server
+Description:
+Execution of Deletes constructed with thousands of calls to Delete.deleteColumn(family, qualifier) are very expensive and slow.
+On our (quiet) cluster, a Delete w/ 20k qualifiers took about 13s to complete (as measured by client).
+When 10 such Deletes were sent to the cluster via HTable.delete(List<Delete>), one of RegionServers ended up w/ 5 of the requests and became 100% CPU utilized for about 1 hour.
+This lead to the client timing out after 20min (2min x 10 retries). In one case, the client was able to fill the RPC callqueue and received the following error:
+  Failed all from region=<region>,hostname=<host>, port=<port> java.util.concurrent.ExecutionException: java.io.IOException: Call queue is full, is ipc.server.max.callqueue.size too small?
+Based on feedback (http://search-hadoop.com/m/yITsc1WcDWP), I switched to Delete.deleteColumn(family, qual, timestamp) where timestamp came from KeyValue retrieved from scan based on domain objects. This version of the delete ran in about 500ms.
+User group thread titled "RS unresponsive after series of deletes" has related logs and stacktraces.
+Link to thread: http://search-hadoop.com/m/RmIyr1WcDWP
+Here is the stack dump of region server: http://pastebin.com/8y5x4xU7
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+0.94.0
+Fix_version:
+None
+Component:
+Performance, (1)
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ted Tuttle
+Create date:
+21/Jun/12 18:11
+Update date:
+21/Jun/12 18:47
+Resolved date:
+

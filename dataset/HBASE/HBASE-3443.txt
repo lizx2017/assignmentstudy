@@ -1,0 +1,55 @@
+Summary:
+ICV optimization to look in memstore first and then store files (HBASE-3082) does not work when deletes are in the mix
+Description:
+For incrementColumnValue() HBASE-3082 adds an optimization to check memstores first, and only if not present in the memstore then check the store files. In the presence of deletes, the above optimization is not reliable.
+If the column is marked as deleted in the memstore, one should not look further into the store files. But currently, the code does so.
+Sample test code outline:
+admin.createTable(desc)
+
+table = HTable.new(conf, tableName)
+
+table.incrementColumnValue(Bytes.toBytes("row"), cf1name, Bytes.toBytes("column"), 5);
+
+admin.flush(tableName)
+sleep(2)
+
+del = Delete.new(Bytes.toBytes("row"))
+table.delete(del)
+
+table.incrementColumnValue(Bytes.toBytes("row"), cf1name, Bytes.toBytes("column"), 5);
+
+get = Get.new(Bytes.toBytes("row"))
+keyValues = table.get(get).raw()
+keyValues.each do |keyValue|
+  puts "Expect 5; Got Value=#{Bytes.toLong(keyValue.getValue())}";
+end
+The above prints:
+Expect 5; Got Value=10
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.0, (8)
+Fix_version:
+0.94.0, 0.95.0
+Component:
+regionserver
+Label:
+corruption
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+13/Jan/11 23:18
+Update date:
+18/Sep/13 22:13
+Resolved date:
+12/Apr/12 17:46

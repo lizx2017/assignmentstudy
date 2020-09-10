@@ -1,0 +1,100 @@
+Summary:
+smokeTestRelease.py should retry failed downloads
+Description:
+In the 5.0 RC2 vote thread, Anshum Gupta mentioned that 6 attempts at running the smoke tester against the people.apache.org RC URL all failed because of download failures.
+I had the same problem - my first two attempts also failed because of failed downloads - here's the trace from one of them:
+Traceback (most recent call last):
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/urllib/request.py", line 1248, in do_open
+    h.request(req.get_method(), req.selector, req.data, headers)
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/http/client.py", line 1061, in request
+    self._send_request(method, url, body, headers)
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/http/client.py", line 1099, in _send_request
+    self.endheaders(body)
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/http/client.py", line 1057, in endheaders
+    self._send_output(message_body)
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/http/client.py", line 902, in _send_output
+    self.send(msg)
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/http/client.py", line 840, in send
+    self.connect()
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/http/client.py", line 818, in connect
+    self.timeout, self.source_address)
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/socket.py", line 435, in create_connection
+    raise err
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/socket.py", line 426, in create_connection
+    sock.connect(sa)
+TimeoutError: [Errno 60] Operation timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "dev-tools/scripts/smokeTestRelease.py", line 117, in download
+    fIn = urllib.request.urlopen(urlString)
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/urllib/request.py", line 156, in urlopen
+    return opener.open(url, data, timeout)
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/urllib/request.py", line 469, in open
+    response = self._open(req, data)
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/urllib/request.py", line 487, in _open
+    '_open', req)
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/urllib/request.py", line 447, in _call_chain
+    result = func(*args)
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/urllib/request.py", line 1268, in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+  File "/Users/sarowe/homebrew/Cellar/python3/3.3.2/Frameworks/Python.framework/Versions/3.3/lib/python3.3/urllib/request.py", line 1251, in do_open
+    raise URLError(err)
+urllib.error.URLError: <urlopen error [Errno 60] Operation timed out>
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "dev-tools/scripts/smokeTestRelease.py", line 1523, in <module>
+    main()
+  File "dev-tools/scripts/smokeTestRelease.py", line 1468, in main
+    smokeTest(c.java, c.url, c.revision, c.version, c.tmp_dir, c.is_signed, ' '.join(c.test_args))
+  File "dev-tools/scripts/smokeTestRelease.py", line 1517, in smokeTest
+    checkMaven(baseURL, tmpDir, svnRevision, version, isSigned)
+  File "dev-tools/scripts/smokeTestRelease.py", line 1012, in checkMaven
+    crawl(artifacts[project], artifactsURL, targetDir)
+  File "dev-tools/scripts/smokeTestRelease.py", line 1280, in crawl
+    crawl(downloadedFiles, subURL, path, exclusions)
+  File "dev-tools/scripts/smokeTestRelease.py", line 1280, in crawl
+    crawl(downloadedFiles, subURL, path, exclusions)
+  File "dev-tools/scripts/smokeTestRelease.py", line 1283, in crawl
+    download(text, subURL, targetDir, quiet=True)
+  File "dev-tools/scripts/smokeTestRelease.py", line 139, in download
+    raise RuntimeError('failed to download url "%s"' % urlString) from e
+RuntimeError: failed to download url "http://people.apache.org/~anshum/staging_area/lucene-solr-5.0.0-RC2-rev1658469//lucene/maven/org/apache/lucene/lucene-analyzers-uima/5.0.0/lucene-analyzers-uima-5.0.0.jar.asc"
+I did a recursive download of the RC2 folder on people.apache.org using wget, and there were three download failures, which wget auto-retried, and succeeded in each case on the second attempt - two of these were timeouts and the third was a reset connection:
+HTTP request sent, awaiting response... No data received.
+Retrying.
+[...]
+HTTP request sent, awaiting response... Read error (Connection reset by peer) in headers.
+Retrying.
+I think we should just automatically retry all failed downloads once.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+5.2, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Steve Rowe
+Reporter:
+Steve Rowe
+Create date:
+10/Feb/15 03:16
+Update date:
+27/Sep/16 14:52
+Resolved date:
+27/Sep/16 14:52

@@ -1,0 +1,34 @@
+Summary:
+DROP ROLE shouldn't cache information about non-existent roles
+Description:
+DropRoleStatement#checkAccess involves a check of the target role's superuser status in order to ensure that only superusers can drop another with su privileges.
+When used in conjunction with IF EXISTS, this causes a cache entry for a non-existent role to be inserted into the roles cache as Roles#hasSuperuserStatus goes via the cache. RolesCache is a map from a single role to the set of roles of which it has transitively been granted (basically a map of RoleResource -> Set<RoleResource>). So in this case an empty set is cached for the role.
+This can be problematic when the DROP ROLE IF EXISTS is followed by a CREATE ROLE as until the cache entry expires any authorization request for that role will use the cache to fetch the set of roles that need to be included in the permission check. Finding an empty set, all authz checks will result in failure. This pattern is particularly common in automated tests.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Sam Tunnicliffe
+Create date:
+14/Apr/15 17:37
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/May/15 19:32

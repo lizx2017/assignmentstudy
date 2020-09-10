@@ -1,0 +1,34 @@
+Summary:
+LazilyCompactedRow accumulates all expired RangeTombstones
+Description:
+LazilyCompactedRow initializes a ColumnIndex.Builder to use its RangeTombstone.Tracker, but it only calls update() with a RT argument, never an atom. The Tracker only ever adds if it receives a RT, never removes. So all the RT ever seen for the partition (that have expired) remain in memory until the compaction completes. To make matters worse, this then forces a linear scan of all of these RT for each live cell we add, so this extra load hangs around for a long time, and compactions stall.
+This issue is biting one of our users badly (at least, it seems likely to be this issue), and there may be others. This user is not even making use of RT extensively themselves, only collections (presumably with a complete overwrite of the contents of the collection, resulting in a RT being generated).
+Probably the best solution is to make the RT addition itself remove any already present that are no longer helpful.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.16, 2.1.6, 2.2.0 rc1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Benedict
+Create date:
+26/May/15 19:38
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Jun/15 13:24

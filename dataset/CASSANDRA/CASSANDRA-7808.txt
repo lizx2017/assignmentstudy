@@ -1,0 +1,47 @@
+Summary:
+LazilyCompactedRow incorrectly handles row tombstones
+Description:
+LazilyCompactedRow doesn’t handle row tombstones correctly, leading to an AssertionError (CASSANDRA-4206) in some cases, and the row tombstone being incorrectly dropped in others. It looks like this was introduced by CASSANDRA-5677.
+To reproduce an AssertionError:
+1. Hack a really small return value for DatabaseDescriptor.getInMemoryCompactionLimit() like 10 bytes to force large row compaction
+2. Create a column family with gc_grace = 10
+3. Insert a few columns in one row
+4. Call nodetool flush
+5. Delete the row
+6. Call nodetool flush
+7. Wait 10 seconds
+8. Call nodetool compact and it will fail
+To reproduce the row tombstone being dropped, do the same except, after the delete (in step 5), insert a column that sorts before the ones you inserted in step 3. E.g. if you inserted b, c, d in step 3, insert a now. After the compaction, which now succeeds, the full row will be visible, rather than just a.
+The problem is two fold. Firstly, LazilyCompactedRow.Reducer.reduce() and getReduce() incorrectly call container.clear(). This clears the columns (as intended) but also removes the deletion times from container. This means no further columns are deleted if they are annihilated by the row tombstone.
+Secondly, after the second pass, LazilyCompactedRow.isEmpty() is called which calls
+ColumnFamilyStore.removeDeletedCF(emptyColumnFamily, controller.gcBefore(key.getToken()))
+which unfortunately removes the last deleted time from emptyColumnFamily if it is earlier than gcBefore. Since this is only called after the second pass, the second pass doesn’t remove any columns that are removed by the row tombstone whereas the first pass removes just the first one.
+This is pretty serious - no large rows can ever be compacted and row tombstones can go missing.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.19, 2.0.11, 2.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Richard Low
+Reporter:
+Richard Low
+Create date:
+21/Aug/14 00:40
+Update date:
+16/Apr/19 09:31
+Resolved date:
+26/Aug/14 14:20

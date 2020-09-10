@@ -1,0 +1,54 @@
+Summary:
+[HBase Client]: Improve client to retry if master is down when requesting getHTableDescriptor
+Description:
+In our rolling upgrade testing, running ImportTsv failed in the job submission phase when the master was down. This was when the master was failing over to the backup master. In this case, a retry would have been helpful and made sure that the job would get submitted.
+A good solution would be to refresh the master information before placing the call to getHTableDescriptor.
+Command:
+ sudo -u hbase hbase org.apache.hadoop.hbase.mapreduce.ImportTsv -Dimporttsv.columns=HBASE_ROW_KEY,c1,c2,c3 -Dimporttsv.bulk.output=/user/hbase/storeFiles2_2/import2_table1369439156 import2_table1369439156 /user/hbase/tsv2
+Here is the stack trace:
+ 13/05/24 16:55:49 INFO compress.CodecPool: Got brand-new compressor [.deflate]
+16:45:44  Exception in thread "main" java.lang.reflect.UndeclaredThrowableException
+16:45:44   at $Proxy7.getHTableDescriptors(Unknown Source)
+16:45:44   at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getHTableDescriptor(HConnectionManager.java:1861)
+16:45:44   at org.apache.hadoop.hbase.client.HTable.getTableDescriptor(HTable.java:440)
+16:45:44   at org.apache.hadoop.hbase.mapreduce.HFileOutputFormat.configureCompression(HFileOutputFormat.java:458)
+16:45:44   at org.apache.hadoop.hbase.mapreduce.HFileOutputFormat.configureIncrementalLoad(HFileOutputFormat.java:375)
+16:45:44   at org.apache.hadoop.hbase.mapreduce.ImportTsv.createSubmittableJob(ImportTsv.java:280)
+16:45:44   at org.apache.hadoop.hbase.mapreduce.ImportTsv.main(ImportTsv.java:424)
+16:45:44  Caused by: java.io.IOException: Call to hbase-rolling-6.ent.cloudera.com/10.20.186.99:22001 failed on local exception: java.io.EOFException
+16:45:44   at org.apache.hadoop.hbase.ipc.HBaseClient.wrapException(HBaseClient.java:1030)
+16:45:44   at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:999)
+16:45:44   at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Invoker.invoke(WritableRpcEngine.java:86)
+16:45:44   ... 7 more
+16:45:44  Caused by: java.io.EOFException
+16:45:44   at java.io.DataInputStream.readInt(DataInputStream.java:375)
+16:45:44   at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.receiveResponse(HBaseClient.java:646)
+16:45:44   at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.run(HBaseClient.java:580)
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Not A Problem
+Affects_version:
+0.94.8
+Fix_version:
+None
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Elliott Clark
+Reporter:
+Aleksandr Shulman
+Create date:
+25/May/13 00:50
+Update date:
+18/Sep/14 21:17
+Resolved date:
+18/Sep/14 21:17

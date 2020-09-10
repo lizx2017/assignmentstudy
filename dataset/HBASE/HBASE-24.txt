@@ -1,0 +1,38 @@
+Summary:
+Scaling: Too many open file handles to datanodes
+Description:
+We've been here before (HADOOP-2341).
+Today the rapleaf gave me an lsof listing from a regionserver. Had thousands of open sockets to datanodes all in ESTABLISHED and CLOSE_WAIT state. On average they seem to have about ten file descriptors/sockets open per region (They have 3 column families IIRC. Per family, can have between 1-5 or so mapfiles open per family – 3 is max... but compacting we open a new one, etc.).
+They have thousands of regions. 400 regions – ~100G, which is not that much – takes about 4k open file handles.
+If they want a regionserver to server a decent disk worths – 300-400G – then thats maybe 1600 regions... 16k file handles. If more than just 3 column families..... then we are in danger of blowing out limits if they are 32k.
+We've been here before with HADOOP-2341.
+A dfsclient that used non-blocking i/o would help applications like hbase (The datanode doesn't have this problem as bad – CLOSE_WAIT on regionserver side, the bulk of the open fds in the rapleaf log, don't have a corresponding open resource on datanode end).
+Could also just open mapfiles as needed, but that'd kill our random read performance and its bad enough already.
+Status:
+RESOLVED
+Priority:
+Blocker
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+11/Jan/08 06:48
+Update date:
+18/Feb/16 22:22
+Resolved date:
+18/Feb/16 22:22

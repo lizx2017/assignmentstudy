@@ -1,0 +1,51 @@
+Summary:
+sstablelevelreset hangs when no sstables are found, Errors on bad ks/table
+Description:
+If sstablelevelreset is run on a table that has no sstables, you get good message about it, but it hangs afterwards:
+~/cassandra $ tools/bin/sstablelevelreset --really-reset foobar bar
+Found no sstables, did you give the correct keyspace/columnfamily?
+If you use a keyspace that does not exist, you get a NullPointerException (and it hangs):
+~/cassandra $ tools/bin/sstablelevelreset --really-reset doesnotexist doesnotexist
+Exception in thread "main" java.lang.NullPointerException
+ at org.apache.cassandra.db.Keyspace.createReplicationStrategy(Keyspace.java:286)
+ at org.apache.cassandra.db.Keyspace.<init>(Keyspace.java:274)
+ at org.apache.cassandra.db.Keyspace.open(Keyspace.java:122)
+ at org.apache.cassandra.db.Keyspace.openWithoutSSTables(Keyspace.java:105)
+ at org.apache.cassandra.tools.SSTableLevelResetter.main(SSTableLevelResetter.java:64)
+If you use a keyspace that exists, but a table that does not exist, you get an IllegalArgumentException (and it hangs):
+~/cassandra $ tools/bin/sstablelevelreset --really-reset foobar doesnotexist
+Exception in thread "main" java.lang.IllegalArgumentException: Unknown keyspace/cf pair (foobar.efefef)
+ at org.apache.cassandra.db.Keyspace.getColumnFamilyStore(Keyspace.java:179)
+ at org.apache.cassandra.tools.SSTableLevelResetter.main(SSTableLevelResetter.java:65)
+It also appears to hang even when it should succeed:
+~/cassandra $ tools/bin/sstablelevelreset --really-reset foobar bar
+Changing level from 0 to 0 on tools/bin/../../data/data/foobar/bar-3ce1dd10136411e48da76b09a6cc3d5a/foobar-bar-ka-1-Data.db
+Additionally, it doesn't raise any errors when run against a non-LCS table.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc5
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Tyler Hobbs
+Create date:
+24/Jul/14 19:56
+Update date:
+16/Apr/19 09:31
+Resolved date:
+25/Jul/14 15:42

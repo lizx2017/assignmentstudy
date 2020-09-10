@@ -1,0 +1,62 @@
+Summary:
+Region would be assigned twice easily with continually killing server and moving region in testing environment
+Description:
+Before assigning region in ServerShutdownHandler#process, it will check whether region is in RIT,
+however, this checking doesn't work as the excepted in the following case:
+1.move region A from server B to server C
+2.kill server B
+3.start server B immediately
+Let's see what happen in the code for the above case
+for step1:
+1.1 server B close the region A,
+1.2 master setOffline for region A,(AssignmentManager#setOffline:this.regions.remove(regionInfo))
+1.3 server C start to open region A.(Not completed)
+for step3:
+master ServerShutdownHandler#process() for server B
+{
+..
+splitlog()
+...
+List<RegionState> regionsInTransition =
+        this.services.getAssignmentManager()
+        .processServerShutdown(this.serverName);
+...
+Skip regions that were in transition unless CLOSING or PENDING_CLOSE
+...
+assign region
+}
+In fact, when running ServerShutdownHandler#process()#this.services.getAssignmentManager().processServerShutdown(this.serverName), region A is in RIT (step1.3 not completed), but the return List<RegionState> regionsInTransition doesn't contain it, because region A has removed from AssignmentManager.regions by AssignmentManager#setOffline in step 1.2
+Therefore, region A will be assigned twice.
+Actually, one server killed and started twice will also easily cause region assigned twice.
+Exclude the above reason, another probability :
+when execute ServerShutdownHandler#process()#MetaReader.getServerUserRegions ,region is included which is in RIT now.
+But after completing MetaReader.getServerUserRegions, the region has been opened in other server and is not in RIT now.
+In our testing environment where balancing,moving and killing are executed periodly, assigning region twice often happens, and it is hateful because it will affect other test cases.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+30/Nov/11 05:58
+Update date:
+20/Nov/15 11:53
+Resolved date:
+02/Dec/11 05:56

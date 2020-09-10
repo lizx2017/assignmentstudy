@@ -1,0 +1,41 @@
+Summary:
+OutOfMemory while signing large documents
+Description:
+While working with large documents, we found some memory issues.
+1. The method close() in the COSDocument, clones the objectpool and does not clean it properly. The cloning in getObjects() cause a OutOfMemory exception.
+2.The COSWriter copy the whole pdf into the memory for signing and does not use BufferedInputStream for the FileInputStream which also has a big performance impact. (PDFBOX-1798)
+3. The cloning of COSStreams cause a OutOfMemory exception
+I used the CreateSignature example with a about 150 MB big document from here:
+https://cdn-reichelt.de/bilder/downloads/reichelt_01-2015_DE_B_HQ.pdf
+Additionaly I add a RandomAccessFile to the PDDocument.load in the CreateSignature class.
+PDDocument doc = PDDocument.load(document,new RandomAccessFile(new File("d:
+temp.bin"), "rw")); (this prevent the OOM for the third case)
+The use of a BuffedInputStream in case two, will increase the signing speed from more than 5 minutes to less than 1 minute.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.7
+Fix_version:
+1.8.8
+Component:
+Parsing, Signing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Thomas Chojecki
+Reporter:
+Thomas Chojecki
+Create date:
+20/Nov/14 15:04
+Update date:
+14/Dec/14 12:55
+Resolved date:
+08/Dec/14 09:11

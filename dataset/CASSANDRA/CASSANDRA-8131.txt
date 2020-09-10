@@ -1,0 +1,74 @@
+Summary:
+Short-circuited query results from collection index query
+Description:
+After watching Jonathan's 2014 summit video, I wanted to give collection indexes a try as they seem to be a fit for a "search by key/values" usage pattern we have in our setup. Doing some test queries that I expect users would do against the table, a short-circuit behavior came up:
+Here's the whole transcript:
+CREATE TABLE by_sets (id int PRIMARY KEY, datakeys set<text>, datavars set<text>);
+CREATE INDEX by_sets_datakeys ON by_sets (datakeys);
+CREATE INDEX by_sets_datavars ON by_sets (datavars);
+INSERT INTO by_sets (id, datakeys, datavars) VALUES (1, {'a'}, {'b'});
+INSERT INTO by_sets (id, datakeys, datavars) VALUES (2, {'c'}, {'d'});
+INSERT INTO by_sets (id, datakeys, datavars) VALUES (3, {'e'}, {'f'});
+INSERT INTO by_sets (id, datakeys, datavars) VALUES (4, {'a'}, {'z'});
+SELECT * FROM by_sets;
+
+ id | datakeys | datavars
+----+----------+----------
+  1 |    {'a'} |    {'b'}
+  2 |    {'c'} |    {'d'}
+  4 |    {'a'} |    {'z'}
+  3 |    {'e'} |    {'f'}
+We then tried this query which short-circuited:
+SELECT * FROM by_sets WHERE datakeys CONTAINS 'a' AND datakeys CONTAINS 'c';
+
+ id | datakeys | datavars
+----+----------+----------
+  1 |    {'a'} |    {'b'}
+  4 |    {'a'} |    {'z'}
+
+(2 rows)
+Instead of receveing 3 rows, which match the datakeys CONTAINS 'a' AND datakeys CONTAINS 'c' we only got the first.
+Doing the same, but with CONTAINS 'c' first, ignores the second AND.
+SELECT * FROM by_sets WHERE datakeys CONTAINS 'c' AND datakeys CONTAINS 'a' ;
+
+ id | datakeys | datavars
+----+----------+----------
+  2 |    {'c'} |    {'d'}
+
+(1 rows)
+Also, on a side-note, I have two indexes on both datakeys and datavars. But when trying to run a query such as:
+select * from by_sets WHERE datakeys CONTAINS 'a' AND datavars CONTAINS 'z';
+code=2200 [Invalid query] message="Cannot execute this query as it might involve data filtering and thus may have unpredictable performance. 
+If you want to execute this query despite the performance unpredictability, use ALLOW FILTERING"
+The second column, after AND (even if I inverse the order) requires an "allow filtering" clause yet the column is indexed an an in-memory "join" of the primary keys of these sets on the coordinator could build up the result.
+Could anyone explain the short-circuit behavior?
+And the requirement for "allow-filtering" on a secondly indexed column?
+If they're not bugs but intended they should be documented better, at least their limitations.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.1
+Component:
+Legacy/CQL
+Label:
+collections cql3 cql
+Environment:
+debian, java
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Catalin Alexandru Zamfir
+Create date:
+16/Oct/14 21:34
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/Oct/14 14:41

@@ -1,0 +1,62 @@
+Summary:
+AssertionError in StorageProxy.getRestrictedRange
+Description:
+On a freshly built cassandra from trunk, I can create a column family with a composite row key using the syntax:
+for instance a standard eventlog CF:
+CREATE TABLE events (
+facility text,
+prio int,
+message text,
+PRIMARY KEY ( (facility, prio) )
+);
+A simple query will then generate exceptions:
+SELECT * FROM events; will yield:
+ERROR 15:33:40,383 Exception in thread Thread[Thrift:1,5,main]
+java.lang.AssertionError: [min(0),max(-8021625467324731134)]
+at org.apache.cassandra.dht.Bounds.<init>(Bounds.java:41)
+at org.apache.cassandra.dht.Bounds.split(Bounds.java:59)
+at org.apache.cassandra.service.StorageProxy.getRestrictedRanges(StorageProxy.java:1073)
+at org.apache.cassandra.service.StorageProxy.getRangeSlice(StorageProxy.java:879)
+at org.apache.cassandra.cql3.statements.SelectStatement.multiRangeSlice(SelectStatement.java:209)
+at org.apache.cassandra.cql3.statements.SelectStatement.executeInternal(SelectStatement.java:128)
+at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:118)
+at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:62)
+at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:107)
+at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:115)
+at org.apache.cassandra.thrift.CassandraServer.execute_cql_query(CassandraServer.java:1521)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3618)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3606)
+at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:184)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+at java.lang.Thread.run(Unknown Source)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 1
+Component:
+None
+Label:
+None
+Environment:
+archlinux, java 1.7
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Pierre-Yves Ritschard
+Create date:
+05/Sep/12 13:35
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/Sep/12 14:42

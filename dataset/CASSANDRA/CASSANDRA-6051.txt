@@ -1,0 +1,54 @@
+Summary:
+Wrong toString() of CQL3Type.Collection
+Description:
+Collection is an inner class of CQL3Type that represents column types that can contain several values (lists, sets, maps). Its toString() is very helpful: it generates a string representation of type that can be used for generating of CREATE TABLE statement.
+Unfortunately this method works incorrectly for maps. Instead of returning something like map<text, int> it returns set<text, int>.
+Here is the appropriate code fragment:
+CQL3Type$Collection.java
+       public String toString()
+        {
+            switch (type.kind)
+            {
+                case LIST:
+                    return "list<" + ((ListType)type).elements.asCQL3Type() + ">";
+                case SET:
+                    return "set<" + ((SetType)type).elements.asCQL3Type() + ">";
+                case MAP:
+                    MapType mt = (MapType)type;
+                    return "set<" + mt.keys.asCQL3Type() + ", " + mt.values.asCQL3Type() + ">";
+            }
+            throw new AssertionError();
+        }
+The obvious bug is here:
+                case MAP:
+                    MapType mt = (MapType)type;
+                    return "set<" + mt.keys.asCQL3Type() + ", " + 
+It should be "map<" + ... instead of "set<" + ...
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.10
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Alexander Radzin
+Create date:
+18/Sep/13 08:35
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/Sep/13 12:27

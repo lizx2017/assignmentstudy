@@ -1,0 +1,68 @@
+Summary:
+org.apache.lucene.store.FSDirectory#create bug
+Description:
+With an existing index:
+If there is already an IndexReader created on this index, then any attempt to
+re-create the index (and therefore a call to FSDirectory#create()) will delete
+all the index files that are not opened, until it finds one and throw an
+exception. On my tests at least the 'segments' and 'deletable' files are
+deleted. Searches on the index are not affected and after a new document
+add/index optimize, everything goes back to normal.
+Problem is, the IndexReader#indexExists methods check for the existence of
+the 'segments' file.
+I can see two solutions to this problem:
+the quick and dirty one: change the test to look for a *.f1 file.
+a cleaner approach is to modify the create method so that it ensures that
+every file in the index is deletable before actually deleting it.
+I have implemented this by attempting to rename all the files prior to delete
+them: if one rename fails, then the file can't be deleted. All the files
+return to their orginal name and no deletion is attempted.
+here's the result of a CVS diff on the latest CVS version:
+diff -r1.19 FSDirectory.java
+163,167c163,187
+< for (int i = 0; i < files.length; i++)
+{ < File file = new File(directory, files[i]); < if (!file.delete()) < throw new IOException("couldn't delete " + files[i]); < }
+—
+> ArrayList deletableFiles = new ArrayList();
+> final String DEL_EXTENSION = ".deleted";
+> String undeletable = null;
+> for (int i = 0; i < files.length; i++)
+{ > File file = new File(directory, files[i]); > File delFile = new File(directory, files[i] + DEL_EXTENSION); > if (!file.renameTo(delFile)) > undeletable = files[i]; > else // rename the file back to its old extension > delFile.renameTo(new File(directory, files[i])); > }
+> if (undeletable == null) {
+> // now really delete all files
+> for (int i = 0; i < files.length; i++) {
+> File file = new File(directory, files[i]);
+> if (!file.delete())
+{ > undeletable = files[i]; > break; > }
+> }
+> }
+> if(undeletable != null)
+{ > // finally, throw the exception! > throw new IOException("couldn't delete " + undeletable); > }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/store
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Thierry Guerin
+Create date:
+07/May/03 21:40
+Update date:
+02/Jun/11 22:04
+Resolved date:
+27/May/06 01:36

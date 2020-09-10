@@ -1,0 +1,55 @@
+Summary:
+Possible null pointer dereference in core/src/java/org/apache/lucene/codecs/blocktree/IntersectTermsEnum.java
+Description:
+Possible null pointer dereference in core/src/java/org/apache/lucene/codecs/blocktree/IntersectTermsEnum.java.
+at line 119. The fr.index may be NULL. This result is based on static analysis tools and the details are shown below:
+*
+106: if (fr.index == null) {
+
+107:      fstReader = null;  // fr.index is Known NULL here.
+    } else {
+      fstReader = fr.index.getBytesReader();
+    }
+
+    // TODO: if the automaton is "smallish" we really
+    // should use the terms index to seek at least to
+    // the initial term and likely to subsequent terms
+    // (or, maybe just fallback to ATE for such cases).
+    // Else the seek cost of loading the frames will be
+    // too costly.
+
+119:    final FST.Arc<BytesRef> arc = fr.index.getFirstArc(arcs[0]); 
+//  fr.index is dereferenced here and fr.index can be NULL if 107 is arrived.
+*
+It is not sure if fr.index can be NULL in runtime.
+We think it is reasonable to fix it by a test if fr.index is NULL and an error handling.
+--------------
+Please Refer to "Trusted Operating System and System Assurance Working Group, TCA, Institute of Software, Chinese Academy of Sciences" in the acknowledgement if applicable.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+7.1
+Fix_version:
+7.3, 8.0
+Component:
+core/codecs
+Label:
+easyfix
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Xiaoshan Sun
+Create date:
+03/Dec/17 09:06
+Update date:
+04/Apr/18 21:52
+Resolved date:
+09/Jan/18 13:46

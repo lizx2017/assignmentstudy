@@ -1,0 +1,50 @@
+Summary:
+Lucene54DocValuesFormat bug when a large segment does not have values
+Description:
+Mike reported getting the following stack trace during a merge:
+java.lang.ArrayIndexOutOfBoundsException: -1
+        at org.apache.lucene.util.packed.DirectMonotonicWriter.flush(DirectMonotonicWriter.java:64)
+        at org.apache.lucene.util.packed.DirectMonotonicWriter.finish(DirectMonotonicWriter.java:126)
+        at org.apache.lucene.codecs.lucene54.Lucene54DocValuesConsumer.writeSparseMissingBitset(Lucene54DocValuesConsumer.java:399)
+        at org.apache.lucene.codecs.lucene54.Lucene54DocValuesConsumer.addNumericField(Lucene54DocValuesConsumer.java:207)
+        at org.apache.lucene.codecs.lucene54.Lucene54DocValuesConsumer.addSortedField(Lucene54DocValuesConsumer.java:614)
+        at org.apache.lucene.codecs.lucene54.Lucene54DocValuesConsumer.addSortedSetField(Lucene54DocValuesConsumer.java:653)
+        at org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat$FieldsWriter.addSortedSetField(PerFieldDocValuesFormat.java:131)
+        at org.apache.lucene.codecs.DocValuesConsumer.mergeSortedSetField(DocValuesConsumer.java:736)
+        at org.apache.lucene.codecs.DocValuesConsumer.merge(DocValuesConsumer.java:219)
+        at org.apache.lucene.index.SegmentMerger.mergeDocValues(SegmentMerger.java:150)
+        at org.apache.lucene.index.SegmentMerger.merge(SegmentMerger.java:105)
+        at org.apache.lucene.index.IndexWriter.mergeMiddle(IndexWriter.java:4075)
+        at org.apache.lucene.index.IndexWriter.merge(IndexWriter.java:3655)
+        at org.apache.lucene.index.ConcurrentMergeScheduler.doMerge(ConcurrentMergeScheduler.java:588)
+        at org.elasticsearch.index.engine.ElasticsearchConcurrentMergeScheduler.doMerge(ElasticsearchConcurrentMergeScheduler.java:95)
+        at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:626)
+This is due to the fact that the segment did not have any values and made DirectMonotonicWriter fail since it assumes at least one value (without explicitly testing it).
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.4, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adrien Grand
+Reporter:
+Adrien Grand
+Create date:
+23/Nov/15 17:12
+Update date:
+09/May/16 18:30
+Resolved date:
+23/Nov/15 19:11

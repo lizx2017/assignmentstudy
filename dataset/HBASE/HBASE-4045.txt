@@ -1,0 +1,53 @@
+Summary:
+[replication] NPE in ReplicationSource when ZK is gone
+Description:
+We got this in production, it killed the replication thread but the server itself was fine and the master kept the logs:
+2011-06-26 16:02:56,092 INFO org.apache.zookeeper.ClientCnxn: Client session timed out, have not heard from server in 26667ms for sessionid 0x22f9dcb30ab01b8, closing socket connection and attempting reconnect
+2011-06-26 16:02:56,213 DEBUG org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher: connection to cluster: 5-0x22f9dcb30ab01b8-0x22f9dcb30ab01b8 Received ZooKeeper Event, type=None, state=Disconnected, path=null
+2011-06-26 16:02:56,213 DEBUG org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher: connection to cluster: 5-0x22f9dcb30ab01b8-0x22f9dcb30ab01b8 Received Disconnected from ZooKeeper, ignoring
+2011-06-26 16:02:56,213 WARN org.apache.hadoop.hbase.replication.ReplicationZookeeper: Cannot get peer's region server addresses
+org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /hbase/rs
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:90)
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:42)
+at org.apache.zookeeper.ZooKeeper.getChildren(ZooKeeper.java:1243)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.listChildrenNoWatch(ZKUtil.java:389)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.listChildrenAndGetAsAddresses(ZKUtil.java:355)
+at org.apache.hadoop.hbase.replication.ReplicationZookeeper.fetchSlavesAddresses(ReplicationZookeeper.java:228)
+at org.apache.hadoop.hbase.replication.ReplicationZookeeper.getSlavesAddresses(ReplicationZookeeper.java:216)
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.chooseSinks(ReplicationSource.java:205)
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.shipEdits(ReplicationSource.java:588)
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.run(ReplicationSource.java:341)2011-06-26 16:02:56,222 ERROR org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Closing source 5 because an error occurred: Uncaught exception during runtime
+java.lang.Exception: java.lang.NullPointerException
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource$1.uncaughtException(ReplicationSource.java:628)
+at java.lang.Thread.dispatchUncaughtException(Thread.java:1874)Caused by: java.lang.NullPointerException
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.chooseSinks(ReplicationSource.java:208)
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.shipEdits(ReplicationSource.java:588)
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.run(ReplicationSource.java:341)
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.90.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+29/Jun/11 22:53
+Update date:
+20/Nov/15 11:53
+Resolved date:
+29/Jun/11 23:17

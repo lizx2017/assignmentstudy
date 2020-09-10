@@ -1,0 +1,50 @@
+Summary:
+Flush Assertion Error - CF size changed during serialization
+Description:
+I have seen the following assert in the logs - there are no other suspicious or unexpected log messages.
+INFO [FlushWriter:9] 2011-11-10 13:08:58,882 Memtable.java (line 237) Writing Memtable-UserData@1388955390(25676955/430716097 serialized/live bytes, 478913 ops)
+ERROR [FlushWriter:9] 2011-11-10 13:08:59,513 AbstractCassandraDaemon.java (line 133) Fatal exception in thread Thread[FlushWriter:9,5,main]
+java.lang.AssertionError: CF size changed during serialization: was 4 initially but 3 written
+at org.apache.cassandra.db.ColumnFamilySerializer.serializeForSSTable(ColumnFamilySerializer.java:94)
+at org.apache.cassandra.db.ColumnFamilySerializer.serializeWithIndexes(ColumnFamilySerializer.java:112)
+at org.apache.cassandra.io.sstable.SSTableWriter.append(SSTableWriter.java:177)
+at org.apache.cassandra.db.Memtable.writeSortedContents(Memtable.java:264)
+at org.apache.cassandra.db.Memtable.access$400(Memtable.java:47)
+at org.apache.cassandra.db.Memtable$4.runMayThrow(Memtable.java:289)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Once the error occurs, further MemtablePostFlusher tasks are blocked:
+nodetool tpstats:
+Pool Name Active Pending Completed Blocked All time blocked
+MemtablePostFlusher 1 18 16 0 0
+It seems that all further flushed for the particular CF (in this case UserData) will also result in the same assertion error. Restarting the node fixes the problem.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.3
+Component:
+None
+Label:
+None
+Environment:
+redhat
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Dan Hendry
+Create date:
+10/Nov/11 21:05
+Update date:
+16/Apr/19 09:32
+Resolved date:
+11/Nov/11 17:56

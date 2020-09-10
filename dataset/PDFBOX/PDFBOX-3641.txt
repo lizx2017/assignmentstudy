@@ -1,0 +1,50 @@
+Summary:
+ICC_ColorSpace usage is not thread safe
+Description:
+Unfortunately ICC_ColorSpace is not thread safe. Even creating Color instances and passing an ICC_ColorSpace can't be considered thread safe. All color conversion calls lazy initialize a value without a memory barrier: https://github.com/openjdk-mirror/jdk/blob/jdk8u/jdk8u/master/src/share/classes/java/awt/color/ICC_ColorSpace.java#L172 . This seems like a bug in Java, but PDFBox triggers it
+PDFBox seems to attempt to initialize colorspaces/colors in a thread-safe way around https://github.com/apache/pdfbox/blob/f419d203ebebc4deb83ba71ef0a0e6bb1ff22c5a/pdfbox/src/main/java/org/apache/pdfbox/pdmodel/graphics/color/PDICCBased.java#L146 , but calls to toRGB/fromRGB aren't synchronized. I think calling all 4 (to/from)(CIEXYZ/RGB) in a locked block should initialize the instances enough to be thread safe.
+The symptoms of this problem look like this (exception formatting due to clojure):
+                     org.apache.pdfbox.rendering.PDFRenderer.renderImageWithDPI               PDFRenderer.java:   94
+                            org.apache.pdfbox.rendering.PDFRenderer.renderImage               PDFRenderer.java:  145
+                                org.apache.pdfbox.rendering.PageDrawer.drawPage                PageDrawer.java:  189
+                    org.apache.pdfbox.contentstream.PDFStreamEngine.processPage           PDFStreamEngine.java:  149
+                  org.apache.pdfbox.contentstream.PDFStreamEngine.processStream           PDFStreamEngine.java:  446
+         org.apache.pdfbox.contentstream.PDFStreamEngine.processStreamOperators           PDFStreamEngine.java:  472
+                org.apache.pdfbox.contentstream.PDFStreamEngine.processOperator           PDFStreamEngine.java:  815
+org.apache.pdfbox.contentstream.operator.color.SetNonStrokingColorSpace.process  SetNonStrokingColorSpace.java:   41
+                            org.apache.pdfbox.pdmodel.PDResources.getColorSpace               PDResources.java:  166
+                            org.apache.pdfbox.pdmodel.PDResources.getColorSpace               PDResources.java:  196
+                   org.apache.pdfbox.pdmodel.graphics.color.PDColorSpace.create              PDColorSpace.java:  182
+                     org.apache.pdfbox.pdmodel.graphics.color.PDICCBased.<init>                PDICCBased.java:   89
+             org.apache.pdfbox.pdmodel.graphics.color.PDICCBased.loadICCProfile                PDICCBased.java:  145
+                                                          java.awt.Color.<init>                     Color.java:  542
+                                            java.awt.color.ICC_ColorSpace.toRGB            ICC_ColorSpace.java:  179
+java.lang.NullPointerException:
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.4
+Fix_version:
+2.0.5, 3.0.0 PDFBox
+Component:
+Rendering
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Mike Kaplinskiy
+Create date:
+28/Dec/16 22:32
+Update date:
+16/Apr/19 17:12
+Resolved date:
+05/Mar/17 08:46

@@ -1,0 +1,47 @@
+Summary:
+Region load balancing by table does not handle the case where a table's region count is lower than the number of the RS in the cluster
+Description:
+When the table's region count is less than the count of region servers, the region balance algorithm will not move the region. For example, the cluster has 100 RS, the table has 50 regions sitting on one RS, they will not be moved to any of the other 99 RS.
+This is because the algorithm did not calculate the under-loaded RS correctly. This is how the algorithm works with the above example:
+avg-regions-per-RS=0.5
+min-RS-per-RS=0
+max-RS-per-RS=1
+when they calculate the under loaded RS, the code is as below. Since regionCount=0, which is always >=min, so it will always skip, therefore, no underloaded RS are found.
+Map<ServerName, Integer> underloadedServers = new HashMap<ServerName, Integer>();
+for (Map.Entry<ServerAndLoad, List<HRegionInfo>> server:
+serversByLoad.entrySet()) {
+int regionCount = server.getKey().getLoad();
+if (regionCount >= min)
+{ break; }
+underloadedServers.put(server.getKey().getServerName(), min - regionCount);
+}
+Later the function returns since underloaded RS size is 0
+if (serverUnerloaded ==0) return regionsToReturn;
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.94.3, 0.95.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Tianying Chang
+Create date:
+29/Oct/12 18:29
+Update date:
+26/Feb/13 08:21
+Resolved date:
+01/Nov/12 05:42

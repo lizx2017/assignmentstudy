@@ -1,0 +1,43 @@
+Summary:
+Filesystems do not guarantee order of directories updates
+Description:
+Currently when index is written to disk the following sequence of events is taking place:
+write segment file
+sync segment file
+write segment file
+sync segment file
+...
+write list of segments
+sync list of segments
+rename list of segments
+sync index directory
+This sequence leads to potential window of opportunity for system to crash after 'rename list of segments' but before 'sync index directory' and depending on exact filesystem implementation this may potentially lead to 'list of segments' being visible in directory while some of the segments are not.
+Solution to this is to sync index directory after all segments have been written. This commit shows idea implemented. I'm fairly certain that I didn't find all the places this may be potentially happening.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+7.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Erick Erickson
+Reporter:
+Nikolay Martynov
+Create date:
+09/Nov/17 03:19
+Update date:
+22/Dec/17 08:32
+Resolved date:
+05/Dec/17 17:59

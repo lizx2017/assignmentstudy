@@ -1,0 +1,69 @@
+Summary:
+clean clearBufferOnFail behavior and deprecate it
+Description:
+The behavior with clearBufferOnFail is very fishy.
+ /**
+   * When you turn {@link #autoFlush} off, you should also consider the
+   * {@link #clearBufferOnFail} option. By default, asynchronous {@link Put}
+   * requests will be retried on failure until successful. However, this can
+   * pollute the writeBuffer and slow down batching performance. Additionally,
+   * you may want to issue a number of Put requests and call
+   * {@link #flushCommits()} as a barrier. In both use cases, consider setting
+   * clearBufferOnFail to true to erase the buffer after {@link #flushCommits()}
+   * has been called, regardless of success.
+   *
+   * @param autoFlush
+   *          Whether or not to enable 'auto-flush'.
+   * @param clearBufferOnFail
+   *          Whether to keep Put failures in the writeBuffer
+   * @see #flushCommits
+   */
+  public void setAutoFlush(boolean autoFlush, boolean clearBufferOnFail) {
+    this.autoFlush = autoFlush;
+    this.clearBufferOnFail = autoFlush || clearBufferOnFail;  <============ yo man
+  }
+  public void setAutoFlush(boolean autoFlush) {
+    setAutoFlush(autoFlush, autoFlush); <============ more yo
+  }
+So by default, a HTable has
+autoflush == true
+clearBufferOnFail == true
+BUT, if you call setAutoFlush(false), you have
+autoflush == false
+clearBufferOnFail == false
+So:
+you're setting two parameters instead of only one, without being told so.
+a side effect is that failed operations will be tried twice:
+one in the standard process
+one in the table close, as we're flushing the buffer again
+I would like to:
+deprecate clearBufferOnFail.
+deprecate setAutoFlush(boolean), to make things clear about what we're doing.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.96.0
+Fix_version:
+0.98.0, 0.96.0
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Nicolas Liochon
+Create date:
+12/Sep/13 09:24
+Update date:
+20/Nov/15 11:56
+Resolved date:
+16/Sep/13 20:08

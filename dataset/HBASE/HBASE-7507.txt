@@ -1,0 +1,59 @@
+Summary:
+Make memstore flush be able to retry after exception
+Description:
+We will abort regionserver if memstore flush throws exception.
+I thinks we could do retry to make regionserver more stable because file system may be not ok in a transient time. e.g. Switching namenode in the NamenodeHA environment
+HRegion#internalFlushcache(){
+
+...
+try {
+...
+}catch(Throwable t){
+DroppedSnapshotException dse = new DroppedSnapshotException("region: " +
+          Bytes.toStringBinary(getRegionName()));
+dse.initCause(t);
+throw dse;
+}
+...
+
+}
+
+MemStoreFlusher#flushRegion(){
+...
+region.flushcache();
+...
+ try {
+}catch(DroppedSnapshotException ex){
+server.abort("Replay of HLog required. Forcing server shutdown", ex);
+}
+
+...
+}
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.6, 0.95.0
+Fix_version:
+0.94.6, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+07/Jan/13 10:30
+Update date:
+12/Apr/13 04:15
+Resolved date:
+25/Feb/13 20:55

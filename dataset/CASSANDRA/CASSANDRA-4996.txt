@@ -1,0 +1,97 @@
+Summary:
+After changing the compaction strategy, compression_strategy always returning back to the "SnappyCompressor" through CQL 2.2.0
+Description:
+faced very strange behaviour when changing compression_parameters of exisiting CF. After changing the compaction strategy, compression_strategy returning back to the "SnappyCompressor".
+Using cassandra version 1.1.5.
+[cqlsh 2.2.0 | Cassandra 1.1.5 | CQL spec 2.0.0 | Thrift protocol 19.32.0]
+I have one column family with following paramters:
+cqlsh > describe columnfamily auditlog_01;
+CREATE TABLE auditlog_01 (
+lid text PRIMARY KEY,
+dscn text,
+asid text,
+soapa text
+) WITH
+comment='' AND
+comparator=text AND
+read_repair_chance=0.100000 AND
+gc_grace_seconds=864000 AND
+default_validation=text AND
+min_compaction_threshold=4 AND
+max_compaction_threshold=32 AND
+replicate_on_write='true' AND
+compaction_strategy_class='SizeTieredCompactionStrategy' AND
+compaction_strategy_options:sstable_size_in_mb='5' AND
+compression_parameters:sstable_compression='SnappyCompressor';
+Changing compression strategy to 'DeflateCompressor
+cqlsh> ALTER TABLE auditlog_01 WITH compression_parameters:sstabl
+e_compression = 'DeflateCompressor' AND compression_parameters:chunk_length_kb =
+64;
+cqlsh> describe columnfamily auditlog_01;
+CREATE TABLE auditlog_01 (
+lid text PRIMARY KEY,
+dscn text,
+asid text,
+soapa text
+) WITH
+comment='' AND
+comparator=text AND
+read_repair_chance=0.100000 AND
+gc_grace_seconds=864000 AND
+default_validation=text AND
+min_compaction_threshold=4 AND
+max_compaction_threshold=32 AND
+replicate_on_write='true' AND
+compaction_strategy_class='SizeTieredCompactionStrategy' AND
+compaction_strategy_options:sstable_size_in_mb='5' AND
+compression_parameters:chunk_length_kb='64' AND
+compression_parameters:sstable_compression='DeflateCompressor';
+it's sucessfuly changed the compression strategy to 'DeflateCompressor, after that when i am trying to change the compaction strategy, compression strategy returing back to "SnappyCompressor".
+cqlsh> alter table auditlog_01 with compaction_strategy_class='Le
+veledCompactionStrategy' AND compaction_strategy_options:sstable_size_in_mb=5;
+cqlsh> describe columnfamily auditlog_01;
+CREATE TABLE auditlog_01 (
+lid text PRIMARY KEY,
+dscn text,
+asid text,
+soapa text
+) WITH
+comment='' AND
+comparator=text AND
+read_repair_chance=0.100000 AND
+gc_grace_seconds=864000 AND
+default_validation=text AND
+min_compaction_threshold=4 AND
+max_compaction_threshold=32 AND
+replicate_on_write='true' AND
+compaction_strategy_class='SizeTieredCompactionStrategy' AND
+compaction_strategy_options:sstable_size_in_mb='5' AND
+compression_parameters:sstable_compression='SnappyCompressor';
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.8, 1.2.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Shamim Ahmed
+Create date:
+27/Nov/12 08:06
+Update date:
+16/Apr/19 09:32
+Resolved date:
+13/Dec/12 19:50

@@ -1,0 +1,43 @@
+Summary:
+PagingFieldCollector fails when sorting by String null fields
+Description:
+When performing a paginated search sorted by a STRING field, and documents without this field are present in the resultset, PagingFieldCollector stops collecting documents (or collects all documents, depending on sorting order) when one of the these documents are used as "after" element for the pagination.
+The reason i have observed is that:
+org.apache.lucene.search.FieldComparator.TermOrdValComparator.compareDocToValue(int doc, BytesRef value) (line 1160) always returns 1 in that case because value is null ("after" document sorting field value) whereas docValue (returned by termsIndex.getTerm) is a 0-length BytesRef for documents without that field.
+A simple patch can be performed changing only this method with no (apparently) side-effects:
+Current:
+if (docValue == null) {
+if (value == null) {
+Patched:
+if (docValue == null || docValue.length==0) {
+if (value == null || value.length==0) {
+Please excuse my lack of rigour, I'll try to attach the patch.
+Regards
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+4.1
+Fix_version:
+None
+Component:
+core/search
+Label:
+null pagination sort
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ignacio del Valle Al
+Create date:
+07/Mar/13 14:34
+Update date:
+07/Mar/13 14:36
+Resolved date:
+

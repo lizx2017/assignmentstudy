@@ -1,0 +1,62 @@
+Summary:
+Handlers being blocked during reads
+Description:
+I'm having a lot of handlers (90 - 300 aprox) being blocked when reading rows. They are blocked during changedReaderObserver registration.
+Lars Hofhansl suggests to change the implementation of changedReaderObserver from CopyOnWriteList to ConcurrentHashMap.
+Here is a stack trace:
+"IPC Server handler 99 on 60020" daemon prio=10 tid=0x0000000041c84000 nid=0x2244 waiting on condition [0x00007ff51fefd000]
+java.lang.Thread.State: WAITING (parking)
+at sun.misc.Unsafe.park(Native Method)
+parking to wait for <0x00000000c5c13ae8> (a java.util.concurrent.locks.ReentrantLock$NonfairSync)
+at java.util.concurrent.locks.LockSupport.park(LockSupport.java:156)
+at java.util.concurrent.locks.AbstractQueuedSynchronizer.parkAndCheckInterrupt(AbstractQueuedSynchronizer.java:811)
+at java.util.concurrent.locks.AbstractQueuedSynchronizer.acquireQueued(AbstractQueuedSynchronizer.java:842)
+at java.util.concurrent.locks.AbstractQueuedSynchronizer.acquire(AbstractQueuedSynchronizer.java:1178)
+at java.util.concurrent.locks.ReentrantLock$NonfairSync.lock(ReentrantLock.java:186)
+at java.util.concurrent.locks.ReentrantLock.lock(ReentrantLock.java:262)
+at java.util.concurrent.CopyOnWriteArrayList.addIfAbsent(CopyOnWriteArrayList.java:553)
+at java.util.concurrent.CopyOnWriteArraySet.add(CopyOnWriteArraySet.java:221)
+at org.apache.hadoop.hbase.regionserver.Store.addChangedReaderObserver(Store.java:1085)
+at org.apache.hadoop.hbase.regionserver.StoreScanner.<init>(StoreScanner.java:138)
+at org.apache.hadoop.hbase.regionserver.Store.getScanner(Store.java:2077)
+at org.apache.hadoop.hbase.regionserver.HRegion$RegionScannerImpl.<init>(HRegion.java:3755)
+at org.apache.hadoop.hbase.regionserver.HRegion.instantiateRegionScanner(HRegion.java:1804)
+at org.apache.hadoop.hbase.regionserver.HRegion.getScanner(HRegion.java:1796)
+at org.apache.hadoop.hbase.regionserver.HRegion.getScanner(HRegion.java:1771)
+at org.apache.hadoop.hbase.regionserver.HRegion.get(HRegion.java:4776)
+at org.apache.hadoop.hbase.regionserver.HRegion.get(HRegion.java:4750)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.get(HRegionServer.java:2152)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.multi(HRegionServer.java:3700)
+at sun.reflect.GeneratedMethodAccessor26.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Server.call(WritableRpcEngine.java:320)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1426)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.7, 0.95.1
+Fix_version:
+0.98.0, 0.95.2, 0.94.11
+Component:
+Performance
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Elliott Clark
+Reporter:
+Pablo Medina
+Create date:
+30/Jul/13 14:09
+Update date:
+21/Aug/13 00:08
+Resolved date:
+02/Aug/13 22:07

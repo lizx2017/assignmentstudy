@@ -1,0 +1,41 @@
+Summary:
+'nodetool repair -pr' leads to indefinitely hanging AntiEntropySession
+Description:
+Running nodetool repair -pr will sometimes hang on one of the resulting AntiEntropySessions.
+The system logs will show the repair command starting
+ INFO [Thread-3079] 2014-07-15 02:22:56,514 StorageService.java (line 2569) Starting repair command #1, repairing 256 ranges for keyspace x
+You can then see a few AntiEntropySessions completing with:
+INFO [AntiEntropySessions:2] 2014-07-15 02:28:12,766 RepairSession.java (line 282) [repair #eefb3c30-0bc6-11e4-83f7-a378978d0c49] session completed successfully
+Finally we reach an AntiEntropySession at some point that hangs just before requesting the merkle trees for the next column family in line for repair. So we first see the previous CF being finished and the whole repair sessions hangs here with no visible progress or errors on this or any of the related nodes.
+INFO [AntiEntropyStage:1] 2014-07-15 02:38:20,325 RepairSession.java (line 221) [repair #8f85c1b0-0bc8-11e4-83f7-a378978d0c49] previous_cf is fully synced
+Notes:
+Single DC 6 node cluster with an average load of 86 GB per node.
+This appears to be random; it does not always happen on the same CF or on the same session.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Vladimir Avram
+Create date:
+16/Jul/14 23:22
+Update date:
+16/Apr/19 09:31
+Resolved date:
+18/Aug/14 18:28

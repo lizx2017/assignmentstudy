@@ -1,0 +1,76 @@
+Summary:
+No HTML Header using PDFText2HTML
+Description:
+The following code should output html string with this header:
+<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><head><title></title>
+... but it does not !
+Here is te test code:
+package fr.def.iss.vd2.mod_instruction_gui.view;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import org.apache.pdfbox.exceptions.COSVisitorException;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.edit.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.util.PDFText2HTML;
+public class Test {
+public static void main(final String[] args)
+{ byte[] buf = rawText2Pdf("Hell world"); String html = pdf2Html(buf); System.out.println("html:" + html); }
+public static byte[] rawText2Pdf(String text) {
+ByteArrayOutputStream os = null;
+try
+{ os = new ByteArrayOutputStream(); PDDocument document = new PDDocument(); PDPage page = new PDPage(); document.addPage(page); PDFont font = PDType1Font.HELVETICA_BOLD; PDPageContentStream contentStream = new PDPageContentStream( document, page); contentStream.beginText(); contentStream.setFont(font, 12); contentStream.moveTextPositionByAmount( 100, 700); contentStream.drawString(text); contentStream.endText(); contentStream.close(); document.save(os); document.close(); }
+catch (COSVisitorException ex)
+{ ex.printStackTrace(); } catch (IOException ex) { ex.printStackTrace(); }
+byte[] result = null;
+if (os != null)
+{ result = os.toByteArray(); }
+return result;
+}
+public static String pdf2Html(byte[] pdf) {
+String result = null;
+ByteArrayOutputStream os = null;
+PDFText2HTML stripper = null;
+StringBuilder buf = new StringBuilder();
+try
+{ stripper = new PDFText2HTML("utf-8"); ByteArrayInputStream is = new ByteArrayInputStream(pdf); PDDocument document = PDDocument.load(is); os = new ByteArrayOutputStream(); Writer writer = new OutputStreamWriter(os, "utf-8"); stripper.writeText(document, writer); writer.close(); os.close(); result = buf.toString() + stripper.getText(document); }
+catch (IOException ex)
+{ ex.printStackTrace(); }
+return result;
+}
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.3.1
+Fix_version:
+1.6.0
+Component:
+Utilities
+Label:
+None
+Environment:
+ubuntu, netbeans, java 1.6
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Clement Igonet
+Create date:
+06/Jan/11 10:33
+Update date:
+04/Mar/15 11:26
+Resolved date:
+04/Mar/15 11:26

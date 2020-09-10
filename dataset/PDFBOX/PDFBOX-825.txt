@@ -1,0 +1,43 @@
+Summary:
+Wrong opacity for images with indexed color space
+Description:
+In class PDPixelMap used to decode images the handling of opacity for images with color space PDIndexed is wrong.
+Test PDF: http://onlinelibrary.wiley.com/doi/10.1002/ajh.21765/pdf
+(or another PDF with image and color space /Indexed)
+Picture Im2 at page 4 of the test PDF is empty (all pixels white).
+The reason:
+In PDPixelMap at line 205 (rev. 988513) an opacity variable is set depending on first value of Decode parameter.
+This parameter often is not specified (null) and default value is [0, 2^n-1]. Thus the code:
+boolean isOpaque = (decode != null && decode.getInt(0) == 1) ? true : false;
+sets isOpaque to false, resulting in all white pixel.
+Exchanging 'true' and 'false' would help but I even can't imagine why a first value of '1' should
+be interpreted as an opacity parameter? Am I missing something (some kind of workaround)?
+If there are no good reasons for keeping the opaque parameter I would propose removing it and setting alpha to 0xff in every case.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.3.1
+Fix_version:
+1.3.1
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Timo Boehme
+Create date:
+10/Sep/10 11:52
+Update date:
+26/Oct/10 09:34
+Resolved date:
+12/Sep/10 13:34

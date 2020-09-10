@@ -1,0 +1,58 @@
+Summary:
+sstable2json generates invalid json for "paged" rows
+Description:
+I have a json file created with sstable2json for a column family of super column type. But json2sstable failed to create sstable from the file. It's because file format is wrong.
+WARN 11:41:55,141 Schema definitions were defined both locally and in cassandra.yaml. Definitions in cassandra.yaml were ignored.
+org.codehaus.jackson.JsonParseException: Unexpected character ('"' (code 34)): was expecting comma to separate OBJECT entries
+at [Source: dump.json; line: 2, column: 739439661]
+at org.codehaus.jackson.JsonParser._constructError(JsonParser.java:929)
+at org.codehaus.jackson.impl.JsonParserBase._reportError(JsonParserBase.java:632)
+at org.codehaus.jackson.impl.JsonParserBase._reportUnexpectedChar(JsonParserBase.java:565)
+at org.codehaus.jackson.impl.Utf8StreamParser.nextToken(Utf8StreamParser.java:128)
+at org.codehaus.jackson.map.deser.UntypedObjectDeserializer.mapObject(UntypedObjectDeserializer.java:93)
+at org.codehaus.jackson.map.deser.UntypedObjectDeserializer.deserialize(UntypedObjectDeserializer.java:65)
+at org.codehaus.jackson.map.deser.MapDeserializer._readAndBind(MapDeserializer.java:197)
+at org.codehaus.jackson.map.deser.MapDeserializer.deserialize(MapDeserializer.java:145)
+at org.codehaus.jackson.map.deser.MapDeserializer.deserialize(MapDeserializer.java:23)
+at org.codehaus.jackson.map.ObjectMapper._readValue(ObjectMapper.java:1261)
+at org.codehaus.jackson.map.ObjectMapper.readValue(ObjectMapper.java:517)
+at org.codehaus.jackson.JsonParser.readValueAs(JsonParser.java:897)
+at org.apache.cassandra.tools.SSTableImport.importUnsorted(SSTableImport.java:208)
+at org.apache.cassandra.tools.SSTableImport.importJson(SSTableImport.java:197)
+at org.apache.cassandra.tools.SSTableImport.main(SSTableImport.java:421)
+ERROR: Unexpected character ('"' (code 34)): was expecting comma to separate OBJECT entries
+at [Source: dump.json; line: 2, column: 739439661]
+When I looked at the file, I found that a comma is missing between super columns. The part of data is like this:
+["756e697473",
+"32",
+1297926692097000, false]]}"32303036303830373135303030302f313030303030303030302d32303036313030322d303030303030303639382d612f30":
+{ "deletedAt": -9223372036854775808, "subColumns": [["5f64656c", "", 1297926692097000, false], You'll see no comma between }
+and ".
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.3, 0.8 beta 1
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Shotaro Kamio
+Create date:
+18/Feb/11 02:43
+Update date:
+16/Apr/19 09:33
+Resolved date:
+22/Feb/11 17:38

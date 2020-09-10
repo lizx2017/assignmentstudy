@@ -1,0 +1,65 @@
+Summary:
+HBase shell/client 'scan table' operation is getting failed inbetween the when the regions are shifted from one Region Server to another Region Server
+Description:
+Problem:
+HBase shell/client 'scan table' operation is getting failed inbetween the when the regions are shifted from one Region Server to another Region Server
+
+When the table regions data moved from one Region Server to another Region Server then the client/shell should be able to handle the data from the 
+new Region server automatically (because when we have huge data in terms of GB/TB at that time one of the Region Server going down in the cluster is frequent)
+
+
+Procedure:
+1. Setup Non HA Hadoop Cluster with two nodes (Node1-XX.XX.XX.XX,  Node2-YY.YY.YY.YY)
+2. Install Zookeeper, HMaster & HRegionServer in Node-1
+3. Install HRegionServer in Node-2
+4. From Node2 create HBase Table ( table name 't1' with one column family 'cf1' )
+5. add around 367120 rows to the table
+6. scan the table 't1' using hbase shell & at the same time switch the region server 1 & 2 (so that the table 't1' regions data are moved from Region Server 1 to 1 & vice versa)
+7. During this time hbase shell is getting failed in between of the scan operation as below
+
+...................................................................                                
+ row172266                        column=cf1:a, timestamp=1379680737307, value=100                                              
+ row172267                        column=cf1:a, timestamp=1379680737311, value=100                                              
+ row172268                        column=cf1:a, timestamp=1379680737314, value=100                                              
+ row172269                        column=cf1:a, timestamp=1379680737317, value=100                                              
+ row17227                         column=cf1:a, timestamp=1379679668631, value=100                                              
+ row17227                         column=cf1:b, timestamp=1379681090560, value=200                                             
+
+ERROR: java.lang.RuntimeException: org.apache.hadoop.hbase.client.RetriesExhaustedException: Failed after attempts=7, exceptions:
+Fri Sep 20 18:20:58 IST 2013, org.apache.hadoop.hbase.client.ScannerCallable@1999dc4f, java.net.ConnectException: Connection refused
+Fri Sep 20 18:20:59 IST 2013, org.apache.hadoop.hbase.client.ScannerCallable@1999dc4f, org.apache.hadoop.hbase.ipc.HBaseClient$FailedServerException: This server is in the failed servers list: HOST-YY.YY.YY.YY/YY.YY.YY.YY:61020
+Fri Sep 20 18:21:00 IST 2013, org.apache.hadoop.hbase.client.ScannerCallable@1999dc4f, java.net.ConnectException: Connection refused
+Fri Sep 20 18:21:01 IST 2013, org.apache.hadoop.hbase.client.ScannerCallable@1999dc4f, org.apache.hadoop.hbase.ipc.HBaseClient$FailedServerException: This server is in the failed servers list: HOST-YY.YY.YY.YY/YY.YY.YY.YY:61020
+Fri Sep 20 18:21:07 IST 2013, org.apache.hadoop.hbase.client.ScannerCallable@1999dc4f, java.net.ConnectException: Connection refused
+Fri Sep 20 18:21:09 IST 2013, org.apache.hadoop.hbase.client.ScannerCallable@1999dc4f, java.net.ConnectException: Connection refused
+Fri Sep 20 18:21:17 IST 2013, org.apache.hadoop.hbase.client.ScannerCallable@1999dc4f, java.net.ConnectException: Connection refused
+
+hbase(main):014:0> 
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+0.94.11
+Fix_version:
+None
+Component:
+master, regionserver
+Label:
+None
+Environment:
+SuSE11
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+shankarlingayya
+Create date:
+23/Sep/13 13:56
+Update date:
+06/Mar/14 12:39
+Resolved date:
+06/Mar/14 12:39

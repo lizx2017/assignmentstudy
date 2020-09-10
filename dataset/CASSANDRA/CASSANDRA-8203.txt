@@ -1,0 +1,69 @@
+Summary:
+Unexpected null static column
+Description:
+I'm using static column.
+When I select whole table (with large limit) some of rows contain null static column value, but it cannot happen accoring to application logic.
+When I select same row using keys, static column has non-null value as expected.
+Schema:
+cqlsh:iss> describe table target_state;
+CREATE TABLE iss.target_state (
+cell ascii,
+host ascii,
+service ascii,
+active ascii,
+cell_etag timeuuid static,
+etag timeuuid,
+states map<ascii, ascii>,
+PRIMARY KEY (cell, host, service)
+) WITH CLUSTERING ORDER BY (host ASC, service ASC)
+AND bloom_filter_fp_chance = 0.01
+AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+AND comment = ''
+AND compaction = {'min_threshold': '4', 'unchecked_tombstone_compaction': 'true', 'tombstone_compaction_interval': '43200', 'class': 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy', 'max_threshold': '32'}
+AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+AND dclocal_read_repair_chance = 0.1
+AND default_time_to_live = 0
+AND gc_grace_seconds = 86400
+AND max_index_interval = 2048
+AND memtable_flush_period_in_ms = 0
+AND min_index_interval = 128
+AND read_repair_chance = 0.0
+AND speculative_retry = '99.0PERCENTILE';
+Whole table query:
+cqlsh:iss> select cell, host, service, cell_etag, etag from target_state LIMIT 50000;
+Contains in the middle of results:
+60630000000065955650000000063097470000054552016:ya(200,15) | ams1-0003.search.yandex.net | 18265 | null | 737a05e0-5532-11e4-bf0b-efa731c31cd0
+Query of a single row gives non-null cell_etag column:
+cqlsh:iss> select host, service, cell_etag, etag from target_state where cell = '60630000000065955650000000063097470000054552016:ya(200,15)' and host = 'ams1-0003.search.yandex.net' and service = '18265';
+host | service | cell_etag | etag
+-----------------------------------------------------------------------+-------------------------------------
+ams1-0003.search.yandex.net | 18265 | bc635e60-5ec3-11e4-bdfd-9f65487c7454 | 737a05e0-5532-11e4-bf0b-efa731c31cd0
+(1 rows)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Alexander Sterligov
+Create date:
+28/Oct/14 17:48
+Update date:
+16/Apr/19 09:31
+Resolved date:
+24/Feb/15 00:21

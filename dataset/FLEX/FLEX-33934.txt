@@ -1,0 +1,45 @@
+Summary:
+Holding Shift+TAB pressed in DataGrid makes focus jump to textField outside grid, then back to grid editors, and so on
+Description:
+Steps to reproduce:
+1. Import and run the attached project.
+2. Double click on Brazil to enter edit mode
+3. Press and hold Shift+TAB to tab backward through components
+Actual behaviour: focus jumps back and forth between the grid's item editors and the text field outside the grid.
+Desired behaviour: focus jumps backward only through the editors, not involving the text field outside the grid.
+Note: this happens without problems when Shift+TAB is pressed with lower frequency.
+Note: in our application we have the same problem with the forward focus (Shift not pressed), which I could not reproduce in this simple app. And since we're creating many grids whose cells should be editable similarly to Microsoft Excel's, the priority for us is high.
+Hints:
+1. From my understanding, DataGridEditor.editor_keyFocusChangeHandler() and FocusManager.keyFocusChangeHandler() respond to the same event (FocusEvent.KEY_FOCUS_CHANGE), but listen to different objects for it. When things work correctly, DataGridEditor reponds to the event once the user presses (Shift+)TAB in a grid's item editor, and (does the necessary work to create and focus the next editor and then) calls preventDefault() on the event, which tells the FocusManager not to apply its default behaviour. All works fine.
+2. However, when (Shift+)TAB is held pressed, or pressed very quickly, what seems to happen at times is that DataGridEditor.editor_keyFocusChangeHandler() is never called. From what I can tell from tracing the event instance in FocusManager, that's because the event's target is no longer the textDisplay inside the item editor, but the strange "DataGridFocus0.WindowedApplicationSkin2.Group3.contentGroup._DataGridFocus_DataGrid1.UIComponent37" instance. This means that DataGridEditor cannot respond to this event, since it's not thrown by the editor it's listening to.
+3. I also put traces where the editor is removed and where it's created in DataGridEditor, which showed that when the unusual event is thrown (see hint #2) the item editor is still not null, is still on stage, and still has the event listener for FocusEvent.KEY_FOCUS_CHANGE. So it's not that the editor has been destroyed - it's just that the event is thrown by another component.
+NOTES:
+using selectedIndex instead of selectedItem works without error.
+Status:
+REOPENED
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Apache Flex 4.11.0
+Fix_version:
+None
+Component:
+Focus Manager, (1)
+Label:
+None
+Environment:
+Windows 8, Adobe AIR 3.9
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Mihai Chira
+Create date:
+26/Nov/13 11:20
+Update date:
+09/Dec/14 16:52
+Resolved date:
+

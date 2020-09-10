@@ -1,0 +1,37 @@
+Summary:
+PerRowSecondaryIndex isn't notified of row-level deletes
+Description:
+Following CASSANDRA-5297, the way PerRowSecondaryIndex updates are handled in AtomicSortedColumns is still not right as it doesn't cater for row level deletes properly. The key is only added MixedIndexUpdater's list of deferred updates if there's a column value being modified. Where an entire row is deleted, we never hit that code so the indexer.commit() in ASC.addAllWithSizeDelta becomes a no-op & the index is not correctly updated.
+Also, SecondaryIndexManager.updaterFor is not actually as efficient as it first seems. For a CF with no per-column indexes and a single per-row index defined, during compaction (when includeRowIndexes == false), we'd expect to be using nullUpdater to no-op the index update for each row being compacted given the updaterFor implementation:
+ return (includeRowIndexes && !rowLevelIndexMap.isEmpty())
+             ? new MixedIndexUpdater(key)
+                 : indexesByColumn.isEmpty() ? nullUpdater : new PerColumnIndexUpdater(key);
+However, this isn't the case as indexesByColumn is never empty, the reason being that any index must be attached to a column, there's just no way to register a PRSI without attaching it to one of the CF's columns. So where a PRSI is present, a new PCIU instance is created for each row during compaction regardless. With that in mind, I'd propose removing the includeRowLevelIndexes argument and just returning nullIndexer if no indexes (PRSI or PRCI) are configured (although I totally acknowledge that fixing index registration so we can register a PRSI without attaching it to a column would be desirable in the long-term).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Sam Tunnicliffe
+Create date:
+09/Apr/13 16:15
+Update date:
+16/Apr/19 09:32
+Resolved date:
+09/Apr/13 21:55

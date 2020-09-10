@@ -1,0 +1,48 @@
+Summary:
+QueryParser treats CJK and English query strings differently
+Description:
+Since 1.3 final, the Standard Analyzer returns strings of CJK characters as
+separate tokens. However, the generated QueryParser has its own grammer which
+doesn't take account of this. So we get the following behaviour:
+parse("one two three", "content", new StandardAnalyzer()) returns 'content:one
+content:two content:three', searching for each term individually.
+parse("\"one two three\"", "content", new StandardAnalyzer()) returns
+'content:"one two three"', searching for the phrase.
+parse("C1C2C3", "content", new StandardAnalyzer()) where Cn is a Chinese
+character returns 'content:"C1 C2 C3"', when it should really be 'content:C1
+content:C2 content:C3'. This is inconsistent.
+parse("\"C1C2C3\"", "content", new StandardAnalyzer()) also returns
+'content:"C1 C2 C3"', identical to the previous case.
+Although the string is separated out into the separate CJK tokens (indicated by
+the spaces between them), the query parser builds a phrase search for them
+rather than individual token searches. To get the desired query the user has to
+instead enter "C1 C2 C3" as the query string (or I have to pre-process the query
+string in my code to add the spaces), which is non-intuitive.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Incomplete
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Andrew Stevens
+Create date:
+07/May/04 19:16
+Update date:
+02/Jun/11 22:04
+Resolved date:
+27/May/06 01:37

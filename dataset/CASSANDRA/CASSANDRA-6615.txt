@@ -1,0 +1,55 @@
+Summary:
+Changing the IP of a node on a live cluster leaves gossip infos and throws Exceptions
+Description:
+Following this procedure : https://engineering.eventbrite.com/changing-the-ip-address-of-a-cassandra-node-with-auto_bootstrapfalse/ to change the IP of a node, we encountered an issue :
+logs contains: "java.lang.RuntimeException: Host ID collision between active endpoint /127.0.0.5 and /127.0.0.3"
+logs also indicate that the old IP is being removed of the cluster (FatClient timeout), then added again...
+nodetool gossipinfo still list old IP (even a few hours after...)
+the old IP is still seen as "UP" in the cluster... (according to the logs...)
+Below is a small shell script which allows to reproduce the scenario...
+#! /bin/bash
+
+CLUSTER=$1
+ccm create $CLUSTER --cassandra-dir=.
+ccm populate -n 2
+ccm start
+
+ccm add node3 -i 127.0.0.3 -j 7300 -b
+ccm node3 start
+ccm node3 ring
+ccm node3 stop
+
+sed -i 's/127.0.0.3/127.0.0.5/g' ~/.ccm/$CLUSTER/node3/node.conf 
+sed -i 's/127.0.0.3/127.0.0.5/g' ~/.ccm/$CLUSTER/node3/conf/cassandra.yaml
+
+ccm node3 start
+sleep 3
+nodetool --host 127.0.0.5 --port 7300 gossipinfo
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.14, 2.0.5
+Component:
+None
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Fabien Rousseau
+Create date:
+24/Jan/14 14:56
+Update date:
+16/Apr/19 09:31
+Resolved date:
+29/Jan/14 23:37

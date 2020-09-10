@@ -1,0 +1,649 @@
+Summary:
+Region Server throw NotServingRegionException when batchUpdate irredicly (After a large amount of file inserts)
+Description:
+After a large amount of file (~400,000) , once in a while during rapid inserts RegionServer returns NotServingRegionException when doing batchUpdate.
+A restart of the client usually fixes the problem , but it happens again after a while.
+LogFiles excerpts:
+RegionServer
+2008-12-16 09:17:14,413 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk packet full seqno 1333
+2008-12-16 09:17:14,413 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 1334
+2008-12-16 09:17:14,414 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_7750693789795884606_1536 wrote packet seqno:1333 size:65557 offsetInBlock:19507200 lastPacketInBlock:false
+2008-12-16 09:17:14,439 INFO org.apache.hadoop.hbase.regionserver.HRegion: compaction completed on region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 in 2sec
+2008-12-16 09:17:14,441 INFO org.apache.hadoop.hbase.regionserver.HRegion: Starting split of region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+2008-12-16 09:17:14,442 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits: masked=rwxr-xr-x
+2008-12-16 09:17:14,461 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Compactions and cache flushes disabled for region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+2008-12-16 09:17:14,461 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Scanners disabled for region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+2008-12-16 09:17:14,461 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: No more active scanners for region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+2008-12-16 09:17:14,461 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Updates disabled for region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+2008-12-16 09:17:14,462 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: No more row locks outstanding on region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+2008-12-16 09:17:14,462 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memcache flush for region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395. Current region memcache size 236.3k
+2008-12-16 09:17:14,463 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/obde_content/mapfiles/5474929915463365960: masked=rwxr-xr-x
+2008-12-16 09:17:14,484 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/obde_content/mapfiles/5474929915463365960/data: masked=rwxr-xr-x
+2008-12-16 09:17:14,505 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/obde_content/mapfiles/5474929915463365960/index: masked=rwxr-xr-x
+2008-12-16 09:17:14,525 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 0
+2008-12-16 09:17:14,525 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk packet full seqno 0
+2008-12-16 09:17:14,525 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 1
+2008-12-16 09:17:14,525 DEBUG org.apache.hadoop.dfs.DFSClient: Allocating new block
+2008-12-16 09:17:14,526 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.102:50010
+2008-12-16 09:17:14,526 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.211:50010
+2008-12-16 09:17:14,526 DEBUG org.apache.hadoop.dfs.DFSClient: Connecting to MY.IP.102:50010
+2008-12-16 09:17:14,527 DEBUG org.apache.hadoop.dfs.DFSClient: Send buf size 131071
+2008-12-16 09:17:14,530 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_4611894842462358439_1544 wrote packet seqno:0 size:65557 offsetInBlock:0 lastPacketInBlock:false
+2008-12-16 09:17:14,531 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk packet full seqno 1
+2008-12-16 09:17:14,531 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 2
+2008-12-16 09:17:14,531 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_4611894842462358439_1544 wrote packet seqno:1 size:65557 offsetInBlock:65024 lastPacketInBlock:false
+2008-12-16 09:17:14,532 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk packet full seqno 2
+2008-12-16 09:17:14,532 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 3
+2008-12-16 09:17:14,532 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_4611894842462358439_1544 wrote packet seqno:2 size:65557 offsetInBlock:130048 lastPacketInBlock:false
+2008-12-16 09:17:14,533 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_4611894842462358439_1544 wrote packet seqno:3 size:49273 offsetInBlock:195072 lastPacketInBlock:true
+2008-12-16 09:17:14,534 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 0
+2008-12-16 09:17:14,535 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 1
+2008-12-16 09:17:14,536 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 2
+2008-12-16 09:17:14,538 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 3
+2008-12-16 09:17:14,538 DEBUG org.apache.hadoop.dfs.DFSClient: Closing old block blk_4611894842462358439_1544
+2008-12-16 09:17:14,557 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 0
+2008-12-16 09:17:14,557 DEBUG org.apache.hadoop.dfs.DFSClient: Allocating new block
+2008-12-16 09:17:14,558 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.102:50010
+2008-12-16 09:17:14,558 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.211:50010
+2008-12-16 09:17:14,558 DEBUG org.apache.hadoop.dfs.DFSClient: Connecting to MY.IP.102:50010
+2008-12-16 09:17:14,558 DEBUG org.apache.hadoop.dfs.DFSClient: Send buf size 131071
+2008-12-16 09:17:14,561 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_-6152926948595840609_1544 wrote packet seqno:0 size:276 offsetInBlock:0 lastPacketInBlock:true
+2008-12-16 09:17:14,564 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 0
+2008-12-16 09:17:14,564 DEBUG org.apache.hadoop.dfs.DFSClient: Closing old block blk_-6152926948595840609_1544
+2008-12-16 09:17:14,586 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/obde_content/info/5474929915463365960: masked=rwxr-xr-x
+2008-12-16 09:17:14,609 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 0
+2008-12-16 09:17:14,609 DEBUG org.apache.hadoop.dfs.DFSClient: Allocating new block
+2008-12-16 09:17:14,610 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.102:50010
+2008-12-16 09:17:14,610 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.213:50010
+2008-12-16 09:17:14,610 DEBUG org.apache.hadoop.dfs.DFSClient: Connecting to MY.IP.102:50010
+2008-12-16 09:17:14,610 DEBUG org.apache.hadoop.dfs.DFSClient: Send buf size 131071
+2008-12-16 09:17:14,613 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_2767846628464404081_1545 wrote packet seqno:0 size:38 offsetInBlock:0 lastPacketInBlock:true
+2008-12-16 09:17:14,616 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 0
+2008-12-16 09:17:14,617 DEBUG org.apache.hadoop.dfs.DFSClient: Closing old block blk_2767846628464404081_1545
+2008-12-16 09:17:14,644 DEBUG org.apache.hadoop.hbase.regionserver.HStore: Added /hbase/my_table/1608250010/obde_content/mapfiles/5474929915463365960 with 56 entries, sequence id 235152, data size 236.3k, file size 238.2k
+2008-12-16 09:17:14,644 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Finished memcache flush for region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 in 182ms, sequence id=235152, compaction requested=true
+2008-12-16 09:17:14,644 DEBUG org.apache.hadoop.hbase.regionserver.HStore: closed 1608250010/obde_content
+2008-12-16 09:17:14,644 INFO org.apache.hadoop.hbase.regionserver.HRegion: closed my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+2008-12-16 09:17:14,649 INFO org.apache.hadoop.ipc.Server: IPC Server handler 4 on 60020, call batchUpdate([B@552a2a7d, row => f+C7Y24r+apSz+joQUhiQQ==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:14,651 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits/1010339458/obde_content/mapfiles/1405033884904780036.1608250010: masked=rwxr-xr-x
+2008-12-16 09:17:14,694 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits/1010339458/obde_content/info/1405033884904780036.1608250010: masked=rwxr-xr-x
+2008-12-16 09:17:14,717 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 0
+2008-12-16 09:17:14,717 DEBUG org.apache.hadoop.dfs.DFSClient: Allocating new block
+2008-12-16 09:17:14,718 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.102:50010
+2008-12-16 09:17:14,718 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.213:50010
+2008-12-16 09:17:14,718 DEBUG org.apache.hadoop.dfs.DFSClient: Connecting to MY.IP.102:50010
+2008-12-16 09:17:14,719 DEBUG org.apache.hadoop.dfs.DFSClient: Send buf size 131071
+2008-12-16 09:17:14,721 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_-4579777298287321197_1547 wrote packet seqno:0 size:84 offsetInBlock:0 lastPacketInBlock:true
+2008-12-16 09:17:14,724 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 0
+2008-12-16 09:17:14,724 DEBUG org.apache.hadoop.dfs.DFSClient: Closing old block blk_-4579777298287321197_1547
+2008-12-16 09:17:14,745 INFO org.apache.hadoop.ipc.Server: IPC Server handler 9 on 60020, call batchUpdate([B@18084038, row => hflk16ESykcggRSkrq7vgQ==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:14,746 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits/2015194550/obde_content/mapfiles/215038473253378290.1608250010: masked=rwxr-xr-x
+2008-12-16 09:17:14,790 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits/2015194550/obde_content/info/215038473253378290.1608250010: masked=rwxr-xr-x
+2008-12-16 09:17:14,813 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 0
+2008-12-16 09:17:14,837 INFO org.apache.hadoop.ipc.Server: IPC Server handler 8 on 60020, call batchUpdate([B@74da3b58, row => rG4yO2bs4Rw+JU4QKY7X2w==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:14,847 DEBUG org.apache.hadoop.dfs.DFSClient: Allocating new block
+2008-12-16 09:17:14,848 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.102:50010
+2008-12-16 09:17:14,848 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.213:50010
+2008-12-16 09:17:14,848 DEBUG org.apache.hadoop.dfs.DFSClient: Connecting to MY.IP.102:50010
+2008-12-16 09:17:14,849 DEBUG org.apache.hadoop.dfs.DFSClient: Send buf size 131071
+2008-12-16 09:17:14,864 INFO org.apache.hadoop.ipc.Server: IPC Server handler 2 on 60020, call batchUpdate([B@51575d48, row => aNq6QyMT+FePc7M78PaQMQ==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:14,885 INFO org.apache.hadoop.ipc.Server: IPC Server handler 3 on 60020, call batchUpdate([B@63442ff5, row => iA4QenOmdZMbB8PTQPSnRw==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:14,998 INFO org.apache.hadoop.ipc.Server: IPC Server handler 6 on 60020, call batchUpdate([B@59eb5159, row => t5gRF1zQOrx27LTUS84ADA==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,023 INFO org.apache.hadoop.ipc.Server: IPC Server handler 5 on 60020, call batchUpdate([B@132fa7c8, row => Tu0dl1jFT2spZmEZundPoA==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,045 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 1333
+2008-12-16 09:17:15,226 INFO org.apache.hadoop.ipc.Server: IPC Server handler 3 on 60020, call batchUpdate([B@4696de68, row => Skj4FHgWdrR+DSOppIaG6Q==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,237 INFO org.apache.hadoop.ipc.Server: IPC Server handler 7 on 60020, call batchUpdate([B@16a3f072, row => gWd3yPCu6A9CxjBAhO3UPg==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,453 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk packet full seqno 1334
+2008-12-16 09:17:15,453 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_7750693789795884606_1536 wrote packet seqno:1334 size:65557 offsetInBlock:19572224 lastPacketInBlock:false
+2008-12-16 09:17:15,486 INFO org.apache.hadoop.ipc.Server: IPC Server handler 9 on 60020, call batchUpdate([B@171591e3, row => ddd8ecfGPwfgKzuLNMvOAw==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,498 INFO org.apache.hadoop.ipc.Server: IPC Server handler 8 on 60020, call batchUpdate([B@452719a0, row => bJOTHv64AsNoFYsh7D0UyA==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,508 INFO org.apache.hadoop.ipc.Server: IPC Server handler 2 on 60020, call batchUpdate([B@6a76000a, row => XVNFoDhT1NeKnT0YwhopHg==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,548 INFO org.apache.hadoop.ipc.Server: IPC Server handler 1 on 60020, call batchUpdate([B@2b753bb9, row => jHxdShcit3A24oL3HHHgdg==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,557 INFO org.apache.hadoop.ipc.Server: IPC Server handler 3 on 60020, call batchUpdate([B@7b4286a2, row => VYUtICqregww41FxZUJkig==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,558 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 1335
+2008-12-16 09:17:15,659 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_-1532247345865982631_1549 wrote packet seqno:0 size:84 offsetInBlock:0 lastPacketInBlock:true
+2008-12-16 09:17:15,661 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 0
+2008-12-16 09:17:15,661 DEBUG org.apache.hadoop.dfs.DFSClient: Closing old block blk_-1532247345865982631_1549
+2008-12-16 09:17:15,679 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits/1010339458/obde_content/mapfiles/4722584128214377088.1608250010: masked=rwxr-xr-x
+2008-12-16 09:17:15,721 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits/1010339458/obde_content/info/4722584128214377088.1608250010: masked=rwxr-xr-x
+2008-12-16 09:17:15,744 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 0
+2008-12-16 09:17:15,745 INFO org.apache.hadoop.ipc.Server: IPC Server handler 0 on 60020, call batchUpdate([B@3f229bc1, row => WQXUl6gepHza8rVTmr8BSA==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,745 DEBUG org.apache.hadoop.dfs.DFSClient: Allocating new block
+2008-12-16 09:17:15,746 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.102:50010
+2008-12-16 09:17:15,746 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.213:50010
+2008-12-16 09:17:15,746 DEBUG org.apache.hadoop.dfs.DFSClient: Connecting to MY.IP.102:50010
+2008-12-16 09:17:15,747 DEBUG org.apache.hadoop.dfs.DFSClient: Send buf size 131071
+2008-12-16 09:17:15,750 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_9044590686588152812_1551 wrote packet seqno:0 size:84 offsetInBlock:0 lastPacketInBlock:true
+2008-12-16 09:17:15,752 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 0
+2008-12-16 09:17:15,752 DEBUG org.apache.hadoop.dfs.DFSClient: Closing old block blk_9044590686588152812_1551
+2008-12-16 09:17:15,774 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits/2015194550/obde_content/mapfiles/6108448749728539444.1608250010: masked=rwxr-xr-x
+2008-12-16 09:17:15,797 INFO org.apache.hadoop.ipc.Server: IPC Server handler 8 on 60020, call batchUpdate([B@74d3776e, row => hfCFR4B8pMF3mnY9mMnkDQ==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,817 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits/2015194550/obde_content/info/6108448749728539444.1608250010: masked=rwxr-xr-x
+2008-12-16 09:17:15,841 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 0
+2008-12-16 09:17:15,841 DEBUG org.apache.hadoop.dfs.DFSClient: Allocating new block
+2008-12-16 09:17:15,842 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.102:50010
+2008-12-16 09:17:15,842 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.213:50010
+2008-12-16 09:17:15,842 DEBUG org.apache.hadoop.dfs.DFSClient: Connecting to MY.IP.102:50010
+2008-12-16 09:17:15,842 DEBUG org.apache.hadoop.dfs.DFSClient: Send buf size 131071
+2008-12-16 09:17:15,848 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_-3568743239673676944_1553 wrote packet seqno:0 size:84 offsetInBlock:0 lastPacketInBlock:true
+2008-12-16 09:17:15,850 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 0
+2008-12-16 09:17:15,850 DEBUG org.apache.hadoop.dfs.DFSClient: Closing old block blk_-3568743239673676944_1553
+2008-12-16 09:17:15,876 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits/1010339458/obde_content/mapfiles/3431594424093212534.1608250010: masked=rwxr-xr-x
+2008-12-16 09:17:15,901 INFO org.apache.hadoop.ipc.Server: IPC Server handler 3 on 60020, call batchUpdate([B@366480d7, row => j4MGoh0tZvLe0bwYS5lqFQ==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,925 INFO org.apache.hadoop.ipc.Server: IPC Server handler 7 on 60020, call batchUpdate([B@24af9995, row => z1Uyyyuot9H+G5kHIOfveg==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,926 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits/1010339458/obde_content/info/3431594424093212534.1608250010: masked=rwxr-xr-x
+2008-12-16 09:17:15,949 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 0
+2008-12-16 09:17:15,949 DEBUG org.apache.hadoop.dfs.DFSClient: Allocating new block
+2008-12-16 09:17:15,950 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.102:50010
+2008-12-16 09:17:15,950 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.213:50010
+2008-12-16 09:17:15,950 DEBUG org.apache.hadoop.dfs.DFSClient: Connecting to MY.IP.102:50010
+2008-12-16 09:17:15,951 DEBUG org.apache.hadoop.dfs.DFSClient: Send buf size 131071
+2008-12-16 09:17:15,954 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_-1561317920938610537_1555 wrote packet seqno:0 size:84 offsetInBlock:0 lastPacketInBlock:true
+2008-12-16 09:17:15,956 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 0
+2008-12-16 09:17:15,956 DEBUG org.apache.hadoop.dfs.DFSClient: Closing old block blk_-1561317920938610537_1555
+2008-12-16 09:17:15,981 INFO org.apache.hadoop.ipc.Server: IPC Server handler 5 on 60020, call batchUpdate([B@46823b18, row => uwp0i8x0qk8RVIjimK1Nfg==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:15,983 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits/2015194550/obde_content/mapfiles/4022324240389174248.1608250010: masked=rwxr-xr-x
+2008-12-16 09:17:16,005 INFO org.apache.hadoop.ipc.Server: IPC Server handler 0 on 60020, call batchUpdate([B@4718f92, row => VS0OVRXK4BnH9VUHB3rrSQ==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+org.apache.hadoop.hbase.NotServingRegionException: Region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 closed
+at org.apache.hadoop.hbase.regionserver.HRegion.obtainRowLock(HRegion.java:1810)
+at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:1875)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1406)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1380)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1109)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:16,030 DEBUG org.apache.hadoop.dfs.DFSClient: /hbase/my_table/1608250010/splits/2015194550/obde_content/info/4022324240389174248.1608250010: masked=rwxr-xr-x
+2008-12-16 09:17:16,053 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 0
+2008-12-16 09:17:16,053 DEBUG org.apache.hadoop.dfs.DFSClient: Allocating new block
+2008-12-16 09:17:16,054 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.102:50010
+2008-12-16 09:17:16,054 DEBUG org.apache.hadoop.dfs.DFSClient: pipeline = MY.IP.213:50010
+2008-12-16 09:17:16,054 DEBUG org.apache.hadoop.dfs.DFSClient: Connecting to MY.IP.102:50010
+2008-12-16 09:17:16,055 DEBUG org.apache.hadoop.dfs.DFSClient: Send buf size 131071
+2008-12-16 09:17:16,058 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_5499006216568952565_1557 wrote packet seqno:0 size:84 offsetInBlock:0 lastPacketInBlock:true
+2008-12-16 09:17:16,060 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient received ack for seqno 0
+2008-12-16 09:17:16,060 DEBUG org.apache.hadoop.dfs.DFSClient: Closing old block blk_5499006216568952565_1557
+2008-12-16 09:17:16,081 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Opening region my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460/1010339458
+2008-12-16 09:17:16,117 DEBUG org.apache.hadoop.hbase.regionserver.HStore: loaded /hbase/my_table/1010339458/obde_content/info/1405033884904780036.1608250010, isReference=true, sequence id=207793
+2008-12-16 09:17:16,126 DEBUG org.apache.hadoop.hbase.regionserver.HStore: loaded /hbase/my_table/1010339458/obde_content/info/3431594424093212534.1608250010, isReference=true, sequence id=235152
+2008-12-16 09:17:16,134 DEBUG org.apache.hadoop.hbase.regionserver.HStore: loaded /hbase/my_table/1010339458/obde_content/info/4722584128214377088.1608250010, isReference=true, sequence id=235051
+2008-12-16 09:17:16,135 DEBUG org.apache.hadoop.hbase.regionserver.HStore: Loaded 3 file(s) in hstore 1010339458/obde_content, max sequence id 235152
+2008-12-16 09:17:16,149 INFO org.apache.hadoop.io.compress.CodecPool: Got brand-new decompressor
+2008-12-16 09:17:16,149 INFO org.apache.hadoop.io.compress.CodecPool: Got brand-new decompressor
+2008-12-16 09:17:16,149 INFO org.apache.hadoop.io.compress.CodecPool: Got brand-new decompressor
+2008-12-16 09:17:16,149 INFO org.apache.hadoop.io.compress.CodecPool: Got brand-new decompressor
+2008-12-16 09:17:16,156 INFO org.apache.hadoop.io.compress.CodecPool: Got brand-new decompressor
+2008-12-16 09:17:16,156 INFO org.apache.hadoop.io.compress.CodecPool: Got brand-new decompressor
+2008-12-16 09:17:16,156 INFO org.apache.hadoop.io.compress.CodecPool: Got brand-new decompressor
+2008-12-16 09:17:16,156 INFO org.apache.hadoop.io.compress.CodecPool: Got brand-new decompressor
+2008-12-16 09:17:16,157 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Next sequence id for region my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460 is 235153
+2008-12-16 09:17:16,159 INFO org.apache.hadoop.hbase.regionserver.HRegion: region my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460/1010339458 available
+2008-12-16 09:17:16,159 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Compactions and cache flushes disabled for region my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460
+2008-12-16 09:17:16,159 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Scanners disabled for region my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460
+2008-12-16 09:17:16,159 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: No more active scanners for region my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460
+2008-12-16 09:17:16,159 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Updates disabled for region my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460
+2008-12-16 09:17:16,159 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: No more row locks outstanding on region my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460
+2008-12-16 09:17:16,159 DEBUG org.apache.hadoop.hbase.regionserver.HStore: closed 1010339458/obde_content
+2008-12-16 09:17:16,159 INFO org.apache.hadoop.hbase.regionserver.HRegion: closed my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460
+2008-12-16 09:17:16,159 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Opening region my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460/2015194550
+2008-12-16 09:17:16,185 DEBUG org.apache.hadoop.hbase.regionserver.HStore: loaded /hbase/my_table/2015194550/obde_content/info/215038473253378290.1608250010, isReference=true, sequence id=207793
+2008-12-16 09:17:16,193 DEBUG org.apache.hadoop.hbase.regionserver.HStore: loaded /hbase/my_table/2015194550/obde_content/info/4022324240389174248.1608250010, isReference=true, sequence id=235152
+2008-12-16 09:17:16,202 DEBUG org.apache.hadoop.hbase.regionserver.HStore: loaded /hbase/my_table/2015194550/obde_content/info/6108448749728539444.1608250010, isReference=true, sequence id=235051
+2008-12-16 09:17:16,203 DEBUG org.apache.hadoop.hbase.regionserver.HStore: Loaded 3 file(s) in hstore 2015194550/obde_content, max sequence id 235152
+2008-12-16 09:17:16,229 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Next sequence id for region my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460 is 235153
+2008-12-16 09:17:16,231 INFO org.apache.hadoop.hbase.regionserver.HRegion: region my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460/2015194550 available
+2008-12-16 09:17:16,231 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Compactions and cache flushes disabled for region my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460
+2008-12-16 09:17:16,231 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Scanners disabled for region my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460
+2008-12-16 09:17:16,231 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: No more active scanners for region my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460
+2008-12-16 09:17:16,231 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Updates disabled for region my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460
+2008-12-16 09:17:16,231 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: No more row locks outstanding on region my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460
+2008-12-16 09:17:16,231 DEBUG org.apache.hadoop.hbase.regionserver.HStore: closed 2015194550/obde_content
+2008-12-16 09:17:16,231 INFO org.apache.hadoop.hbase.regionserver.HRegion: closed my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460
+2008-12-16 09:17:16,245 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Cleaned up /hbase/my_table/1608250010/splits true
+2008-12-16 09:17:16,247 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$TableServers: Cache hit in table locations for row <> and tableName .META.: location server MY.IP.102:60020, location region name .META.,,1
+2008-12-16 09:17:16,249 INFO org.apache.hadoop.hbase.regionserver.CompactSplitThread: region split, META updated, and report to master all successful. Old region=REGION => {NAME => 'my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395', STARTKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENDKEY => '', ENCODED => 1608250010, OFFLINE => true, SPLIT => true, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [
+{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '1', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}
+]}}, new regions: my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460, my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460. Split took 1sec
+2008-12-16 09:17:16,291 INFO org.apache.hadoop.ipc.Server: IPC Server handler 7 on 60020, call batchUpdate([B@4d2637c2, row => ZEhP2cZMl+ovnXmpbN5UOQ==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+org.apache.hadoop.hbase.NotServingRegionException: my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:1519)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1105)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:16,301 INFO org.apache.hadoop.ipc.Server: IPC Server handler 6 on 60020, call batchUpdate([B@816c920, row => bDPORkmlvmRIZH0yOux0Sg==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+org.apache.hadoop.hbase.NotServingRegionException: my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:1519)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1105)
+at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:585)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:554)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-12-16 09:17:16,352 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk packet full seqno 1335
+2008-12-16 09:17:16,352 DEBUG org.apache.hadoop.dfs.DFSClient: DataStreamer block blk_7750693789795884606_1536 wrote packet seqno:1335 size:65557 offsetInBlock:19637248 lastPacketInBlock:false
+2008-12-16 09:17:16,356 DEBUG org.apache.hadoop.dfs.DFSClient: DFSClient writeChunk allocating new packet 1336
+2008-12-16 09:17:16,416 INFO org.apache.hadoop.ipc.Server: IPC Server handler 8 on 60020, call batchUpdate([B@fee5806, row => o8MMWrSbpBj8hFPXSyhZ+g==,
+{column => obde_content:, value => '...'}
+, -1) from MY.IP.212:46198: error: org.apache.hadoop.hbase.NotServingRegionException: my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+Master:
+2008-12-16 09:15:31,712 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 4, Num Servers: 2, Avg Load: 2.0
+2008-12-16 09:15:31,878 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scanning meta region
+{regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020}
+2008-12-16 09:15:31,908 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner REGION => {NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192, TABLE => {{NAME => '.META.', IS_ROOT => 'false', IS_META => 'true', FAMILIES => [
+{NAME => 'historian', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '2147483647', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}, {NAME => 'info', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '1', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:15:31,909 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scan of meta region {regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020} complete
+2008-12-16 09:15:37,794 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scanning meta region {regionname: .META.,,1, startKey: <>, server: MY.IP.102:60020}
+2008-12-16 09:15:37,817 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,,1229374459395', STARTKEY => '', ENDKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENCODED => 1847652518, TABLE => NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:15:37,818 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395', STARTKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENDKEY => '', ENCODED => 1608250010, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:15:37,819 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scan of meta region {regionname: .META.,,1, startKey: <>, server: MY.IP.102:60020} complete
+2008-12-16 09:15:37,819 INFO org.apache.hadoop.hbase.master.BaseScanner: all meta regions scanned
+2008-12-16 09:15:46,728 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 4, Num Servers: 2, Avg Load: 2.0
+2008-12-16 09:16:01,743 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 4, Num Servers: 2, Avg Load: 2.0
+2008-12-16 09:16:16,760 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 4, Num Servers: 2, Avg Load: 2.0
+2008-12-16 09:16:31,775 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 4, Num Servers: 2, Avg Load: 2.0
+2008-12-16 09:16:31,889 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scanning meta region {regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020}
+2008-12-16 09:16:31,920 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner REGION => {NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192, TABLE => {{NAME => '.META.', IS_ROOT => 'false', IS_META => 'true', FAMILIES => [{NAME => 'historian', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '2147483647', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}
+,
+{NAME => 'info', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '1', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:16:31,922 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scan of meta region {regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020} complete
+2008-12-16 09:16:37,804 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scanning meta region {regionname: .META.,,1, startKey: <>, server: MY.IP.102:60020}
+2008-12-16 09:16:37,826 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,,1229374459395', STARTKEY => '', ENDKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENCODED => 1847652518, TABLE => NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:16:37,827 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395', STARTKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENDKEY => '', ENCODED => 1608250010, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:16:37,827 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scan of meta region {regionname: .META.,,1, startKey: <>, server: MY.IP.102:60020} complete
+2008-12-16 09:16:37,827 INFO org.apache.hadoop.hbase.master.BaseScanner: all meta regions scanned
+2008-12-16 09:16:46,791 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 4, Num Servers: 2, Avg Load: 2.0
+2008-12-16 09:17:01,807 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 4, Num Servers: 2, Avg Load: 2.0
+2008-12-16 09:17:16,823 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 4, Num Servers: 2, Avg Load: 2.0
+2008-12-16 09:17:16,902 INFO org.apache.hadoop.hbase.master.ServerManager: Received MSG_REPORT_SPLIT: my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395: [B@674c5b37 from MY.IP.102:60020
+2008-12-16 09:17:19,826 INFO org.apache.hadoop.hbase.master.RegionManager: assigning region my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460 to server MY.IP.213:60020
+2008-12-16 09:17:19,828 INFO org.apache.hadoop.hbase.master.RegionManager: assigning region my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460 to server MY.IP.213:60020
+2008-12-16 09:17:22,833 INFO org.apache.hadoop.hbase.master.ServerManager: Received MSG_REPORT_PROCESS_OPEN: my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460 from MY.IP.213:60020
+2008-12-16 09:17:22,833 INFO org.apache.hadoop.hbase.master.ServerManager: Received MSG_REPORT_OPEN: my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460 from MY.IP.213:60020
+2008-12-16 09:17:22,833 INFO org.apache.hadoop.hbase.master.ServerManager: Received MSG_REPORT_OPEN: my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460 from MY.IP.213:60020
+2008-12-16 09:17:22,833 DEBUG org.apache.hadoop.hbase.master.HMaster: Main processing loop: PendingOpenOperation from MY.IP.213:60020
+2008-12-16 09:17:22,833 INFO org.apache.hadoop.hbase.master.ProcessRegionOpen$1: my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460 open on MY.IP.213:60020
+2008-12-16 09:17:22,833 DEBUG org.apache.hadoop.hbase.master.RegionServerOperation: numberOfMetaRegions: 1, onlineMetaRegions.size(): 1
+2008-12-16 09:17:22,833 INFO org.apache.hadoop.hbase.master.ProcessRegionOpen$1: updating row my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460 in region .META.,,1 with startcode 1229433746880 and server MY.IP.213:60020
+2008-12-16 09:17:22,835 DEBUG org.apache.hadoop.hbase.master.HMaster: Main processing loop: PendingOpenOperation from MY.IP.213:60020
+2008-12-16 09:17:22,835 INFO org.apache.hadoop.hbase.master.ProcessRegionOpen$1: my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460 open on MY.IP.213:60020
+2008-12-16 09:17:22,835 DEBUG org.apache.hadoop.hbase.master.RegionServerOperation: numberOfMetaRegions: 1, onlineMetaRegions.size(): 1
+2008-12-16 09:17:22,835 INFO org.apache.hadoop.hbase.master.ProcessRegionOpen$1: updating row my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460 in region .META.,,1 with startcode 1229433746880 and server MY.IP.213:60020
+2008-12-16 09:17:31,845 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:17:31,900 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scanning meta region {regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020}
+2008-12-16 09:17:31,932 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner REGION => {NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192, TABLE => {{NAME => '.META.', IS_ROOT => 'false', IS_META => 'true', FAMILIES => [{NAME => 'historian', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '2147483647', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}, {NAME => 'info', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '1', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}
+]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:17:31,934 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scan of meta region
+{regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020}
+complete
+2008-12-16 09:17:37,816 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scanning meta region
+{regionname: .META.,,1, startKey: <>, server: MY.IP.102:60020}
+2008-12-16 09:17:37,838 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,,1229374459395', STARTKEY => '', ENDKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENCODED => 1847652518, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [
+{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:17:37,839 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395', STARTKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENDKEY => '', ENCODED => 1608250010, OFFLINE => true, SPLIT => true, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}
+]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:17:37,839 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460', STARTKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENDKEY => 'iGnmMuO6Z0jyDJoteHYqKA==', ENCODED => 1010339458, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [
+{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}}}, SERVER => 'MY.IP.213:60020', STARTCODE => 1229433746880
+2008-12-16 09:17:37,840 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460', STARTKEY => 'iGnmMuO6Z0jyDJoteHYqKA==', ENDKEY => '', ENCODED => 2015194550, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}
+]}}}, SERVER => 'MY.IP.213:60020', STARTCODE => 1229433746880
+2008-12-16 09:17:37,856 DEBUG org.apache.hadoop.hbase.master.BaseScanner: my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460 no longer has references to my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+2008-12-16 09:17:37,857 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scan of meta region
+{regionname: .META.,,1, startKey: <>, server: MY.IP.102:60020}
+complete
+2008-12-16 09:17:37,857 INFO org.apache.hadoop.hbase.master.BaseScanner: all meta regions scanned
+2008-12-16 09:17:46,864 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:18:01,879 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:18:16,895 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:18:31,910 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scanning meta region
+{regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020}
+2008-12-16 09:18:31,912 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:18:31,935 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner REGION => {NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192, TABLE => {{NAME => '.META.', IS_ROOT => 'false', IS_META => 'true', FAMILIES => [
+{NAME => 'historian', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '2147483647', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}, {NAME => 'info', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '1', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:18:31,936 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scan of meta region {regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020} complete
+2008-12-16 09:18:37,827 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scanning meta region {regionname: .META.,,1, startKey: <>, server: MY.IP.102:60020}
+2008-12-16 09:18:37,851 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,,1229374459395', STARTKEY => '', ENDKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENCODED => 1847652518, TABLE => NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:18:37,852 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395', STARTKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENDKEY => '', ENCODED => 1608250010, OFFLINE => true, SPLIT => true, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:18:37,853 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460', STARTKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENDKEY => 'iGnmMuO6Z0jyDJoteHYqKA==', ENCODED => 1010339458, TABLE => NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}}}, SERVER => 'MY.IP.213:60020', STARTCODE => 1229433746880
+2008-12-16 09:18:37,853 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460', STARTKEY => 'iGnmMuO6Z0jyDJoteHYqKA==', ENDKEY => '', ENCODED => 2015194550, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}, SERVER => 'MY.IP.213:60020', STARTCODE => 1229433746880
+2008-12-16 09:18:37,857 DEBUG org.apache.hadoop.hbase.master.BaseScanner: my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460 no longer has references to my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395
+2008-12-16 09:18:37,857 INFO org.apache.hadoop.hbase.master.BaseScanner: Deleting region my_table,RQue7uxNoe59vJxljcd1rQ==,1229374459395 because daughter splits no longer hold references
+2008-12-16 09:18:37,858 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: DELETING region hdfs://be4.nydc1.outbrain.com:54310/hbase/my_table/1608250010
+2008-12-16 09:18:37,891 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scan of meta region {regionname: .META.,,1, startKey: <>, server: MY.IP.102:60020} complete
+2008-12-16 09:18:37,891 INFO org.apache.hadoop.hbase.master.BaseScanner: all meta regions scanned
+2008-12-16 09:18:46,927 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:19:01,943 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:19:16,960 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:19:31,921 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scanning meta region {regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020}
+2008-12-16 09:19:31,949 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner REGION => {NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192, TABLE => {{NAME => '.META.', IS_ROOT => 'false', IS_META => 'true', FAMILIES => [{NAME => 'historian', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '2147483647', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}
+,
+{NAME => 'info', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '1', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:19:31,950 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scan of meta region {regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020} complete
+2008-12-16 09:19:31,976 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:19:37,837 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scanning meta region {regionname: .META.,,1, startKey: <>, server: MY.IP.102:60020}
+2008-12-16 09:19:37,861 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,,1229374459395', STARTKEY => '', ENDKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENCODED => 1847652518, TABLE => NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:19:37,862 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460', STARTKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENDKEY => 'iGnmMuO6Z0jyDJoteHYqKA==', ENCODED => 1010339458, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}, SERVER => 'MY.IP.213:60020', STARTCODE => 1229433746880
+2008-12-16 09:19:37,863 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460', STARTKEY => 'iGnmMuO6Z0jyDJoteHYqKA==', ENDKEY => '', ENCODED => 2015194550, TABLE => NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}, SERVER => 'MY.IP.213:60020', STARTCODE => 1229433746880
+2008-12-16 09:19:37,863 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scan of meta region {regionname: .META.,,1, startKey: <>, server: MY.IP.102:60020} complete
+2008-12-16 09:19:37,863 INFO org.apache.hadoop.hbase.master.BaseScanner: all meta regions scanned
+2008-12-16 09:19:46,992 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:20:02,006 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:20:17,022 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:20:31,931 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scanning meta region {regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020}
+2008-12-16 09:20:31,955 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner REGION => {NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192, TABLE => {{NAME => '.META.', IS_ROOT => 'false', IS_META => 'true', FAMILIES => [{NAME => 'historian', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '2147483647', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}, {NAME => 'info', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '1', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}
+]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:20:31,956 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scan of meta region
+{regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020}
+complete
+2008-12-16 09:20:32,037 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:20:37,848 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scanning meta region
+{regionname: .META.,,1, startKey: <>, server: MY.IP.102:60020}
+2008-12-16 09:20:37,870 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,,1229374459395', STARTKEY => '', ENDKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENCODED => 1847652518, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [
+{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:20:37,871 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,RQue7uxNoe59vJxljcd1rQ==,1229437034460', STARTKEY => 'RQue7uxNoe59vJxljcd1rQ==', ENDKEY => 'iGnmMuO6Z0jyDJoteHYqKA==', ENCODED => 1010339458, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}
+]}}}, SERVER => 'MY.IP.213:60020', STARTCODE => 1229433746880
+2008-12-16 09:20:37,872 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner REGION => {NAME => 'my_table,iGnmMuO6Z0jyDJoteHYqKA==,1229437034460', STARTKEY => 'iGnmMuO6Z0jyDJoteHYqKA==', ENDKEY => '', ENCODED => 2015194550, TABLE => {{NAME => 'my_table', IS_ROOT => 'false', IS_META => 'false', FAMILIES => [
+{NAME => 'obde_content', BLOOMFILTER => 'false', IN_MEMORY => 'false', LENGTH => '2147483647', BLOCKCACHE => 'false', VERSIONS => '1', TTL => '-1', COMPRESSION => 'NONE'}
+]}}}, SERVER => 'MY.IP.213:60020', STARTCODE => 1229433746880
+2008-12-16 09:20:37,872 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scan of meta region
+{regionname: .META.,,1, startKey: <>, server: MY.IP.102:60020}
+complete
+2008-12-16 09:20:37,872 INFO org.apache.hadoop.hbase.master.BaseScanner: all meta regions scanned
+2008-12-16 09:20:47,052 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:21:02,069 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:21:17,084 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+2008-12-16 09:21:31,942 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scanning meta region
+{regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020}
+2008-12-16 09:21:31,964 DEBUG org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner REGION => {NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192, TABLE => {{NAME => '.META.', IS_ROOT => 'false', IS_META => 'true', FAMILIES => [
+{NAME => 'historian', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '2147483647', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}
+,
+{NAME => 'info', BLOOMFILTER => 'false', IN_MEMORY => 'false', VERSIONS => '1', BLOCKCACHE => 'false', LENGTH => '2147483647', TTL => '-1', COMPRESSION => 'NONE'}
+]}}}, SERVER => 'MY.IP.102:60020', STARTCODE => 1229433746854
+2008-12-16 09:21:31,965 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scan of meta region
+{regionname: -ROOT-,,0, startKey: <>, server: MY.IP.213:60020}
+complete
+2008-12-16 09:21:32,100 DEBUG org.apache.hadoop.hbase.master.ServerManager: Total Load: 5, Num Servers: 2, Avg Load: 3.0
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.18.0, 0.18.1
+Fix_version:
+None
+Component:
+Client
+Label:
+None
+Environment:
+centos, hadoop, datanode
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Yossi Ittach
+Create date:
+29/Dec/08 16:20
+Update date:
+19/Aug/10 16:58
+Resolved date:
+19/Aug/10 16:58

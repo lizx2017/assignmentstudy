@@ -1,0 +1,57 @@
+Summary:
+HBase fails to recover from failed DNS resolution of stale meta connection info
+Description:
+This looks like a variant of HBASE-3445:
+One of our developers ran a seed program with configuration A to generate some test data on his local machine. He then moved that data into a development environment on the same machine with a different hbase configuration B.
+On startup the HMaster waits for new regionserver to register itself:
+[25/01/11 15:37:25] 162161 [ HRegionServer] INFO ase.regionserver.HRegionServer - Telling master at 10.0.1.4:7801 that we are up
+[25/01/11 15:37:25] 162165 [ice-EventThread] DEBUG .hadoop.hbase.zookeeper.ZKUtil - master:7801-0x12dbf879abe0000 Retrieved 13 byte(s) of data from znode /hbase/rs/10.0.1.4,7802,1295998613814 and set watcher; 10.0.1.4:7802
+Then ROOT region comes online at the right place: 10.0.1.4,7802
+[25/01/11 15:37:31] 168369 [yTasks:70236052] INFO ase.catalog.RootLocationEditor - Setting ROOT region location in ZooKeeper as 10.0.1.4:7802
+3:57 [25/01/11 15:37:31] 168408 [10.0.1.4:7801-0] DEBUG er.handler.OpenedRegionHandler - Opened region ROOT,,0.70236052 on 10.0.1.4,7802,1295998613814
+But then HMaster chokes on the stale META region location.
+[25/01/11 15:37:31] 168448 [ HMaster] ERROR he.hadoop.hbase.HServerAddress - Could not resolve the DNS name of warren:60020
+[25/01/11 15:37:31] 168448 [ HMaster] FATAL he.hadoop.hbase.master.HMaster - Unhandled exception. Starting shutdown.
+java.lang.IllegalArgumentException: Could not resolve the DNS name of warren:60020
+at org.apache.hadoop.hbase.HServerAddress.checkBindAddressCanBeResolved(HServerAddress.java:105)
+at org.apache.hadoop.hbase.HServerAddress.<init>(HServerAddress.java:66)
+at org.apache.hadoop.hbase.catalog.MetaReader.readLocation(MetaReader.java:344)
+at org.apache.hadoop.hbase.catalog.MetaReader.readMetaLocation(MetaReader.java:281)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.getMetaServerConnection(CatalogTracker.java:280)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.verifyMetaRegionLocation(CatalogTracker.java:482)
+at org.apache.hadoop.hbase.master.HMaster.assignRootAndMeta(HMaster.java:435)
+at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:382)
+at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:277)
+at java.lang.Thread.run(Thread.java:680)
+First of all, we do not yet understand why in configuration A the RegionInfo resolved to "warren:60020" whereas in configuration B we get "10.0.1.4:7802". The port numbers make sense but not the "warren" hostname. It's probably specific to Warren's mac environment somehow because no other developer gets this problem when doing the same thing. "warren" isn't in his hosts file so that remains a mystery.
+But irrespective of that, since the ports differ we expect the stale meta connection data to cause connection failure anyway. Perhaps in the form of a SocketTimeoutException as in hbase-3445.
+But shouldn't the HMaster handle that by catching the exception and letting verifyMetaRegionLocation() fail so that meta regions get reassigned to the new region server?
+Probably the safeguards in CatalogTracker.getCachedConnection() should move up to getMetaServerConnection() so as to encompass MetaReader.readMetaLocation() also. Essentially if getMetaServerConnection() encounters ANY exception connection to meta RegionServer it should probably just return null to force meta region reassignment.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.1
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+James Kennedy
+Create date:
+26/Jan/11 00:34
+Update date:
+04/Mar/13 05:14
+Resolved date:
+17/Jun/11 23:20

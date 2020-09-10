@@ -1,0 +1,42 @@
+Summary:
+Rolling restart RSs scenario, -ROOT-, .META. regions are lost in AssignmentManager
+Description:
+Keep Master up all the time, do rolling restart of RSs like this - stop RS1, wait for 2 seconds, stop RS2, start RS1, wait for 2 seconds, stop RS3, start RS2, wait for 2 seconds, etc. After a while, you will find the ROOT, .META. regions aren't in "regions in transtion" from AssignmentManager point of view, but they aren't assigned to any regions. Here are the issues.
+1. .ROOT or .META. location is stale when MetaServerShutdownHandler is invoked to check if it contains ROOT region. That is due to long delay from ZK notification and async nature of the system. Here is an example, even though new root region server sea-lab-1,60020,1316380133656 is set at T2, at T3 the shutdown process for sea-lab-1,60020,1316380133656, the root location still points to old server sea-lab-3,60020,1316380037898.
+T1: 2011-09-18 14:08:52,470 DEBUG org.apache.hadoop.hbase.zookeeper.ZKUtil: master:6
+0000-0x1327e43175e0000 Retrieved 29 byte(s) of data from znode /hbase/root-regio
+n-server and set watcher; sea-lab-3,60020,1316380037898
+T2: 2011-09-18 14:08:57,173 INFO org.apache.hadoop.hbase.catalog.RootLocationEditor: Setting ROOT region location in ZooKeeper as sea-lab-1,60020,1316380133656
+T3: 2011-09-18 14:10:26,393 DEBUG org.apache.hadoop.hbase.master.ServerManager: Adde
+d=sea-lab-1,60020,1316380133656 to dead servers, submitted shutdown handler to be executed, root=false, meta=true, current Root Location: sea-lab-3,60020,1316380037898
+T4: 2011-09-18 14:12:37,314 DEBUG org.apache.hadoop.hbase.zookeeper.ZKUtil: master:6
+0000-0x1327e43175e0000 Retrieved 29 byte(s) of data from znode /hbase/root-region-server and set watcher; sea-lab-1,60020,1316380133656
+2. The MetaServerShutdownHandler worker thread that waits for ROOT or .META. availability could be blocked. If meanwhile, the new server that ROOT or .META. is being assigned restarted, another instance of MetaServerShutdownHandler is queued. Eventually, all MetaServerShutdownHandler worker threads are filled up. It looks like HBASE-4245.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ming Ma
+Reporter:
+Ming Ma
+Create date:
+22/Sep/11 00:20
+Update date:
+20/Nov/15 11:52
+Resolved date:
+28/Sep/11 21:41

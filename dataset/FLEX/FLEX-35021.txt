@@ -1,0 +1,102 @@
+Summary:
+FlexJS install failed to download antlr.jar
+Description:
+Context:
+The "ant -f installer.xml" command failed to properly install FlexJS because the download of antlr.jar failed. This is caused by an issue in the falcon compiler and compiler.jx (see details below).
+Expected result:
+The "ant -f installer.xml" command work properly.
+Actual result:
+The "ant -f installer.xml" command failed (BUILD FAILED) with the following error:
+       [get] Error opening connection java.io.FileNotFoundException: https://repo1.maven.org/maven2//org/antlr/antlr-complete/3.5.2/antlr-complete-3.5.2.jar
+      [get] Can't get http://search.maven.org/remotecontent?filepath=/org/antlr/antlr-complete/3.5.2/antlr-complete-3.5.2.jar to C:\Apps\FlexJS-0.5.0\apache-flex-flexjs-0.5.0-bin\in\falcon\compiler\lib\antlr.jar
+
+BUILD FAILED
+C:\Apps\FlexJS-0.5.0\apache-flex-flexjs-0.5.0-bin\installer.xml:352: The following error occurred while executing this line:
+C:\Apps\FlexJS-0.5.0\apache-flex-flexjs-0.5.0-bin\installer.xml:358: The following error occurred while executing this line:
+C:\Apps\FlexJS-0.5.0\apache-flex-flexjs-0.5.0-bin\in\falcon\installer.xml:97: The following error occurred while executing this line:
+C:\Apps\FlexJS-0.5.0\apache-flex-flexjs-0.5.0-bin\in\falcon\compiler\downloads.xml:73: The following error occurred while executing this line:
+C:\Apps\FlexJS-0.5.0\apache-flex-flexjs-0.5.0-bin\in\falcon\compiler\downloads.xml:293: The following error occurred while executing this line:
+C:\Apps\FlexJS-0.5.0\apache-flex-flexjs-0.5.0-bin\in\falcon\compiler\downloads.xml:320: The following error occurred while executing this line:
+C:\Apps\FlexJS-0.5.0\apache-flex-flexjs-0.5.0-bin\in\falcon\compiler\downloads.xml:412: The following error occurred while executing this line:
+C:\Apps\FlexJS-0.5.0\apache-flex-flexjs-0.5.0-bin\in\falcon\compiler\downloads.xml:430: Can't get http://search.maven.org/remotecontent?filepath=/org/antlr/antlr-complete/3.5.2/antlr-complete-3.5.2.jar to C:\Apps\FlexJS-0.5.0\apache-flex-flexjs-0.5.0-bin\in\falcon\compiler\lib\antlr.jar
+It looks like the antlr.jar URL has a double backslash (//) which cause the 404 error.
+Test-case:
+1. download the FlexJS 0.5.0 package from http://www.apache.org/dyn/closer.lua/flex/flexjs/0.5.0/binaries/apache-flex-flexjs-0.5.0-bin.zip
+2. extract the file on local hard drive
+3. run the "ant -f installer.xml" as advised in https://cwiki.apache.org/confluence/display/FLEX/Using+FlexJS+with+Adobe+Flash+Builder
+4. answer "y" for ask-air and ask-flash questions
+Diagnostic:
+Apparently, it comes from the "CURRENT_DIR/in/falcon/compiler/download.xml" file with the following lines 429-430:
+  <target name="get-if-not-cached" unless="found-in-cache">
+    <get src="${srcDomain}/${srcFolder}/${srcFile}" dest="${dest}"/>
+For antlr.jar, the maven redirection gives (from the log file):
+     [get] http://search.maven.org/remotecontent?filepath=/org/antlr/antlr-complete/3.5.2/antlr-complete-3.5.2.jar moved to https://repo1.maven.org/maven2//org/antlr/antlr-complete/3.5.2/antlr-complete-3.5.2.jar
+Thus, this is an issue of the falcon installer.
+Workaround:
+In order to correct the antlr.jar issue, I used the following workaround:
+1. open CURRENT_DIR/in/apache-flex-falconjx-0.5.0-bin.zip using 7zip
+2. browse to "compiler" directory in the zip archive
+3. open download.xml in edit mode
+4. replace target "get-if-not-cached" (around line 429):
+  
+  <target name="get-if-not-cached" unless="found-in-cache">
+    <get src="${srcDomain}/${srcFolder}/${srcFile}" dest="${dest}"/>
+    <antcall target="check-sum">
+      <param name="dest" value="${dest}"/>
+      <param name="message" value="Checksum mismatch for ${dest}"/>
+    </antcall>
+    <antcall target="put-in-cache"/>
+  </target>
+by
+  <scriptdef name="checkIsServerWithoutQuery" language="javascript">
+     <attribute name="domain" />
+     <attribute name="property" />
+     <![CDATA[
+       var domain = attributes.get("domain"); // the URL e.g. http://domain.com/path
+       project.setProperty(attributes.get("property"), (domain.indexOf("/",8)<0?"/":"") );
+     ]]>
+  </scriptdef>
+  
+  <target name="get-if-not-cached" unless="found-in-cache">
+    <checkIsServerWithoutQuery domain="${srcDomain}" property="backslashIfNeeded" />
+    <get src="${srcDomain}${backslashIfNeeded}${srcFolder}/${srcFile}" dest="${dest}"/>
+    <antcall target="check-sum">
+      <param name="dest" value="${dest}"/>
+      <param name="message" value="Checksum mismatch for ${dest}"/>
+    </antcall>
+    <antcall target="put-in-cache"/>
+  </target>
+5. save the file and agree 7zip to update the fip file
+6. do the same as step 4 for the "compiler.jx/download.xml" file within the zip file (around line 380)
+7. save the file and agree 7zip to update the fip file
+8. close the zip file
+Solving the issue will require to correct the falcon compiler and compiler.jx download.xml files (thus both components are impacted).
+As this is issue is on the installation, I would categorize it as Blocking. However, as there is a workaround, I categorized it as Major.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Apache FlexJS 0.5.0
+Fix_version:
+None
+Component:
+FlexJS, (2)
+Label:
+None
+Environment:
+Windows 10, Oracle JDK 1.8.0_66
+Attachment number:
+0
+Assignee:
+Alex Harui
+Reporter:
+Julien Kronegg
+Create date:
+31/Jan/16 00:46
+Update date:
+30/Mar/16 01:48
+Resolved date:
+30/Mar/16 01:48

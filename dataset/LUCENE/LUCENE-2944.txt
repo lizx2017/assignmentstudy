@@ -1,0 +1,44 @@
+Summary:
+BytesRef reuse bugs in QueryParser and analysis.jsp
+Description:
+Some code uses BytesRef as if it were a "String", in this case consumers of TermToBytesRefAttribute.
+The thing is, while our general implementation works on char[] and then populates the consumers BytesRef,
+not all TermToBytesRefAttribute implementations do this, specifically ICU collation, it reuses the bytes and simply sets the pointers:
+  @Override
+  public int toBytesRef(BytesRef target) {
+    collator.getRawCollationKey(toString(), key);
+    target.bytes = key.bytes;
+    target.offset = 0;
+    target.length = key.size;
+    return target.hashCode();
+  }
+Most of the blame falls on me as I added this to the queryparser in LUCENE-2514.
+Attached is a patch so that these consumers re-use a 'spare' and copy the bytes when they are going to make a long lasting object such as a Term.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+4.0-ALPHA
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Robert Muir
+Reporter:
+Robert Muir
+Create date:
+01/Mar/11 14:51
+Update date:
+10/May/13 10:43
+Resolved date:
+21/Mar/11 13:52

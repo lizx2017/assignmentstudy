@@ -1,0 +1,67 @@
+Summary:
+Incorrect Schema with PIG CqlStorage Queries
+Description:
+A = LOAD 'cql://my/data?where_clause=key%3D\'status\' ' USING CqlStorage() AS
+(
+type:chararray,
+barcode:chararray,
+row_id:bytearray,
+key:chararray,
+status:chararray
+);
+DESCRIBE A;
+--A:
+{type: chararray,barcode: chararray,row_id: bytearray,key: chararray,status: chararray}
+B = FOREACH A GENERATE FLATTEN( status );
+I am trying to process the following data:
+B = FOREACH A GENERATE FLATTEN( status);
+DUMB B;
+(value,LIVING)
+(value,LIVING)
+(value,LIVING)
+(value,DECEASED)
+(value,LIVING)
+(value,DECEASED)
+(value,DECEASED)
+(value,LIVING)
+But when I try to filter it (FILTER A BY status MATCHES 'DECEASED')
+I get the following error:
+2013-08-23 08:47:16,290 [Thread-4] WARN org.apache.hadoop.mapred.LocalJobRunner - job_local_0001
+java.lang.ClassCastException: org.apache.pig.data.BinSedesTuple cannot be cast to java.lang.String
+at org.apache.pig.backend.hadoop.executionengine.physicalLayer.expressionOperators.PORegexp.getNext(PORegexp.java:84)
+at org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POFilter.getNext(POFilter.java:148)
+at org.apache.pig.backend.hadoop.executionengine.physicalLayer.PhysicalOperator.processInput(PhysicalOperator.java:290)
+at org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POForEach.getNext(POForEach.java:233)
+at org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigGenericMapReduce$Reduce.runPipeline(PigGenericMapReduce.java:460)
+...
+There are two StackOverFlow questions related to this:
+http://stackoverflow.com/questions/18407248/cce-binsedestuple-cannot-be-cast-to-string?lq=1
+http://stackoverflow.com/questions/18391552/cqlstorage-generates-wrong-pig-schema?lq=1
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Implemented
+Affects_version:
+
+Fix_version:
+1.2.10, 2.0.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Liu
+Reporter:
+James Schappet
+Create date:
+27/Aug/13 14:55
+Update date:
+16/Apr/19 09:32
+Resolved date:
+10/Sep/13 20:52

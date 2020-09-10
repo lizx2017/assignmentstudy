@@ -1,0 +1,74 @@
+Summary:
+Overlay a pdf file which is 750 pages ends up in OutOfMemoryError
+Description:
+We found an issue and solution to fix it, you guys might would be interested to have a look and see whether it is worth applying the attached patch to benefit more pdfbox users. And a bit more detail this error happens based on jetty running time memory setting, and pdf file size.
+Application platform:
+Unbuntu, jetty
+The test case to produce this issue:
+Add simple overlay to all pages (in this case it is 750 pages). The processPages function eats up the JVM memories while applying the overlay to the file.
+sample code for using pdfbox overlay:
+ PDDocument document = PDDocument.load( pdf );
+ HashMap<Integer, String> overlayGuide = new HashMap();
+ for (int i = 0; i < pagenunber; i++)
+ {
+  // "watermarked.pdf" meat to be a file which contains watermarks on the page
+   overlayGuide.put(i+1, "watermarked.pdf");
+ }
+ Overlay overlay = new Overlay();
+ overlay.setInputPDF( document );
+ overlay.setOverlayPosition( Overlay.Position.FOREGROUND );
+ PDDocument overlayResult = overlay.overlay( overlayGuide );
+Error log:
+INFO   | jvm 1    | main    | 2017/07/03 13:06:23 | java.lang.OutOfMemoryError: Java heap space
+STATUS | wrapper  | main    | 2017/07/03 13:06:23 | Filter trigger matched.  Restarting JVM.
+INFO   | jvm 1    | main    | 2017/07/03 13:06:23 |  at org.apache.pdfbox.io.ScratchFile.<init>(ScratchFile.java:128)
+INFO   | jvm 1    | main    | 2017/07/03 13:06:23 |  at org.apache.pdfbox.io.ScratchFile.getMainMemoryOnlyInstance(ScratchFile.java:143)
+INFO   | jvm 1    | main    | 2017/07/03 13:06:23 |  at org.apache.pdfbox.cos.COSStream.<init>(COSStream.java:55)
+INFO   | jvm 1    | main    | 2017/07/03 13:06:23 |  at org.apache.pdfbox.multipdf.Overlay.createStream(Overlay.java:***)
+INFO   | jvm 1    | main    | 2017/07/03 13:06:23 |  at org.apache.pdfbox.multipdf.Overlay.processPages(Overlay.java:364)
+INFO   | jvm 1    | main    | 2017/07/03 13:06:23 |  at org.apache.pdfbox.multipdf.Overlay.overlay(Overlay.java:128)
+Solution
+Apply MemoryUsageSetting to Overlay, allows Overlay to use file as temp output.
+Update for the Overlay usage:
+ PDDocument document = PDDocument.load( pdf );
+ HashMap<Integer, String> overlayGuide = new HashMap();
+ for (int i = 0; i < pagenunber; i++)
+ {
+   overlayGuide.put(i+1, "watermarked.pdf");
+ }
+ Overlay overlay = new Overlay();
+ overlay.setInputPDF( document );
+ overlay.setOverlayPosition( Overlay.Position.FOREGROUND );
+ // set overlay to use temp file as out rather than memory
+ MemoryUsageSetting memoryUsageSetting = MemoryUsageSetting.setupTempFileOnly(  );
+ memoryUsageSetting.setTempDir( new File ( "someTempWorkingDir" ) );
+ overlay.setMemoryUsageSetting( memoryUsageSetting );
+ PDDocument overlayResult = overlay.overlay( overlayGuide );
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.6
+Fix_version:
+2.0.7, 3.0.0 PDFBox
+Component:
+PDModel
+Label:
+Overlay
+Environment:
+ubuntu, jetty
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+ryuukei
+Create date:
+03/Jul/17 19:38
+Update date:
+21/Jul/17 04:40
+Resolved date:
+06/Jul/17 16:35

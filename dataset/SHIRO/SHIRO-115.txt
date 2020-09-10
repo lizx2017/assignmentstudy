@@ -1,0 +1,42 @@
+Summary:
+ActiveDirectoryRealm might by vulnerable to LDAP search code injection
+Description:
+When searching for a userName within getRoleNamesForUser, the search filter is built by inserting the literal value from userName. Two potential problems might arise: userName might contain (deliberately crafted) LDAP syntax elements that could be used to affect the search. Permissible user principal names within AD (e.g. "A(1") might be rejected due to syntax problems (even some Microsoft software packages appear to be quick-and-dirty here - see note at bottom of http://technet.microsoft.com/en-us/library/cc730634(WS.10).aspx) .
+This potential vulnerability can easily be fixed by using search parameters instead of literals (which should be considered good style anyway). The actual chance for an exploit appears to be very remote, but hackers are so creative
+// vulnerable to injection String searchFilter = "(&(objectClass=*)(userPrincipalName=" + userPrincipalName + "))";
+// vulnerable to injection NamingEnumeration answer = ldapContext.search(searchBase, searchFilter, searchCtls);
+String searchFilter = "(&(objectClass=*)(userPrincipalName=
+{0}
+))";
+Object[] searchArguments = new Object[]
+{userPrincipalName}
+;
+NamingEnumeration answer = ldapContext.search(searchBase, searchFilter, searchArguments, searchCtls);
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.9
+Fix_version:
+1.0.0
+Component:
+Authentication (log-in)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Les Hazlewood
+Reporter:
+Reiner Saddey
+Create date:
+27/Nov/09 09:56
+Update date:
+11/Jun/10 22:00
+Resolved date:
+07/Dec/09 16:29

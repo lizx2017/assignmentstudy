@@ -1,0 +1,53 @@
+Summary:
+DV updates can hit FileNotFoundException due to concurrency bug
+Description:
+Jenkins has hit this a few times recently, e.g.:
+ [junit4] Suite: org.apache.lucene.index.TestBinaryDocValuesUpdates
+   [junit4]   2> Jan 28, 2015 11:49:24 AM com.carrotsearch.randomizedtesting.RandomizedRunner$QueueUncaughtExceptionsHandler uncaughtException
+   [junit4]   2> WARNUNG: Uncaught exception in thread: Thread[Lucene Merge Thread #1,5,TGRP-TestBinaryDocValuesUpdates]
+   [junit4]   2> org.apache.lucene.index.MergePolicy$MergeException: java.nio.file.NoSuchFileException: _4_1.fnm in dir=RAMDirectory@5dcf7f8a lockFactory=org.apache.lucene.store.SingleInstanceLockFactory@ccb4148
+   [junit4]   2>  at __randomizedtesting.SeedInfo.seed([5EC20FA2CD1E68B8]:0)
+   [junit4]   2>  at org.apache.lucene.index.ConcurrentMergeScheduler.handleMergeException(ConcurrentMergeScheduler.java:641)
+   [junit4]   2>  at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:609)
+   [junit4]   2> Caused by: java.nio.file.NoSuchFileException: _4_1.fnm in dir=RAMDirectory@5dcf7f8a lockFactory=org.apache.lucene.store.SingleInstanceLockFactory@ccb4148
+   [junit4]   2>  at org.apache.lucene.store.MockDirectoryWrapper.openInput(MockDirectoryWrapper.java:655)
+   [junit4]   2>  at org.apache.lucene.store.Directory.openChecksumInput(Directory.java:110)
+   [junit4]   2>  at org.apache.lucene.codecs.lucene50.Lucene50FieldInfosFormat.read(Lucene50FieldInfosFormat.java:113)
+   [junit4]   2>  at org.apache.lucene.index.SegmentReader.initFieldInfos(SegmentReader.java:155)
+   [junit4]   2>  at org.apache.lucene.index.SegmentReader.<init>(SegmentReader.java:119)
+   [junit4]   2>  at org.apache.lucene.index.IndexWriter.mergeMiddle(IndexWriter.java:3935)
+   [junit4]   2>  at org.apache.lucene.index.IndexWriter.merge(IndexWriter.java:3559)
+   [junit4]   2>  at org.apache.lucene.index.ConcurrentMergeScheduler.doMerge(ConcurrentMergeScheduler.java:549)
+   [junit4]   2>  at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:587)
+   [junit4]   2> 
+   [junit4]   2> NOTE: reproduce with: ant test  -Dtestcase=TestBinaryDocValuesUpdates -Dtests.method=testManyReopensAndFields -Dtests.seed=5EC20FA2CD1E68B8 -Dtests.slow=true -Dtests.locale=de_DE -Dtests.timezone=Europe/Samara -Dtests.asserts=true -Dtests.file.encoding=UTF-8
+It repros only after substantial beasting.
+It's a concurrency issue between one thread kicking off a merge, and another thread resolving doc values updates.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+4.10.4, 5.0, (2)
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+28/Jan/15 17:39
+Update date:
+09/May/16 18:38
+Resolved date:
+25/Feb/15 08:58

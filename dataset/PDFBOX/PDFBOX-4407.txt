@@ -1,0 +1,93 @@
+Summary:
+ParentTree Objects do not match KArray objects after merge
+Description:
+After merging tagged documents together, the second page of the resulting document is no longer valid.  When the field objects are cloned in PDFMergerUtility, the new and old objects are stored in a map named objMapping.  This is used to replace the old references with the new references for the acroform, k array, and annotation list.  However the ParentTree is not updated to this new object reference.  This results in the K Array and the Parent Tree having different references to the same object.  This causes issues when using an a11y reader like Jaws, and also causes problems displaying the tags in Adobe DC.
+Here is a failing unit test that was created in PDFMergerUtilityTest to demonstrate the issue.  It was created using an example from W3: https://www.w3.org/WAI/WCAG20/Techniques/working-examples/PDF3/reading-order.pdf
+public void testStructureTreeMerge3() throws IOException
+{
+    PDFMergerUtility pdfMergerUtility = new PDFMergerUtility();
+    PDDocument src = PDDocument.load(new File(SRCDIR, "reading-order.pdf"));
+    PDDocument dst = PDDocument.load(new File(SRCDIR, "reading-order.pdf"));
+    pdfMergerUtility.appendDocument(dst, src);
+    src.close();
+    dst.save(new File(TARGETTESTDIR, "reading-order-merged.pdf"));
+    dst.close();
+
+    PDDocument doc = PDDocument.load(new File(TARGETTESTDIR, "reading-order-merged.pdf"));
+    assertTrue(checkAnnotationMatches(doc.getDocumentCatalog().getStructureTreeRoot().getKArray(), doc.getDocumentCatalog().getAcroForm().getFields(), (COSArray)doc.getDocumentCatalog().getStructureTreeRoot().getParentTree().getCOSObject().getDictionaryObject(COSName.NUMS)));
+}
+private boolean checkAnnotationMatches(COSArray kArray, List<PDField> acroformFields, COSArray numbersArray) {
+    for (int i = 0; i < kArray.size(); i++) {
+        COSBase entry = kArray.get(i);
+        if (entry instanceof COSArray){
+            COSArray entryAsArray = (COSArray) entry;
+            if (!checkAnnotationMatches(entryAsArray, acroformFields, numbersArray)) {
+                return false;
+            }
+        } else if (entry instanceof COSInteger) {
+            //do nothing, just need to screen these out so next line doesn't blow up
+        } else if (((COSObject) entry).getObject() instanceof COSDictionary){
+            COSDictionary entryDictionary = (COSDictionary)((COSObject) entry).getObject();
+            if (entryDictionary.getItem(COSName.K) != null) {
+                COSBase kids = entryDictionary.getItem(COSName.K);
+                if (kids != null) {
+                    if (kids instanceof COSInteger) {
+                        //do nothing, don't care about marked content tags
+                    } else if (kids instanceof COSDictionary) {
+                        COSDictionary kidsAsDictionary = (COSDictionary) kids;
+                        if (!checkForMatches(kidsAsDictionary.getDictionaryObject(COSName.OBJ), acroformFields, numbersArray)) {
+                            return false;
+                        }
+                    } else if (kids instanceof COSArray) {
+                        COSArray kidsAsArray = (COSArray) kids;
+                        if (!checkAnnotationMatches(kidsAsArray, acroformFields, numbersArray)) {
+                            return false;
+                        }
+                    }
+                }
+            } else if (entryDictionary.getDictionaryObject(COSName.OBJ) != null) {
+                if (!checkForMatches(entryDictionary.getDictionaryObject(COSName.OBJ), acroformFields, numbersArray)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+private boolean checkForMatches(COSBase objectReference, List<PDField> acroformFields, COSArray numbersArray) {
+    boolean result = false;
+    for (PDField field : acroformFields) {
+        if (field.getCOSObject() == objectReference && numbersArray.indexOfObject(objectReference.getCOSObject()) > 0) {
+            result = true;
+        }
+    }
+    return result;
+}
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.13
+Fix_version:
+2.0.14, (1)
+Component:
+Utilities
+Label:
+StructureTree
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Dan Anderson
+Create date:
+17/Dec/18 21:02
+Update date:
+01/Jan/19 16:34
+Resolved date:
+21/Dec/18 13:28

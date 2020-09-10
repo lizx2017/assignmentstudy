@@ -1,0 +1,50 @@
+Summary:
+Removing existing .regioninfo in writeRegioninfoOnFilesystem
+Description:
+If HRegion#writeRegioninfoOnFilesystem:
+    if (fs.exists(regioninfoPath) &&
+        fs.getFileStatus(regioninfoPath).getLen() > 0) {
+      return;
+    }
+If the file exists and its length is 0, the file should be removed. This issue has been fixed in trunk with HBASE-7807. We need to fix it in 0.94 as well. Otherwise, we will get this error:
+2013-03-27 16:57:27,143 ERROR org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Failed open of region=t1,r4_38,1364392356229.dec30602f4805a3e640871185ae900aa.
+java.io.IOException: Unable to rename hdfs://hbase-6.ent.cloudera.com:17020/hbase/t1/dec30602f4805a3e640871185ae900aa/.tmp/.regioninfo to hdfs://hbase-6.ent.cloudera.com:17020/hbase/t1/dec30602f4805a3e640871185ae900aa/.regioninfo
+ at org.apache.hadoop.hbase.regionserver.HRegion.checkRegioninfoOnFilesystem(HRegion.java:639)
+ at org.apache.hadoop.hbase.regionserver.HRegion.initialize(HRegion.java:426)
+ at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:3308)
+ at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:3256)
+ at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.openRegion(OpenRegionHandler.java:331)
+ at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:107)
+ at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:169)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+And the region can't be opened, so that stuck in transition.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.6
+Fix_version:
+0.94.7
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Jimmy Xiang
+Create date:
+28/Mar/13 18:45
+Update date:
+27/Apr/13 15:55
+Resolved date:
+29/Mar/13 00:08

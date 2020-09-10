@@ -1,0 +1,42 @@
+Summary:
+Split operation without split key incorrectly finds the middle key in off-by-one error
+Description:
+I took a deeper look into issues I was having using region splitting when specifying a region (but not a key for splitting).
+The midkey calculation is off by one and when there are 2 rows, will pick the 0th one. This causes the firstkey to be the same as midkey and the split will fail. Removing the -1 causes it work correctly, as per the test I've added.
+Looking into the code here is what goes on:
+1. Split takes the largest storefile
+2. It puts all the keys into a 2-dimensional array called blockKeys[][]. Key i resides as blockKeys[i]
+3. Getting the middle root-level index should yield the key in the middle of the storefile
+4. In step 3, we see that there is a possible erroneous (-1) to adjust for the 0-offset indexing.
+5. In a result with where there are only 2 blockKeys, this yields the 0th block key.
+6. Unfortunately, this is the same block key that 'firstKey' will be.
+7. This yields the result in HStore.java:1873 ("cannot split because midkey is the same as first or last row")
+8. Removing the -1 solves the problem (in this case).
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.1, 0.94.2, 0.94.3, 0.95.2
+Fix_version:
+0.94.4, 0.95.0
+Component:
+HFile, io
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksandr Shulman
+Reporter:
+Aleksandr Shulman
+Create date:
+12/Dec/12 22:00
+Update date:
+26/Feb/13 08:22
+Resolved date:
+18/Dec/12 00:54

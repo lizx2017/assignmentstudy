@@ -1,0 +1,57 @@
+Summary:
+RegionServer not shutting down upon KeeperException in open region
+Description:
+We ran into a situation where due to a Kerberos configuration problem one of our region server could not connect to ZK when opening a region. Instead of shutting down it continue to try to reconnect. Eventually the master would assign the region to another region server. Each time that region server was assigned a region it would sit there for 5 mins with the region offline. It would have been better if the region server had shut itself down.
+This is in the logs:
+2013-08-16 17:31:35,999 WARN org.apache.hadoop.hbase.zookeeper.ZKUtil: hconnection-0x2407b842ff2012d-0x2407b842ff2012d-0x2407b842ff2012d Unable to set watcher on znode (/hbase/hbaseid)
+org.apache.zookeeper.KeeperException$AuthFailedException: KeeperErrorCode = AuthFailed for /hbase/hbaseid
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:123)
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:51)
+at org.apache.zookeeper.ZooKeeper.exists(ZooKeeper.java:1041)
+at org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper.exists(RecoverableZooKeeper.java:172)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.checkExists(ZKUtil.java:450)
+at org.apache.hadoop.hbase.zookeeper.ClusterId.readClusterIdZNode(ClusterId.java:61)
+at org.apache.hadoop.hbase.zookeeper.ClusterId.getId(ClusterId.java:50)
+at org.apache.hadoop.hbase.zookeeper.ClusterId.hasId(ClusterId.java:44)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.ensureZookeeperTrackers(HConnectionManager.java:616)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:882)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:857)
+at org.apache.hadoop.hbase.client.HTable.finishSetup(HTable.java:233)
+at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:173)
+at org.apache.hadoop.hbase.catalog.MetaReader.getHTable(MetaReader.java:201)
+at org.apache.hadoop.hbase.catalog.MetaReader.getMetaHTable(MetaReader.java:227)
+at org.apache.hadoop.hbase.catalog.MetaReader.getCatalogHTable(MetaReader.java:214)
+at org.apache.hadoop.hbase.catalog.MetaEditor.putToCatalogTable(MetaEditor.java:91)
+at org.apache.hadoop.hbase.catalog.MetaEditor.updateLocation(MetaEditor.java:296)
+at org.apache.hadoop.hbase.catalog.MetaEditor.updateRegionLocation(MetaEditor.java:276)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.postOpenDeployTasks(HRegionServer.java:1828)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler$PostOpenDeployTasksThread.run(OpenRegionHandler.java:240)
+I think the RS should shut itself down instead.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.2, 0.94.12
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Lars Hofhansl
+Create date:
+26/Aug/13 22:16
+Update date:
+23/Sep/13 19:22
+Resolved date:
+27/Aug/13 19:57

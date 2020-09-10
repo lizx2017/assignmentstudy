@@ -1,0 +1,62 @@
+Summary:
+CQL: Errors when running unqualified "select column" statement (no where clause)
+Description:
+Seed Data
+CREATE KEYSPACE cqldb with strategy_class = 'org.apache.cassandra.locator.SimpleStrategy' and strategy_options:replication_factor=2;
+
+USE cqldb;
+
+CREATE COLUMNFAMILY users (KEY varchar PRIMARY KEY, password varchar, gender varchar, session_token varchar, state varchar, birth_year bigint);
+
+
+INSERT INTO users (KEY, password) VALUES ('user0', 'ch@ngem3');
+INSERT INTO users (KEY, password, gender, state, birth_year) VALUES ('user1', 'ch@ngem3a', 'f', 'TX', '1968');
+INSERT INTO users (KEY, password) VALUES ('user2', 'ch@ngem3b');
+INSERT INTO users (KEY, password) VALUES ('user3', 'ch@ngem3c');
+Query #1 - select varchar column
+cqlsh> select state from users;
+u'user1' | u'state',u'TX'
+Exception: 'NoneType' object has no attribute 'decode'
+
+cqlsh> select state from users where KEY='user1';
+u'user1' | u'state',u'TX'
+Query #2 - select bigint column
+cqlsh> select birth_year from users;
+Exception: unpack requires a string argument of length 8
+
+cqlsh> select birth_year from users where KEY='user1';
+u'user1' | u'birth_year',1968
+A simple 'SELECT *' with no WHERE clause works fine
+cqlsh> select * from users;
+u'user1' | u'birth_year',1968 | u'gender',u'f' | u'password',u'ch@ngem3a' | u'state',u'TX'
+u'user0' | u'password',u'ch@ngem3'
+u'user3' | u'password',u'ch@ngem3c'
+u'user2' | u'password',u'ch@ngem3b'
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.0
+Component:
+Legacy/CQL
+Label:
+cql
+Environment:
+
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Cathy Daw
+Create date:
+03/May/11 00:49
+Update date:
+16/Apr/19 09:33
+Resolved date:
+03/May/11 17:46

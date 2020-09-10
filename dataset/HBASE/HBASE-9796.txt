@@ -1,0 +1,48 @@
+Summary:
+npe in RegionServerCallable
+Description:
+Saw this running hbase-it suite on test cluster. Its tricky. Needs a little study. Connection or location became null in this code when we go to clear the caches:
+    if (t instanceof SocketTimeoutException ||
+        t instanceof ConnectException ||
+        t instanceof RetriesExhaustedException ||
+        (location != null && getConnection().isDeadServer(location.getServerName()))) {
+      // if thrown these exceptions, we clear all the cache entries that
+      // map to that slow/dead server; otherwise, let cache miss and ask
+      // hbase:meta again to find the new location
+      getConnection().clearCaches(location.getServerName());
+Here is exception seen:
+2013-10-17 09:05:44,569 INFO [Thread-9] actions.Action: Killed region server:a1811.halxg.cloudera.com,60020,1382025707403. Reported num of rs:4
+2013-10-17 09:05:44,569 INFO [Thread-9] actions.Action: Sleeping for:2961
+Exception in thread "HBaseUpdaterThread_3" java.lang.NullPointerException
+at org.apache.hadoop.hbase.client.RegionServerCallable.throwable(RegionServerCallable.java:120)
+at org.apache.hadoop.hbase.client.RpcRetryingCaller.callWithRetries(RpcRetryingCaller.java:124)
+at org.apache.hadoop.hbase.client.HTable.get(HTable.java:755)
+at org.apache.hadoop.hbase.util.MultiThreadedUpdater$HBaseUpdaterThread.run(MultiThreadedUpdater.java:159)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.96.0
+Fix_version:
+0.98.0, 0.96.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+17/Oct/13 22:03
+Update date:
+16/Dec/13 18:46
+Resolved date:
+18/Oct/13 00:09

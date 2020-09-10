@@ -1,0 +1,55 @@
+Summary:
+Schema pushes (seemingly) randomly not happening
+Description:
+We have been seeing problems since upgrade to 2.0.9 from 2.0.5.
+Basically after a while, new schema changes (we periodically add tables) start propagating very slowly to some nodes and fast to others. It looks from the logs and trace that in this case the "push" of the schema never happens (note a node has decided not to push to another node, it doesn't seem to start again) from the originating node to some of the other nodes. In this case though, we do see the other node end up pulling the schema some time later when it notices its schema is out of date.
+Here is code from 2.0.9 MigrationManager.announce
+       for (InetAddress endpoint : Gossiper.instance.getLiveMembers())
+        {
+            // only push schema to nodes with known and equal versions
+            if (!endpoint.equals(FBUtilities.getBroadcastAddress()) &&
+                    MessagingService.instance().knowsVersion(endpoint) &&
+                    MessagingService.instance().getRawVersion(endpoint) == MessagingService.current_version)
+                pushSchemaMutation(endpoint, schema);
+        }
+and from 2.0.5
+        for (InetAddress endpoint : Gossiper.instance.getLiveMembers())
+        {
+            if (endpoint.equals(FBUtilities.getBroadcastAddress()))
+                continue; // we've dealt with localhost already
+
+            // don't send schema to the nodes with the versions older than current major
+            if (MessagingService.instance().getVersion(endpoint) < MessagingService.current_version)
+                continue;
+
+            pushSchemaMutation(endpoint, schema);
+ }
+the old getVersion() call would return MessagingService.current_version if the version was unknown, so the push would occur in this case. I don't have logging to prove this, but have strong suspicion that the version may end up null in some cases (which would have allowed schema propagation in 2.0.5, but not by somewhere after that and <= 2.0.9)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.11, 2.1.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+graham sanderson
+Create date:
+10/Aug/14 19:37
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Oct/14 15:46

@@ -1,0 +1,57 @@
+Summary:
+DataGrid.borderVisible = false causes alignment issues
+Description:
+Steps to reproduce:
+1. Create a DataGrid and set borderVisible to false.
+Actual Results: The column header column separators and grid separators will now not line up correctly.
+Expected Results: The should align correctly
+Workaround (if any): Set borderAlpha to 0 instead of setting borderVisible to false.
+This issue is down to the fact that when there is a border the scroller has its minViewportInset property set to 1, so the Grid inside it has a border of one pixel around the edge. When borderVisible is set to false the minViewportInset property set to 0, therefore leaving no border around the edge of the Grid.....
+.... but GridColumnHeaderGroup always has a padding value of 1.
+<s:GridColumnHeaderGroup id="columnHeaderGroup"
+paddingLeft="1" paddingTop="1" paddingRight="1" minHeight="21"
+columnSeparator="
+{headerColumnSeparator}
+"
+headerRenderer="
+{headerRenderer}
+"/>
+The following code would fix this...
+override protected function updateDisplayList(unscaledWidth:Number, unscaledHeight:Number):void
+{
+if (getStyle("borderVisible") == true)
+{ border.visible = true; background.left = background.top = background.right = background.bottom = 1; scroller.minViewportInset = 1; columnHeaderGroup.paddingLeft = columnHeaderGroup.paddingRight = 1; }
+else
+{ border.visible = false; background.left = background.top = background.right = background.bottom = 0; scroller.minViewportInset = 0; columnHeaderGroup.paddingLeft = columnHeaderGroup.paddingRight = 0; }
+borderStroke.color = getStyle("borderColor");
+borderStroke.alpha = getStyle("borderAlpha");
+super.updateDisplayList(unscaledWidth, unscaledHeight);
+}
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Spark: DataGrid
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+20/Oct/11 08:08
+Update date:
+02/Nov/15 22:58
+Resolved date:
+

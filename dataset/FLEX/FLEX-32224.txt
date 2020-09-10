@@ -1,0 +1,48 @@
+Summary:
+Changing the dimensions of an existing OLAP cube can cause errors
+Description:
+Steps to reproduce:
+1. Run the attached example application.
+2. Click on "Example 1" -> it should work
+3. Click on "Clean" and then on "Example 2" -> it should work
+4. Click on "Clean" and then on "Example 3" -> it should work
+5. Reload the application in the browser.
+6. Click on "Example 1" and then on "Example 2" -> error #1009
+7. Reload the application in the browser.
+8. Click on "Example 1" and then on "Example 3" -> blank results in grid
+Actual Results:
+Under some conditions, errors or blank results are produced.
+As far as I understood, the error is related to the function DefaultCubeImpl.initNodeBuilder() - it sets the levelPreviousToMeasuresIndex attribute counting at the levels of the cube (that is, the total count of the attributes of all the dimension of the cube). This value is read by CubeNodeBuilder.addValueToNodeBuilder() function (see row #390).
+When dimensions are changed, the value of this CubeNodeBuilder's attribute should change too, but this does not happens. This can cause several problems: for example, in the step 6, a dimension with 1 attribute has been switched over another one with 2 attributes - this leads to RTE. In step 8, we simply added a dimension.. in this case, the cube building stops prematurely, the last level is not added and thus the query can't find the correct cube nodes.
+Expected Results:
+No errors, correct result (as when clean is performed just before the operation).
+Workaround (if any):
+Recreate the OLAPCube instance, this way a new CubeNodeBuilder will be created with the correct value.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK 3.0 (
+Fix_version:
+Adobe Flex SDK Previ
+Component:
+OLAP API
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+23/Jul/08 08:52
+Update date:
+15/Sep/08 06:39
+Resolved date:
+15/Sep/08 00:17

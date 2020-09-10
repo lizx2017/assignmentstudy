@@ -1,0 +1,53 @@
+Summary:
+Swedish characters are garbled in form
+Description:
+When using swedish characters to fill in a form they show up garbled in the PDF. This seems to have to do with the PDAppearance class. When calling setValue on the field, the value seems to be set ok since COSString handles characters outside ASCII in its writePDF method. When PDAppearance writes the value in insertGeneratedAppearance it does not do the same check. If the same check is done it seems to work for PDAppearance to (see patch below). Since I do not know very much about the PDF format, I dont know if this is the right way to do it...
+PDDocument document = PDDocument.load(<pdf-file>);
+PDDocumentCatalog docCatalog = document.getDocumentCatalog();
+PDAcroForm form = docCatalog.getAcroForm();
+PDField field = form.getField(<field name>);
+field.setValue("åäö");
+@@ -400,9 +401,32 @@
+{ throw new IOException( "Error: Unknown justification value:" + q ); }
+printWriter.println("(" + value + ") Tj");
+printWriter.println("ET" );
+printWriter.flush();
++ boolean outsideASCII = false;
++ byte[] bytes = value.getBytes("ISO-8859-1");
++ int length = bytes.length;
++
++ for( int i=0; i<length && !outsideASCII; i++ )
++ { + //if the byte is negative then it is an eight bit byte and is + //outside the ASCII range. + outsideASCII = bytes[i] <0; + }
++ if(!outsideASCII)
+{ + printWriter.println("(" + value + ") Tj"); + printWriter.println("ET" ); + printWriter.flush(); + }
+else
+Unknown macro: {+ printWriter.print("<");+ for(int i=0; i<length; i++ )+ { + String val = COSHEXTable.HEX_TABLE[ (bytes[i]+256)%256 ]; + printWriter.write(val); + }+ printWriter.println("> Tj");+ printWriter.println("ET" );+ printWriter.flush(); + }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.4.0
+Fix_version:
+2.0.0
+Component:
+AcroForm
+Label:
+Appearance Encoding
+Environment:
+mac os x, java 1.6
+Attachment number:
+0
+Assignee:
+Maruan Sahyoun
+Reporter:
+Pär Wenåker
+Create date:
+04/Jan/11 10:28
+Update date:
+17/Mar/16 19:07
+Resolved date:
+27/Jan/15 22:13

@@ -1,0 +1,48 @@
+Summary:
+system_drop_keyspace can cause a node to be unstartable
+Description:
+calling thriftClient_.system_drop_keyspace(keyspaceName) on a newly created keyspace, then stopping the node renders the node unstartable. Results in the following stacktrace:
+10/06/17 14:23:16 ERROR thrift.CassandraDaemon: Fatal exception during initialization
+java.io.EOFException
+at java.io.DataInputStream.readFully(DataInputStream.java:180)
+at java.io.DataInputStream.readUTF(DataInputStream.java:592)
+at java.io.DataInputStream.readUTF(DataInputStream.java:547)
+at org.apache.cassandra.config.KSMetaData.deserialize(KSMetaData.java:92)
+at org.apache.cassandra.db.DefsTable.loadFromStorage(DefsTable.java:75)
+at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:422)
+at org.apache.cassandra.thrift.CassandraDaemon.setup(CassandraDaemon.java:103)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:90)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:221)
+my repro:
+start new node with empty data directory
+create a new keyspace
+drop the keyspace
+attempt to restart the node, notice that it fails to start.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 1
+Component:
+None
+Label:
+None
+Environment:
+mac os x, darwin
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+Mason Bryant
+Create date:
+17/Jun/10 21:28
+Update date:
+16/Apr/19 09:33
+Resolved date:
+01/Jul/10 16:52

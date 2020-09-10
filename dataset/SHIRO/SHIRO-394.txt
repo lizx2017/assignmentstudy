@@ -1,0 +1,50 @@
+Summary:
+PropertiesRealm reloading not working when loading from file
+Description:
+I use a PropertiesRealm with a file url. This works fine when initially loading the properties file. Yet I was puzzled to find out that reloading does not work.
+I debugged and found the problem:
+First of all the method isFileModified() checks for the lastModified date. Yet this returns 0 if the file does not exist. This is always the case when using the prefix "file:". Therefore the file was never reloaded because the reload file was checking the last modfied date of a file that was never there.
+I have several problems with that:
+1. Frankly speaking has anyone ever tested that stuff? To me it does not look like that and I think Shiro can do better.
+2. The isModified method should react if the file is not existing (any more). Because maybe someone deleted in by accident which causes problems for the next startup.
+3. The initial file loading and the reloading should use the same code. So at least then its clear that if the initial load succeeds so does the reloading.
+The quick fix is pretty straightforward - just remove the prefix "file:" from the resource path::
+private boolean isFileModified() {
+File propertyFile = new File(ResourceUtils.stripPrefix(this.resourcePath));
+long currentLastModified = propertyFile.lastModified();
+if (currentLastModified > this.fileLastModified)
+{ this.fileLastModified = currentLastModified; return true; }
+else
+{ return false; }
+}
+I will hopefully be able to supply a patch soon.
+Thanks,
+Jan
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.2.1
+Fix_version:
+1.2.2
+Component:
+Realms
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jan Stamer
+Create date:
+02/Nov/12 20:23
+Update date:
+15/Jul/16 14:56
+Resolved date:
+04/May/13 22:59

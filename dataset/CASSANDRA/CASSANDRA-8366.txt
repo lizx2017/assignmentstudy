@@ -1,0 +1,79 @@
+Summary:
+Repair grows data on nodes, causes load to become unbalanced
+Description:
+There seems to be something weird going on when repairing data.
+I have a program that runs 2 hours which inserts 250 random numbers and reads 250 times per second. It creates 2 keyspaces with SimpleStrategy and RF of 3.
+I use size-tiered compaction for my cluster.
+After those 2 hours I run a repair and the load of all nodes goes up. If I run incremental repair the load goes up alot more. I saw the load shoot up 8 times the original size multiple times with incremental repair. (from 2G to 16G)
+with node 9 8 7 and 6 the repro procedure looked like this:
+(Note that running full repair first is not a requirement to reproduce.)
+After 2 hours of 250 reads + 250 writes per second:
+UN  9  583.39 MB  256     ?       28220962-26ae-4eeb-8027-99f96e377406  rack1
+UN  8  584.01 MB  256     ?       f2de6ea1-de88-4056-8fde-42f9c476a090  rack1
+UN  7  583.72 MB  256     ?       2b6b5d66-13c8-43d8-855c-290c0f3c3a0b  rack1
+UN  6  583.84 MB  256     ?       b8bd67f1-a816-46ff-b4a4-136ad5af6d4b  rack1
+
+Repair -pr -par on all nodes sequentially
+UN  9  746.29 MB  256     ?       28220962-26ae-4eeb-8027-99f96e377406  rack1
+UN  8  751.02 MB  256     ?       f2de6ea1-de88-4056-8fde-42f9c476a090  rack1
+UN  7  748.89 MB  256     ?       2b6b5d66-13c8-43d8-855c-290c0f3c3a0b  rack1
+UN  6  758.34 MB  256     ?       b8bd67f1-a816-46ff-b4a4-136ad5af6d4b  rack1
+
+repair -inc -par on all nodes sequentially
+UN  9  2.41 GB    256     ?       28220962-26ae-4eeb-8027-99f96e377406  rack1
+UN  8  2.53 GB    256     ?       f2de6ea1-de88-4056-8fde-42f9c476a090  rack1
+UN  7  2.6 GB     256     ?       2b6b5d66-13c8-43d8-855c-290c0f3c3a0b  rack1
+UN  6  2.17 GB    256     ?       b8bd67f1-a816-46ff-b4a4-136ad5af6d4b  rack1
+
+after rolling restart
+UN  9  1.47 GB    256     ?       28220962-26ae-4eeb-8027-99f96e377406  rack1
+UN  8  1.5 GB     256     ?       f2de6ea1-de88-4056-8fde-42f9c476a090  rack1
+UN  7  2.46 GB    256     ?       2b6b5d66-13c8-43d8-855c-290c0f3c3a0b  rack1
+UN  6  1.19 GB    256     ?       b8bd67f1-a816-46ff-b4a4-136ad5af6d4b  rack1
+
+compact all nodes sequentially
+UN  9  989.99 MB  256     ?       28220962-26ae-4eeb-8027-99f96e377406  rack1
+UN  8  994.75 MB  256     ?       f2de6ea1-de88-4056-8fde-42f9c476a090  rack1
+UN  7  1.46 GB    256     ?       2b6b5d66-13c8-43d8-855c-290c0f3c3a0b  rack1
+UN  6  758.82 MB  256     ?       b8bd67f1-a816-46ff-b4a4-136ad5af6d4b  rack1
+
+repair -inc -par on all nodes sequentially
+UN  9  1.98 GB    256     ?       28220962-26ae-4eeb-8027-99f96e377406  rack1
+UN  8  2.3 GB     256     ?       f2de6ea1-de88-4056-8fde-42f9c476a090  rack1
+UN  7  3.71 GB    256     ?       2b6b5d66-13c8-43d8-855c-290c0f3c3a0b  rack1
+UN  6  1.68 GB    256     ?       b8bd67f1-a816-46ff-b4a4-136ad5af6d4b  rack1
+
+restart once more
+UN  9  2 GB       256     ?       28220962-26ae-4eeb-8027-99f96e377406  rack1
+UN  8  2.05 GB    256     ?       f2de6ea1-de88-4056-8fde-42f9c476a090  rack1
+UN  7  4.1 GB     256     ?       2b6b5d66-13c8-43d8-855c-290c0f3c3a0b  rack1
+UN  6  1.68 GB    256     ?       b8bd67f1-a816-46ff-b4a4-136ad5af6d4b  rack1
+Is there something im missing or is this strange behavior?
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+Consistency/Repair
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Jan Karlsson
+Create date:
+24/Nov/14 09:32
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Mar/15 10:27

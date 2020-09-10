@@ -1,0 +1,40 @@
+Summary:
+[replication] RSM won't cleanup after locking if 0 peers
+Description:
+Small bug in ReplicationSourceManager, it won't cleanup after locking another's RS znode if it didn't contain any queue at all. It happens in transferQueues():
+LOG.info("Moving " + rsZnode + "'s hlogs to my queue");
+    SortedMap<String, SortedSet<String>> newQueues =
+        this.zkHelper.copyQueuesFromRS(rsZnode);
+    if (newQueues == null || newQueues.size() == 0) {
+      return;
+    }
+    this.zkHelper.deleteRsQueues(rsZnode);
+That last line should be before the if, so that it deletes the lock znode and the RS znode. Currently a lot of cruft piles up in ZK after a few restarts with replication enabled and no queues, or in slave RSs.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.89.20100924, (1)
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+13/Sep/10 17:28
+Update date:
+20/Nov/15 12:42
+Resolved date:
+24/Sep/10 18:35

@@ -1,0 +1,57 @@
+Summary:
+LoadIncrementalHFiles fails with FileNotFoundException
+Description:
+– We've been seeing intermittent failures of calls to LoadIncrementalHFiles. When this happens the node that made the call will see a FileNotFoundException such as this:
+2011-06-23 15:47:34.379566500 java.net.SocketTimeoutException: Call to s8.XXX/67.215.90.38:60020 failed on socket timeout exception: java.net.SocketTi
+meoutException: 60000 millis timeout while waiting for channel to be ready for read. ch : java.nio.channels.SocketChannel[connected local=/67.215.90.51:51605 remo
+te=s8.XXX/67.215.90.38:60020]
+2011-06-23 15:47:34.379570500 java.io.FileNotFoundException: java.io.FileNotFoundException: File does not exist: /hfiles/2011/06/23/14/domainsranked/TopDomainsRan
+k.r3v5PRvK/handling/3557032074765091256
+2011-06-23 15:47:34.379573500 at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.openInfo(DFSClient.java:1602)
+2011-06-23 15:47:34.379573500 at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.<init>(DFSClient.java:1593)
+– Over on the regionserver that was loading this we see that it attempted to load and hit a 60 second timeout:
+2011-06-23 15:45:54,634 INFO org.apache.hadoop.hbase.regionserver.Store: Validating hfile at hdfs://namenode.XXX/hfiles/2011/06/23/14/domainsranked/TopDomainsRank.r3v5PRvK/handling/3557032074765091256 for inclusion in store handling region domainsranked,368449:2011/0/03/23:category:ffffffff:com.zynga.static.fishville.facebook,1305890318961.d4925aca7852bed32613a509215d42b
+8.
+...
+2011-06-23 15:46:54,639 INFO org.apache.hadoop.hdfs.DFSClient: Failed to connect to /67.215.90.38:50010, add to deadNodes and continue
+java.net.SocketTimeoutException: 60000 millis timeout while waiting for channel to be ready for read. ch : java.nio.channels.SocketChannel[connected local=/67.215.90.38:42199 remote=/67.215.90.38:50010]
+at org.apache.hadoop.net.SocketIOWithTimeout.doIO(SocketIOWithTimeout.java:164)
+at org.apache.hadoop.net.SocketInputStream.read(SocketInputStream.java:155)
+at org.apache.hadoop.net.SocketInputStream.read(SocketInputStream.java:128)
+at java.io.BufferedInputStream.fill(BufferedInputStream.java:218)
+at java.io.BufferedInputStream.read(BufferedInputStream.java:237)
+at java.io.DataInputStream.readShort(DataInputStream.java:295)
+– We suspect this particular problem is a resource contention issue on our side. However, the loading process proceeds to rename the file despite the failure:
+2011-06-23 15:46:54,657 INFO org.apache.hadoop.hbase.regionserver.Store: Renaming bulk load file hdfs://namenode.XXX/hfiles/2011/06/23/14/domainsranked/TopDomainsRank.r3v5PRvK/handling/3557032074765091256 to hdfs://namenode.XXX:8020/hbase/domainsranked/d4925aca7852bed32613a509215d42b8/handling/3615917062821145533
+– And then the LoadIncrementalHFiles tries to load the hfile again:
+2011-06-23 15:46:55,684 INFO org.apache.hadoop.hbase.regionserver.Store: Validating hfile at hdfs://namenode.XXX/hfiles/2011/06/23/14/domainsranked/TopDomainsRank.r3v5PRvK/handling/3557032074765091256 for inclusion in store handling region domainsranked,368449:2011/05/03/23:category:ffffffff:com.zynga.static.fishville.facebook,1305890318961.d4925aca7852bed32613a509215d42b8.
+2011-06-23 15:46:55,685 DEBUG org.apache.hadoop.ipc.HBaseServer: IPC Server handler 147 on 60020, call bulkLoadHFile(hdfs://namenode.XXX/hfiles/2011/06/23/14/domainsranked/TopDomainsRank.r3v5PRvK/handling/3557032074765091256, [B@4224508b, [B@5e23f799) from 67.215.90.51:51856: error: java.io.FileNotFoundException: File does not exist: /hfiles/2011/06/23/14/domainsranked/TopDomainsRank.r3v5PRvK/handling/3557032074765091256
+– This eventually leads to the load command failing.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.90.1
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adam Phelps
+Create date:
+24/Jun/11 16:58
+Update date:
+30/Nov/17 07:02
+Resolved date:
+28/Aug/12 22:51

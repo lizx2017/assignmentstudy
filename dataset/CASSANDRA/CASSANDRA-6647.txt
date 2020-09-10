@@ -1,0 +1,58 @@
+Summary:
+Config param [compaction_throughput_mb_per_sec] unsafe calculation.
+Description:
+In cassandra.yaml i set
+compaction_throughput_mb_per_sec: 2048
+and got en exception
+ERROR 16:15:41,705 Exception in thread Thread[CompactionExecutor:3,1,main]
+java.lang.IllegalArgumentException: rate must be positive
+at com.google.common.base.Preconditions.checkArgument(Preconditions.java:93)
+at com.google.common.util.concurrent.RateLimiter.setRate(RateLimiter.java:355)
+at org.apache.cassandra.db.compaction.CompactionManager.getRateLimiter(CompactionManager.java:119)
+at org.apache.cassandra.db.compaction.AbstractCompactionStrategy.getScanners(AbstractCompactionStrategy.java:241)
+at org.apache.cassandra.db.compaction.AbstractCompactionStrategy.getScanners(AbstractCompactionStrategy.java:250)
+at org.apache.cassandra.db.compaction.CompactionTask.runWith(CompactionTask.java:126)
+at org.apache.cassandra.io.util.DiskAwareRunnable.runMayThrow(DiskAwareRunnable.java:48)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+at org.apache.cassandra.db.compaction.CompactionTask.executeInternal(CompactionTask.java:60)
+at org.apache.cassandra.db.compaction.AbstractCompactionTask.execute(AbstractCompactionTask.java:59)
+at org.apache.cassandra.db.compaction.CompactionManager$BackgroundCompactionTask.run(CompactionManager.java:197)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+at java.lang.Thread.run(Thread.java:744)
+After trivial exploration i found this code
+CompactionManager.java:114
+double currentThroughput = DatabaseDescriptor.getCompactionThroughputMbPerSec() * 1024 * 1024;
+Main reason - result of multiplication out of range integer type
+I think simple fix
+double currentThroughput = DatabaseDescriptor.getCompactionThroughputMbPerSec() * 1024 * 1024L;
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.15
+Component:
+None
+Label:
+None
+Environment:
+redhat, java 1.7
+Attachment number:
+0
+Assignee:
+Platon Vai
+Reporter:
+Platon Vai
+Create date:
+04/Feb/14 12:23
+Update date:
+16/Apr/19 09:31
+Resolved date:
+05/Feb/14 01:12

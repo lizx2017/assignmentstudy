@@ -1,0 +1,51 @@
+Summary:
+Mishandling of Integer.MIN_VALUE in FuzzySet leads to AssertionError
+Description:
+Reindexing some data in the DataStax Enterprise Search product (which uses Solr) led to these stack traces:
+ERROR Lucene Merge Thread #13430 2015-09-08 11:14:36,582 CassandraDaemon.java (line 258) Exception in thread ThreadLucene Merge Thread #13430,6,main
+org.apache.lucene.index.MergePolicy$MergeException: java.lang.AssertionError
+at org.apache.lucene.index.ConcurrentMergeScheduler.handleMergeException(ConcurrentMergeScheduler.java:545)
+at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:518)
+Caused by: java.lang.AssertionError
+at org.apache.lucene.codecs.bloom.FuzzySet.mayContainValue(FuzzySet.java:216)
+at org.apache.lucene.codecs.bloom.FuzzySet.contains(FuzzySet.java:165)
+at org.apache.lucene.codecs.bloom.BloomFilteringPostingsFormat$BloomFilteredFieldsProducer$BloomFilteredTermsEnum.seekExact(BloomFilteringPostingsFormat.java:351)
+at org.apache.lucene.index.BufferedUpdatesStream.applyTermDeletes(BufferedUpdatesStream.java:414)
+at org.apache.lucene.index.BufferedUpdatesStream.applyDeletesAndUpdates(BufferedUpdatesStream.java:283)
+at org.apache.lucene.index.IndexWriter._mergeInit(IndexWriter.java:3838)
+at org.apache.lucene.index.IndexWriter.mergeInit(IndexWriter.java:3799)
+at org.apache.lucene.index.IndexWriter.merge(IndexWriter.java:3651)
+at org.apache.lucene.index.ConcurrentMergeScheduler.doMerge(ConcurrentMergeScheduler.java:405)
+at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:482)
+In tracking down the cause of the stack trace, I noticed this:
+https://github.com/apache/lucene-solr/blob/trunk/lucene/codecs/src/java/org/apache/lucene/codecs/bloom/FuzzySet.java#L164
+It is possible for the Murmur2 hash to return Integer.MIN_VALUE (e.g. when hashing "WeH44wlbCK"). Multiplying Integer.MIN_VALUE by -1 returns Integer.MIN_VALUE again, so the "positiveHash >= 0" assertion at line 217 fails.
+We could special-case Integer.MIN_VALUE, map it to 42 or some other magic number... since the same "* -1" logic appears on line 236 perhaps it should be part of the hash function?
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+4.10.4, 6.0
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Tarrall
+Create date:
+09/Sep/15 03:50
+Update date:
+09/May/16 18:32
+Resolved date:
+

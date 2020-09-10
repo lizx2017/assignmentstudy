@@ -1,0 +1,67 @@
+Summary:
+User who created table cannot scan the same table due to Insufficient permissions
+Description:
+User hrt_qa has been given 'C' permission.
+create 'te', {NAME => 'f1', VERSIONS => 5}
+...
+hbase(main):003:0> list
+TABLE
+hbase:acl
+hbase:namespace
+te
+6 row(s) in 0.0570 seconds
+
+hbase(main):004:0> scan 'te'
+ROW                                      COLUMN+CELL
+2013-08-21 02:21:00,921 DEBUG [main] token.AuthenticationTokenSelector: No matching token found
+2013-08-21 02:21:00,921 DEBUG [main] security.HBaseSaslRpcClient: Creating SASL GSSAPI client. Server's Kerberos principal name is hbase/hor16n13.gq1.ygridcore.net@HORTON.YGRIDCORE.NET
+2013-08-21 02:21:00,923 DEBUG [main] security.HBaseSaslRpcClient: Have sent token of size 582 from initSASLContext.
+2013-08-21 02:21:00,926 DEBUG [main] security.HBaseSaslRpcClient: Will read input token of size 0 for processing by initSASLContext
+2013-08-21 02:21:00,926 DEBUG [main] security.HBaseSaslRpcClient: Will send token of size 0 from initSASLContext.
+2013-08-21 02:21:00,926 DEBUG [main] security.HBaseSaslRpcClient: Will read input token of size 53 for processing by initSASLContext
+2013-08-21 02:21:00,927 DEBUG [main] security.HBaseSaslRpcClient: Will send token of size 53 from initSASLContext.
+2013-08-21 02:21:00,927 DEBUG [main] security.HBaseSaslRpcClient: SASL client context established. Negotiated QoP: auth
+2013-08-21 02:21:00,935 WARN  [main] client.RpcRetryingCaller: Call exception, tries=0, retries=7, retryTime=-14ms
+org.apache.hadoop.hbase.security.AccessDeniedException: org.apache.hadoop.hbase.security.AccessDeniedException: Insufficient permissions for user 'hrt_qa' for scanner open on table te
+ at org.apache.hadoop.hbase.security.access.AccessController.preScannerOpen(AccessController.java:1116)
+ at org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost.preScannerOpen(RegionCoprocessorHost.java:1294)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.scan(HRegionServer.java:3007)
+ at org.apache.hadoop.hbase.protobuf.generated.ClientProtos$ClientService$2.callBlockingMethod(ClientProtos.java:26847)
+...
+Caused by: org.apache.hadoop.hbase.ipc.RemoteWithExtrasException(org.apache.hadoop.hbase.security.AccessDeniedException): org.apache.hadoop.hbase.security.AccessDeniedException: Insufficient permissions for user 'hrt_qa' for scanner open on table te
+ at org.apache.hadoop.hbase.security.access.AccessController.preScannerOpen(AccessController.java:1116)
+ at org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost.preScannerOpen(RegionCoprocessorHost.java:1294)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.scan(HRegionServer.java:3007)
+Here was related entries in hbase:acl table:
+hbase(main):001:0> scan 'hbase:acl'
+ROW                                      COLUMN+CELL
+ hbase:acl                               column=l:hrt_qa, timestamp=1377045996685, value=C
+ te                                      column=l:hrt_qa, timestamp=1377051648649, value=RWXCA
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.98.0, 0.96.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Ted Yu
+Create date:
+21/Aug/13 02:27
+Update date:
+20/Nov/15 11:54
+Resolved date:
+22/Aug/13 05:16

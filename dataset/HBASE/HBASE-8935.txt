@@ -1,0 +1,47 @@
+Summary:
+IntegrationTestBigLinkedList fails under load on 0.94 due to some scan issues - add logging
+Description:
+We observe occasional failures (4-5k undefined and unreferenced nodes in the list, running) when the cluster is stressed while running IntegrationTestBigLinkedList on 0.94. Unfortunately debug logging is disabled.
+If Verify is rerun after the fact, the data is there, so it's not data loss. All the missing keys come from very narrow range from the very beginning of one region; most of this region is not affected.
+In the case I'm looking at, region range is
+\xD0\x0C`=%\xA2\xD3\xA8\x0A\xF8\x917\x05\x94\x1D> .. \xD4\x0Bx\xAF\x88\x0C\xF4"7\x9A\x9F{\xCE\x0E\x8A
+and problematic renage
+\xD0\x0C`QLD\xED2\xD5c\x8D\xDB5\x01\xD2H] ... \xD0\x0D\x89)\x11\x0E8\xC5\x08o\xD7\xE3$\xB3\xAAu
+There are no splits and compactions on the region during MR job; there are no compactions after that could have affected the data, although there is one flush that happened long after, and region was moved and reopened (before I ran verify manually that showed that data is in HBase).
+One thing that happened was that the scanners used by all the map tasks had lease expirations during the MR job that had missing data, some of them twice.
+First scanner expiration for each task I looked at was exactly 1 minute after "Processing split" log message, when the scanner is opened.
+Only the tasks where the scanners have expired twice (2 of them) logged any errors; presumably one expiration in each task happened after the reading was finished, because everything was slow and scanner wasn't closed in time - no errors or exceptions are logged in the tasks where scanner only expired once.
+The job I ran afterwards had no scanner expirations so it does close them correctly in normal case...
+The task that was reading the problematic range had one scanner expiration and didn't log any errors.
+It's a little bit special (or it may be a total red herring) in that in other tasks, scanner expired while the task was splitting partial outputs (which may mean end of input reading?), whereas in the task that lost data spilling started long (~40s) after the scanner expired.
+However there's one another such task (spilling started 25s after scanner expired) and it didn't log any errors and didn't lose data.
+At this point I am not sure about the root cause but I suspect it might be related to scanner expiration handling, given the patterns.
+One thing for sure is that there isn't enough logging... so I will start with adding that.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.95.2, 0.94.11
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergey Shelukhin
+Reporter:
+Sergey Shelukhin
+Create date:
+12/Jul/13 01:53
+Update date:
+24/Jul/13 19:54
+Resolved date:
+22/Jul/13 21:05

@@ -1,0 +1,53 @@
+Summary:
+HintedHandoff fails with could not reach schema agreement
+Description:
+To reproduce, have two nodes A and B.
+1. On node A, create a keyspace with replication factor 1 and add a column family
+2. Ensure node B has created the keyspace and column family
+3. Take down node B
+4. Insert some keys to A at CL.ANY, ensuring some keys should be written to B
+5. Bring up node B
+6. When hints are delivered, I get the error:
+ERROR [HintedHandoff:1] 2011-07-25 17:19:14,729 AbstractCassandraDaemon.java (line 139) Fatal exception in thread Thread[HintedHandoff:1,1,main]
+java.lang.RuntimeException: java.lang.RuntimeException: Could not reach schema agreement with /10.2.129.9 in 60000ms
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:636)
+Caused by: java.lang.RuntimeException: Could not reach schema agreement with /10.2.129.9 in 60000ms
+at org.apache.cassandra.db.HintedHandOffManager.waitForSchemaAgreement(HintedHandOffManager.java:290)
+at org.apache.cassandra.db.HintedHandOffManager.deliverHintsToEndpoint(HintedHandOffManager.java:301)
+at org.apache.cassandra.db.HintedHandOffManager.access$100(HintedHandOffManager.java:89)
+at org.apache.cassandra.db.HintedHandOffManager$2.runMayThrow(HintedHandOffManager.java:394)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+... 3 more
+If I use DatabaseDescriptor.getDefsVersion() instead of gossiper.getEndpointStateForEndpoint(FBUtilities.getLocalAddress()).getApplicationState(ApplicationState.SCHEMA) then the error goes away, and the hints are correctly delivered.
+This may be the same issue as Aaron saw here: http://cassandra-user-incubator-apache-org.3065146.n2.nabble.com/ApplicationState-Schema-has-drifted-from-DatabaseDescriptor-td6006576.html, and may be related to CASSANDRA-2083.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Richard Low
+Create date:
+25/Jul/11 16:38
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Jul/11 15:14

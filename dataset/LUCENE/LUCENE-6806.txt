@@ -1,0 +1,51 @@
+Summary:
+FunctionQuery.AllScorer.explain overwrites FunctionWeight.queryNorm in trappy fashion
+Description:
+FunctionQuery.AllScorer.explain is:
+    public Explanation explain(int doc, float queryNorm) throws IOException {
+      float sc = qWeight * vals.floatVal(doc);
+
+      return Explanation.match(sc, "FunctionQuery(" + func + "), product of:",
+          vals.explain(doc),
+          Explanation.match(queryNorm, "boost"),
+          Explanation.match(weight.queryNorm = 1f, "queryNorm"));
+    }
+The following line has a subtle assignment that overwrites weight.queryNorm.
+          Explanation.match(weight.queryNorm = 1f, "queryNorm"));
+Because weights aren't reused between search and explain this doesn't break anything but it's awfully subtle.
+Seeing as queryNorm is ALWAYS 1 here, could we just drop this extra line from the explain output and use the following instead?
+    public Explanation explain(int doc, float queryNorm) throws IOException {
+      float sc = qWeight * vals.floatVal(doc);
+
+      return Explanation.match(sc, "FunctionQuery(" + func + "), product of:",
+          vals.explain(doc),
+          Explanation.match(queryNorm, "boost"));
+    }
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+6.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Terry Smith
+Create date:
+15/Sep/15 14:34
+Update date:
+09/May/16 18:37
+Resolved date:
+

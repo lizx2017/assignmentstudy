@@ -1,0 +1,41 @@
+Summary:
+Possible data loss when RS goes into GC pause while rolling HLog
+Description:
+There is a very corner case when bad things could happen(ie data loss):
+1) RS #1 is going to roll its HLog - not yet created the new one, old one will get no more writes
+2) RS #1 enters GC Pause of Death
+3) Master lists HLog files of RS#1 that is has to split as RS#1 is dead, starts splitting
+4) RS #1 wakes up, created the new HLog (previous one was rolled) and appends an edit - which is lost
+The following seems like a possible solution:
+1) Master detects RS#1 is dead
+2) The master renames the /hbase/.logs/<regionserver name> directory to something else (say /hbase/.logs/<regionserver name>-dead)
+3) Add mkdir support (as opposed to mkdirs) to HDFS - so that a file create fails if the directory doesn't exist. Dhruba tells me this is very doable.
+4) RS#1 comes back up and is not able create the new hlog. It restarts itself.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.92.0
+Component:
+master, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Spiegelberg
+Reporter:
+Karthik Ranganathan
+Create date:
+12/Mar/10 01:19
+Update date:
+20/Nov/15 12:42
+Resolved date:
+02/Nov/11 20:37

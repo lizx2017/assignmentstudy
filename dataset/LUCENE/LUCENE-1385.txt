@@ -1,0 +1,37 @@
+Summary:
+IndexReader.isIndexCurrent()==false -> IndexReader.reopen() -> still index not current
+Description:
+I found a strange error occurring with IndexReader.reopen. It is not always reproduceable, it only happens sometimes, but strangely on all my computers with different platforms at the same time. Maybe has something to to with the timestamp used in index versions.
+I have a search server using an IndexReader, that is openend in webapp startup and should stay open. Every half an hour this web application checks, if the index is still current using IndexReader.isCurrent(). When a parallel job that indexes documents (in another virtual machine) and modifies the indexes, isCurrent() return TRUE. The half-hourly cron-job then uses IndexReader.reopen() to reopen the index. But sometimes, directly after reopen() the Index is still not current (and no updates occur). Again calling reopen does not change it, too. Searching on the index shows all new/updated documents, but isCurrent() still return false. The problem with this is, that now the index is reopened all the time, because the detection of a current index does not work any more.
+I have now a workaround in my code to handle this: After calling IndexReader.reopen(), I test for IndexReader.isCurrent(), and if not, I close it hard and open a new instance.
+Most times IndexReader.reopen works correct, but sometimes this error occurs. Looking into the code of reopen(), I realized, that there is some extra check, if the Index has modifications, and if yes the reopen call returns the original reader (this maybe the problem I have). But the IndexReader is only used for searching, no updates occur.
+My questions: Why is there this check for modifications in reopen()? Why does this happen only at certain times on all my servers with different platforms?
+I want to use reopen, because in future, when the new FieldCache will be reopen-aware and does not everytime rebuild the full cache, it will be very important, to have this fixed. At the moment, I have no problem with the case, that reopen may fail and I have to do a rough reopen.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+2.3.2
+Fix_version:
+2.4
+Component:
+core/index
+Label:
+None
+Environment:
+linux, windows xp, solaris
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Uwe Schindler
+Create date:
+12/Sep/08 18:55
+Update date:
+11/Oct/08 12:49
+Resolved date:
+24/Sep/08 14:35

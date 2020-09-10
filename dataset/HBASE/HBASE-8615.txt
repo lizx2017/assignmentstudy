@@ -1,0 +1,56 @@
+Summary:
+HLog Compression may fail due to Hadoop fs input stream returning partial bytes
+Description:
+In a recent test run, I noticed the following in test output:
+2013-05-24 22:01:02,424 DEBUG [RegionServer:0;kiyo.gq1.ygridcore.net,42690,1369432806911.replicationSource,2] fs.HFileSystem$ReorderWALBlocks(327): /user/hortonzy/hbase/.logs/kiyo.gq1.ygridcore.net,42690,1369432806911/kiyo.gq1.ygridcore.net%2C42690%2C1369432806911.1369432840428 is an HLog file, so reordering blocks, last hostname will be:kiyo.gq1.ygridcore.net
+2013-05-24 22:01:02,429 DEBUG [RegionServer:0;kiyo.gq1.ygridcore.net,42690,1369432806911.replicationSource,2] wal.ProtobufLogReader(118): After reading the trailer: walEditsStopOffset: 132235, fileLength: 132243, trailerPresent: true
+2013-05-24 22:01:02,438 ERROR [RegionServer:0;kiyo.gq1.ygridcore.net,42690,1369432806911.replicationSource,2] wal.ProtobufLogReader(236): Error  while reading 691 WAL KVs; started reading at 53272 and read up to 65538
+2013-05-24 22:01:02,438 WARN  [RegionServer:0;kiyo.gq1.ygridcore.net,42690,1369432806911.replicationSource,2] regionserver.ReplicationSource(324): 2 Got:
+java.io.IOException: Error  while reading 691 WAL KVs; started reading at 53272 and read up to 65538
+        at org.apache.hadoop.hbase.regionserver.wal.ProtobufLogReader.readNext(ProtobufLogReader.java:237)
+        at org.apache.hadoop.hbase.regionserver.wal.ReaderBase.next(ReaderBase.java:96)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationHLogReaderManager.readNextAndSetPosition(ReplicationHLogReaderManager.java:89)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.readAllEntriesToReplicateOrNextFile(ReplicationSource.java:404)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.run(ReplicationSource.java:320)
+Caused by: java.lang.IndexOutOfBoundsException: index (30062) must be less than size (1)
+        at com.google.common.base.Preconditions.checkElementIndex(Preconditions.java:305)
+        at com.google.common.base.Preconditions.checkElementIndex(Preconditions.java:284)
+        at org.apache.hadoop.hbase.regionserver.wal.LRUDictionary$BidirectionalLRUMap.get(LRUDictionary.java:124)
+        at org.apache.hadoop.hbase.regionserver.wal.LRUDictionary$BidirectionalLRUMap.access$000(LRUDictionary.java:71)
+        at org.apache.hadoop.hbase.regionserver.wal.LRUDictionary.getEntry(LRUDictionary.java:42)
+        at org.apache.hadoop.hbase.regionserver.wal.WALCellCodec$CompressedKvDecoder.readIntoArray(WALCellCodec.java:210)
+        at org.apache.hadoop.hbase.regionserver.wal.WALCellCodec$CompressedKvDecoder.parseCell(WALCellCodec.java:184)
+        at org.apache.hadoop.hbase.codec.BaseDecoder.advance(BaseDecoder.java:46)
+        at org.apache.hadoop.hbase.regionserver.wal.WALEdit.readFromCells(WALEdit.java:213)
+        at org.apache.hadoop.hbase.regionserver.wal.ProtobufLogReader.readNext(ProtobufLogReader.java:217)
+        ... 4 more
+2013-05-24 22:01:02,439 DEBUG [RegionServer:0;kiyo.gq1.ygridcore.net,42690,1369432806911.replicationSource,2] regionserver.ReplicationSource(583): Nothing to replicate, sleeping 100 times 10
+Will attach test output.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.2
+Component:
+Replication
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Ted Yu
+Create date:
+24/May/13 22:23
+Update date:
+23/Sep/13 19:22
+Resolved date:
+09/Aug/13 23:13

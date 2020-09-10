@@ -1,0 +1,35 @@
+Summary:
+Secondary index creation causes moves/bootstraps to fail
+Description:
+Node moves/bootstraps are failing if the stream timeout is set to a value in which secondary index creation cannot complete. This happens because at the end of the very last stream the StreamInSession.closeIfFinished() function calls maybeBuildSecondaryIndexes on every column family. If the stream time + all CF's index creation takes longer than your stream timeout then the socket closes from the sender's side, the receiver of the stream tries to write to said socket because it's not null, an IOException is thrown but not caught in closeIfFinished(), the exception is caught somewhere and not logged, AbstractStreamSession.close() is never called, and the CountDownLatch is never decremented. This causes the move/bootstrap to continue forever until the node is restarted.
+This problem of stream time + secondary index creation time exists on decommissioning/unbootstrap as well but since it's on the sending side the timeout triggers the onFailure() callback which does decrement the CountDownLatch leading to completion.
+A cursory glance at the 2.0 code leads me to believe this problem would exist there as well.
+Temporary workaround: set a really high/infinite stream timeout.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Paulo Motta
+Reporter:
+Michael Frisch
+Create date:
+19/Nov/14 18:48
+Update date:
+16/Apr/19 09:31
+Resolved date:
+18/May/16 19:50

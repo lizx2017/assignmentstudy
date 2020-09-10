@@ -1,0 +1,37 @@
+Summary:
+Scope sequenceid to the region rather than regionserver (WAS: Mutations on Regions in recovery mode might have same sequenceIDs)
+Description:
+Currently, when opening a region, we find the maximum sequence ID from all its HFiles and then set the LogSequenceId of the log (in case the later is at a small value). This works good in recovered.edits case as we are not writing to the region until we have replayed all of its previous edits.
+With distributed log replay, if we want to enable writes while a region is under recovery, we need to make sure that the logSequenceId > maximum logSequenceId of the old regionserver. Otherwise, we might have a situation where new edits have same (or smaller) sequenceIds.
+We can store region level information in the WALTrailer, than this scenario could be avoided by:
+a) reading the trailer of the "last completed" file, i.e., last wal file which has a trailer and,
+b) completely reading the last wal file (this file would not have the trailer, so it needs to be read completely).
+In future, if we switch to multi wal file, we could read the trailer for all completed WAL files, and reading the remaining incomplete files.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.1
+Fix_version:
+0.98.0
+Component:
+MTTR
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Himanshu Vashishtha
+Reporter:
+Himanshu Vashishtha
+Create date:
+13/Jun/13 05:32
+Update date:
+20/Nov/15 11:54
+Resolved date:
+07/Nov/13 18:11

@@ -1,0 +1,66 @@
+Summary:
+1.2.18 -> 2.0.10 upgrade compactions_in_progress: java.lang.IllegalArgumentException
+Description:
+This happened on a new node when starting 2.0.10 after 1.2.18 with complete upgradesstables run:
+ INFO 15:31:11,532 Enqueuing flush of Memtable-compactions_in_progress@1366724594(0/0 serialized/live bytes, 1 ops)
+ INFO 15:31:11,532 Writing Memtable-compactions_in_progress@1366724594(0/0 serialized/live bytes, 1 ops)
+ INFO 15:31:11,547 Completed flushing /data2/data-cassandra/system/compactions_in_progress/system-compactions_in_progress-jb-10-Data.db (42 bytes) for commitlog position ReplayPosition(segmentId=1410993002452, position=164409)
+ERROR 15:31:11,550 Exception in thread Thread[CompactionExecutor:36,1,main]
+java.lang.IllegalArgumentException
+        at java.nio.Buffer.limit(Buffer.java:267)
+        at org.apache.cassandra.utils.ByteBufferUtil.readBytes(ByteBufferUtil.java:587)
+        at org.apache.cassandra.utils.ByteBufferUtil.readBytesWithShortLength(ByteBufferUtil.java:596)
+        at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:61)
+        at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:36)
+        at org.apache.cassandra.db.ArrayBackedSortedColumns.addColumn(ArrayBackedSortedColumns.java:112)
+        at org.apache.cassandra.db.ColumnFamily.addColumn(ColumnFamily.java:116)
+        at org.apache.cassandra.db.ColumnFamily.addAtom(ColumnFamily.java:150)
+        at org.apache.cassandra.io.sstable.SSTableIdentityIterator.getColumnFamilyWithColumns(SSTableIdentityIterator.java:186)
+        at org.apache.cassandra.db.compaction.PrecompactedRow.merge(PrecompactedRow.java:98)
+        at org.apache.cassandra.db.compaction.PrecompactedRow.<init>(PrecompactedRow.java:85)
+        at org.apache.cassandra.db.compaction.CompactionController.getCompactedRow(CompactionController.java:196)
+        at org.apache.cassandra.db.compaction.CompactionIterable$Reducer.getReduced(CompactionIterable.java:74)
+        at org.apache.cassandra.db.compaction.CompactionIterable$Reducer.getReduced(CompactionIterable.java:55)
+        at org.apache.cassandra.utils.MergeIterator$ManyToOne.consume(MergeIterator.java:115)
+        at org.apache.cassandra.utils.MergeIterator$ManyToOne.computeNext(MergeIterator.java:98)
+        at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:143)
+        at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:138)
+        at org.apache.cassandra.db.compaction.CompactionTask.runWith(CompactionTask.java:143)
+        at org.apache.cassandra.io.util.DiskAwareRunnable.runMayThrow(DiskAwareRunnable.java:48)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+        at org.apache.cassandra.db.compaction.CompactionTask.executeInternal(CompactionTask.java:60)
+        at org.apache.cassandra.db.compaction.AbstractCompactionTask.execute(AbstractCompactionTask.java:59)
+        at org.apache.cassandra.db.compaction.CompactionManager$BackgroundCompactionTask.run(CompactionManager.java:198)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:724)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+java 1.7
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Karl Mueller
+Create date:
+17/Sep/14 22:36
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Dec/14 13:29

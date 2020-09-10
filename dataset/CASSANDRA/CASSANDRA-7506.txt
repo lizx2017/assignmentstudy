@@ -1,0 +1,48 @@
+Summary:
+querying secondary index using complete collection should warn/error
+Description:
+Cassandra does not seem to support querying a set literal like so:
+select * from testtable where pkey='foo' and mycollection = {'one', 'two'};
+We currently don't let the user know this query is problematic, rather we just return no rows.
+To reproduce:
+create keyspace test with replication = {'class': 'SimpleStrategy', 'replication_factor':1} ;
+
+use test ;
+
+create table testtable (pkey text PRIMARY KEY, mycollection set<text>);
+
+create index on testtable (mycollection);
+
+insert into testtable (pkey, mycollection) VALUES ( 'foo', {'one','two'};
+
+cqlsh:test> select * from testtable where pkey='foo' and mycollection = {'one', 'two'};
+
+(0 rows)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10, 2.1.1
+Component:
+Feature/2i Index
+Label:
+qa-resolved
+Environment:
+java 1.7
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Russ Hatch
+Create date:
+07/Jul/14 20:16
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Aug/14 16:22

@@ -1,0 +1,85 @@
+Summary:
+Same Region could be picked out twice in LoadBalancer
+Description:
+From the HMaster logs, I found something weird:
+2011-05-24 11:12:11,152 INFO org.apache.hadoop.hbase.master.HMaster: balance hri=hello,122130,1305944329350.7d6c96428e2563c3d8676474d0a9f814., src=158-1-101-202,20020,1306205409671, dest=158-1-101-222,20020,1306205940117
+2011-05-24 11:12:31,536 INFO org.apache.hadoop.hbase.master.HMaster: balance hri=hello,122130,1305944329350.7d6c96428e2563c3d8676474d0a9f814., src=158-1-101-202,20020,1306205409671, dest=158-1-101-222,20020,1306205940117
+We can see that, the same region was balanced twice.
+To describe the problem, I give out one simple example:
+1. Suppose regions count is 10 in RegionServer A.
+Max: 5 Min:4
+2. So the regions count need to move is: 5.
+3. Before the movement of calculate, the list was shuffled.
+4. The 5 moving region was picked out from the back.
+5. The nextRegionForUnload value is 5.
+6. So if the neededRegions is not zero. Maybe there's still one region should be picked out from RegionServer A.
+This time , the picked Index is 5 which has been picked once!!!!!
+<----5------
+--------------
+getNextRegionForUnload
+Here's the analysis from code:
+1. Walk down most loaded, pruning each to the max. Picked region from back of the list(by reverse order)
+Map<HServerInfo,BalanceInfo> serverBalanceInfo =
+new TreeMap<HServerInfo,BalanceInfo>();
+for(Map.Entry<HServerInfo, List<HRegionInfo>> server :
+serversByLoad.descendingMap().entrySet()) {
+HServerInfo serverInfo = server.getKey();
+int regionCount = serverInfo.getLoad().getNumberOfRegions();
+if(regionCount <= max)
+{ serverBalanceInfo.put(serverInfo, new BalanceInfo(0, 0)); break; }
+serversOverloaded++;
+List<HRegionInfo> regions = randomize(server.getValue());
+int numToOffload = Math.min(regionCount - max, regions.size());
+int numTaken = 0;
+for (int i = regions.size() - 1; i >= 0; i--)
+{ HRegionInfo hri = regions.get(i); // Don't rebalance meta regions. if (hri.isMetaRegion()) continue; regionsToMove.add(new RegionPlan(hri, serverInfo, null)); numTaken++; if (numTaken >= numToOffload) break; }
+/**********************************************************/
+/***set the nextRegionForUnload value is numToOffload ****/
+/**********************************************************/
+serverBalanceInfo.put(serverInfo,
+new BalanceInfo(numToOffload, (-1)*numTaken));
+}
+2. The second pass of picked one region from the Max regionserver by order.
+if (neededRegions != 0) {
+// Walk down most loaded, grabbing one from each until we get enough
+for(Map.Entry<HServerInfo, List<HRegionInfo>> server :
+serversByLoad.descendingMap().entrySet()) {
+BalanceInfo balanceInfo = serverBalanceInfo.get(server.getKey());
+int idx =
+balanceInfo == null ? 0 : balanceInfo.getNextRegionForUnload();
+if (idx >= server.getValue().size()) break;
+HRegionInfo region = server.getValue().get(idx);
+if (region.isMetaRegion()) continue; // Don't move meta regions.
+regionsToMove.add(new RegionPlan(region, server.getKey(), null));
+if(--neededRegions == 0)
+{ // No more regions needed, done shedding break; }
+}
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.90.4
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jieshan Bean
+Reporter:
+Jieshan Bean
+Create date:
+14/Jun/11 00:50
+Update date:
+20/Nov/15 11:52
+Resolved date:
+16/Jun/11 19:56

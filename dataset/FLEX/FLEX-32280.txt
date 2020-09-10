@@ -1,0 +1,163 @@
+Summary:
+SeriesEffectInstance never calls addEventListener on the tween created in beginTween
+Description:
+Steps to reproduce:
+1. Create the following application:
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml"
+layout="vertical"
+>
+<mx:Script>
+<![CDATA[
+import mx.collections.ArrayCollection;
+[Bindable] private var d:ArrayCollection = new ArrayCollection([
+{x:1, y:3}
+,
+{x:2, y:2}
+,
+{x:3, y:4}
+]);
+private function changeData():void
+{
+for (var i:int = 0; i < d.length; i++)
+d[i] =
+{x:d[i].x, y:Math.random() * 3 + 1}
+;
+}
+]]
+>
+</mx:Script>
+<mx:Button label="Random" click="changeData()"/>
+<mx:SeriesInterpolate id="interp" tweenUpdate="
+{trace('tweenupdate')}"/>
+
+<mx:ColumnChart dataProvider="{d}">
+<mx:series>
+<mx:ColumnSeries xField="x" yField="y" showDataEffect="interp"/>
+</mx:series>
+</mx:ColumnChart>
+</mx:Application>
+
+
+2. Run application
+3. Click Random
+
+Actual Results:
+No output to trace log.
+
+Expected Results:
+Lines saying "tweenupdate"
+
+
+The problem is that in SeriesEffectInstance.beginTween, a tween is created but never hooked up to any event listeners:
+tween = new Tween(this,0,1,duration);
+tween.easingFunction = LinearEase;
+
+Following this should be the following:
+
+tween.addEventListener(TweenEvent.TWEEN_START, tweenEventHandler);
+tween.addEventListener(TweenEvent.TWEEN_UPDATE, tweenEventHandler);
+tween.addEventListener(TweenEvent.TWEEN_END, tweenEventHandler);
+}
+
+private function tweenEventHandler(event:TweenEvent):void
+{ dispatchEvent(event); }
+
+Or, maybe, beginTween could actually be reworked to use TweenEffectInstance.createTween.
+
+
+Workaround (if any):
+Since the problem is in SeriesEffect.as, each subclass has to be fixed to make a workaround. For example, to fix the SeriesInterpolate effect, you must create new fixed subclasses of the SeriesInterpolate class and the SeriesInterpolateInstance class:
+
+
+package nes
+{
+import mx.charts.effects.SeriesInterpolate;
+
+public class FixedSeriesInterpolate extends SeriesInterpolate
+{
+public function FixedSeriesInterpolate(target:Object = null)
+{ super(target); instanceClass = FixedSeriesInterpolateInstance; }
+}
+}
+
+
+
+package nes
+{
+import mx.charts.effects.effectClasses.SeriesInterpolateInstance;
+import mx.events.TweenEvent;
+
+public class FixedSeriesInterpolateInstance extends SeriesInterpolateInstance
+{
+public function FixedSeriesInterpolateInstance(target:Object)
+{ super(target); }
+
+override protected function beginTween(elementCount:int):void
+{ super.beginTween(elementCount); tween.addEventListener(TweenEvent.TWEEN_START, tweenEventHandler); tween.addEventListener(TweenEvent.TWEEN_UPDATE, tweenEventHandler); tween.addEventListener(TweenEvent.TWEEN_END, tweenEventHandler); }
+
+private function tweenEventHandler(event:TweenEvent):void
+{ dispatchEvent(event); }
+}
+}
+
+
+Once you do this and use the new class, it correctly produces the trace lines:
+
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml"
+xmlns:nes="nes.*"
+layout="vertical"
+>
+<mx:Script>
+<![CDATA[
+import mx.collections.ArrayCollection;
+[Bindable] private var d:ArrayCollection = new ArrayCollection([{x:1, y:3}, {x:2, y:2}, {x:3, y:4}]);
+private function changeData():void
+{
+for (var i:int = 0; i < d.length; i++)
+d[i] = {x:d[i].x, y:Math.random() * 3 + 1};
+}
+]]
+>
+</mx:Script>
+<mx:Button label="Random" click="changeData()"/>
+
+<nes:FixedSeriesInterpolate id="interp" tweenUpdate="{trace('tweenupdate')}
+"/>
+<mx:ColumnChart dataProvider="
+{d}
+">
+<mx:series>
+<mx:ColumnSeries xField="x" yField="y" showDataEffect="interp"/>
+</mx:series>
+</mx:ColumnChart>
+</mx:Application>
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+13/Sep/08 12:07
+Update date:
+25/Feb/10 22:16
+Resolved date:
+25/Feb/10 22:16

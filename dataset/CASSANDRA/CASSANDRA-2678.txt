@@ -1,0 +1,59 @@
+Summary:
+Incorrect NetworkTopolgyStrategy Options on upgrade from 0.7.5
+Description:
+After an upgrade from 0.7.5 to 0.8.0-rc1 on a 10 node, single DC ring configured with NTS, operations fail due to an inability to reach replicas in the 'second datacenter':
+ERROR [pool-2-thread-8] 2011-05-17 12:15:23,145 Cassandra.java (line 3294) Internal error processing insert
+java.lang.IllegalStateException: datacenter (replication_factor) has no more endpoints, (3) replicas still needed
+at org.apache.cassandra.locator.NetworkTopologyStrategy.calculateNaturalEndpoints(NetworkTopologyStrategy.java:118)
+at org.apache.cassandra.locator.AbstractReplicationStrategy.getNaturalEndpoints(AbstractReplicationStrategy.java:100)
+at org.apache.cassandra.service.StorageService.getNaturalEndpoints(StorageService.java:1611)
+at org.apache.cassandra.service.StorageService.getNaturalEndpoints(StorageService.java:1599)
+at org.apache.cassandra.service.StorageProxy.getWriteEndpoints(StorageProxy.java:217)
+at org.apache.cassandra.service.StorageProxy.performWrite(StorageProxy.java:202)
+at org.apache.cassandra.service.StorageProxy.mutate(StorageProxy.java:154)
+at org.apache.cassandra.thrift.CassandraServer.doInsert(CassandraServer.java:557)
+at org.apache.cassandra.thrift.CassandraServer.internal_insert(CassandraServer.java:434)
+at org.apache.cassandra.thrift.CassandraServer.insert(CassandraServer.java:442)
+at org.apache.cassandra.thrift.Cassandra$Processor$insert.process(Cassandra.java:3286)
+at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:2889)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:187)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:636)
+DEBUG [ScheduledTasks:1] 2011-05-17 12:15:33,975 StorageLoadBalancer.java (line 334) Disseminating load info ...
+On checking the keyspace definition with cassandra-cli, it appears that 0.8.0-rc1 considered the 'replication_factor:3' configuration in the older version as a DC name in part of the DC replication strategy:
+Replication Strategy: org.apache.cassandra.locator.NetworkTopologyStrategy
+Options: [replication_factor:3, DC1:3]
+I attempted to remove replication_factor as a DC using the 'update keyspace' command, but it would persist. I was able to remove the DC1:3 and use:
+update keyspace MyKeyspace with strategy_options=[
+{replication_factor:3}
+];
+then changed the topology properties file, renamed DC1 to replication_factor, and it worked - so there is a workaround.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.0
+Component:
+None
+Label:
+None
+Environment:
+redhat
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Chris Trahman
+Create date:
+20/May/11 20:57
+Update date:
+16/Apr/19 09:32
+Resolved date:
+23/May/11 19:12

@@ -1,0 +1,60 @@
+Summary:
+Drop column family fail in Cassandra 1.1.1
+Description:
+2-node v1.1.1 cluster. Attempts to drop column families appears to succeed, but fails behind the scenes. More specifically, the column family is deleted as follows:
+cassandra-cli -h HOST_1
+> use MyKeyspace
+> drop column family MyColumnFamily
+79f7ab8c-da08-355c-87a0-8e9630eb4945
+Waiting for schema agreement...
+... schemas agree across the cluster
+Data files in fact have been deleted on HOST_1. However, the files on HOST_2 still exist in the /data directory. Also, the following stack trace appears in /var/log/system.log on HOST_2:
+ERROR [MigrationStage:1] 2012-06-19 22:05:56,172 AbstractCassandraDaemon.java (line 134) Exception in thread Thread[MigrationStage:1,5,main]
+org.apache.cassandra.cql.jdbc.MarshalException: invalid UTF8 bytes 4fe0f7c7
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.getString(JdbcUTF8.java:81)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.compose(JdbcUTF8.java:97)
+at org.apache.cassandra.db.marshal.UTF8Type.compose(UTF8Type.java:35)
+at org.apache.cassandra.cql3.UntypedResultSet$Row.getString(UntypedResultSet.java:87)
+at org.apache.cassandra.config.CFMetaData.fromSchemaNoColumns(CFMetaData.java:1170)
+at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1215)
+at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:291)
+at org.apache.cassandra.db.DefsTable.mergeColumnFamilies(DefsTable.java:396)
+at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:271)
+at org.apache.cassandra.db.DefsTable.mergeRemoteSchema(DefsTable.java:249)
+at org.apache.cassandra.db.DefinitionsUpdateVerbHandler$1.runMayThrow(DefinitionsUpdateVerbHandler.java:48)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+From this point on, all other Migration commands (e.g. creating new column families) similarly report no errors in cassandra-cli, but fail behind the scenes. Recovering from the erroneous state requires a cluster restart.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+David B
+Create date:
+19/Jun/12 22:15
+Update date:
+16/Apr/19 09:32
+Resolved date:
+20/Jun/12 12:42

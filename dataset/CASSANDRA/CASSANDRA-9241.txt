@@ -1,0 +1,42 @@
+Summary:
+ByteBuffer.array() without ByteBuffer.arrayOffset() + ByteBuffer.position() is a bug
+Description:
+I found one instance of this on OHCProvider so it make sense to review all usages since there aren't that many.
+Some suspect things:
+https://github.com/apache/cassandra/blob/trunk/src/java/org/apache/cassandra/utils/FastByteOperations.java#L197
+https://github.com/apache/cassandra/blob/trunk/src/java/org/apache/cassandra/db/ColumnFamilyStore.java#L1877
+https://github.com/apache/cassandra/blob/trunk/src/java/org/apache/cassandra/gms/TokenSerializer.java#L40
+https://github.com/apache/cassandra/blob/trunk/src/java/org/apache/cassandra/io/compress/CompressedRandomAccessReader.java#L178
+https://github.com/apache/cassandra/blob/trunk/tools/stress/src/org/apache/cassandra/stress/operations/predefined/CqlOperation.java#L104
+https://github.com/apache/cassandra/blob/trunk/tools/stress/src/org/apache/cassandra/stress/operations/predefined/CqlOperation.java#L543
+https://github.com/apache/cassandra/blob/trunk/tools/stress/src/org/apache/cassandra/stress/operations/predefined/CqlOperation.java#L563
+I made this list off of 8099 so I might have missed some instances on trunk. FastByteOperations makes me cross eyed so it is worth a second pass to make sure offsets in byte buffers are handled correctly.
+Generally I like to use the full incantation even when I have done things like allocate the buffer on the stack locally for copy pasta/refactoring reasons and to make clear to new users how the API is supposed to work.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+3.2
+Component:
+Legacy/Testing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ariel Weisberg
+Reporter:
+Ariel Weisberg
+Create date:
+24/Apr/15 21:48
+Update date:
+16/Apr/19 09:31
+Resolved date:
+13/Aug/15 15:37

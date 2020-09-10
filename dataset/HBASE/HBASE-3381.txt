@@ -1,0 +1,60 @@
+Summary:
+Interrupt of a region open comes across as a successful open
+Description:
+Meta was offline when below happened:
+2010-12-21 19:45:23,023 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x12d0a53c540000e Attempting to transition node 337038b50e467fbd6b031f278bbd9c22 from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2010-12-21 19:45:23,046 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x12d0a53c540000e Successfully transitioned node 337038b50e467fbd6b031f278bbd9c22 from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2010-12-21 19:45:26,379 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Interrupting thread Thread[PostOpenDeployTasks:337038b50e467fbd6b031f278bbd9c22,5,main]
+2010-12-21 19:45:26,379 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x12d0a53c540000e Attempting to transition node 337038b50e467fbd6b031f278bbd9c22 from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENED
+2010-12-21 19:45:26,381 WARN org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Exception running postOpenDeployTasks; region=337038b50e467fbd6b031f278bbd9c22
+org.apache.hadoop.hbase.NotAllMetaRegionsOnlineException: Interrupted
+    at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMetaServerConnectionDefault(CatalogTracker.java:364)
+    at org.apache.hadoop.hbase.catalog.MetaEditor.updateRegionLocation(MetaEditor.java:146)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.postOpenDeployTasks(HRegionServer.java:1331)
+    at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler$PostOpenDeployTasksThread.run(OpenRegionHandler.java:195)
+...
+So, we timed out trying to open the region but rather than close the region because edit failed, we missed seeing the InterruptedException.
+Here is suggested fix:
+diff --git a/src/main/java/org/apache/hadoop/hbase/catalog/MetaReader.java b/src/main/java/org/apache/hadoop/hbase/catalog/MetaReader.java
+index 7bf680d..2b0078c 100644
+--- a/src/main/java/org/apache/hadoop/hbase/catalog/MetaReader.java
++++ b/src/main/java/org/apache/hadoop/hbase/catalog/MetaReader.java
+@@ -339,7 +339,7 @@ public class MetaReader {
+     get.addFamily(HConstants.CATALOG_FAMILY);
+     byte [] meta = getCatalogRegionNameForRegion(regionName);
+     Result r = catalogTracker.waitForMetaServerConnectionDefault().get(meta, get);
+-    if(r == null || r.isEmpty()) {
++    if (r == null || r.isEmpty()) {
+       return null;
+     }
+     return metaRowToRegionPair(r);
+Let me try it.
+W/o this, what we see is hbck showing that region is on server X but in .META. it shows as being on Y (its pre-balance server)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+21/Dec/10 20:52
+Update date:
+20/Nov/15 12:42
+Resolved date:
+22/Dec/10 18:16

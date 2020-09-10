@@ -1,0 +1,62 @@
+Summary:
+Apparent data loss using super columns and row cache via ConcurrentLinkedHashCacheProvider
+Description:
+Tested on a vanilla single-node cassandra 1.0.9 installation.
+When using super columns along with row caching via ConcurrentLinkedHashCacheProvider (default if no JNA available, or explicitly configured even if JNA available), there's what appears as transient data loss.
+Given this script executed in cassandra-cli:
+create keyspace Test;
+use Test;
+create column family Users with column_type='Super' and key_validation_class='UTF8Type' and comparator='UTF8Type' and subcomparator='UTF8Type' and default_validation_class='UTF8Type' and rows_cached=75000 and row_cache_provider='ConcurrentLinkedHashCacheProvider';
+set Users['mina']['attrs']['name'] = 'Mina';
+get Users['mina'];
+set Users['mina']['attrs']['country'] = 'Canada';
+get Users['mina'];
+set Users['mina']['attrs']['region'] = 'Quebec';
+get Users['mina'];
+The output from the 3 gets above is as follows:
+=> (super_column=attrs,
+(column=name, value=Mina, timestamp=1335377788441000))
+Returned 1 results.
+=> (super_column=attrs,
+(column=name, value=Mina, timestamp=1335377788441000))
+Returned 1 results.
+=> (super_column=attrs,
+(column=name, value=Mina, timestamp=1335377788441000))
+Returned 1 results.
+It's clear that the second and third set commands (country, region) are missing in the returned results.
+If the row cache is explicitly invalidated (in a second terminal, via `nodetool -h localhost invalidaterowcache Test Users`), the missing data springs to life on next 'get':
+[default@Test] get Users['mina'];
+=> (super_column=attrs,
+(column=country, value=Canada, timestamp=1335377839592000)
+(column=name, value=Mina, timestamp=1335377788441000)
+(column=region, value=Quebec, timestamp=1335377871353000))
+Returned 1 results.
+From cursory checks, this does not to appear to happen with regular columns, nor with JNA enabled + SerializingCacheProvider.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.10, 1.1.1
+Component:
+None
+Label:
+ConcurrentLinkedHash
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Mina Naguib
+Create date:
+25/Apr/12 19:01
+Update date:
+16/Apr/19 09:32
+Resolved date:
+26/Apr/12 14:35

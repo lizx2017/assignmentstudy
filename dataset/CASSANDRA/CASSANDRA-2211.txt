@@ -1,0 +1,49 @@
+Summary:
+Cleanup can create sstables whose contents do not match their advertised version
+Description:
+Since cleanup switched to per-sstable operation (CASSANDRA-1916), the main loop looks like this:
+                    if (Range.isTokenInRanges(row.getKey().token, ranges))
+                    {
+                        writer = maybeCreateWriter(sstable, compactionFileLocation, expectedBloomFilterSize, writer);
+                        writer.append(new EchoedRow(row));
+                        totalkeysWritten++;
+                    }
+                    else
+                    {
+                        while (row.hasNext())
+                        {
+                            IColumn column = row.next();
+                            if (indexedColumns.contains(column.name()))
+                                Table.cleanupIndexEntry(cfs, row.getKey().key, column);
+                        }
+                    }
+... that is, rows that haven't changed we copy to the new sstable without deserializing, with EchoedRow. But, the new sstable is created with CURRENT_VERSION which may not be what the old data consisted of.
+(This could cause symptoms similar to CASSANDRA-2195 but I do not think it is the cause of that bug; IIRC the cluster in question there was not upgraded from an older Cassandra.)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jonathan Ellis
+Create date:
+21/Feb/11 23:28
+Update date:
+16/Apr/19 09:33
+Resolved date:
+22/Feb/11 14:53

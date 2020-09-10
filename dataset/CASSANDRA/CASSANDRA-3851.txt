@@ -1,0 +1,64 @@
+Summary:
+Wrong Keyspace name is generated while streaming the sstables using BulkOutputFormat.
+Description:
+I have merge the committed changes of CASSANDRA-3828 into my cassadra-trunk. Also the changes for the OutputLocation.
+But when I tried to load the sstables with hadoop job it results into the following exception:
+12/02/04 11:19:12 INFO mapred.JobClient:  map 6% reduce 0%
+12/02/04 11:19:14 INFO mapred.JobClient: Task Id : attempt_201202041114_0001_m_000001_1, Status : FAILED
+java.lang.RuntimeException: Could not retrieve endpoint ranges:
+        at org.apache.cassandra.hadoop.BulkRecordWriter$ExternalClient.init(BulkRecordWriter.java:252)
+        at org.apache.cassandra.io.sstable.SSTableLoader.stream(SSTableLoader.java:117)
+        at org.apache.cassandra.io.sstable.SSTableLoader.stream(SSTableLoader.java:112)
+        at org.apache.cassandra.hadoop.BulkRecordWriter.close(BulkRecordWriter.java:182)
+        at org.apache.cassandra.hadoop.BulkRecordWriter.close(BulkRecordWriter.java:167)
+        at org.apache.hadoop.mapred.MapTask$NewDirectOutputCollector.close(MapTask.java:650)
+        at org.apache.hadoop.mapred.MapTask.runNewMapper(MapTask.java:765)
+        at org.apache.hadoop.mapred.MapTask.run(MapTask.java:369)
+        at org.apache.hadoop.mapred.Child$4.run(Child.java:259)
+        at java.security.AccessController.doPrivileged(Native Method)
+        at javax.security.auth.Subject.doAs(Subject.java:396)
+        at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1059)
+        at org.apache.hadoop.mapred.Child.main(Child.java:253)
+Caused by: InvalidRequestException (*why:There is no ring for the keyspace: tmp*)
+        at org.apache.cassandra.thrift.Cassandra$describe_ring_result.read(Cassandra.java:24053)
+        at org.apache.thrift.TServiceClient.receiveBase(TServiceClient.java:78)
+        at org.apache.cassandra.thrift.Cassandra$Client.recv_describe_ring(Cassandra.java:1065)
+        at org.apache.cassandra.thrift.Cassandra$Client.describe_ring(Cassandra.java:1052)
+        at org.apache.cassandra.hadoop.BulkRecordWriter$ExternalClient.init(BulkRecordWriter.java:225)
+        ... 12 more
+After looking into the code I figured out that as we are setting the OUTPUTLOCATION with system property "java.io.tmpdir" the output directory is getting created as: /tmp/Keyspace_Name
+So in SSTableLoader while generating the kespace name like
+this.keyspace = directory.getParentFile().getName();
+It is setting the keyspace name as "tmp" and results into the above exception.
+I have changed the code as:
+this.keyspace = directory.getName();
+and it works perfect.
+But I am wondering how it was working fine previously? Am I doing anything wrong ? or is it a bug?
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+Legacy/Tools
+Label:
+bulkloader hadoop ss
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Samarth Gahire
+Create date:
+04/Feb/12 13:42
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Feb/12 19:45

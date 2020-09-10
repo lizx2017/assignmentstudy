@@ -1,0 +1,61 @@
+Summary:
+Log error when using IN together with ORDER BY
+Description:
+$ bin/cqlsh -3
+Connected to Test Cluster at localhost:9160.
+[cqlsh 2.2.0 | Cassandra 1.1.5-SNAPSHOT | CQL spec 3.0.0 | Thrift protocol 19.32.0]
+Use HELP for help.
+cqlsh> use ks;
+cqlsh:ks> drop TABLE test;
+cqlsh:ks> CREATE TABLE test (my_id varchar, time_id uuid, value int, PRIMARY KEY (my_id, time_id));
+cqlsh:ks> INSERT INTO test (my_id, time_id, value) VALUES ('key1', 1, 1);
+cqlsh:ks> INSERT INTO test (my_id, time_id, value) VALUES ('key2', 2, 2);
+cqlsh:ks> select * from test where my_id in('key1', 'key2') order by time_id;
+TSocket read 0 bytes
+The log shows this:
+ERROR [Thrift:5] 2012-09-19 08:44:59,859 CustomTThreadPoolServer.java (line 204) Error occurred during processing of message.
+java.lang.IllegalArgumentException: Column time_id wasn't found in select clause.
+ at org.apache.cassandra.cql3.statements.SelectStatement.getColumnPositionInSelect(SelectStatement.java:866)
+ at org.apache.cassandra.cql3.statements.SelectStatement.orderResults(SelectStatement.java:836)
+ at org.apache.cassandra.cql3.statements.SelectStatement.process(SelectStatement.java:807)
+ at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:137)
+ at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:108)
+ at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:121)
+ at org.apache.cassandra.thrift.CassandraServer.execute_cql_query(CassandraServer.java:1242)
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3542)
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3530)
+ at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+ at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:186)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+NOTE: This issue appears similar to https://issues.apache.org/jira/browse/CASSANDRA-4612 from the user perspective, even though 4612 was verified as fixed.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Tyler Patterson
+Create date:
+19/Sep/12 14:57
+Update date:
+16/Apr/19 09:32
+Resolved date:
+20/Sep/12 13:59

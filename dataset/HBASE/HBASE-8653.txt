@@ -1,0 +1,34 @@
+Summary:
+master seems to be deleting region tmp directory from under compaction
+Description:
+Putting it in .1, feel free to move to .2.
+We have observed some compaction errors where the code was creating a new HDFS block, and the file would not exist. Upon investigation, we found the .tmp directory delete request on namenode from master IP shortly before that. There are no specific logs on master, but one thing running at that time was CatalogJanitor. CatalogJanitor calls HRegionFileSystem::openRegionFromFileSystem with readOnly == true (in fact, everyone does); if readOnly is true, HRegionFileSystem nukes the .tmp directory.
+We didn't go thru details on how it arrived there (or if there may have been other culprit), but it appears that deleting stuff if (readOnly) is not the intended behavior and it should be if (!readOnly). Given that readOnly is not really used (or rather is always true except some inconsequential usage in test) perhaps entire cleanup should be removed.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.95.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergey Shelukhin
+Reporter:
+Sergey Shelukhin
+Create date:
+30/May/13 03:15
+Update date:
+23/Sep/13 19:08
+Resolved date:
+31/May/13 00:23

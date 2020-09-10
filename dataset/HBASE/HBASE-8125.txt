@@ -1,0 +1,55 @@
+Summary:
+HBASE-7435 breaks BuiltInGzipDecompressor on Hadoop < 1.0.x
+Description:
+From some friends of ours at dropbox:
+Index: src/main/java/org/apache/hadoop/hbase/io/hfile/Compression.java
+===================================================================
+— src/main/java/org/apache/hadoop/hbase/io/hfile/Compression.java (revision 1425723)
++++ src/main/java/org/apache/hadoop/hbase/io/hfile/Compression.java (working copy)
+@@ -33,6 +33,7 @@
+import org.apache.hadoop.io.compress.CompressionOutputStream;
+import org.apache.hadoop.io.compress.Compressor;
+import org.apache.hadoop.io.compress.Decompressor;
++import org.apache.hadoop.io.compress.DoNotPool;
+import org.apache.hadoop.io.compress.GzipCodec;
+import org.apache.hadoop.io.compress.DefaultCodec;
+import org.apache.hadoop.util.ReflectionUtils;
+@@ -308,6 +309,9 @@
+public void returnDecompressor(Decompressor decompressor) {
+if (decompressor != null) {
+CodecPool.returnDecompressor(decompressor);
++ if (decompressor.getClass().isAnnotationPresent(DoNotPool.class))
+{ + decompressor.end(); + }
+}
+}
+breaks compatibility with hadoop-0.20.2-cdh3u2.
++import org.apache.hadoop.io.compress.DoNotPool;
+does not exist in that version of hadoop.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+stack
+Create date:
+15/Mar/13 23:44
+Update date:
+27/Apr/13 15:55
+Resolved date:
+19/Mar/13 18:08

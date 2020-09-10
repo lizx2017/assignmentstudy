@@ -1,0 +1,60 @@
+Summary:
+[replication] NPE while replicating a log that is acquiring a new block from HDFS
+Description:
+We're getting an NPE during replication, which causes replication for that RegionServer to stop until we restart it.
+2013-03-10 12:49:12,679 ERROR org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Unexpected exception in ReplicationSource, currentPath=hdfs://hmaster1:9000/hbase/.logs/hslave1177,60020,1362549511446/hslave1177%2C60020%2C1362549511446.1362944946489
+java.lang.NullPointerException
+        at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.updateBlockInfo(DFSClient.java:1882)
+        at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.openInfo(DFSClient.java:1855)
+        at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.<init>(DFSClient.java:1831)
+        at org.apache.hadoop.hdfs.DFSClient.open(DFSClient.java:578)
+        at org.apache.hadoop.hdfs.DistributedFileSystem.open(DistributedFileSystem.java:154)
+        at org.apache.hadoop.fs.FilterFileSystem.open(FilterFileSystem.java:108)
+        at org.apache.hadoop.io.SequenceFile$Reader.openFile(SequenceFile.java:1495)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader$WALReader.openFile(SequenceFileLogReader.java:62)
+        at org.apache.hadoop.io.SequenceFile$Reader.<init>(SequenceFile.java:1482)
+        at org.apache.hadoop.io.SequenceFile$Reader.<init>(SequenceFile.java:1475)
+        at org.apache.hadoop.io.SequenceFile$Reader.<init>(SequenceFile.java:1470)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader$WALReader.<init>(SequenceFileLogReader.java:55)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.reset(SequenceFileLogReader.java:308)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationHLogReaderManager.openReader(ReplicationHLogReaderManager.java:69)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.openReader(ReplicationSource.java:505)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.run(ReplicationSource.java:313)
+Some extra digging into the DataNode and NameNode logs makes this seem related to HBASE-7530 and HDFS-4380
+Here's the relevant snipped portions of the RS, DN, and NN logs:
+RS 2013-03-10 12:49:12,618 INFO org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager: Going to report log #hslave1177%2C60020%2C1362549511446.1362944946489 for position 59670826 in hdfs://hmaster1:9000/hbase/.logs/hslave1177,60020,1362549511446/hslave1177%2C60020%2C1362549511446.1362944946489
+RS 2013-03-10 12:49:12,621 DEBUG org.apache.hadoop.hbase.regionserver.LogRoller: HLog roll requested
+RS 2013-03-10 12:49:12,623 DEBUG org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Replicated in total: 31500300
+RS 2013-03-10 12:49:12,623 DEBUG org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Opening log for replication hslave1177%2C60020%2C1362549511446.1362944946489 at 59670826
+NN 2013-03-10 12:49:12,627 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* NameSystem.allocateBlock: /hbase/.logs/hslave1177,60020,1362549511446/hslave1177%2C60020%2C1362549511446.1362944946489. blk_6905758215335505153_656717631
+RS 2013-03-10 12:49:12,679 ERROR org.apache.hadoop.hbase.replication.regionserver.ReplicationSource: Unexpected exception in ReplicationSource, currentPath=hdfs://hmaster1:9000/hbase/.logs/hslave1177,60020,1362549511446/hslave1177%2C60020%2C1362549511446.1362944946489
+DN 2013-03-10 12:49:12,680 INFO org.apache.hadoop.hdfs.server.datanode.DataNode: Receiving block blk_6905758215335505153_656717631 src: /192.168.44.1:43503 dest: /192.168.44.1:50010
+NN 2013-03-10 12:49:12,804 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* NameSystem.fsync: file /hbase/.logs/hslave1177,60020,1362549511446/hslave1177%2C60020%2C1362549511446.1362944946489 for DFSClient_hb_rs_hslave1177,60020,1362549511446
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.5
+Fix_version:
+0.98.0, 0.94.7, 0.95.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Dave Latham
+Reporter:
+Ian Friedman
+Create date:
+13/Mar/13 22:38
+Update date:
+27/Apr/13 15:55
+Resolved date:
+13/Apr/13 17:07

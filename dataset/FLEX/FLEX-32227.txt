@@ -1,0 +1,131 @@
+Summary:
+OLAPCube creation in Actionscript
+Description:
+Steps to reproduce:
+When creating the OLAPCube object in mxml everything is working fine but when adding the dimensions dynamically in actionscript an error message appears
+To reproduce the error comment the line addColumnInformationToCube(olapCube); to see a results and uncomment the same line to see the error
+Message:
+TypeError: Error #1009: Der Zugriff auf eine Eigenschaft oder eine Methode eines null-Objektverweises ist nicht möglich.
+at mx.olap::OLAPMember/get uniqueName()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\olap\OLAPMember.as:116]
+at mx.olap::OLAPLevel/http://www.adobe.com/2006/flex/mx/internal::createMember()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\olap\OLAPLevel.as:339]
+at mx.olap::OLAPHierarchy/createAllLevelIfRequired()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\olap\OLAPHierarchy.as:234]
+at mx.olap::OLAPHierarchy/http://www.adobe.com/2006/flex/mx/internal::refresh()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\olap\OLAPHierarchy.as:262]
+at mx.olap::OLAPDimension/http://www.adobe.com/2006/flex/mx/internal::refresh()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\olap\OLAPDimension.as:335]
+at mx.olap::OLAPCube/updateDimensions()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\olap\OLAPCube.as:544]
+at flash.utils::Timer/_timerDispatch()
+at flash.utils::Timer/tick()
+Code:
+<mx:OLAPDataGrid id="grid" left="0" right="0" top="0" bottom="0" />
+<!-- MXML Cube -->
+<mx:OLAPCube id="olapCube" name="FlatSchemaCube" dataProvider="
+{m_FlatData}
+" complete="runQuery(event);">
+<mx:OLAPDimension name="BlockDim">
+<mx:OLAPAttribute name="Block" dataField="Block" />
+<mx:OLAPHierarchy name="blockHierarchy" hasAll="true">
+<mx:OLAPLevel attributeName="Block" />
+</mx:OLAPHierarchy>
+</mx:OLAPDimension>
+<mx:OLAPDimension name="MeasuresDim">
+<mx:OLAPAttribute name="Measures" dataField="Measures" />
+<mx:OLAPHierarchy name="MeasuresHierarchy" hasAll="true">
+<mx:OLAPLevel attributeName="Measures" />
+</mx:OLAPHierarchy>
+</mx:OLAPDimension>
+<mx:OLAPMeasure name="MyValue" dataField="myvalue" aggregator="SUM" />
+</mx:OLAPCube>
+<mx:Script>
+<![CDATA[
+import mx.olap.aggregators.SumAggregator;
+import mx.collections.IList;
+import mx.olap.OLAPMeasure;
+import mx.olap.OLAPLevel;
+import mx.olap.OLAPHierarchy;
+import mx.olap.OLAPAttribute;
+import mx.olap.OLAPDimension;
+import mx.olap.OLAPCube;
+import mx.olap.OLAPResult;
+import mx.controls.Alert;
+import mx.olap.OLAPSet;
+import mx.olap.IOLAPQueryAxis;
+import mx.olap.OLAPQuery;
+import mx.rpc.AsyncResponder;
+import mx.rpc.AsyncToken;
+import mx.olap.IOLAPQuery;
+import mx.olap.IOLAPCube;
+import mx.events.CubeEvent;
+import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+import mx.collections.ArrayCollection;
+[Bindable]
+private var flatData:ArrayCollection = new ArrayCollection(
+[
+{Block:"AAA", Measures:"ColdFusion", quarter:"Q1", revenue:210, myvalue:25}
+,
+{Block:"AAA", Measures:"Flex", quarter:"Q2", revenue:210, myvalue:25}
+,
+{Block:"AAA", Measures:"Dreamweaver", quarter:"Q3", revenue:250, myvalue:125}
+,
+{Block:"AAA", Measures:"Flash", quarter:"Q4", revenue:430, myvalue:75}
+,
+{Block:"BBB", Measures:"ColdFusion", quarter:"Q2", revenue:125, myvalue:20}
+,
+{Block:"BBB", Measures:"Flex", quarter:"Q3", revenue:210, myvalue:20}
+,
+{Block:"BBB", Measures:"Dreamweaver", quarter:"Q4", revenue:320, myvalue:120}
+,
+{Block:"BBB", Measures:"Flash", quarter:"Q1", revenue:280, myvalue:70}
+,
+]);
+[Bindable]
+private var m_FlatData: ArrayCollection;
+private function creationCompleteHandler(): void
+{ m_FlatData = flatData; //If you remove this it works addColumnInformationToCube(olapCube); //It seems that you are not able to generate the dimensions for an OLAPCube object olapCube.refresh(); }
+private function addColumnInformationToCube(cube: OLAPCube): void
+{ cube.dimensions.removeAll(); var olapDimension: OLAPDimension = null; olapDimension = createDimension("Block"); olapDimension.cube = cube; cube.dimensions.addItem(olapDimension); olapDimension = createDimension("Measures"); olapDimension.cube = cube; cube.dimensions.addItem(olapDimension); }
+private function createDimension(axisElement: String): OLAPDimension
+{ var olapAttribute: OLAPAttribute = null; var olapHierarchy: OLAPHierarchy = null; var olapLevel: OLAPLevel = null; var olapDimension: OLAPDimension = new OLAPDimension(axisElement + "Dim"); olapAttribute = new OLAPAttribute(axisElement); olapAttribute.dataField = axisElement; olapHierarchy = new OLAPHierarchy(axisElement + "Hierarchy"); olapHierarchy.hasAll = true; olapDimension.attributes.addItem(olapAttribute); olapDimension.hierarchies.addItem(olapHierarchy); olapLevel = new OLAPLevel(); olapLevel.attributeName = olapAttribute.name; olapHierarchy.levels.addItem(olapLevel); return olapDimension; }
+public function buildColumns(): ArrayCollection
+{ var result: ArrayCollection = new ArrayCollection(); var column: AdvancedDataGridColumn = new AdvancedDataGridColumn("Block"); column.dataField = "Block"; result.addItem(column); column = new AdvancedDataGridColumn("Sales"); column.dataField = "Value"; result.addItem(column); return result; }
+private function runQuery(event: CubeEvent): void
+{ var cube: IOLAPCube = IOLAPCube(event.currentTarget); var query: IOLAPQuery = getQuery(cube); var token: AsyncToken = cube.execute(query); token.addResponder(new AsyncResponder(showResult, showFault)); }
+private function getQuery(cube: IOLAPCube): IOLAPQuery
+{ var query: OLAPQuery = new OLAPQuery(); var rowQueryAxis: IOLAPQueryAxis = query.getAxis(OLAPQuery.ROW_AXIS); var blockSet: OLAPSet = new OLAPSet(); blockSet.addElements(cube.findDimension("BlockDim").findAttribute("Block").children); rowQueryAxis.addSet(blockSet); var colQueryAxis: IOLAPQueryAxis = query.getAxis(OLAPQuery.COLUMN_AXIS); var measuresSet: OLAPSet = new OLAPSet(); measuresSet.addElements(cube.findDimension("MeasuresDim").findAttribute("Measures").children); colQueryAxis.addSet(measuresSet); return query; }
+private function showResult(result: Object, token: Object): void{
+if (!result)
+{ mx.controls.Alert.show("No result from query"); return; }
+grid.dataProvider = result as OLAPResult;
+}
+private function showFault(result: Object, token: Object): void
+{ mx.controls.Alert.show("Error in query"); }
+
+]]
+>
+</mx:Script>
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+OLAP API
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+08/Feb/08 04:31
+Update date:
+29/Apr/11 10:19
+Resolved date:
+08/Sep/08 06:01

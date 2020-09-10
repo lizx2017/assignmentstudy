@@ -1,0 +1,55 @@
+Summary:
+inherent deadlock situation in commitLog flush?
+Description:
+after my system ran for a while, it consitently goes into frozen state where all the mutations stage threads are waiting
+on the switchlock,
+the reason is that the switchlock is held by commit log, as shown by the following thread dump:
+"COMMIT-LOG-WRITER" prio=10 tid=0x00000000010df000 nid=0x32d3 waiting on condition [0x00007f2d81557000]
+java.lang.Thread.State: WAITING (parking)
+at sun.misc.Unsafe.park(Native Method)
+parking to wait for <0x00007f3579eec060> (a java.util.concurrent.FutureTask$Sync)
+at java.util.concurrent.locks.LockSupport.park(LockSupport.java:186)
+at java.util.concurrent.locks.AbstractQueuedSynchronizer.parkAndCheckInterrupt(AbstractQueuedSynchronizer.java:838)
+at java.util.concurrent.locks.AbstractQueuedSynchronizer.doAcquireSharedInterruptibly(AbstractQueuedSynchronizer.java:998)
+at java.util.concurrent.locks.AbstractQueuedSynchronizer.acquireSharedInterruptibly(AbstractQueuedSynchronizer.java:1304)
+at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:248)
+at java.util.concurrent.FutureTask.get(FutureTask.java:111)
+at org.apache.cassandra.db.commitlog.CommitLog.getContext(CommitLog.java:386)
+at org.apache.cassandra.db.ColumnFamilyStore.maybeSwitchMemtable(ColumnFamilyStore.java:650)
+at org.apache.cassandra.db.ColumnFamilyStore.forceFlush(ColumnFamilyStore.java:722)
+at org.apache.cassandra.db.commitlog.CommitLog.createNewSegment(CommitLog.java:573)
+at org.apache.cassandra.db.commitlog.CommitLog.access$300(CommitLog.java:81)
+at org.apache.cassandra.db.commitlog.CommitLog$LogRecordAdder.run(CommitLog.java:596)
+at org.apache.cassandra.db.commitlog.PeriodicCommitLogExecutorService$1.runMayThrow(PeriodicCommitLogExecutorService.java:49)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+at java.lang.Thread.run(Thread.java:679)
+we can clearly see that the COMMIT-LOG-WRITER thread is running the regular appender , but the appender itself calls getContext(), which again submits a new Callable to be executed, and waits on the Callable. but the new Callable is never going to be executed since the executor has only one thread.
+I believe this is a deterministic bug.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.0
+Component:
+None
+Label:
+commitlog
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Yang Yang
+Create date:
+23/Sep/11 17:53
+Update date:
+16/Apr/19 09:32
+Resolved date:
+26/Sep/11 09:07

@@ -1,0 +1,106 @@
+Summary:
+Compiling with RSL does not remove trial watermark
+Description:
+I recently enhanced our Ant build process to use RSLs to reduce the output swf size. We noticed the watermark reappears, whereas without the RSL compilation, it does not appear. Relevant Ant targets (which only use an exec call to run the command-line flex compiler):
+<!-this is used to extract .swf files from 3rd party .swc libraries, in order to do dynamic linking->
+<macrodef name="extract-flex-lib" description="For modularizing flex compilation">
+<attribute name="swc-lib" default="NOT SET"/>
+<sequential>
+<copy todir="${dir.war}" preservelastmodified="true">
+<zipfileset src="${dir.webinf}/lib/@
+{swc-lib}.swc">
+<patternset>
+<include name="library.swf"/>
+</patternset>
+</zipfileset>
+<mapper type="glob" from="library.swf" to="@{swc-lib}
+-debug.swf"/>
+</copy>
+<exec executable="${flex.optimizer}" failonerror="true">
+<arg line="-keep-as3-metadata='Bindable,Managed,ChangeEvent,NonCommittingChangeEvent,Transient'"/>
+<arg line="-input @
+{swc-lib}-debug.swf -output @{swc-lib}
+.swf"/>
+</exec>
+<delete file="@
+{swc-lib}
+-debug.swf"/>
+</sequential>
+</macrodef>
+<target name="flexc-modularize" unless="flexc.notRequired.modular">
+<!-framework library->
+<property name="lib.framework" value="${dir.flex.home}/frameworks/libs/framework.swc"/>
+<property name="lib.framework.rsl" value="${dir.flex.home}/frameworks/rsls/framework_${flex.version}.swz"/>
+<property name="dir.framework" value="framework_${flex.version}.swz"/>
+<copy file="${lib.framework.rsl}" todir="${dir.war}"/>
+<!-datavisualization library->
+<property name="lib.datavisualization" value="${dir.flex.home}/frameworks/libs/datavisualization.swc"/>
+<property name="lib.davavis.rsl" value="${dir.flex.home}/frameworks/rsls/datavisualization_${flex.version}.swz"/>
+<property name="dir.datavis" value="datavisualization_${flex.version}.swz"/>
+<copy file="${lib.davavis.rsl}" todir="${dir.war}"/>
+<!-the rslp options specify flex libraries to externalize->
+<property name="rslp.args1" value="-rslp=${lib.framework},${dir.framework}"/>
+<property name="rslp.args2" value="-rslp=${lib.datavisualization},${dir.datavis}"/>
+<property name="rslp.args" value="${rslp.args1} ${rslp.args2}"/>
+<!-combine the extern and rsl options into one property->
+<property name="modular.args" value="${extern.args} ${rsl.args} ${rslp.args}"/>
+</target>
+<target name="flexcompile" depends="flexc-modularize" description="Builds the Flex sources" unless="flexc.notRequired.main">
+<property name="license.dj" value="our license key goes here"/>
+<!-common options used for both the main swf and also for modules->
+<property name="common.args1" value="-optimize=true -warnings=${flex.options.warnings} -debug=false -as3"/>
+<property name="common.args2" value="-license=flexbuilder3,${license.dj} -library-path+=${dir.webinf}/lib"/>
+<property name="common.args" value="${common.args1} ${common.args2}"/>
+<!-the link report is used to create the symbols in the main swf, and modules link against it->
+<property name="link.report" value="${dir.war}/tds_report.xml"/>
+<!-modular.args is set in flexc-modularize. If not set, this sets it to an empty property->
+<property name="modular.args" value=""/>
+<!-set up options specific for the main part and for the modules->
+<property name="main.args" value="-link-report=${link.report} ${modular.args}"/>
+<property name="module.args" value="-sp ${dir.war} -load-externs=${link.report}"/>
+<echo message="Compiling Flex application using ${flex.mxmlc} on OS family: ${os.family}"/>
+<!-Build the main application first, and set the link-report for the modules to compile against->
+<exec executable="${flex.mxmlc}" failonerror="true">
+<arg line="${common.args} ${main.args} ${dir.war}/tds_flex.mxml -output ${dir.war}/tds_flex.swf"/>
+</exec>
+<html-wrapper title="app title" application="tds_flex" swf="tds_flex" history="false" template="express-installation"/>
+</target>
+Steps to reproduce:
+Compile using RSLs - in our app, the watermark appears. Disable the RSL option, and the watermark does not appear. Please see relevant Ant targets.
+Actual Results:
+Watermark appears.
+Expected Results:
+No watermark.
+Workaround (if any):
+None - I have already tried the following:
+1) setting the license in the license.properties file
+2) setting the license in the flex-config.xml file
+3) using the license as a compiler option
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+Adobe Flex SDK Previ
+Component:
+DMV Packaging
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+15/Dec/08 13:31
+Update date:
+29/Jun/11 22:58
+Resolved date:
+15/Mar/11 02:35

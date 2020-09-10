@@ -1,0 +1,41 @@
+Summary:
+increment(Increment, Integer, boolean) might fail
+Description:
+In org.apache.hadoop.hbase.regionserver.HRegion.increment(Increment, Integer, boolean) the following loop assumes that the result from geLastIncrement() has a single entry for a given <family, qualifier>. But that is not necessarily true. getLastIncrement() does a union of all entries found in each of the store files ... and multiple versions of the same key are quite possible.
+List<KeyValue> results = getLastIncrement(get);
+// Iterate the input columns and update existing values if they were
+// found, otherwise add new column initialized to the increment amount
+int idx = 0;
+for (Map.Entry<byte [], Long> column : family.getValue().entrySet()) {
+long amount = column.getValue();
+if (idx < results.size() &&
+results.get(idx).matchingQualifier(column.getKey()))
+{ amount += Bytes.toLong(results.get(idx).getValue()); idx++; }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+0.90.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+Prakash Khemani
+Create date:
+28/Dec/10 19:28
+Update date:
+30/Dec/10 02:25
+Resolved date:
+30/Dec/10 02:25

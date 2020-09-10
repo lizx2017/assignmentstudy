@@ -1,0 +1,102 @@
+Summary:
+Triggers can not be added from thrift
+Description:
+While playing with groovy triggers, I determined that you can not add triggers from thrift, unless I am doing something wrong. (I see no coverage of this feature from thrift/python)
+https://github.com/edwardcapriolo/cassandra/compare/trigger_coverage?expand=1
+package org.apache.cassandra.triggers;
+
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import junit.framework.Assert;
+
+import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.service.EmbeddedCassandraService;
+import org.apache.cassandra.thrift.CassandraServer;
+import org.apache.cassandra.thrift.CfDef;
+import org.apache.cassandra.thrift.ColumnParent;
+import org.apache.cassandra.thrift.KsDef;
+import org.apache.cassandra.thrift.ThriftSessionManager;
+import org.apache.cassandra.thrift.TriggerDef;
+import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.thrift.TException;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+public class TriggerTest extends SchemaLoader
+{
+    private static CassandraServer server;
+    
+    @BeforeClass
+    public static void setup() throws IOException, TException
+    {
+        Schema.instance.clear(); // Schema are now written on disk and will be reloaded
+        new EmbeddedCassandraService().start();
+        ThriftSessionManager.instance.setCurrentSocket(new InetSocketAddress(9160));
+        server = new CassandraServer();
+        server.set_keyspace("Keyspace1");
+    }
+    
+    @Test
+    public void createATrigger() throws TException
+    {
+        TriggerDef td = new TriggerDef();
+        td.setName("gimme5");
+        Map<String,String> options = new HashMap<>();
+        options.put("class", "org.apache.cassandra.triggers.ITriggerImpl");
+        td.setOptions(options);
+        CfDef cfDef = new CfDef();
+        cfDef.setKeyspace("Keyspace1");
+        cfDef.setTriggers(Arrays.asList(td));
+        cfDef.setName("triggercf");
+        server.system_add_column_family(cfDef);
+        
+        KsDef keyspace1 = server.describe_keyspace("Keyspace1");
+        CfDef triggerCf = null;
+        for (CfDef cfs :keyspace1.cf_defs){
+          if (cfs.getName().equals("triggercf")){
+            triggerCf=cfs;
+          }
+        }
+        Assert.assertNotNull(triggerCf);
+        Assert.assertEquals(1, triggerCf.getTriggers().size());
+    }
+}
+junit.framework.AssertionFailedError: expected:<1> but was:<0>
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Edward Capriolo
+Create date:
+01/Mar/14 22:27
+Update date:
+16/Apr/19 09:31
+Resolved date:
+11/Mar/14 12:34

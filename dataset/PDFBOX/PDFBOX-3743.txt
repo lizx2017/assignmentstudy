@@ -1,0 +1,85 @@
+Summary:
+Running GC between signing and saving document closes stream
+Description:
+Running GC between signing and saving document closes stream and signing process fails. It happens only if signature image is added via PDVisibleSignDesigner e.g.
+import org.apache.commons.io.IOUtils;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
+import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureOptions;
+import org.apache.pdfbox.pdmodel.interactive.digitalsignature.visible.PDVisibleSigProperties;
+import org.apache.pdfbox.pdmodel.interactive.digitalsignature.visible.PDVisibleSignDesigner;
+import java.io.*;
+import java.net.URISyntaxException;
+import static java.lang.Thread.currentThread;
+public class Foo {
+public static void main(String[] args) throws IOException, URISyntaxException {
+byte[] unsignedPdf = getResourceAsBytes("pdf-sample.pdf");
+try (PDDocument doc = PDDocument.load(unsignedPdf)) {
+doc.addSignature(
+new PDSignature(),
+is -> new byte[0],
+getSignatureOptions(doc, getFile("util/test-pdf-signature.jpg"))
+);
+System.gc();
+try (FileOutputStream out = new FileOutputStream(File.createTempFile("signed", ".pdf")))
+{ doc.saveIncremental(out); }
+}
+}
+private static SignatureOptions getSignatureOptions(PDDocument doc, File signatureImage) throws IOException {
+SignatureOptions result = new SignatureOptions();
+PDVisibleSignDesigner visibleSignature;
+try (InputStream input = new FileInputStream(signatureImage))
+{ visibleSignature = new PDVisibleSignDesigner(doc, input, 1); }
+PDVisibleSigProperties visibleSignatureProperties = new PDVisibleSigProperties();
+visibleSignatureProperties.setPdVisibleSignature(visibleSignature).buildSignature();
+result.setVisualSignature(visibleSignatureProperties);
+return result;
+}
+public static byte[] getResourceAsBytes(String filePath) throws IOException, URISyntaxException
+{ return IOUtils.toByteArray(getFile(filePath).toURI()); }
+public static File getFile(String filePath) throws URISyntaxException
+{ return new File(currentThread().getContextClassLoader().getResource(filePath).toURI()); }
+}
+constantly fails with:
+Exception in thread "main" java.io.IOException: COSStream has been closed and cannot be read. Perhaps its enclosing PDDocument has been closed?
+at org.apache.pdfbox.cos.COSStream.checkClosed(COSStream.java:77)
+at org.apache.pdfbox.cos.COSStream.createRawInputStream(COSStream.java:125)
+at org.apache.pdfbox.pdfwriter.COSWriter.visitFromStream(COSWriter.java:1203)
+at org.apache.pdfbox.cos.COSStream.accept(COSStream.java:383)
+at org.apache.pdfbox.cos.COSObject.accept(COSObject.java:158)
+at org.apache.pdfbox.pdfwriter.COSWriter.doWriteObject(COSWriter.java:522)
+at org.apache.pdfbox.pdfwriter.COSWriter.doWriteObjects(COSWriter.java:460)
+at org.apache.pdfbox.pdfwriter.COSWriter.doWriteBody(COSWriter.java:444)
+at org.apache.pdfbox.pdfwriter.COSWriter.visitFromDocument(COSWriter.java:1099)
+at org.apache.pdfbox.cos.COSDocument.accept(COSDocument.java:419)
+at org.apache.pdfbox.pdfwriter.COSWriter.write(COSWriter.java:1370)
+at org.apache.pdfbox.pdmodel.PDDocument.saveIncremental(PDDocument.java:1276)
+at Foo.main(Foo.java:27)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.5
+Fix_version:
+2.0.6, 3.0.0 PDFBox
+Component:
+Documentation, Signing
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Dmitri Ess
+Create date:
+03/Apr/17 07:37
+Update date:
+15/May/17 20:28
+Resolved date:
+04/Apr/17 15:38

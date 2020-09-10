@@ -1,0 +1,46 @@
+Summary:
+Closing socket connection can't be removed from SecureClient
+Description:
+We found many IOExceptions naming "Call # not added as the connection # is closing" when using SecureClient to access hbase. From the source code of SecureClient, we found there may be bug in close() method of SecureClient. The following is the current logic in close() method of SecureClient：
+      // release the resources
+      // first thing to do;take the connection out of the connection list
+      synchronized (connections) {
+        if (connections.get(remoteId) == this) {
+          connections.remove(remoteId);
+        }
+      }
+However, connections are managed by PoolMap； therefore, if more than one connection are created for the same remoteId, the 'if condition' may not be satisfied because the default PoolType is RoundRobin. This could be cause a closing state connection can't be removed from connections, making new calls which use such connections will always throws IOException naming "connection is closing".
+We can use logic from close() method of HBaseClient to resolve the problem:
+      // release the resources
+      // first thing to do;take the connection out of the connection list
+      synchronized (connections) {
+        connections.remove(remoteId, this);
+      }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.3
+Fix_version:
+0.94.5
+Component:
+security
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jianwei Cui
+Reporter:
+Jianwei Cui
+Create date:
+27/Jan/13 09:26
+Update date:
+23/Aug/13 23:35
+Resolved date:
+30/Jan/13 05:51

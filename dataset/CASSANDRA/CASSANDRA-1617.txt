@@ -1,0 +1,115 @@
+Summary:
+BufferUnderflowException occurs in RowMutationVerbHandler
+Description:
+There might be a bug in hinted handoff?
+I have a cluster of 8, replication factor of 3, doing reads/writes with QUORUM.
+I have a single thread doing reads/writes of about 2kb across all nodes, running about 200hps.
+When I shut down one node, within a few seconds I start seeing some very big recent write latencies, 4-5 seconds.
+I looked at the system.log on the node with the adjacent token to the node that I shut down, and see a bad looking BufferUnderflowException:
+INFO [WRITE-kv2-app02.dev.real.com/172.27.109.32] 2010-10-12 12:13:36,712
+OutboundTcpConnection.java (line 115) error writing to
+kv2-app02.dev.real.com/172.27.109.32
+INFO [WRITE-kv2-app02.dev.real.com/172.27.109.32] 2010-10-12 12:13:50,336
+OutboundTcpConnection.java (line 115) error writing to
+kv2-app02.dev.real.com/172.27.109.32
+INFO [Timer-0] 2010-10-12 12:14:22,792 Gossiper.java (line 196) InetAddress
+/172.27.109.32 is now dead.
+ERROR [MUTATION_STAGE:1315] 2010-10-12 12:14:24,917
+DebuggableThreadPoolExecutor.java (line 103) Error in ThreadPoolExecutor
+java.nio.BufferUnderflowException
+at java.nio.HeapByteBuffer.get(HeapByteBuffer.java:127)
+at java.nio.ByteBuffer.get(ByteBuffer.java:675)
+at
+org.apache.cassandra.db.RowMutationVerbHandler.doVerb(RowMutationVerbHandler.java:62)
+at
+org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:50)
+at
+java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at
+java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+ERROR [MUTATION_STAGE:1315] 2010-10-12 12:14:24,918
+AbstractCassandraDaemon.java (line 88) Fatal exception in thread
+Thread[MUTATION_STAGE:1315,5,main]
+java.nio.BufferUnderflowException
+at java.nio.HeapByteBuffer.get(HeapByteBuffer.java:127)
+at java.nio.ByteBuffer.get(ByteBuffer.java:675)
+at
+org.apache.cassandra.db.RowMutationVerbHandler.doVerb(RowMutationVerbHandler.java:62)
+at
+org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:50)
+at
+java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at
+java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+ERROR [MUTATION_STAGE:1605] 2010-10-12 12:14:28,919
+DebuggableThreadPoolExecutor.java (line 103) Error in ThreadPoolExecutor
+java.nio.BufferUnderflowException
+at java.nio.HeapByteBuffer.get(HeapByteBuffer.java:127)
+at java.nio.ByteBuffer.get(ByteBuffer.java:675)
+at
+org.apache.cassandra.db.RowMutationVerbHandler.doVerb(RowMutationVerbHandler.java:62)
+at
+org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:50)
+at
+java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at
+java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+....
+....
+I restarted the previously stopped node, and the system recovers, but with a
+few more underlflow exceptions:
+INFO [GOSSIP_STAGE:1] 2010-10-12 12:15:44,537 Gossiper.java (line 594) Node
+/172.27.109.32 has restarted, now UP again
+INFO [HINTED-HANDOFF-POOL:1] 2010-10-12 12:15:44,537 HintedHandOffManager.java
+(line 196) Started hinted handoff for endpoint /172.27.109.32
+INFO [GOSSIP_STAGE:1] 2010-10-12 12:15:44,537 StorageService.java (line 643)
+Node /172.27.109.32 state jump to normal
+INFO [HINTED-HANDOFF-POOL:1] 2010-10-12 12:15:44,538 HintedHandOffManager.java
+(line 252) Finished hinted handoff of 0 rows to endpoint /172.27.109.32
+INFO [GOSSIP_STAGE:1] 2010-10-12 12:15:44,538 StorageService.java (line 650)
+Will not change my token ownership to /172.27.109.32
+ERROR [MUTATION_STAGE:1635] 2010-10-12 12:15:45,083
+DebuggableThreadPoolExecutor.java (line 103) Error in ThreadPoolExecutor
+java.nio.BufferUnderflowException
+at java.nio.HeapByteBuffer.get(HeapByteBuffer.java:127)
+at java.nio.ByteBuffer.get(ByteBuffer.java:675)
+at
+org.apache.cassandra.db.RowMutationVerbHandler.doVerb(RowMutationVerbHandler.java:62)
+at
+org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:50)
+at
+java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at
+java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 3
+Component:
+None
+Label:
+None
+Environment:
+centos, java 1.6
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Michael Moores
+Create date:
+13/Oct/10 17:01
+Update date:
+16/Apr/19 09:33
+Resolved date:
+20/Oct/10 19:18

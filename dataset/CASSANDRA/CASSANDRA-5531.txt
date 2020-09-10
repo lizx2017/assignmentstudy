@@ -1,0 +1,49 @@
+Summary:
+Disallow renaming columns one at a time when when the table don't have CQL3 metadata yet
+Description:
+As noted in CASSANDRA-5489, if you have a "thrift" CF, say:
+[default@ks] create column family test with comparator='CompositeType(Int32Type, Int32Type, Int32Type)' and key_validation_class=UTF8Type and default_validation_class=UTF8Type;
+And that trying to use it in CQL3 you rename the columns one at a time, you can get:
+cqlsh:ks> DESC COLUMNFAMILY test;
+
+CREATE TABLE test (
+  key text,
+  column1 int,
+  column2 int,
+  column3 int,
+  value text,
+  PRIMARY KEY (key, column1, column2, column3)
+) WITH COMPACT STORAGE ...
+cqlsh:ks> ALTER TABLE test RENAME column2 TO foo;
+TSocket read 0 bytes
+No, it happens that renaming the columns one at a time is a bad idea anyway as it can confuse the CQL3 code in some cases. So I suggest to disallow that and to force renaming all columns in one request the first you use a thrift CF from CQL3.
+To be clear, you will still be able to rename columns one at a time in general, it's just for the first time you rename on a metadata-less CF. So overall that's a very small limitation and it simplify our lives code-wise.
+See CASSANDRA-5489 for a bit more context here.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+01/May/13 14:21
+Update date:
+16/Apr/19 09:32
+Resolved date:
+01/May/13 14:27

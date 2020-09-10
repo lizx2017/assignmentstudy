@@ -1,0 +1,63 @@
+Summary:
+[hbck]: hbck -metaonly incorrectly reports inconsistent regions after HBASE-9698 fix
+Description:
+In my testing, I found that this call began to fail:
+sudo -u hbase hbase hbck -metaonly
+The checking after which it began to fail is: after this checkin: https://github.com/apache/hbase/commit/818749ff9f261aac4206054d331189e92290b408
+The full output is below. The issue seems the patch does not include -metaOnly
+Testing done:
+I build 0.96 up to commit a6f208d91efff207860b049eb8466a069f0c71a9 and the test passes.
+The output:
+$ hbase org.apache.hadoop.hbase.PerformanceEvaluation --rows=10000 sequentialWrite 1
+$ hbase hbck -metaonly
+...
+2013-10-16 23:52:24,075 DEBUG [main] util.HBaseFsck: There are 1 region info entries
+ERROR: There is a hole in the region chain between  and .  You need to create a new .regioninfo and region dir in hdfs to plug the hole.
+ERROR: Found inconsistency in table TestTable
+ERROR: There is a hole in the region chain between  and .  You need to create a new .regioninfo and region dir in hdfs to plug the hole.
+ERROR: Found inconsistency in table hbase:namespace
+2013-10-16 23:52:24,182 INFO  [main] zookeeper.ZooKeeper: Initiating client connection, connectString=localhost:2181 sessionTimeout=90000 watcher=hbase Fsck
+2013-10-16 23:52:24,183 INFO  [main] zookeeper.RecoverableZooKeeper: Process identifier=hbase Fsck connecting to ZooKeeper ensemble=localhost:2181
+2013-10-16 23:52:24,183 INFO  [main-SendThread(localhost:2181)] zookeeper.ClientCnxn: Opening socket connection to server localhost/127.0.0.1:2181. Will not attempt to authenticate using SASL (unknown error)
+2013-10-16 23:52:24,184 INFO  [main-SendThread(localhost:2181)] zookeeper.ClientCnxn: Socket connection established to localhost/127.0.0.1:2181, initiating session
+2013-10-16 23:52:24,188 INFO  [main-SendThread(localhost:2181)] zookeeper.ClientCnxn: Session establishment complete on server localhost/127.0.0.1:2181, sessionid = 0x141c377e423000d, negotiated timeout = 40000
+Summary:
+  TestTable is okay.
+    Number of regions: 0
+    Deployed on:
+  hbase:meta is okay.
+    Number of regions: 1
+    Deployed on:  localhost,49217,1381963918103
+  hbase:namespace is okay.
+    Number of regions: 0
+    Deployed on:
+2 inconsistencies detected.
+Status: INCONSISTENT
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.96.0
+Fix_version:
+0.98.0, 0.96.1
+Component:
+hbck
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Matteo Bertozzi
+Reporter:
+Aleksandr Shulman
+Create date:
+16/Oct/13 23:20
+Update date:
+16/Dec/13 18:46
+Resolved date:
+18/Oct/13 20:33

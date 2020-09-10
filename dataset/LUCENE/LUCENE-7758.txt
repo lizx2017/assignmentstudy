@@ -1,0 +1,57 @@
+Summary:
+EdgeNGramTokenFilter breaks highlighting by keeping end offsets of original tokens
+Description:
+When EdgeNGramTokenFilter produces new tokens, they inherit end positions from parent tokens. This behaviour is irrational and breaks highlighting: highlighted not matched pattern, but whole source tokens.
+Seems like similar problem was fixed in LUCENE-3642, but end offsets was broken again after LUCENE-3907.
+Some discussion was found in SOLR-7926:
+I agree this (highlighting of hits from tokens produced by
+EdgeNGramFilter) got worse with LUCENE-3907, but it's not clear how to
+fix it.
+The stacking seems more correct: all these grams are logically
+interchangeable with the original token, and were derived from it, so
+e.g. a phrase query involving them with adjacent tokens would work
+correctly.
+We could perhaps remove the token graph requirement that tokens
+leaving from the same node have the same startOffset, and arriving to
+the same node have the same endOffset. Lucene would still be able to
+index such a graph, as long as all tokens leaving a given node are
+sorted according to their startOffset. But I'm not sure if there
+would be other problems...
+Or we could maybe improve the token graph, at least for the non-edge
+NGramTokenFilter, so that the grams are linked up correctly, so that any
+path through the graph reconstructs the original characters.
+But realistically it's not possible to innovate much with token graphs
+in Lucene today because of apparently severe back compat requirements:
+e.g. LUCENE-6664, which fixes the token graph bugs in the existing
+SynonymFilter so that proximity queries work correctly when using
+search-time synonyums, is blocked because of the back compat concerns
+from LUCENE-6721.
+I'm not sure what the path forward is...
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+6.4.1
+Fix_version:
+None
+Component:
+modules/analysis
+Label:
+EdgeNGramTokenFilter
+Environment:
+elasticsearch
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Mikhail Bystryantsev
+Create date:
+29/Mar/17 23:10
+Update date:
+30/Mar/17 13:51
+Resolved date:
+

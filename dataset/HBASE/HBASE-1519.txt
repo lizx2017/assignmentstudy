@@ -1,0 +1,57 @@
+Summary:
+NPE in org.apache.hadoop.hbase.io.hfile.BoundedRangeFileInputStream.read
+Description:
+Running on a hacked up TRUNK – none of my patches touched hfile – I got below (I have the original 1513 patch in place):
+2009-06-14 02:42:28,853 [regionserver/0:0:0:0:0:0:0:0:60021.compactor] DEBUG org.apache.hadoop.hbase.regionserver.Store: Completed compaction of historian; store size is 47.2k
+2009-06-14 02:42:28,855 [IPC Server handler 7 on 60021] INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 7 on 60021, call get([B@6a8bfc4f, row=TestTable,0006569959,1244947258659, maxVersions=1, timeRange=[0,9223372036854775807), families={(family=historian, columns=ALL), (family=info, columns=ALL}) from 208.76.44.139:47644: error: java.io.IOException: java.lang.NullPointerException
+java.io.IOException: java.lang.NullPointerException
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.convertThrowableToIOE(HRegionServer.java:832)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.convertThrowableToIOE(HRegionServer.java:822)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.get(HRegionServer.java:1723)
+    at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+    at java.lang.reflect.Method.invoke(Method.java:597)
+    at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:643)
+    at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:913)
+Caused by: java.lang.NullPointerException
+    at org.apache.hadoop.hbase.io.hfile.BoundedRangeFileInputStream.read(BoundedRangeFileInputStream.java:97)
+    at org.apache.hadoop.io.IOUtils.readFully(IOUtils.java:100)
+    at org.apache.hadoop.hbase.io.hfile.HFile$Reader.decompress(HFile.java:950)
+    at org.apache.hadoop.hbase.io.hfile.HFile$Reader.readBlock(HFile.java:906)
+    at org.apache.hadoop.hbase.io.hfile.HFile$Reader$Scanner.loadBlock(HFile.java:1222)
+    at org.apache.hadoop.hbase.io.hfile.HFile$Reader$Scanner.seekTo(HFile.java:1105)
+    at org.apache.hadoop.hbase.regionserver.StoreFileGetScan.getStoreFile(StoreFileGetScan.java:80)
+    at org.apache.hadoop.hbase.regionserver.StoreFileGetScan.get(StoreFileGetScan.java:65)
+    at org.apache.hadoop.hbase.regionserver.Store.get(Store.java:1485)
+    at org.apache.hadoop.hbase.regionserver.HRegion.get(HRegion.java:2251)
+    at org.apache.hadoop.hbase.regionserver.HRegion.get(HRegion.java:2240)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.get(HRegionServer.java:1721)
+    ... 5 more
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+0.20.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+14/Jun/09 02:57
+Update date:
+13/Sep/09 22:24
+Resolved date:
+15/Jun/09 21:24

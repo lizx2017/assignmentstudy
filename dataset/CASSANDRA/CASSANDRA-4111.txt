@@ -1,0 +1,55 @@
+Summary:
+Serializing cache can cause Segfault in 1.1
+Description:
+Rare but this can happen per sure, looks like this issue is after CASSANDRA-3862 hence affectes only 1.1
+FreeableMemory old = map.get(key);
+if (old == null)
+return false;
+// see if the old value matches the one we want to replace
+FreeableMemory mem = serialize(value);
+if (mem == null)
+return false; // out of memory. never mind.
+V oldValue = deserialize(old);
+boolean success = oldValue.equals(oldToReplace) && map.replace(key, old, mem);
+if (success)
+old.unreference();
+else
+mem.unreference();
+return success;
+in the above code block we deserialize(old) without taking reference to the old memory, this can case seg faults when the old is reclaimed (free is called)
+Fix is to get the reference just for deserialization
+V oldValue;
+// reference old guy before de-serializing
+old.reference();
+try
+{ oldValue = deserialize(old); }
+finally
+{ old.unreference(); }
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Vijay
+Reporter:
+Vijay
+Create date:
+02/Apr/12 23:29
+Update date:
+16/Apr/19 09:32
+Resolved date:
+03/Apr/12 19:35

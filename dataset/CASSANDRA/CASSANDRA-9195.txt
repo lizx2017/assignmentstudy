@@ -1,0 +1,65 @@
+Summary:
+PITR commitlog replay only actually replays mutation every other time
+Description:
+Version: Cassandra 2.1.4.374 | DSE 4.7.0
+The main issue here is that the restore-cycle only replays the mutations
+every other try. On the first try, it will restore the snapshot as expected
+and the cassandra system load will show that it's reading the mutations, but
+they do not actually get replayed, and at the end you're left with only the
+snapshot data (2k records).
+If you re-run the restore-cycle again, the commitlogs are replayed as expected,
+and the data expected is present in the table (4k records, with a spot check of
+record 4500, as it's in the commitlog but not the snapshot).
+Then if you run the cycle again, it will fail. Then again, and it will work. The work/
+not work pattern continues. Even re-running the commitlog replay a 2nd time, without
+reloading the snapshot doesn't work
+The load process is:
+Modify commitlog segment to 1mb
+Archive to directory
+create keyspace/table
+insert base data
+initial snapshot
+write more data
+capture timestamp
+write more data
+final snapshot
+copy commitlogs to 2nd location
+modify cassandra-env to replay only specified keyspace
+modify commitlog properties to restore from 2nd location, with noted timestamp
+The restore cycle is:
+truncate table
+sstableload snapshot
+flush
+output data status
+restart to replay commitlogs
+output data status
+====
+See attached .py for a mostly automated reproduction scenario. It expects DSE (and I found it with DSE 4.7.0-1), rather than "actual" Cassandra, but it's not using any DSE specific features. The script looks for the configs in the DSE locations, but they're set at the top, and there's only 2 places where dse is restarted.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Branimir Lambov
+Reporter:
+Jon Moses
+Create date:
+15/Apr/15 15:48
+Update date:
+16/Apr/19 09:31
+Resolved date:
+30/Apr/15 15:31

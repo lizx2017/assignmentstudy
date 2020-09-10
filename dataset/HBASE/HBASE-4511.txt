@@ -1,0 +1,61 @@
+Summary:
+There is data loss when master failovers
+Description:
+It goes like this:
+Master crashed , at the same time RS with meta is crashing, but RS doesn't eixt.
+Master startups again and finds all living RS.
+Master verifies the meta failed, because this RS is crashing.
+Master reassigns the meta, but it doesn't split the Hlog.
+So some meta data is loss.
+About the logs of a failover test case fail.
+//It said that we want to kill a RS
+2011-09-28 19:54:45,694 INFO [Thread-988] regionserver.HRegionServer(1443): STOPPED: Killing for unit test
+2011-09-28 19:54:45,694 INFO [Thread-988] master.TestMasterFailover(1007):
+RS 192.168.2.102,54385,1317264874629 killed
+//Rs didn't crash.
+2011-09-28 19:54:51,763 INFO [Master:0;192.168.2.102,54557,1317264885720] master.HMaster(458): Registering server found up in zk: 192.168.2.102,54385,1317264874629
+2011-09-28 19:54:51,763 INFO [Master:0;192.168.2.102,54557,1317264885720] master.ServerManager(232): Registering server=192.168.2.102,54385,1317264874629
+2011-09-28 19:54:51,770 DEBUG [Master:0;192.168.2.102,54557,1317264885720] zookeeper.ZKUtil(491): master:54557-0x132b31adbb30005 Unable to get data of znode /hbase/unassigned/1028785192 because node does not exist (not an error)
+2011-09-28 19:54:51,771 DEBUG [Master:0;192.168.2.102,54557,1317264885720] zookeeper.ZKUtil(1003): master:54557-0x132b31adbb30005 Retrieved 33 byte(s) of data from znode /hbase/root-region-server and set watcher; 192.168.2.102,54383,131726487...
+//Meta verification failed and ressigned the meta. So all the regions in the meta is loss.
+2011-09-28 19:54:51,773 INFO [Master:0;192.168.2.102,54557,1317264885720] catalog.CatalogTracker(476): Failed verification of .META.,,1 at address=192.168.2.102,54385,1317264874629; org.apache.hadoop.hbase.regionserver.RegionServerStoppedException: org.apache.hadoop.hbase.regionserver.RegionServerStoppedException: Server 192.168.2.102,54385,1317264874629 not running, aborting
+2011-09-28 19:54:51,773 DEBUG [Master:0;192.168.2.102,54557,1317264885720] catalog.CatalogTracker(316): new .META. server: 192.168.2.102,54385,1317264874629 isn't valid. Cached .META. server: null
+2011-09-28 19:54:52,274 DEBUG [Master:0;192.168.2.102,54557,1317264885720] zookeeper.ZKUtil(1003): master:54557-0x132b31adbb30005 Retrieved 33 byte(s) of data from znode /hbase/root-region-server and set watcher; 192.168.2.102,54383,131726487...
+2011-09-28 19:54:52,277 INFO [Master:0;192.168.2.102,54557,1317264885720] catalog.CatalogTracker(476): Failed verification of .META.,,1 at address=192.168.2.102,54385,1317264874629; org.apache.hadoop.hbase.regionserver.RegionServerStoppedException: org.apache.hadoop.hbase.regionserver.RegionServerStoppedException: Server 192.168.2.102,54385,1317264874629 not running, aborting
+2011-09-28 19:54:52,277 DEBUG [Master:0;192.168.2.102,54557,1317264885720] catalog.CatalogTracker(316): new .META. server: 192.168.2.102,54385,1317264874629 isn't valid. Cached .META. server: null
+2011-09-28 19:54:52,778 DEBUG [Master:0;192.168.2.102,54557,1317264885720] zookeeper.ZKUtil(1003): master:54557-0x132b31adbb30005 Retrieved 33 byte(s) of data from znode /hbase/root-region-server and set watcher; 192.168.2.102,54383,131726487...
+2011-09-28 19:54:52,782 INFO [Master:0;192.168.2.102,54557,1317264885720] catalog.CatalogTracker(476): Failed verification of .META.,,1 at address=192.168.2.102,54385,1317264874629; org.apache.hadoop.hbase.regionserver.RegionServerStoppedException: org.apache.hadoop.hbase.regionserver.RegionServerStoppedException: Server 192.168.2.102,54385,1317264874629 not running, aborting
+2011-09-28 19:54:52,782 DEBUG [Master:0;192.168.2.102,54557,1317264885720] catalog.CatalogTracker(316): new .META. server: 192.168.2.102,54385,1317264874629 isn't valid. Cached .META. server: null
+2011-09-28 19:54:52,782 DEBUG [Master:0;192.168.2.102,54557,1317264885720] zookeeper.ZKAssign(264): master:54557-0x132b31adbb30005 Creating (or updating) unassigned node for 1028785192 with OFFLINE state
+2011-09-28 19:54:52,825 DEBUG [Thread-988-EventThread] zookeeper.ZooKeeperWatcher(233): master:54557-0x132b31adbb30005 Received ZooKeeper Event, type=NodeCreated, state=SyncConnected, path=/hbase/unassigned/1028785192
+//It said that Master clean the cluster.
+2011-09-28 19:54:52,889 INFO [Master:0;192.168.2.102,54557,1317264885720] master.AssignmentManager(383): Clean cluster startup. Assigning userregions
+2011-09-28 19:54:52,889 DEBUG [Master:0;192.168.2.102,54557,1317264885720] zookeeper.ZKAssign(494): master:54557-0x132b31adbb30005 Deleting any existing unassigned nodes
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+gaojinchao
+Create date:
+29/Sep/11 08:10
+Update date:
+20/Nov/15 11:54
+Resolved date:
+11/Nov/11 23:37

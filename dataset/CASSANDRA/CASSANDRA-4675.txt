@@ -1,0 +1,97 @@
+Summary:
+NPE in NTS when using LQ against a node (DC) that doesn't have replica
+Description:
+in a NetworkTopologyStrategy where there are 2 DC:
+Address DC Rack Status State Load Owns Token
+85070591730234615865843651857942052864
+127.0.0.1 dc1 r1 Up Normal 115.78 KB 50.00% 0
+127.0.0.2 dc2 r1 Up Normal 129.3 KB 50.00% 85070591730234615865843651857942052864
+I have a KS that has replica is 1 of the dc (dc1):
+[default@unknown] describe Keyspace3;
+Keyspace: Keyspace3:
+Replication Strategy: org.apache.cassandra.locator.NetworkTopologyStrategy
+Durable Writes: true
+Options: [dc1:1]
+Column Families:
+ColumnFamily: testcf
+But if I connect to a node in dc2, using LOCAL_QUORUM, I get NPE in the Cassandra node's log:
+[default@unknown] consistencylevel as LOCAL_QUORUM;
+Consistency level is set to 'LOCAL_QUORUM'.
+[default@unknown] use Keyspace3;
+Authenticated to keyspace: Keyspace3
+[default@Keyspace3] get testcf[utf8('k1')][utf8('c1')];
+Internal error processing get
+org.apache.thrift.TApplicationException: Internal error processing get
+at org.apache.thrift.TApplicationException.read(TApplicationException.java:108)
+at org.apache.cassandra.thrift.Cassandra$Client.recv_get(Cassandra.java:511)
+at org.apache.cassandra.thrift.Cassandra$Client.get(Cassandra.java:492)
+at org.apache.cassandra.cli.CliClient.executeGet(CliClient.java:648)
+at org.apache.cassandra.cli.CliClient.executeCLIStatement(CliClient.java:209)
+at org.apache.cassandra.cli.CliMain.processStatementInteractive(CliMain.java:220)
+at org.apache.cassandra.cli.CliMain.main(CliMain.java:348)
+node2's log:
+ERROR [Thrift:3] 2012-09-17 18:15:16,868 Cassandra.java (line 2999) Internal error processing get
+java.lang.NullPointerException
+at org.apache.cassandra.locator.NetworkTopologyStrategy.getReplicationFactor(NetworkTopologyStrategy.java:142)
+at org.apache.cassandra.service.DatacenterReadCallback.determineBlockFor(DatacenterReadCallback.java:90)
+at org.apache.cassandra.service.ReadCallback.<init>(ReadCallback.java:67)
+at org.apache.cassandra.service.DatacenterReadCallback.<init>(DatacenterReadCallback.java:63)
+at org.apache.cassandra.service.StorageProxy.getReadCallback(StorageProxy.java:775)
+at org.apache.cassandra.service.StorageProxy.fetchRows(StorageProxy.java:609)
+at org.apache.cassandra.service.StorageProxy.read(StorageProxy.java:564)
+at org.apache.cassandra.thrift.CassandraServer.readColumnFamily(CassandraServer.java:128)
+at org.apache.cassandra.thrift.CassandraServer.internal_get(CassandraServer.java:383)
+at org.apache.cassandra.thrift.CassandraServer.get(CassandraServer.java:401)
+at org.apache.cassandra.thrift.Cassandra$Processor$get.process(Cassandra.java:2989)
+at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:2889)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:187)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+I could workaround it by adding dc2:0 to the option:
+[default@Keyspace3] describe Keyspace3;
+Keyspace: Keyspace3:
+Replication Strategy: org.apache.cassandra.locator.NetworkTopologyStrategy
+Durable Writes: true
+Options: [dc2:0, dc1:1]
+Column Families:
+ColumnFamily: testcf
+Now you get UA:
+[default@Keyspace3] get testcf[utf8('k1')][utf8('c1')];
+null
+UnavailableException()
+at org.apache.cassandra.thrift.Cassandra$get_result.read(Cassandra.java:6506)
+at org.apache.cassandra.thrift.Cassandra$Client.recv_get(Cassandra.java:519)
+at org.apache.cassandra.thrift.Cassandra$Client.get(Cassandra.java:492)
+at org.apache.cassandra.cli.CliClient.executeGet(CliClient.java:648)
+at org.apache.cassandra.cli.CliClient.executeCLIStatement(CliClient.java:209)
+at org.apache.cassandra.cli.CliMain.processStatementInteractive(CliMain.java:220)
+at org.apache.cassandra.cli.CliMain.main(CliMain.java:348)
+On a side note, is there a thought on having a CL.LOCAL_ONE? Ie if local node (wrt the dc) does not have replica, on a LOCAL_ONE, it won't try to go across DC to try to get it. It would be similar to LOCAL_QUORUM.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jackson Chung
+Create date:
+18/Sep/12 01:23
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Sep/12 14:31

@@ -1,0 +1,71 @@
+Summary:
+Using keyboard selection in combobox ignores custom text
+Description:
+When using keyboard navigation and selection the spark ComboBox control ignores custom text entered by the user.
+Steps to reproduce:
+Compile and run the following simple application:
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx">
+<s:Group>
+<s:layout><s:HorizontalLayout /></s:layout>
+<s:ComboBox id="myCombo" width="200" >
+<s:dataProvider>
+<mx:ArrayList>
+<fx:String>test1</fx:String>
+<fx:String>test2</fx:String>
+<fx:String>test3</fx:String>
+</mx:ArrayList>
+</s:dataProvider>
+</s:ComboBox>
+<s:TextInput id="myText" width="200" />
+</s:Group>
+</s:WindowedApplication>
+Click in the combo box and type "abc"
+Press shift + home
+Actual: The selected text is "test1"
+Expected: The selected text should be "abc"
+I wrote a quick patch for this:
+public class TestComboOverride extends ComboBox
+{
+public function TestComboOverride()
+{ super(); }
+override mx_internal function keyDownHandlerHelper(event:KeyboardEvent):void
+{
+if ((event.keyCode == Keyboard.LEFT) || (event.keyCode == Keyboard.RIGHT)
+(event.keyCode == Keyboard.HOME) (event.keyCode == Keyboard.END)) { _proposedSelectedIndex = CUSTOM_SELECTED_ITEM; }
+super.keyDownHandlerHelper(event);
+}
+}
+The problem appears to be that the _proposedSelectedIndex property remains set to -2 [NO_PROPOSED_SELECTION] while entering the text, where it really should have been -3 [CUSTOM_SELECTED_ITEM] unless the user happened to type a label from the data provider in which case it should have the index of that item.
+The DropDownListBase class maintains a "userProposedSelectedIndex" property which appears to overlap in purpose with the proposedSelectedIndex property, but does contain the correct value.
+Unfortunately I have not yet been able to identify the exact place where the value of _proposedSelectedIndex affects the selected item in the given scenario.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Apache Flex 4.9.0, (
+Fix_version:
+Apache Flex 4.10.0
+Component:
+Spark: ComboBox
+Label:
+None
+Environment:
+Windows 7, Intel i5, 4GB RAM
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+david bel
+Create date:
+27/Aug/13 15:49
+Update date:
+27/Aug/13 16:33
+Resolved date:
+

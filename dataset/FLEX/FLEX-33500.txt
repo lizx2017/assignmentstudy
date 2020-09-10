@@ -1,0 +1,57 @@
+Summary:
+XMLEncoder fails to encode WSDL simpleType union
+Description:
+The XMLEncoder can not encode simpleTypes with a definitionChild Union.
+Steps to reproduce:
+1. Create a WSDL with a request containing a simpleType, with a union child, like this:
+<simpleType name="dateTimeOrEmpty">
+<union memberTypes="dateTime tns:emptyString"/>
+</simpleType>
+2. Create a sample project which uses this call to do send a date to the server.
+Expected behavior: the dateTime should be send to the server.
+Actual behavior: the dateTime object is always empty (not nill).
+The cause of this bug can be found inside the XMLEncoder. Around line 1340 you will find the function encodeSimpleType:
+public function encodeSimpleType(definition:XML, parent:XML, name:QName, value:*, restriction:XML = null):void
+{
+var definitionChild:XML = getSingleElementFromNode(definition,
+constants.restrictionQName,
+constants.listQName,
+constants.unionQName);
+if (definitionChild.name() == constants.restrictionQName)
+{ // <restriction> encodeSimpleRestriction(definitionChild, parent, name, value); }
+else if (definitionChild.name() == constants.listQName)
+{ // <list> encodeSimpleList(definitionChild, parent, name, value, restriction); }
+else if (definitionChild.name() == constants.listQName)
+{ // <union> encodeSimpleUnion(definitionChild, parent, name, value, restriction); }
+}
+If you look at this function, you see that the last else if statement is exactly the same as the previous, so you will never execute the code inside this statement, which is needed to encode union simpleTypes. To fix this, you should change it to something like this:
+else if (definitionChild.name() == constants.unionQName)
+{ // <union> encodeSimpleUnion(definitionChild, parent, name, value, restriction); }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK 3.3 (
+Fix_version:
+None
+Component:
+RPC: General, (1)
+Label:
+easyfix
+Environment:
+
+Attachment number:
+0
+Assignee:
+Justin Mclean
+Reporter:
+Maurits Lourens
+Create date:
+17/Apr/13 14:50
+Update date:
+03/Jun/13 09:29
+Resolved date:
+19/Apr/13 04:19

@@ -1,0 +1,41 @@
+Summary:
+Allow filtering queries can return stale data
+Description:
+Data filtering is done replica side. That means that a single replica with stale data may make the whole query return that stale data.
+For instance, consider 3 replicas A, B and C, and the following situation:
+CREATE TABLE test (k int PRIMARY KEY, v1 text, v2 int);
+CREATE INDEX ON test(v1);
+INSERT INTO test(k, v1, v2) VALUES (0, 'foo', 1);
+with every replica up to date. Now, suppose that the following queries are done at QUORUM:
+UPDATE test SET v2 = 2 WHERE k = 0;
+SELECT * FROM test WHERE v1 = 'foo' AND v2 = 1;
+then, if A and B acknowledge the insert but C respond to the read before having applied the insert, then the now stale result will be returned. Let's note that this is a problem related to filtering, not 2ndary indexes.
+This issue share similarity with CASSANDRA-8272 but contrarily to that former issue, I'm not sure how to fix it. Obviously, moving the filtering to the coordinator would remove that problem, but doing so would, on top of not being trivial to implmenent, have serious performance impact since we can't know in advance how much data will be filtered and we may have to redo query to replica multiple times.
+Status:
+OPEN
+Priority:
+Normal
+Resolution:
+Unresolved
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andrés de la Peña
+Reporter:
+Sylvain Lebresne
+Create date:
+06/Nov/14 21:23
+Update date:
+16/Apr/19 09:31
+Resolved date:
+

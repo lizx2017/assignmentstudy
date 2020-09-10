@@ -1,0 +1,63 @@
+Summary:
+TestAdmin intermittent failures: Race condition during createTable can result in region double assignment
+Description:
+The TestAdmin test fails on trunk intermittently because it is unable to "enable" a "disabled" table. However, the root cause seems to be that much earlier, at "createTable" time the table's region got assigned to 2 region servers. And this later confuses the "disable"/"enable" code.
+createTable goes down to RegionManager.java:createRegion:
+public void createRegion(HRegionInfo newRegion, HRegionInterface server,
+      byte [] metaRegionName)
+  throws IOException {
+    // 2. Create the HRegion
+    HRegion region = HRegion.createHRegion(newRegion, this.master.getRootDir(),
+      master.getConfiguration());
+
+    // 3. Insert into meta
+    HRegionInfo info = region.getRegionInfo();
+    byte [] regionName = region.getRegionName();
+
+    Put put = new Put(regionName);
+    put.add(HConstants.CATALOG_FAMILY, HConstants.REGIONINFO_QUALIFIER,
+        Writables.getBytes(info));
+    server.put(metaRegionName, put);
+
+    // 4. Close the new region to flush it to disk.  Close its log file too.
+    region.close();
+    region.getLog().closeAndDelete();
+
+    // 5. Get it assigned to a server
+    setUnassigned(info, true);
+  }
+Between, after #3, but before #5, if the MetaScanner runs, it'll find this region in unassigned state and also assign it out.
+And then #5 comes along at again "force" sets this region to be unassigned... causing it to get assigned again to a different region server (as part of the RegionManager's job of assigning out regions waiting to be assigned along with region server heart beats).
+—
+The test in question that diffs is TestAdmin:testHundredsOfTable(). I tried repro'ing this more reliable by modifying the test to have the metascanner run more frequently:
+  TEST_UTIL.getConfiguration().setInt("hbase.master.meta.thread.rescanfrequency", 1000);// 1 seconds
+(instead of the default 60seconds); but it didn't help improve the reproducibility.
+—
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+27/Jul/10 03:01
+Update date:
+06/Dec/10 21:05
+Resolved date:
+06/Dec/10 21:05

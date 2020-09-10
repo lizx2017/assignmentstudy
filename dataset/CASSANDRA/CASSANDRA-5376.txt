@@ -1,0 +1,62 @@
+Summary:
+CQL3: IN clause on last key not working when schema includes set,list or map
+Description:
+This is an exception on the fix of https://issues.apache.org/jira/browse/CASSANDRA-5230
+Looks like any schema using map,list or set won't work with IN clauses on the last key (in this example c)
+Schema:
+CREATE TABLE foo2 (
+  key text,
+  c bigint,
+  v text,
+  x set<text>,
+  PRIMARY KEY (key, c)
+);
+Query:
+select * from foo2 where key = 'foo' and c in (1,3,4) ;
+This will lead to an assertion error on the nodes:
+java.lang.AssertionError
+        at org.apache.cassandra.cql3.statements.SelectStatement.buildBound(SelectStatement.java:540)
+        at org.apache.cassandra.cql3.statements.SelectStatement.getRequestedBound(SelectStatement.java:568)
+        at org.apache.cassandra.cql3.statements.SelectStatement.makeFilter(SelectStatement.java:308)
+        at org.apache.cassandra.cql3.statements.SelectStatement.getSliceCommands(SelectStatement.java:219)
+        at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:132)
+        at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:62)
+        at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:132)
+        at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:143)
+        at org.apache.cassandra.thrift.CassandraServer.execute_cql3_query(CassandraServer.java:1726)
+        at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4074)
+        at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4062)
+        at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+        at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+        at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:199)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:722)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Christiaan Willemsen
+Create date:
+22/Mar/13 14:48
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Mar/13 10:43

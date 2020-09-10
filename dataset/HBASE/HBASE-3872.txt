@@ -1,0 +1,37 @@
+Summary:
+Hole in split transaction rollback; edits to .META. need to be rolled back even if it seems like they didn't make it
+Description:
+Saw this interesting one on a cluster of ours. The cluster was configured with too few handlers so lots of the phenomeneon where actions were queued but then by the time they got into the server and tried respond to the client, the client had disconnected because of the timeout of 60 seconds. Well, the meta edits for a split were queued at the regionserver carrying .META. and by the time it went to write back, the client had gone (the first insert of parent offline with daughter regions added as info:splitA and info:splitB). The client presumed the edits failed and 'successfully' rolled back the transaction (failing to undo .META. edits thinking they didn't go through).
+A few minutes later the .META. scanner on master runs. It sees 'no references' in daughters – the daughters had been cleaned up as part of the split transaction rollback – so it thinks its safe to delete the parent.
+Two things:
++ Tighten up check in master... need to check daughter region at least exists and possibly the daughter region has an entry in .META.
++ Dependent on the edit that fails, schedule rollback edits though it will seem like they didn't go through.
+This is pretty critical one.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.90.4
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+10/May/11 05:12
+Update date:
+20/Nov/15 12:44
+Resolved date:
+22/Jul/11 22:22

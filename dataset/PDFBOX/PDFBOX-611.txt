@@ -1,0 +1,62 @@
+Summary:
+PDSimpleFont. Font height reported as zero.
+Description:
+The logic for PDSimpleFont.getFontHeight() can return a value of zero.
+This will corrupt or compromise text extraction and layout.
+In particular, test with 'http://www.encana.com/investor/financial/shareholder/pdfs/info-circular-french.pdf', pg 12
+When a PDFontDescriptor is used, the current logic uses:
+1) an average of xHeight and capHeight.
+xHeight is the height from the baseline to the top of a lower case letter like 'x'.
+CapHeight is the height from the baseline to the top of an upper case latin char.
+2) xHeight
+3) capHeight
+4) ascent
+5) zero
+This is really bizarre. 'xHeight' is an optional parameter, and 'capHeight' is often missing.
+The font bounding box is a required parameter and is the height that is used by Acrobat Reader when you select a line of text.
+The bounding box is not perfect, because it often overlaps the line above, but it is a consistent value. The problem with the
+current logic is that the reported height varies way too much, and a zero value can be reported.
+I have modified the logic as follows. The goal was to make the nominal values the same as the current logic,
+but return a very similar number when parameters go missing.
+PDFontDescriptor desc = getFontDescriptor();
+if( desc != null ) {
+float height = desc.getCapHeight(); // Top of Cap to baseline (eg 715)
+if (height==0) {
+height=desc.getAscent(); // Max height from baseline (eg 715);
+if (height==0) {
+PDRectangle bbox = desc.getFontBoundingBox();
+height = bbox.getHeight()/2; // Max height less max depth (eg (1006-(-325))=1331/2=665)
+if (height==0)
+{ height=desc.getXHeight(); // Top of lower-case to baseline (eg 518) height-=desc.getDescent(); // Depth below baseline (eg 209, to get total of 727) }
+}
+}
+retval=height;
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.8.0-incubator
+Fix_version:
+1.7.0
+Component:
+PDModel
+Label:
+PDSimpleFont textExt
+Environment:
+windows, linux
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Peter Costello
+Create date:
+07/Feb/10 06:23
+Update date:
+29/May/12 16:21
+Resolved date:
+08/Feb/12 19:00

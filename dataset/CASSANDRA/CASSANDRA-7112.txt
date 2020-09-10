@@ -1,0 +1,54 @@
+Summary:
+ava.lang.ClassCastException: org.apache.cassandra.db.composites.CompoundComposite cannot be cast to org.apache.cassandra.db.composites.CellName
+Description:
+This may be related to CASSANDRA-6738, although the stacktraces show a pretty different path:
+ERROR 23:13:17 Error occurred during processing of message.
+java.lang.ClassCastException: org.apache.cassandra.db.composites.CompoundComposite cannot be cast to org.apache.cassandra.db.composites.CellName
+ at org.apache.cassandra.db.composites.AbstractCellNameType.cellFromByteBuffer(AbstractCellNameType.java:170) ~[main/:na]
+ at org.apache.cassandra.thrift.ThriftValidation.validateColumnData(ThriftValidation.java:442) ~[main/:na]
+ at org.apache.cassandra.thrift.ThriftValidation.validateColumnOrSuperColumn(ThriftValidation.java:318) ~[main/:na]
+ at org.apache.cassandra.thrift.ThriftValidation.validateMutation(ThriftValidation.java:385) ~[main/:na]
+ at org.apache.cassandra.thrift.CassandraServer.createMutationList(CassandraServer.java:849) ~[main/:na]
+ at org.apache.cassandra.thrift.CassandraServer.batch_mutate(CassandraServer.java:964) ~[main/:na]
+ at org.apache.cassandra.thrift.Cassandra$Processor$batch_mutate.getResult(Cassandra.java:3922) ~[thrift/:na]
+ at org.apache.cassandra.thrift.Cassandra$Processor$batch_mutate.getResult(Cassandra.java:3906) ~[thrift/:na]
+ at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:39) ~[libthrift-0.9.1.jar:0.9.1]
+ at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:39) ~[libthrift-0.9.1.jar:0.9.1]
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:201) ~[main/:na]
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145) [na:1.7.0_40]
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615) [na:1.7.0_40]
+ at java.lang.Thread.run(Thread.java:724) [na:1.7.0_40]
+To reproduce, you can run this pycassa test:
+python setup.py nosetests -w tests/test_autopacking.py:TestComposites.test_static_composite_get_partial_composite
+The comparator is:
+CompositeType(LongType, IntegerType, ReversedType(TimeUUIDType),  LexicalUUIDType, AsciiType, UTF8Type, BytesType)
+The insert that triggers the error only uses the first two components of the comparator:
+cf.insert('key3', {(123123, 1): 'val'})
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Tyler Hobbs
+Create date:
+29/Apr/14 23:24
+Update date:
+16/Apr/19 09:31
+Resolved date:
+05/May/14 07:31

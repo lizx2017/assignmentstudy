@@ -1,0 +1,51 @@
+Summary:
+HintedHandoff - expired hints may block future hints deliveries
+Description:
+For tests purposes, DC2 was shut down for 1 day. The hints table was filled with millions of rows. Now, when HintedHandOffManager tries to doDeliverHintsToEndpoint it queries the store with QueryFilter.getSliceFilter which counts deleted (TTLed) cells and throws org.apache.cassandra.db.filter.TombstoneOverwhelmingException.
+Throwing this exception stops the manager from running compaction as it is run only after successful handoff. This leaves the HH practically disabled till administrator runs truncateAllHints.
+Wouldn't it be nicer if on org.apache.cassandra.db.filter.TombstoneOverwhelmingException run compaction? That would remove TTLed hints leaving whole HH mechanism in a healthy state.
+The stacktrace is:
+org.apache.cassandra.db.filter.TombstoneOverwhelmingException
+at org.apache.cassandra.db.filter.SliceQueryFilter.collectReducedColumns(SliceQueryFilter.java:201)
+at org.apache.cassandra.db.filter.QueryFilter.collateColumns(QueryFilter.java:122)
+at org.apache.cassandra.db.filter.QueryFilter.collateOnDiskAtom(QueryFilter.java:80)
+at org.apache.cassandra.db.filter.QueryFilter.collateOnDiskAtom(QueryFilter.java:72)
+at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:297)
+at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:53)
+at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1487)
+at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1306)
+at org.apache.cassandra.db.HintedHandOffManager.doDeliverHintsToEndpoint(HintedHandOffManager.java:351)
+at org.apache.cassandra.db.HintedHandOffManager.deliverHintsToEndpoint(HintedHandOffManager.java:309)
+at org.apache.cassandra.db.HintedHandOffManager.access$300(HintedHandOffManager.java:92)
+at org.apache.cassandra.db.HintedHandOffManager$4.run(HintedHandOffManager.java:530)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:722)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.11, 2.1.1
+Component:
+None
+Label:
+HintedHandoff TTL
+Environment:
+java
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Scooletz
+Create date:
+08/Apr/14 11:16
+Update date:
+16/Apr/19 09:31
+Resolved date:
+16/Oct/14 16:23

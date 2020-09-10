@@ -1,0 +1,47 @@
+Summary:
+Compressed object will lost when brute force search failed to handle compressed streams
+Description:
+Compressed object described in cross-reference streams will lost when brute force search failed to handle such streams.
+The attached PDF has an object 1336, but it had a offset that referenced to object 1828. The inconsistency led to a brute force search. (Introduced by COSParser.checkXrefOffsets)
+During the search (in bfSearchForObjStreams), Object stream 1828, 1829, 1830 failed to decompress due to "corrupted" stream(yes, the Params field was missing in the dictionary or the Filter was wrong). Thus, 462 compressed objects described in cross-reference streams are lost. Since important objects (the Root, the Pages, etc.) referred to objects in 1828 or something, all resolved to null (because the corrected XRefOffsets doens't have them). Further parsing is impossible.
+However, when I tried to bypass checkXrefOffsets, the PDF shows correctly without any (noticeable) error. It seemed that object 1336 is not used in the PDF.
+"Corrupted" 1828:
+1828 0 obj
+<<
+/Length 2176
+/Type /ObjStm
+/N 200
+/First 2103
+/Filter /FlatDecode
+>>
+...
+It doesn't work well in bfSearchForObjStreams but works in parseObjectStream.
+  Would it be nice to have a fallback to preserve compressed stream object key offsets, when we some error in brute force search?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.8
+Fix_version:
+2.0.10, 3.0.0 PDFBox
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Cheng Zhong
+Create date:
+06/Feb/18 07:39
+Update date:
+21/Jun/18 20:27
+Resolved date:
+05/Apr/18 17:48

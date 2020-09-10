@@ -1,0 +1,60 @@
+Summary:
+Hadoop metrics2 setup in test MiniDFSClusters spewing JMX errors
+Description:
+Since switching over HBase to build with Hadoop 0.20.205.0, we've been getting a lot of metrics related errors in the log files for tests:
+2011-10-30 22:00:22,858 INFO  [main] log.Slf4jLog(67): jetty-6.1.26
+2011-10-30 22:00:22,871 INFO  [main] log.Slf4jLog(67): Extract jar:file:/home/jenkins/.m2/repository/org/apache/hadoop/hadoop-core/0.20.205.0/hadoop-core-0.20.205.0.jar!/webapps/datanode to /tmp/Jetty_localhost_55751_datanode____.kw16hy/webapp
+2011-10-30 22:00:23,048 INFO  [main] log.Slf4jLog(67): Started SelectChannelConnector@localhost:55751
+Starting DataNode 1 with dfs.data.dir: /home/jenkins/jenkins-slave/workspace/HBase-TRUNK/trunk/target/test-data/7ba65a16-03ad-4624-b769-57405945ef58/dfscluster_3775fc23-1b51-4966-8133-205564bae762/dfs/data/data3,/home/jenkins/jenkins-slave/workspace/HBase-TRUNK/trunk/target/test-data/7ba65a16-03ad-4624-b769-57405945ef58/dfscluster_3775fc23-1b51-4966-8133-205564bae762/dfs/data/data4
+2011-10-30 22:00:23,237 WARN  [main] impl.MetricsSystemImpl(137): Metrics system not started: Cannot locate configuration: tried hadoop-metrics2-datanode.properties, hadoop-metrics2.properties
+2011-10-30 22:00:23,237 WARN  [main] util.MBeans(59): Hadoop:service=DataNode,name=MetricsSystem,sub=Control
+javax.management.InstanceAlreadyExistsException: MXBean already registered with name Hadoop:service=NameNode,name=MetricsSystem,sub=Control
+ at com.sun.jmx.mbeanserver.MXBeanLookup.addReference(MXBeanLookup.java:120)
+ at com.sun.jmx.mbeanserver.MXBeanSupport.register(MXBeanSupport.java:143)
+ at com.sun.jmx.mbeanserver.MBeanSupport.preRegister2(MBeanSupport.java:183)
+ at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.registerDynamicMBean(DefaultMBeanServerInterceptor.java:941)
+ at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.registerObject(DefaultMBeanServerInterceptor.java:917)
+ at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.registerMBean(DefaultMBeanServerInterceptor.java:312)
+ at com.sun.jmx.mbeanserver.JmxMBeanServer.registerMBean(JmxMBeanServer.java:482)
+ at org.apache.hadoop.metrics2.util.MBeans.register(MBeans.java:56)
+ at org.apache.hadoop.metrics2.impl.MetricsSystemImpl.initSystemMBean(MetricsSystemImpl.java:500)
+ at org.apache.hadoop.metrics2.impl.MetricsSystemImpl.init(MetricsSystemImpl.java:140)
+ at org.apache.hadoop.metrics2.lib.DefaultMetricsSystem.init(DefaultMetricsSystem.java:40)
+ at org.apache.hadoop.metrics2.lib.DefaultMetricsSystem.initialize(DefaultMetricsSystem.java:50)
+ at org.apache.hadoop.hdfs.server.datanode.DataNode.instantiateDataNode(DataNode.java:1483)
+ at org.apache.hadoop.hdfs.server.datanode.DataNode.instantiateDataNode(DataNode.java:1459)
+ at org.apache.hadoop.hdfs.MiniDFSCluster.startDataNodes(MiniDFSCluster.java:417)
+ at org.apache.hadoop.hdfs.MiniDFSCluster.<init>(MiniDFSCluster.java:280)
+ at org.apache.hadoop.hbase.HBaseTestingUtility.startMiniDFSCluster(HBaseTestingUtility.java:349)
+ at org.apache.hadoop.hbase.HBaseTestingUtility.startMiniCluster(HBaseTestingUtility.java:518)
+ at org.apache.hadoop.hbase.HBaseTestingUtility.startMiniCluster(HBaseTestingUtility.java:474)
+ at org.apache.hadoop.hbase.HBaseTestingUtility.startMiniCluster(HBaseTestingUtility.java:461)
+This seems to be due to errors initializing the new hadoop metrics2 code by default, when running in a mini cluster. The errors themselves seem to be harmless – they're not breaking any tests – but we should figure out what configuration we need to eliminate them.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.90.4, (4)
+Fix_version:
+0.95.0
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Gary Helmling
+Create date:
+31/Oct/11 23:21
+Update date:
+23/Sep/13 18:30
+Resolved date:
+11/Jan/13 07:09

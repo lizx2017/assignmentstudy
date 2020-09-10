@@ -1,0 +1,149 @@
+Summary:
+Nodetool Cleanup - java.lang.AssertionError
+Description:
+Needed to free up some space on a node but getting the dump below when running nodetool cleanup.
+Tried turning on debug to try to obtain additional details in the logs but nothing gets added to the logs when running cleanup. Added:
+log4j.logger.org.apache.cassandra.db=DEBUG
+in log4j-server.properties
+See the stack trace below:
+root@cassandra-019:~# nodetool cleanup
+Error occurred during cleanup
+java.util.concurrent.ExecutionException: java.lang.IllegalArgumentException
+        at java.util.concurrent.FutureTask.report(FutureTask.java:122)
+        at java.util.concurrent.FutureTask.get(FutureTask.java:188)
+        at org.apache.cassandra.db.compaction.CompactionManager.performAllSSTableOperation(CompactionManager.java:228)
+        at org.apache.cassandra.db.compaction.CompactionManager.performCleanup(CompactionManager.java:266)
+        at org.apache.cassandra.db.ColumnFamilyStore.forceCleanup(ColumnFamilyStore.java:1112)
+        at org.apache.cassandra.service.StorageService.forceKeyspaceCleanup(StorageService.java:2162)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.lang.reflect.Method.invoke(Method.java:606)
+        at sun.reflect.misc.Trampoline.invoke(MethodUtil.java:75)
+        at sun.reflect.GeneratedMethodAccessor17.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.lang.reflect.Method.invoke(Method.java:606)
+        at sun.reflect.misc.MethodUtil.invoke(MethodUtil.java:279)
+        at com.sun.jmx.mbeanserver.StandardMBeanIntrospector.invokeM2(StandardMBeanIntrospector.java:112)
+        at com.sun.jmx.mbeanserver.StandardMBeanIntrospector.invokeM2(StandardMBeanIntrospector.java:46)
+        at com.sun.jmx.mbeanserver.MBeanIntrospector.invokeM(MBeanIntrospector.java:237)
+        at com.sun.jmx.mbeanserver.PerInterface.invoke(PerInterface.java:138)
+        at com.sun.jmx.mbeanserver.MBeanSupport.invoke(MBeanSupport.java:252)
+        at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.invoke(DefaultMBeanServerInterceptor.java:819)
+        at com.sun.jmx.mbeanserver.JmxMBeanServer.invoke(JmxMBeanServer.java:801)
+        at javax.management.remote.rmi.RMIConnectionImpl.doOperation(RMIConnectionImpl.java:1487)
+        at javax.management.remote.rmi.RMIConnectionImpl.access$300(RMIConnectionImpl.java:97)
+        at javax.management.remote.rmi.RMIConnectionImpl$PrivilegedOperation.run(RMIConnectionImpl.java:1328)
+        at javax.management.remote.rmi.RMIConnectionImpl.doPrivilegedOperation(RMIConnectionImpl.java:1420)
+        at javax.management.remote.rmi.RMIConnectionImpl.invoke(RMIConnectionImpl.java:848)
+        at sun.reflect.GeneratedMethodAccessor64.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.lang.reflect.Method.invoke(Method.java:606)
+        at sun.rmi.server.UnicastServerRef.dispatch(UnicastServerRef.java:322)
+        at sun.rmi.transport.Transport$1.run(Transport.java:177)
+        at sun.rmi.transport.Transport$1.run(Transport.java:174)
+        at java.security.AccessController.doPrivileged(Native Method)
+        at sun.rmi.transport.Transport.serviceCall(Transport.java:173)
+        at sun.rmi.transport.tcp.TCPTransport.handleMessages(TCPTransport.java:556)
+        at sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run0(TCPTransport.java:811)
+        at sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run(TCPTransport.java:670)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:744)
+Caused by: java.lang.IllegalArgumentException
+        at java.nio.Buffer.limit(Buffer.java:267)
+        at org.apache.cassandra.io.compress.CompressedRandomAccessReader.decompressChunk(CompressedRandomAccessReader.java:108)
+        at org.apache.cassandra.io.compress.CompressedRandomAccessReader.reBuffer(CompressedRandomAccessReader.java:87)
+        at org.apache.cassandra.io.compress.CompressedThrottledReader.reBuffer(CompressedThrottledReader.java:41)
+        at org.apache.cassandra.io.util.RandomAccessReader.seek(RandomAccessReader.java:283)
+        at org.apache.cassandra.io.sstable.SSTableScanner.seekToCurrentRangeStart(SSTableScanner.java:123)
+        at org.apache.cassandra.io.sstable.SSTableScanner.access$200(SSTableScanner.java:45)
+        at org.apache.cassandra.io.sstable.SSTableScanner$KeyScanningIterator.computeNext(SSTableScanner.java:223)
+        at org.apache.cassandra.io.sstable.SSTableScanner$KeyScanningIterator.computeNext(SSTableScanner.java:203)
+        at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:143)
+        at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:138)
+        at org.apache.cassandra.io.sstable.SSTableScanner.hasNext(SSTableScanner.java:183)
+        at org.apache.cassandra.db.compaction.CompactionManager.doCleanupCompaction(CompactionManager.java:574)
+        at org.apache.cassandra.db.compaction.CompactionManager.access$400(CompactionManager.java:63)
+        at org.apache.cassandra.db.compaction.CompactionManager$5.perform(CompactionManager.java:275)
+        at org.apache.cassandra.db.compaction.CompactionManager$2.call(CompactionManager.java:223)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+        ... 3 more
+Now seeing this similar stacktrace in the same node:
+root@cassandra-019:~# nodetool cleanup
+Exception in thread "main" java.lang.AssertionError: [SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22188-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26283-Data.db'), SSTableReader(path='/raid0/cassand
+ra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22185-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-ic-5579-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26267-Data.db'), SSTableRead
+er(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26238-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26311-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-2214
+3-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26235-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-25458-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurr
+ent-variant_urls-jb-22151-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26277-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26287-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurre
+nt/variant_urls/linkcurrent-variant_urls-jb-20369-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26230-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26315-Data.db'), SSTableReader(path='/raid0/
+cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22147-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22144-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26289-Data.db'), SST
+ableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-25454-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22136-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls
+-jb-20367-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22913-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26291-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/
+linkcurrent-variant_urls-ic-6285-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-ic-16752-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-25456-Data.db'), SSTableReader(path='/raid0/cassandra/data/li
+nkcurrent/variant_urls/linkcurrent-variant_urls-jb-26279-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22184-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-ic-4023-Data.db'), SSTableReader(path='/
+raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22139-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22153-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26260-Data.db'
+), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-ic-16021-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26275-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-varian
+t_urls-jb-22191-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26285-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-ic-18673-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant
+_urls/linkcurrent-variant_urls-jb-26229-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22183-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26280-Data.db'), SSTableReader(path='/raid0/cassandra/
+data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26231-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22137-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26255-Data.db'), SSTableReader
+(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-24862-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26276-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-20342-
+Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22133-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22182-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurren
+t-variant_urls-jb-26334-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-20327-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22150-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent
+/variant_urls/linkcurrent-variant_urls-jb-26228-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22910-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26332-Data.db'), SSTableReader(path='/raid0/ca
+ssandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26282-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26237-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22141-Data.db'), SSTa$
+leReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26278-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26234-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-j
+b-26236-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22134-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26286-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/li
+nkcurrent-variant_urls-jb-20335-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22145-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-25459-Data.db'), SSTableReader(path='/raid0/cassandra/data/lin
+kcurrent/variant_urls/linkcurrent-variant_urls-jb-22194-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22148-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-ic-3109-Data.db'), SSTableReader(path='/r
+aid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-20349-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22146-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26290-Data.db')
+, SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26288-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26284-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant
+_urls-jb-26274-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-25457-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22135-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_
+urls/linkcurrent-variant_urls-jb-22195-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22911-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22152-Data.db'), SSTableReader(path='/raid0/cassandra/d
+ata/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26335-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26232-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22914-Data.db'), SSTableReader(
+path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-20368-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22189-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26293-D
+ata.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22190-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22140-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent
+-variant_urls-jb-22149-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26281-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26333-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/
+variant_urls/linkcurrent-variant_urls-jb-26316-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-25453-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26310-Data.db'), SSTableReader(path='/raid0/cas
+sandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-20343-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-25452-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-ic-5788-Data.db'), SSTable
+Reader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-25455-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26292-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-ic-
+15838-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-26226-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-22912-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/link
+current-variant_urls-jb-26233-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-ic-16702-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkcurrent/variant_urls/linkcurrent-variant_urls-jb-21623-Data.db'), SSTableReader(path='/raid0/cassandra/data/linkc
+urrent/variant_urls/linkcurrent-variant_urls-jb-22193-Data.db’)]
+        at org.apache.cassandra.db.ColumnFamilyStore$13.call(ColumnFamilyStore.java:2132)
+        at org.apache.cassandra.db.ColumnFamilyStore$13.call(ColumnFamilyStore.java:2129)
+        at org.apache.cassandra.db.ColumnFamilyStore.runWithCompactionsDisabled(ColumnFamilyStore.java:2111)
+        at org.apache.cassandra.db.ColumnFamilyStore.markAllCompacting(ColumnFamilyStore.java:2142)
+        at org.apache.cassandra.db.compaction.CompactionManager.performAllSSTableOperation(CompactionManager.java:215)
+        at org.apache.cassandra.db.compaction.CompactionManager.performCleanup(CompactionManager.java:266)
+        at org.apache.cassandra.db.ColumnFamilyStore.forceCleanup(ColumnFamilyStore.java:1112)
+        at org.apache.cassandra.service.StorageService.forceKeyspaceCleanup(StorageService.java:2162)
+        at sun.reflect.GeneratedMethodAccessor113.invoke(Unknown Source)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.12
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Sebastian Estevez
+Create date:
+30/Dec/14 23:08
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Jan/15 08:55

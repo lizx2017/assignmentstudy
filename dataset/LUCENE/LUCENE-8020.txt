@@ -1,0 +1,38 @@
+Summary:
+Don't force sim to score bogus terms (e.g. docfreq=0)
+Description:
+Today all sim formulas have to be "hacked" to deal with the fact that they may be passed stats such as docFreq=0, totalTermFreq=0. This happens easily with spans and there is even a dedicated test for it. All formulas have hacks such as what you see in https://issues.apache.org/jira/browse/LUCENE-6818:
+Instead of:
+expected = stats.getTotalTermFreq() * docLen / stats.getNumberOfFieldTokens();
+they must do tricks such as:
+expected = (1 + stats.getTotalTermFreq()) * docLen / (1 + stats.getNumberOfFieldTokens());
+There is no good reason for this, it is just sloppiness in the Query/Weight/Scorer api. I think formulas should work unmodified, we shouldn't pass terms that dont exist or bogus statistics.
+It adds a lot of complexity to the scoring api and makes it difficult to have meaningful/useful explanations, to debug problems, etc. It also makes it really hard to add a new sim.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+28/Oct/17 17:57
+Update date:
+18/Jun/18 16:51
+Resolved date:
+31/Oct/17 00:39

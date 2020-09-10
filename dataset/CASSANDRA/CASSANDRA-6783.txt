@@ -1,0 +1,50 @@
+Summary:
+Collections should have a proper compare() method for UDT
+Description:
+So far, ListType, SetType and MapType don't have a proper implementation of compare() (they throw UnsupportedOperationException) because we haven't need one since as far as the cell comparator is concenred, only parts of a collection ends up in the comparator and need to be compared, but the full collection itself does not.
+But with UDT can nest a collection and that sometimes require to be able to compare them. Typically, I pushed a dtest here that ends up throwing:
+java.lang.UnsupportedOperationException: CollectionType should not be use directly as a comparator
+        at org.apache.cassandra.db.marshal.CollectionType.compare(CollectionType.java:72) ~[main/:na]
+        at org.apache.cassandra.db.marshal.CollectionType.compare(CollectionType.java:37) ~[main/:na]
+        at org.apache.cassandra.db.marshal.AbstractType.compareCollectionMembers(AbstractType.java:174) ~[main/:na]
+        at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:101) ~[main/:na]
+        at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:35) ~[main/:na]
+        at java.util.TreeMap.compare(TreeMap.java:1188) ~[na:1.7.0_45]
+        at java.util.TreeMap.put(TreeMap.java:531) ~[na:1.7.0_45]
+        at java.util.TreeSet.add(TreeSet.java:255) ~[na:1.7.0_45]
+        at org.apache.cassandra.cql3.Sets$DelayedValue.bind(Sets.java:205) ~[main/:na]
+        at org.apache.cassandra.cql3.Sets$Literal.prepare(Sets.java:91) ~[main/:na]
+        at org.apache.cassandra.cql3.UserTypes$Literal.prepare(UserTypes.java:60) ~[main/:na]
+        at org.apache.cassandra.cql3.Operation$SetElement.prepare(Operation.java:221) ~[main/:na]
+        at org.apache.cassandra.cql3.statements.UpdateStatement$ParsedUpdate.prepareInternal(UpdateStatement.java:201) ~[main/:na]
+...
+Note that this stack doesn't involve cell name comparison at all, it's just that CQL3 sometimes uses a SortedSet underneath to deal with set literals (since internal sets are sorted by their value), and so when a set contains UDT that has set themselves, we need the collection comparison. That being said, for some cases like having a UDT as a map key, we do would need collections to be comparable for the purpose of cell name comparison.
+Attaching relatively simple patch. The patch is a bit bigger than it should be because while adding the 3 simple compare() method, I realized that we had methods to read a short length (2 unsigned short) from a ByteBuffer duplicated all over the place and that it was time to consolidate that in ByteBufferUtil where it should have been from day one (thus removing the duplication). I can separate that trivial refactor in a separate patch if we really need to, but really, the new stuff is the compare() method implementation in ListType, SetType and MapType and the rest is a bit of trivial cleanup.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 beta2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+28/Feb/14 12:06
+Update date:
+16/Apr/19 09:31
+Resolved date:
+20/Mar/14 09:15

@@ -1,0 +1,53 @@
+Summary:
+Compaction error with Cassandra 1.1.4 and LCS
+Description:
+In our 1.1.4 testcluster of 3 nodes with RF=3, KS=1, and CF=5, we are getting an asserting error when running 'nodetool compact highscores leaderboard'. This stops compactions on the 'leaderboard' CF summing up to 11835 pending compactions. This error is seen only one one node.
+The SSTables have originally been created on a 1.1.2 cluster with STCS and then copied to the testcluster also with 1.1.2. Repair, cleanup, compact were OK with STCS. Next, we changed to LCS and did again repair, cleanup, compact with success.
+Then we started to use this LCS-based testcluster intensively and created lots of data and also large keys with millions of columns.
+The assertion error in system.log :
+INFO [CompactionExecutor:8] 2012-09-11 14:20:45,043 CompactionController.java (line 172) Compacting large row highscores/leaderboard:4c422d64626331353166372d363464612d343235342d396130322d6535616365343337373532332d676c6f62616c2d30 (72589650 bytes) incrementally
+ERROR [CompactionExecutor:8] 2012-09-11 14:20:50,336 AbstractCassandraDaemon.java (line 135) Exception in thread Thread[CompactionExecutor:8,1,RMI Runtime]
+java.lang.AssertionError
+at org.apache.cassandra.db.compaction.LeveledManifest.promote(LeveledManifest.java:214)
+at org.apache.cassandra.db.compaction.LeveledCompactionStrategy.handleNotification(LeveledCompactionStrategy.java:158)
+at org.apache.cassandra.db.DataTracker.notifySSTablesChanged(DataTracker.java:531)
+at org.apache.cassandra.db.DataTracker.replaceCompactedSSTables(DataTracker.java:254)
+at org.apache.cassandra.db.ColumnFamilyStore.replaceCompactedSSTables(ColumnFamilyStore.java:992)
+at org.apache.cassandra.db.compaction.CompactionTask.execute(CompactionTask.java:200)
+at org.apache.cassandra.db.compaction.LeveledCompactionTask.execute(LeveledCompactionTask.java:50)
+at org.apache.cassandra.db.compaction.CompactionManager$6.runMayThrow(CompactionManager.java:288)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+1.1.6
+Component:
+None
+Label:
+None
+Environment:
+ubuntu, amazon
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Rudolf VanderLeeden
+Create date:
+11/Sep/12 14:48
+Update date:
+16/Apr/19 09:32
+Resolved date:
+17/Sep/12 17:38

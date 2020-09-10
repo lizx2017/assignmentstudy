@@ -1,0 +1,53 @@
+Summary:
+HMaster sometimes hangs during initialization due to missing notify call
+Description:
+During HMaster.finishInitialization(), assignRootAndMeta() is called, which at some point does:
+this.assignmentManager.waitForAssignment(HRegionInfo.FIRST_META_REGIONINFO);
+And waitForAssignment does this:
+    synchronized(regions) {
+      while(!regions.containsKey(regionInfo)) {
+        regions.wait();
+      }
+    }
+However, I could not find any call to regions.notify(), so this could wait forever.
+I have not noticed this problem on a real cluster, only when using HBaseTestingUtility on a slow and low-memory Hudson server (I can reproduce it on my local machine by creating some background load). Adding a notify() call when regions.put() is called seems to fix the problem. Will attach patch.
+For reference, this was based on seeing the following from jstack:
+"Master:0;lat:44776" prio=10 tid=0x08d5b400 nid=0x381a in Object.wait() [0x9c76d000]
+   java.lang.Thread.State: WAITING (on object monitor)
+        at java.lang.Object.wait(Native Method)
+        - waiting on <0xa5196fb8> (a java.util.TreeMap)
+        at java.lang.Object.wait(Object.java:485)
+        at org.apache.hadoop.hbase.master.AssignmentManager.waitForAssignment(AssignmentManager.java:1152)
+        - locked <0xa5196fb8> (a java.util.TreeMap)
+        at org.apache.hadoop.hbase.master.HMaster.assignRootAndMeta(HMaster.java:440)
+        at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:382)
+        at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:277)
+        at java.lang.Thread.run(Thread.java:619)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.1
+Component:
+master
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Bruno Dumon
+Reporter:
+Bruno Dumon
+Create date:
+31/Jan/11 19:27
+Update date:
+20/Nov/15 12:43
+Resolved date:
+31/Jan/11 20:26

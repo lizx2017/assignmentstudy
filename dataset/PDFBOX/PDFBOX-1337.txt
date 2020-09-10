@@ -1,0 +1,70 @@
+Summary:
+Improve PDFOperator performance on multithreading environment
+Description:
+With more than 6 threads, the API PDFOperator#getOperator(String operator) is still blocked :
+Sample with 48 threads :
+pool-1-thread-46" - Thread t@72
+java.lang.Thread.State: RUNNABLE
+at org.apache.pdfbox.util.PDFOperator.getOperator(PDFOperator.java:76)
+at org.apache.pdfbox.pdfparser.PDFStreamParser.parseNextToken(PDFStreamParser.java:441)
+at org.apache.pdfbox.pdfparser.PDFStreamParser.access$000(PDFStreamParser.java:46)
+at org.apache.pdfbox.pdfparser.PDFStreamParser$1.tryNext(PDFStreamParser.java:175)
+at org.apache.pdfbox.pdfparser.PDFStreamParser$1.hasNext(PDFStreamParser.java:187)
+at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:266)
+I propose to remove the synchronization of the attribute "operators" and set up a synchronization
+on the put operation. (This optimization saves 30 percent of time)
+public class PDFOperator
+{
+[...]
+// private static Map operators = Collections.synchronizedMap( new HashMap() );
+private static Map operators = new HashMap();
+[...]
+public static PDFOperator getOperator( String operator )
+{
+PDFOperator operation = null;
+if( operator.equals( "ID" ) || operator.equals( "BI" ) )
+{ //we can't cache the ID operators. operation = new PDFOperator( operator ); }
+else
+{
+operation = (PDFOperator)operators.get(operator);
+if( operation == null )
+{
+synchronized (operators) {
+operation = (PDFOperator)operators.get(operator);
+if ( operation == null )
+{ operation = new PDFOperator( operator ); operators.put( operator, operation ); }
+}
+}
+}
+return operation;
+}
+[...]
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.6.0
+Fix_version:
+1.7.1
+Component:
+Parsing, Utilities
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Timo Boehme
+Reporter:
+Alexis
+Create date:
+11/Jun/12 13:59
+Update date:
+25/Jul/12 06:01
+Resolved date:
+16/Jul/12 16:09

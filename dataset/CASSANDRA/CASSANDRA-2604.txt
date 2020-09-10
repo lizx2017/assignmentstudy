@@ -1,0 +1,51 @@
+Summary:
+EOFException on commitlogs
+Description:
+I have seen this occasionally since we started testing 0.8.
+It happens when reading commitlogs on startups.
+However, I have seen it a lot less on 0.8 beta2 (although this is from beta 2)
+ERROR [main] 2011-05-04 18:02:38,134 AbstractCassandraDaemon.java (line 330) Exception encountered during startup.
+java.io.EOFException
+at java.io.DataInputStream.readByte(DataInputStream.java:250)
+at org.apache.cassandra.utils.ByteBufferUtil.readShortLength(ByteBufferUtil.java:357)
+at org.apache.cassandra.utils.ByteBufferUtil.readWithShortLength(ByteBufferUtil.java:368)
+at org.apache.cassandra.db.ColumnSerializer.deserialize(ColumnSerializer.java:252)
+at org.apache.cassandra.db.ColumnSerializer.deserialize(ColumnSerializer.java:43)
+at org.apache.cassandra.db.ColumnFamilySerializer.deserializeColumns(ColumnFamilySerializer.java:136)
+at org.apache.cassandra.db.ColumnFamilySerializer.deserialize(ColumnFamilySerializer.java:126)
+at org.apache.cassandra.db.RowMutation$RowMutationSerializer.deserialize(RowMutation.java:368)
+at org.apache.cassandra.db.commitlog.CommitLog.recover(CommitLog.java:256)
+at org.apache.cassandra.db.commitlog.CommitLog.recover(CommitLog.java:157)
+at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:173)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:313)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:80)
+Note that the line numbers on columnserializer may be off due to some local changes, but those changes are in code not executed in this case and I am 100% sure they do not trigger this problem.
+I looked on this in the debugger in eclipse on a trunk from 0.8 2 weeks ago, and the interesting thing I saw was that according to the debugger, the offset of the inputstream to the deserializer was already at the end (very last byte) of the underlying bytebuffer but according to the stack, it was trying to read the length of the column name (first read done in the deserialized).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Terje Marthinussen
+Create date:
+04/May/11 10:00
+Update date:
+16/Apr/19 09:33
+Resolved date:
+06/May/11 10:17

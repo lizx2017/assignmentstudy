@@ -1,0 +1,34 @@
+Summary:
+Avoid early opening of compaction results when doing anticompaction
+Description:
+When doing anticompaction we have 2 sstable rewriters open and write the repaired range to one writer and the unrepaired to one. This can cause some keys to become unreadable during anticompaction, example:
+Say we are anticompacting one 150MB sstable into two new ones, 75MB each, first we start writing to the first one, after 50MB, we open the result early and move the start point up to the 50MB mark in the original file. Then, after 75MB written, we start writing to the next file and after writing 50MB to that file, we open that file early and move the start point up to 125MB in the original file. This makes 25MB unreadable that is only present in the first file written, but we have moved the start point beyond that part of the file in the original
+Simple solution is probably to avoid doing early opening during anticompaction, and since anticompaction is not as frequent as ordinary compactions, the performance implications would not be too big
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.6, 2.2.0 rc1, 3.0 alpha 1
+Component:
+Local/Compaction
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Marcus Eriksson
+Create date:
+29/May/15 06:09
+Update date:
+16/Apr/19 09:31
+Resolved date:
+29/May/15 08:00

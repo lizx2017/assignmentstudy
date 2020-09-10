@@ -1,0 +1,57 @@
+Summary:
+CQL3: select multiple CQL rows in a single partition using IN
+Description:
+In the spirit of CASSANDRA-4851 and to bring CQL to parity with Thrift, it is important to support reading several distinct CQL rows from a given partition using a distinct set of "coordinates" for these rows within the partition.
+CASSANDRA-4851 introduced a range scan over the multi-dimensional space of clustering keys. We also need to support a "multi-get" of CQL rows, potentially using the "IN" keyword to define a set of clustering keys to fetch at once.
+(reusing the same example:)
+Consider the following table:
+CREATE TABLE test (
+  k int,
+  c1 int,
+  c2 int,
+  PRIMARY KEY (k, c1, c2)
+);
+with the following data:
+ k | c1 | c2
+---+----+----
+ 0 |  0 |  0
+ 0 |  0 |  1
+ 0 |  1 |  0
+ 0 |  1 |  1
+We can fetch a single row or a range of rows, but not a set of them:
+> SELECT * FROM test WHERE k = 0 AND (c1, c2) IN ((0, 0), (1,1)) ;
+Bad Request: line 1:54 missing EOF at ','
+Supporting this syntax would return:
+ k | c1 | c2
+---+----+----
+ 0 |  0 |  0
+ 0 |  1 |  1
+Being able to fetch these two CQL rows in a single read is important to maintain partition-level isolation.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.9, 2.1 rc1
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Nicolas Favre-Felix
+Create date:
+17/Mar/14 17:25
+Update date:
+16/Apr/19 09:31
+Resolved date:
+29/May/14 18:29

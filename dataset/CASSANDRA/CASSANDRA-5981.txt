@@ -1,0 +1,52 @@
+Summary:
+Netty frame length exception when storing data to Cassandra using binary protocol
+Description:
+Using Cassandra 1.2.8, I am running into an issue where when I send a large amount of data using the binary protocol, I get the following netty exception in the Cassandra log file:
+ERROR 09:08:35,845 Unexpected exception during request
+org.jboss.netty.handler.codec.frame.TooLongFrameException: Adjusted frame length exceeds 268435456: 292413714 - discarded
+at org.jboss.netty.handler.codec.frame.LengthFieldBasedFrameDecoder.fail(LengthFieldBasedFrameDecoder.java:441)
+at org.jboss.netty.handler.codec.frame.LengthFieldBasedFrameDecoder.failIfNecessary(LengthFieldBasedFrameDecoder.java:412)
+at org.jboss.netty.handler.codec.frame.LengthFieldBasedFrameDecoder.decode(LengthFieldBasedFrameDecoder.java:372)
+at org.apache.cassandra.transport.Frame$Decoder.decode(Frame.java:181)
+at org.jboss.netty.handler.codec.frame.FrameDecoder.callDecode(FrameDecoder.java:422)
+at org.jboss.netty.handler.codec.frame.FrameDecoder.messageReceived(FrameDecoder.java:303)
+at org.jboss.netty.channel.Channels.fireMessageReceived(Channels.java:268)
+at org.jboss.netty.channel.Channels.fireMessageReceived(Channels.java:255)
+at org.jboss.netty.channel.socket.nio.NioWorker.read(NioWorker.java:84)
+at org.jboss.netty.channel.socket.nio.AbstractNioWorker.processSelectedKeys(AbstractNioWorker.java:472)
+at org.jboss.netty.channel.socket.nio.AbstractNioWorker.run(AbstractNioWorker.java:333)
+at org.jboss.netty.channel.socket.nio.NioWorker.run(NioWorker.java:35)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:722)
+I am using the Datastax driver and using CQL to execute insert queries. The query that is failing is using atomic batching executing a large number of statements (~55).
+Looking into the code a bit, I saw that in the org.apache.cassandra.transport.Frame$Decoder class, the MAX_FRAME_LENGTH is hard coded to 256 mb.
+Is this something that should be configurable or is this a hard limit that will prevent batch statements of this size from executing for some reason?
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.3
+Component:
+None
+Label:
+None
+Environment:
+linux, java 1.7
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Justin Sweeney
+Create date:
+06/Sep/13 13:52
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Nov/13 15:13

@@ -1,0 +1,86 @@
+Summary:
+Converting pdf to Image
+Description:
+I'm trying to convert a pdf page to image but an exception occurs:
+17:28:20,652 ERROR [org.apache.pdfbox.pdmodel.graphics.xobject.PDPixelMap] (Thread-69) Something went wrong ... the pixelmap doesn't contain any data.
+17:28:20,654 WARN [org.apache.pdfbox.util.operator.pagedrawer.Invoke] (Thread-69) getRGBImage returned NULL
+17:28:20,661 INFO [org.apache.pdfbox.util.PDFStreamEngine] (Thread-69) unsupported/disabled operation: i
+17:28:36,809 ERROR [stderr] (Thread-70) Exception in thread "Thread-70" java.lang.OutOfMemoryError: Java heap space
+17:28:36,811 ERROR [stderr] (Thread-70) at java.awt.image.DataBufferByte.<init>(DataBufferByte.java:92)
+17:28:36,812 ERROR [stderr] (Thread-70) at java.awt.image.ComponentSampleModel.createDataBuffer(ComponentSampleModel.java:415)
+17:28:36,814 ERROR [stderr] (Thread-70) at java.awt.image.Raster.createWritableRaster(Raster.java:941)
+17:28:36,814 ERROR [stderr] (Thread-70) at javax.imageio.ImageTypeSpecifier.createBufferedImage(ImageTypeSpecifier.java:1073)
+17:28:36,815 ERROR [stderr] (Thread-70) at javax.imageio.ImageReader.getDestination(ImageReader.java:2896)
+17:28:36,816 ERROR [stderr] (Thread-70) at com.sun.imageio.plugins.jpeg.JPEGImageReader.readInternal(JPEGImageReader.java:1066)
+17:28:36,817 ERROR [stderr] (Thread-70) at com.sun.imageio.plugins.jpeg.JPEGImageReader.read(JPEGImageReader.java:1034)
+17:28:36,818 ERROR [stderr] (Thread-70) at javax.imageio.ImageIO.read(ImageIO.java:1448)
+17:28:36,818 ERROR [stderr] (Thread-70) at javax.imageio.ImageIO.read(ImageIO.java:1352)
+17:28:36,819 ERROR [stderr] (Thread-70) at org.apache.pdfbox.pdmodel.graphics.xobject.PDJpeg.getRGBImage(PDJpeg.java:264)
+17:28:36,820 ERROR [stderr] (Thread-70) at org.apache.pdfbox.util.operator.pagedrawer.Invoke.process(Invoke.java:83)
+17:28:36,821 ERROR [stderr] (Thread-70) at org.apache.pdfbox.util.PDFStreamEngine.processOperator(PDFStreamEngine.java:554)
+17:28:36,823 ERROR [stderr] (Thread-70) at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:268)
+17:28:36,824 ERROR [stderr] (Thread-70) at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:235)
+17:28:36,825 ERROR [stderr] (Thread-70) at org.apache.pdfbox.util.PDFStreamEngine.processStream(PDFStreamEngine.java:215)
+17:28:36,826 ERROR [stderr] (Thread-70) at org.apache.pdfbox.pdfviewer.PageDrawer.drawPage(PageDrawer.java:125)
+17:28:36,827 ERROR [stderr] (Thread-70) at org.apache.pdfbox.pdmodel.PDPage.convertToImage(PDPage.java:769)
+My code:
+public static List<BufferedImage> getPdfPagesAsImages(String pdfPath)
+throws IOException {
+File f = new File(pdfPath);
+PDDocument pdfDocument = null;
+pdfDocument = PDDocument.loadNonSeq(f, null);
+List<BufferedImage> bImages = new ArrayList<BufferedImage>();
+try {
+System.out.println(pdfPath);
+int resolution = 185;
+if (pdfDocument != null) {
+@SuppressWarnings("unchecked")
+List<PDPage> pages = (List<PDPage>) pdfDocument
+.getDocumentCatalog().getAllPages();
+for (PDPage p : pages) {
+BufferedImage convertedImage = p.convertToImage(
+BufferedImage.TYPE_INT_RGB, resolution);
+if (isNegativeImage(convertedImage))
+{ bImages.add(invertNegativeImage(convertedImage)); }
+else
+{ bImages.add(convertedImage); }
+}
+}
+} catch (FileNotFoundException e)
+{ e.printStackTrace(); e.getMessage(); e.getCause(); } catch (IOException e) { e.printStackTrace(); e.getMessage(); e.getCause(); }
+catch (Exception e)
+{ e.printStackTrace(); e.getMessage(); e.getCause(); }
+finally
+{ pdfDocument.close(); }
+return bImages;
+}
+I atached my pdf.
+I have e10000 pdf to verify and about 30% throws this kind of exception
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+1.8.2
+Fix_version:
+None
+Component:
+None
+Label:
+newbie
+Environment:
+windows 8, linux
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Paulo R C Mello Juni
+Create date:
+30/Sep/13 20:43
+Update date:
+06/Jan/15 07:44
+Resolved date:
+03/Jul/14 01:56

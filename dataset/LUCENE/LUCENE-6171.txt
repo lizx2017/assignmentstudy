@@ -1,0 +1,38 @@
+Summary:
+Make lucene completely write-once
+Description:
+Today, lucene is mostly write-once, but not always, and these are just very exceptional cases.
+This is an invitation for exceptional bugs: (and we have occasional test failures when doing "no-wait close" because of this).
+I would prefer it if we didn't try to delete files before we open them for write, and if we opened them with the CREATE_NEW option by default to throw an exception, if the file already exists.
+The trickier parts of the change are going to be IndexFileDeleter and exceptions on merge / CFS construction logic.
+Overall for IndexFileDeleter I think the least invasive option might be to only delete files older than the current commit point? This will ensure that inflateGens() always avoids trying to overwrite any files that were from an aborted segment.
+For CFS construction/exceptions on merge, we really need to remove the custom "sniping" of index files there and let only IndexFileDeleter delete files. My previous failed approach involved always consistently using TrackingDirectoryWrapper, but it failed, and only in backwards compatibility tests, because of LUCENE-6146 (but i could never figure that out). I am hoping this time I will be successful
+Longer term we should think about more simplifications, progress has been made on LUCENE-5987, but I think overall we still try to be a superhero for exceptions on merge?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.2, 7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Robert Muir
+Create date:
+09/Jan/15 14:35
+Update date:
+26/Aug/16 13:59
+Resolved date:
+14/Jun/16 19:27

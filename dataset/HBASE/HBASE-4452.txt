@@ -1,0 +1,57 @@
+Summary:
+Possibility of RS opening a region though tickleOpening fails due to znode version mismatch
+Description:
+Consider the following code
+    long period = Math.max(1, assignmentTimeout/ 3);
+    long lastUpdate = now;
+    while (!signaller.get() && t.isAlive() && !this.server.isStopped() &&
+        !this.rsServices.isStopping() && (endTime > now)) {
+      long elapsed = now - lastUpdate;
+      if (elapsed > period) {
+        // Only tickle OPENING if postOpenDeployTasks is taking some time.
+        lastUpdate = now;
+        tickleOpening("post_open_deploy");
+      }
+Whenever the postopenDeploy tasks takes considerable time we try to tickleOpening so that there is no timeout deducted. But before it could do this if the TimeoutMonitor tries to assign the node to another RS then the other RS will move the node from OFFLINE to OPENING. Hence when the first RS tries to do tickleOpening the operation will fail. Now here lies the problem,
+    String encodedName = this.regionInfo.getEncodedName();
+    try {
+      this.version =
+        ZKAssign.retransitionNodeOpening(server.getZooKeeper(),
+          this.regionInfo, this.server.getServerName(), this.version);
+    } catch (KeeperException e) {
+Now this.version becomes -1 as the operation failed.
+Now as in the first code snippet as the return type is not captured after tickleOpening() fails we go on with moving the node to OPENED. Here again we dont have any check for this condition as already the version has been changed to -1. Hence the OPENING to OPENED becomes successful. Chances of double assignment.
+2011-09-22 00:57:29,930 WARN org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x1328ceaa1ff000d Attempt to transition the unassigned node for 69797d064f773d1aa9adba56e7ff90a3 from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING failed, the node existed but was version 5 not the expected version 2
+2011-09-22 00:57:33,494 WARN org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Failed refreshing OPENING; region=69797d064f773d1aa9adba56e7ff90a3, context=post_open_deploy
+2011-09-22 00:58:02,356 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x1328ceaa1ff000d Attempting to transition node 69797d064f773d1aa9adba56e7ff90a3 from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENED
+2011-09-22 00:58:11,853 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x1328ceaa1ff000d Successfully transitioned node 69797d064f773d1aa9adba56e7ff90a3 from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENED
+2011-09-22 00:58:13,956 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Opened t9,,1316633193606.69797d064f773d1aa9adba56e7ff90a3.
+Correct me if this analysis is wrong.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+21/Sep/11 13:30
+Update date:
+20/Nov/15 11:54
+Resolved date:
+22/Sep/11 23:10

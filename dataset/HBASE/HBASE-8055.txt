@@ -1,0 +1,56 @@
+Summary:
+Null check missing in StoreFile.Reader.getMaxTimestamp()
+Description:
+We just ran into a scenario where we got the following NPE:
+13/03/08 11:52:13 INFO regionserver.Store: Successfully loaded store file file:/tmp/hfile-import-00Dxx0000001lmJ-09Cxx00000000Jm/COLFAM/file09Cxx00000000Jm into store COLFAM (new location: file:/tmp/localhbase/data/SFDC.ENTITY_HISTORY_ARCHIVE/aeacee43aaf1748c6e60b9cc12bcac3d/COLFAM/120d683414e44478984b50ddd79b6826)
+13/03/08 11:52:13 ERROR regionserver.HRegionServer: Failed openScanner
+java.lang.NullPointerException
+    at org.apache.hadoop.hbase.regionserver.StoreFile$Reader.getMaxTimestamp(StoreFile.java:1702)
+    at org.apache.hadoop.hbase.regionserver.StoreFileScanner.requestSeek(StoreFileScanner.java:301)
+    at org.apache.hadoop.hbase.regionserver.StoreScanner.<init>(StoreScanner.java:127)
+    at org.apache.hadoop.hbase.regionserver.Store.getScanner(Store.java:2070)
+    at org.apache.hadoop.hbase.regionserver.HRegion$RegionScannerImpl.<init>(HRegion.java:3383)
+    at org.apache.hadoop.hbase.regionserver.HRegion.instantiateRegionScanner(HRegion.java:1628)
+    at org.apache.hadoop.hbase.regionserver.HRegion.getScanner(HRegion.java:1620)
+    at org.apache.hadoop.hbase.regionserver.HRegion.getScanner(HRegion.java:1596)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.openScanner(HRegionServer.java:2342)
+    at sun.reflect.GeneratedMethodAccessor13.invoke(Unknown Source)
+    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+    at java.lang.reflect.Method.invoke(Method.java:597)
+    at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Server.call(WritableRpcEngine.java:364)
+    at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1400)
+13/03/08 11:52:14 ERROR regionserver.HRegionServer: Failed openScanner
+It's not clear, yet, how we got into this situation (we are generating HFiles via HFileOutputFormat and bulk load those). It seems that can only happen when the HFile itself is corrupted.
+Looking at the code, though, I see this is the only place where we access StoreFile.reader.timeRangeTracker without a null check. So it appears we are expecting scenarios in which it can be null.
+A simple fix would be:
+    public long getMaxTimestamp() {
+      return timeRangeTracker == null ? Long.MAX_VALUE : timeRangeTracker.maximumTimestamp;
+    }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.94.6, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Lars Hofhansl
+Create date:
+09/Mar/13 00:26
+Update date:
+05/Apr/13 01:00
+Resolved date:
+12/Mar/13 03:54

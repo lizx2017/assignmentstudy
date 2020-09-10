@@ -1,0 +1,66 @@
+Summary:
+UnsupportedOperationException: Overflow in bytesPastMark(..)
+Description:
+I hit the following exception on a row that was more than 60GB.
+The row has column families of super column type.
+This problem is discussed by the following thread.
+http://www.mail-archive.com/dev@cassandra.apache.org/msg01881.html
+ERROR [HintedHandoff:1] 2011-02-26 18:49:35,708 DebuggableThreadPoolExecutor.java (line 103) Error in ThreadPoolExecutor
+java.lang.RuntimeException: java.lang.UnsupportedOperationException: Overflow: 2147484294
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+Caused by: java.lang.UnsupportedOperationException: Overflow: 2147484294
+        at org.apache.cassandra.io.util.BufferedRandomAccessFile.bytesPastMark(BufferedRandomAccessFile.java:477)
+        at org.apache.cassandra.db.columniterator.IndexedSliceReader$IndexedBlockFetcher.getNextBlock(IndexedSliceReader.java:179)
+        at org.apache.cassandra.db.columniterator.IndexedSliceReader.computeNext(IndexedSliceReader.java:120)
+        at org.apache.cassandra.db.columniterator.IndexedSliceReader.computeNext(IndexedSliceReader.java:1)
+        at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:136)
+        at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:131)
+        at org.apache.cassandra.db.columniterator.SSTableSliceIterator.hasNext(SSTableSliceIterator.java:108)
+        at org.apache.commons.collections.iterators.CollatingIterator.set(CollatingIterator.java:283)
+        at org.apache.commons.collections.iterators.CollatingIterator.least(CollatingIterator.java:326)
+        at org.apache.commons.collections.iterators.CollatingIterator.next(CollatingIterator.java:230)
+        at org.apache.cassandra.utils.ReducingIterator.computeNext(ReducingIterator.java:68)
+        at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:136)
+        at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:131)
+        at org.apache.cassandra.db.filter.SliceQueryFilter.collectReducedColumns(SliceQueryFilter.java:118)
+        at org.apache.cassandra.db.filter.QueryFilter.collectCollatedColumns(QueryFilter.java:142)
+        at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1290)
+        at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1167)
+        at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1095)
+        at org.apache.cassandra.db.HintedHandOffManager.sendMessage(HintedHandOffManager.java:138)
+        at org.apache.cassandra.db.HintedHandOffManager.deliverHintsToEndpoint(HintedHandOffManager.java:313)
+        at org.apache.cassandra.db.HintedHandOffManager.access$1(HintedHandOffManager.java:262)
+        at org.apache.cassandra.db.HintedHandOffManager$2.runMayThrow(HintedHandOffManager.java:391)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+        ... 3 more
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.4
+Component:
+None
+Label:
+None
+Environment:
+java 1.6, centos
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Muga Nishizawa
+Create date:
+09/Mar/11 11:41
+Update date:
+16/Apr/19 09:33
+Resolved date:
+11/Mar/11 18:32

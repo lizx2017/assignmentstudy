@@ -1,0 +1,60 @@
+Summary:
+False negative on PDF/A-1A with wrongly given causes " Invalid graphics object, DestOutputProfile isn't a valid ICCProfile: Invalid ICC Profile Data" and "Invalid Color space, The operator "rg" can't be used with CMYK Profile"
+Description:
+Using the code of the CookBook for PDF/A validation (given for 1.8.10) :
+with the test_little-A1a.pdf file (Adobe preflight (and pdfbox:1.8.10) tells me it's a valid PDF/A-1A)
+and only replacing the code "parser.parse()" with "parser.parse(Format.PDF_A1A)",
+result.isValid() is false with version 2.0.0-RC2. Displayed results errors are :
+2.1.4 - Invalid graphics object, DestOutputProfile isn't a valid ICCProfile: Invalid ICC Profile Data
+2.1.4 - Invalid graphics object, DestOutputProfile isn't a valid ICCProfile. Caused by : Invalid ICC Profile Data
+2.4.1 - Invalid Color space, The operator "rg" can't be used with CMYK Profile
+Some log is displayed :
+WARN [org.apache.pdfbox.filter.FlateFilter] - FlateFilter: premature end of stream due to a DataFormatException
+DEBUG [org.apache.pdfbox.io.ScratchFileBuffer] - ScratchFileBuffer not closed!
+WARN [org.apache.pdfbox.filter.FlateFilter] - FlateFilter: premature end of stream due to a DataFormatException
+Note : Running same code with the pdfbox and preflight version 2.0.0-RC1 on the same file, I get the exception :
+org.apache.pdfbox.preflight.exception.ValidationException: Unable to parse the ICC Profile.
+at org.apache.pdfbox.preflight.process.CatalogValidationProcess.validateICCProfile(CatalogValidationProcess.java:383)
+at org.apache.pdfbox.preflight.process.CatalogValidationProcess.validateOutputIntent(CatalogValidationProcess.java:285)
+at org.apache.pdfbox.preflight.process.CatalogValidationProcess.validate(CatalogValidationProcess.java:148)
+at org.apache.pdfbox.preflight.utils.ContextHelper.callValidation(ContextHelper.java:84)
+at org.apache.pdfbox.preflight.utils.ContextHelper.validateElement(ContextHelper.java:122)
+at org.apache.pdfbox.preflight.PreflightDocument.validate(PreflightDocument.java:163)
+[...]
+Caused by: java.io.IOException: java.util.zip.DataFormatException: incorrect data check
+at org.apache.pdfbox.filter.FlateFilter.decode(FlateFilter.java:83)
+at org.apache.pdfbox.cos.COSInputStream.create(COSInputStream.java:69)
+at org.apache.pdfbox.cos.COSStream.createInputStream(COSStream.java:163)
+at org.apache.pdfbox.preflight.process.CatalogValidationProcess.validateICCProfile(CatalogValidationProcess.java:360)
+... 29 more
+Caused by: java.util.zip.DataFormatException: incorrect data check
+at java.util.zip.Inflater.inflateBytes(Native Method)
+And a similar result as with 2.0.0-RC2 is obtained with 1.8.8.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+2.0.0
+Fix_version:
+None
+Component:
+Preflight
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Antoine Ribes
+Create date:
+26/Nov/15 18:21
+Update date:
+03/Dec/15 19:38
+Resolved date:
+03/Dec/15 19:38

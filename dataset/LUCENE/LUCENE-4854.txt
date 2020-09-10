@@ -1,0 +1,35 @@
+Summary:
+DocTermsOrd getOrdTermsEnum() buggy, lookupTerm/termsEnum is slow
+Description:
+Investigating a test failure in grouping/ I found the current dv api needs help for DocTermsOrds (this facet+grouping collector uses seekExact(BytesRef) on the termsenum):
+termsenum.seekExact is slow because the default implementation calls lookupTerm, which is slow. but this thing already has an optimal termsenum it can just return directly (since LUCENE-4819)
+lookupTerm is slow because the default implementation binary-searches ordinal space, calling lookupOrd and comparing to the target. However, lookupOrd is slow for this thing (must binary-search ordinal space again, then next() at most index_interval times).
+its getOrdTermsEnum() method is buggy: doesn't position correctly on an initial next(). Nothing uses this today, but if we want to return this thing directly it needs to work: its just a trivial check contained within next()
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+4.3, 4.2.1, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+19/Mar/13 04:16
+Update date:
+09/May/16 18:34
+Resolved date:
+19/Mar/13 14:49

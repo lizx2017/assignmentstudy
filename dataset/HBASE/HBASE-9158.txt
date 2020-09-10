@@ -1,0 +1,39 @@
+Summary:
+Serious bug in cyclic replication
+Description:
+While studying the code for HBASE-7709, I found a serious bug in the current cyclic replication code. The problem is here in HRegion.doMiniBatchMutation:
+      Mutation first = batchOp.operations[firstIndex].getFirst();
+      txid = this.log.appendNoSync(regionInfo, this.htableDescriptor.getName(),
+               walEdit, first.getClusterId(), now, this.htableDescriptor);
+Now note that edits replicated from remote cluster and local edits might interleave in the WAL, we might also receive edit from multiple remote clusters. Hence that <walEdit> might have edits from many clusters in it, but all are just labeled with the clusterId of the first Mutation.
+Fixing this in doMiniBatchMutation seems tricky to do efficiently (imagine we get a batch with cluster1, cluster2, cluster1, cluster2, ..., in that case each edit would have to be its own batch). The coprocessor handling would also be difficult.
+The other option is create batches of Puts grouped by the cluster id in ReplicationSink.replicateEntries(...), this is not as general, but equally correct. This is the approach I would favor.
+Lastly this is very hard to verify in a unittest.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.95.1, 0.94.10
+Fix_version:
+0.98.0, 0.95.2, 0.94.11
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Lars Hofhansl
+Create date:
+08/Aug/13 06:59
+Update date:
+21/Aug/13 00:08
+Resolved date:
+08/Aug/13 23:08

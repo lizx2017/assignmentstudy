@@ -1,0 +1,66 @@
+Summary:
+Potential race caused by async cleanup of transaction log files
+Description:
+There seems to be a potential race in the cleanup of transaction log files, introduced in CASSANDRA-7066
+It's pretty hard to trigger on trunk, but it's possible to hit it via o.a.c.db.SecondaryIndexTest#testCreateIndex
+That test creates an index, then removes it to check that the removal is correctly recorded, then adds the index again to assert that it gets rebuilt from the existing data.
+The removal causes the SSTables of the index CFS to be dropped, which is a transactional operation and so writes a transaction log. When the drop is completed and the last reference to an SSTable is released, the cleanup of the transaction log is scheduled on the periodic tasks executor. The issue is that re-creating the index re-creates the index CFS. When this happens, it's possible for the cleanup of the txn log to have not yet happened. If so, the initialization of the CFS attempts to read the log to identify any orphaned temporary files. The cleanup can happen between the finding the log file and reading it's contents, which results in a NoSuchFileException
+[junit] java.nio.file.NoSuchFileException: build/test/cassandra/data:1/SecondaryIndexTest1/CompositeIndexToBeAdded-d0885f60323211e5a5e8ad83a3dc3e9c/.birthdate_index/transactions/unknowncompactiontype_d4b69fc0-3232-11e5-a5e8-ad83a3dc3e9c_old.log
+[junit] java.lang.RuntimeException: java.nio.file.NoSuchFileException: build/test/cassandra/data:1/SecondaryIndexTest1/CompositeIndexToBeAdded-d0885f60323211e5a5e8ad83a3dc3e9c/.birthdate_index/transactions/unknowncompactiontype_d4b69fc0-3232-11e5-a5e8-ad83a3dc3e9c_old.log
+[junit]     at org.apache.cassandra.io.util.FileUtils.readLines(FileUtils.java:620)
+[junit]     at org.apache.cassandra.db.lifecycle.TransactionLogs$TransactionFile.getTrackedFiles(TransactionLogs.java:190)
+[junit]     at org.apache.cassandra.db.lifecycle.TransactionLogs$TransactionData.getTemporaryFiles(TransactionLogs.java:338)
+[junit]     at org.apache.cassandra.db.lifecycle.TransactionLogs.getTemporaryFiles(TransactionLogs.java:739)
+[junit]     at org.apache.cassandra.db.lifecycle.LifecycleTransaction.getTemporaryFiles(LifecycleTransaction.java:541)
+[junit]     at org.apache.cassandra.db.Directories$SSTableLister.getFilter(Directories.java:652)
+[junit]     at org.apache.cassandra.db.Directories$SSTableLister.filter(Directories.java:641)
+[junit]     at org.apache.cassandra.db.Directories$SSTableLister.list(Directories.java:606)
+[junit]     at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:351)
+[junit]     at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:313)
+[junit]     at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:511)
+[junit]     at org.apache.cassandra.index.internal.CassandraIndexer.addIndexedColumn(CassandraIndexer.java:115)
+[junit]     at org.apache.cassandra.index.SecondaryIndexManager.addIndexedColumn(SecondaryIndexManager.java:265)
+[junit]     at org.apache.cassandra.db.SecondaryIndexTest.testIndexCreate(SecondaryIndexTest.java:467)
+[junit] Caused by: java.nio.file.NoSuchFileException: build/test/cassandra/data:1/SecondaryIndexTest1/CompositeIndexToBeAdded-d0885f60323211e5a5e8ad83a3dc3e9c/.birthdate_index/transactions/unknowncompactiontype_d4b69fc0-3232-11e5-a5e8-ad83a3dc3e9c_old.log
+[junit]     at sun.nio.fs.UnixException.translateToIOException(UnixException.java:86)
+[junit]     at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:102)
+[junit]     at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:107)
+[junit]     at sun.nio.fs.UnixFileSystemProvider.newByteChannel(UnixFileSystemProvider.java:214)
+[junit]     at java.nio.file.Files.newByteChannel(Files.java:361)
+[junit]     at java.nio.file.Files.newByteChannel(Files.java:407)
+[junit]     at java.nio.file.spi.FileSystemProvider.newInputStream(FileSystemProvider.java:384)
+[junit]     at java.nio.file.Files.newInputStream(Files.java:152)
+[junit]     at java.nio.file.Files.newBufferedReader(Files.java:2784)
+[junit]     at java.nio.file.Files.readAllLines(Files.java:3202)
+[junit]     at org.apache.cassandra.io.util.FileUtils.readLines(FileUtils.java:616)
+[junit] 
+[junit] 
+[junit] Test org.apache.cassandra.db.SecondaryIndexTest FAILED
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+3.0 beta 1
+Component:
+Legacy/Local Write-Read Paths
+Label:
+benedict-to-commit
+Environment:
+
+Attachment number:
+0
+Assignee:
+Stefania
+Reporter:
+Sam Tunnicliffe
+Create date:
+28/Jul/15 10:31
+Update date:
+16/Apr/19 09:31
+Resolved date:
+11/Aug/15 07:11

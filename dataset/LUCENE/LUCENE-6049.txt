@@ -1,0 +1,46 @@
+Summary:
+Cryptic exception if all docs in a segment hit non-aborting exceptions before adding their doc values
+Description:
+I hit this while working on LUCENE-6005:
+If you add a document with a single field that's both indexed and has doc values, and during inversion it hits a non-aborting exception, and all docs for a given segment had this happen, then you'll hit this confusing exception:
+java.lang.AssertionError: segment=_0(6.0.0):C2: field="test" has docValues but did not write them
+ at __randomizedtesting.SeedInfo.seed([21BFA52E65A19C81:3A824781C0F77629]:0)
+ at org.apache.lucene.index.DefaultIndexingChain.writeDocValues(DefaultIndexingChain.java:146)
+ at org.apache.lucene.index.DefaultIndexingChain.flush(DefaultIndexingChain.java:93)
+ at org.apache.lucene.index.DocumentsWriterPerThread.flush(DocumentsWriterPerThread.java:440)
+ at org.apache.lucene.index.DocumentsWriter.doFlush(DocumentsWriter.java:511)
+ at org.apache.lucene.index.DocumentsWriter.flushAllThreads(DocumentsWriter.java:622)
+ at org.apache.lucene.index.IndexWriter.doFlush(IndexWriter.java:3016)
+ at org.apache.lucene.index.IndexWriter.flush(IndexWriter.java:2992)
+ at org.apache.lucene.index.IndexWriter.shutdown(IndexWriter.java:946)
+ at org.apache.lucene.index.IndexWriter.close(IndexWriter.java:991)
+ at org.apache.lucene.index.TestDocValuesIndexing.testExcIndexingDocBeforeDocValues(TestDocValuesIndexing.java:927)
+The good news here is that exception is new from LUCENE-6019 and it prevents this case from causing index corruption, but the bad news is, you shouldn't even get an exception writing the segment in the first place.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+4.10.3, 5.0, 6.0
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+05/Nov/14 09:56
+Update date:
+09/May/16 18:35
+Resolved date:
+08/Nov/14 09:17

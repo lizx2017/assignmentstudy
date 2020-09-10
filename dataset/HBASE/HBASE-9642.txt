@@ -1,0 +1,45 @@
+Summary:
+AM ZK Workers stuck doing 100% CPU on HashMap.put
+Description:
+I just noticed on my test cluster that my master is using all my CPUs even though it's completely idle. 5 threads are doing this:
+"AM.ZK.Worker-pool2-t34" daemon prio=10 tid=0x00007f68ac176800 nid=0x5251 runnable [0x00007f688cc83000]
+   java.lang.Thread.State: RUNNABLE
+ at java.util.HashMap.put(HashMap.java:374)
+ at org.apache.hadoop.hbase.master.AssignmentManager.handleRegion(AssignmentManager.java:954)
+ at org.apache.hadoop.hbase.master.AssignmentManager$6.run(AssignmentManager.java:1419)
+ at org.apache.hadoop.hbase.master.AssignmentManager$3.run(AssignmentManager.java:1247)
+ at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:439)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:895)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:918)
+Looking at the code, I see HBASE-9095 introduced two HashMaps for tests only but they end up being used concurrently in the AM and are never cleaned up. It seems to me that any master running since that patch was committed has a time bomb in it.
+I'm marking this as a blocker. Devaraj Das and Jimmy Xiang, you guys wanna take a look at this?
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.96.0
+Fix_version:
+0.98.0, 0.96.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Devaraj Das
+Reporter:
+Jean-Daniel Cryans
+Create date:
+24/Sep/13 01:06
+Update date:
+20/Nov/15 11:53
+Resolved date:
+24/Sep/13 21:05

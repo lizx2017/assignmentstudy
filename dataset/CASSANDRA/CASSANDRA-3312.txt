@@ -1,0 +1,73 @@
+Summary:
+need initClause when catch Exception and throw new Exception in cli
+Description:
+through CASSANDRA-2746 , we added initCause to the Cli such that we could see more meaningful exception stacktrace when certain exception is thrown.
+However, there are still some other area, eg:
+executeGetWithConditions(Tree)
+executeSet(Tree)
+executeIncr(Tree, long)
+etc etc...
+basically any time you do a
+            {
+                throw new RuntimeException(e.getMessage());
+            }
+the real exception is lost. The right approach should be:
+        catch (Exception e)
+        {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+eg: i was getting this:
+null
+java.lang.RuntimeException
+at org.apache.cassandra.cli.CliClient.executeCLIStatement(CliClient.java:310)
+at org.apache.cassandra.cli.CliMain.processStatement(CliMain.java:217)
+at org.apache.cassandra.cli.CliMain.main(CliMain.java:345)
+Caused by: java.lang.RuntimeException
+at org.apache.cassandra.cli.CliClient.executeGetWithConditions(CliClient.java:815)
+at org.apache.cassandra.cli.CliClient.executeCLIStatement(CliClient.java:208)
+... 2 more
+but i have no idea what the problem is with just the above stack trace.
+with the fix, this would tell us more:
+null
+java.lang.RuntimeException
+at org.apache.cassandra.cli.CliClient.executeCLIStatement(CliClient.java:310)
+at org.apache.cassandra.cli.CliMain.processStatement(CliMain.java:217)
+at org.apache.cassandra.cli.CliMain.main(CliMain.java:345)
+Caused by: java.lang.RuntimeException
+at org.apache.cassandra.cli.CliClient.executeGetWithConditions(CliClient.java:815)
+at org.apache.cassandra.cli.CliClient.executeCLIStatement(CliClient.java:208)
+... 2 more
+Caused by: UnavailableException()
+at org.apache.cassandra.thrift.Cassandra$get_indexed_slices_result.read(Cassandra.java:14065)
+at org.apache.cassandra.thrift.Cassandra$Client.recv_get_indexed_slices(Cassandra.java:810)
+at org.apache.cassandra.thrift.Cassandra$Client.get_indexed_slices(Cassandra.java:782)
+at org.apache.cassandra.cli.CliClient.executeGetWithConditions(CliClient.java:806)
+... 3 more
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+satish babu krishnamoorthy
+Reporter:
+Jackson Chung
+Create date:
+05/Oct/11 02:22
+Update date:
+16/Apr/19 09:32
+Resolved date:
+05/Oct/11 11:14

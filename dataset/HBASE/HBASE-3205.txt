@@ -1,0 +1,63 @@
+Summary:
+TableRecordReaderImpl.restart NPEs when first next is restarted
+Description:
+We got this pretty interesting NPE out of TableRecordReaderImpl.restart on a job that was filtering more than 99% of the data from a very huge table with caching set to 10k:
+2010-11-08 13:08:22,344 DEBUG org.apache.hadoop.hbase.mapreduce.TableRecordReader:
+ recovered from org.apache.hadoop.hbase.client.ScannerTimeoutException:
+ 61521ms passed since the last invocation, timeout is currently set to 60000
+ at org.apache.hadoop.hbase.client.HTable$ClientScanner.next(HTable.java:956)
+ at org.apache.hadoop.hbase.mapreduce.TableRecordReaderImpl.nextKeyValue(TableRecordReaderImpl.java:132)
+ at org.apache.hadoop.hbase.mapreduce.TableRecordReader.nextKeyValue(TableRecordReader.java:142)
+...
+ at org.apache.hadoop.mapred.Child.main(Child.java:170)
+Caused by: org.apache.hadoop.hbase.UnknownScannerException: org.apache.hadoop.hbase.UnknownScannerException:
+ Scanner was closed (timed out?) after we renewed it. Could be caused by a very slow scanner or a lengthy garbage collection
+ at org.apache.hadoop.hbase.regionserver.HRegion$RegionScanner.next(HRegion.java:2233)
+ at org.apache.hadoop.hbase.regionserver.HRegion$RegionScanner.next(HRegion.java:2260)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.next(HRegionServer.java:1933)
+...
+ at org.apache.hadoop.hbase.client.ScannerCallable.call(ScannerCallable.java:81)
+ at org.apache.hadoop.hbase.client.ScannerCallable.call(ScannerCallable.java:37)
+ at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.getRegionServerWithRetries(HConnectionManager.java:1138)
+ at org.apache.hadoop.hbase.client.HTable$ClientScanner.next(HTable.java:942)
+ ... 8 more
+
+2010-11-08 13:08:22,347 WARN org.apache.hadoop.mapred.TaskTracker: Error running child
+java.lang.NullPointerException
+ at org.apache.hadoop.hbase.util.Bytes.toStringBinary(Bytes.java:301)
+ at org.apache.hadoop.hbase.client.HTable$ClientScanner.<init>(HTable.java:803)
+ at org.apache.hadoop.hbase.client.HTable.getScanner(HTable.java:484)
+ at org.apache.hadoop.hbase.mapreduce.TableRecordReaderImpl.restart(TableRecordReaderImpl.java:58)
+ at org.apache.hadoop.hbase.mapreduce.TableRecordReaderImpl.nextKeyValue(TableRecordReaderImpl.java:135)
+...
+ at org.apache.hadoop.mapred.Child.main(Child.java:170)
+2010-11-08 13:08:22,349 INFO org.apache.hadoop.mapred.TaskRunner
+This is because the last row key we saw is set to null, since we haven't seen any yet
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.89.20100924
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+08/Nov/10 21:16
+Update date:
+12/Oct/12 06:17
+Resolved date:
+08/Nov/10 22:42

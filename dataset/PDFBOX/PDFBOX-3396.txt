@@ -1,0 +1,75 @@
+Summary:
+flattening AcroForm with visible sign field ETSI.CAdES.detached
+Description:
+Hallo,
+I've got a problem with the flattaning function of AcroForm class of a PDSignatureField. I've a signed pdf document with ETSI.CAdES.detached visible image at bottom of the file. I want to flattan the PDSignatureField of the sign to eliminate sign cryptography element of the field and to embad the sign marker immage of the sign, in the same position of the original immage that is a part of the marker sign ETSI.CAdES.detached. I try this way(pseudo code similare to real code):
+PDDocument pdDoc = PDDocument.load("signed-document.pdf");
+
+PDDocumentCatalog pdCatalog = pdDoc.getDocumentCatalog();
+PDAcroForm acroForm = pdCatalog.getAcroForm();
+
+List<PDField> fields = acroForm.getFields();
+
+fields.stream().filter(pf -> pf.getFieldType().toLowerCase().contains("sig")).forEach(pf -> {
+try {
+      PDSignatureField pfs = ((PDSignatureField)(pf));
+      
+       log.info("START remove Sign Flags");
+       pfs.setReadOnly(true);
+       pfs.setRequired(false);
+       pfs.setNoExport(true);
+       log.info("END remove Sign Flags");
+       
+       log.info("START flatten field");
+       pfs.getAcroForm().flatten();
+       pfs.getAcroForm().refreshAppearances();
+       log.info("END flatten field");
+     
+} catch (Exception ex) {
+   log.error("flattenFile --> Error: " + ex.getMessage());
+   throw new RuntimeException(ex);
+}
+});
+
+ByteArrayOutputStream baos = new ByteArrayOutputStream();
+pdDoc.save(baos);
+.
+.
+.
+At the and of the process, the pdf file in output, has no sign cryptography element, but the visible marker immage of the sign is placed in a wrong position, on top of sign above paragraph of the document and not in original position of the signed marker immage. That's happen when i call the following method:
+       pfs.getAcroForm().flatten();
+In other words, the flattened pdf of the original signed pdf, has in a correct way no more sign inside but, the immage of the ETSI.CAdES.detached signe is embedded in a wrong position, over the text of the nearest above paragraph of the pdf document.
+My questions are:
+1-My way, is the correct way to flattan a signed ETSI.CAdES.detached file?
+2-Is there a method to remove CadES/PadES sign with a official visible marker image and, embad immage in the acctual original position in pdf file?
+Thank you for your support and sorry for my poor English.
+Best regards,
+Fabio Evangelista
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+2.0.1, 2.0.2
+Fix_version:
+2.0.4, 3.0.0 PDFBox
+Component:
+AcroForm
+Label:
+None
+Environment:
+java 1.8
+Attachment number:
+0
+Assignee:
+Maruan Sahyoun
+Reporter:
+Fabio
+Create date:
+23/Jun/16 14:05
+Update date:
+25/Mar/17 18:12
+Resolved date:
+12/Dec/16 06:01

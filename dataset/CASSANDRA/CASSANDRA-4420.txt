@@ -1,0 +1,104 @@
+Summary:
+Possible schema corruption with cql 3.0
+Description:
+Hi,
+i've got some problems while creating schemas with cql 3.0. After that i can't even start cassandra anymore.
+Following steps for reproduction were done on a new installation of cassandra:
+1. simply create a keyspace test via "cqlsh -3"
+create keyspace test with strategy_class = 'SimpleStrategy' and strategy_options:replication_factor = 1;
+2. add cf with composite columns via "cqlsh -3"
+create table test1 (
+a int,
+b int,
+c int,
+d int,
+primary key (a, b, c)
+);
+3. drop column family
+drop columnfamily test1;
+So until now everything went fine. Now i'm trying to insert a slightly modified column family with the same name above.
+4. create new cf via "cqlsh -3"
+create table test1 (
+a int,
+b int,
+c int,
+primary key (a, b)
+);
+This creation fails with following exception:
+java.lang.IndexOutOfBoundsException: Index: 2, Size: 2
+at java.util.ArrayList.RangeCheck(ArrayList.java:547)
+at java.util.ArrayList.get(ArrayList.java:322)
+at org.apache.cassandra.config.CFMetaData.getColumnDefinitionComparator(CFMetaData.java:1280)
+at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:256)
+at org.apache.cassandra.config.CFMetaData.addColumnDefinitionSchema(CFMetaData.java:1293)
+at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1225)
+at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:294)
+at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:275)
+at org.apache.cassandra.db.DefsTable.loadFromTable(DefsTable.java:158)
+at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:535)
+at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:182)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:353)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:106)
+Now at this point you can't do anything anymore via cql or cli. Shutting down and starting cassandra again throws same exceptions:
+ERROR 14:48:41,705 Exception encountered during startup
+java.lang.IndexOutOfBoundsException: Index: 2, Size: 2
+at java.util.ArrayList.RangeCheck(ArrayList.java:547)
+at java.util.ArrayList.get(ArrayList.java:322)
+at org.apache.cassandra.config.CFMetaData.getColumnDefinitionComparator(CFMetaData.java:1280)
+at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:256)
+at org.apache.cassandra.config.CFMetaData.addColumnDefinitionSchema(CFMetaData.java:1293)
+at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1225)
+at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:294)
+at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:275)
+at org.apache.cassandra.db.DefsTable.loadFromTable(DefsTable.java:158)
+at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:535)
+at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:182)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:353)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:106)
+java.lang.IndexOutOfBoundsException: Index: 2, Size: 2Exception encountered during startup: Index: 2, Size: 2
+at java.util.ArrayList.RangeCheck(ArrayList.java:547)
+at java.util.ArrayList.get(ArrayList.java:322)
+at org.apache.cassandra.config.CFMetaData.getColumnDefinitionComparator(CFMetaData.java:1280)
+at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:256)
+at org.apache.cassandra.config.CFMetaData.addColumnDefinitionSchema(CFMetaData.java:1293)
+at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1225)
+at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:294)
+at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:275)
+at org.apache.cassandra.db.DefsTable.loadFromTable(DefsTable.java:158)
+at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:535)
+at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:182)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:353)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:106)
+Actually it's the result of a slightly different problem in combination with composite columns, but i will describe this later.
+I've got no idea, what the problem is, there might be some corruption in table schemas, even after dropping tables.
+I have to delete cassandra data in order to get cassandra running again.
+Best Regards
+Bert Passek
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+bert Passek
+Create date:
+06/Jul/12 12:53
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Jul/12 11:11

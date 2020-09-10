@@ -1,0 +1,71 @@
+Summary:
+DatabaseDescriptor throws NPE when rpc_interface is used
+Description:
+Copy from mail to dev mailinglist.
+When using
+listen_interface instead of listen_address
+rpc_interface instead of rpc_address
+starting 2.1.3 throws an NPE:
+ERROR [main] 2015-02-20 07:50:09,661 DatabaseDescriptor.java:144 - Fatal error during configuration loading
+java.lang.NullPointerException: null
+        at org.apache.cassandra.config.DatabaseDescriptor.applyConfig(DatabaseDescriptor.java:411) ~[apache-cassandra-2.1.3.jar:2.1.3]
+        at org.apache.cassandra.config.DatabaseDescriptor.<clinit>(DatabaseDescriptor.java:133) ~[apache-cassandra-2.1.3.jar:2.1.3]
+        at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:110) [apache-cassandra-2.1.3.jar:2.1.3]
+        at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:465) [apache-cassandra-2.1.3.jar:2.1.3]
+        at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:554) [apache-cassandra-2.1.3.jar:2.1.3]
+Occurs on debian package as well as in tar.gz distribution.
+/* Local IP, hostname or interface to bind RPC server to */
+if(conf.rpc_address !=null&& conf.rpc_interface !=null)
+{
+    throw newConfigurationException("Set rpc_address OR rpc_interface, not both");
+}
+else if(conf.rpc_address !=null)
+{
+    try
+    {
+        rpcAddress = InetAddress.getByName(conf.rpc_address);
+    }
+    catch(UnknownHostException e)
+    {
+        throw newConfigurationException("Unknown host in rpc_address "+ conf.rpc_address);
+    }
+}
+else if(conf.rpc_interface !=null)
+{
+    listenAddress = getNetworkInterfaceAddress(conf.rpc_interface,"rpc_interface");
+}
+else
+{
+    rpcAddress = FBUtilities.getLocalAddress();
+}
+I think that listenAddress in the second else block is an error. In my case rpc_interface is eth0, so listenAddress gets set, and rpcAddress remains unset. The result is NPE in line 411:
+if(rpcAddress.isAnyLocalAddress())
+After changing rpc_interface to rpc_address everything works as expected.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+Local/Config
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ariel Weisberg
+Reporter:
+Jan Kesten
+Create date:
+20/Feb/15 08:37
+Update date:
+16/Apr/19 09:31
+Resolved date:
+17/Mar/15 18:34

@@ -1,0 +1,55 @@
+Summary:
+Record the real messaging version in all cases in OutboundTcpConnection
+Description:
+Piotr's quote, from CASSANDRA-6700 description:
+IncomingTcpConnection#handleModernVersion sets version to min(my version, version of the peer). This messes up schema pull/push.
+Seems like we've missed a similar, yet related, case in OutboundTcpConnection#connect():
+if (targetVersion < maxTargetVersion && targetVersion < MessagingService.current_version)
+{
+    logger.trace("Detected higher max version {} (using {}); will reconnect when queued messages are done",
+            maxTargetVersion, targetVersion);
+    MessagingService.instance().setVersion(poolReference.endPoint(), Math.min(MessagingService.current_version, maxTargetVersion));
+    softCloseSocket();
+}
+Should really set the true version (maxTargetVersion), since MessagingService#getVersion() will return the min for us, anyway:
+public int getVersion(InetAddress endpoint)
+{
+    Integer v = versions.get(endpoint);
+    if (v == null)
+    {
+        // we don't know the version. assume current. we'll know soon enough if that was incorrect.
+        logger.trace("Assuming current protocol version for {}", endpoint);
+        return MessagingService.current_version;
+    }
+    else
+        return Math.min(v, MessagingService.current_version);
+}
+But we need the true version for schema exchange decisions.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.11, 2.1.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Aleksey Yeschenko
+Create date:
+04/Oct/14 14:39
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Oct/14 15:46

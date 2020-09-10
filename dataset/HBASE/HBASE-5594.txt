@@ -1,0 +1,47 @@
+Summary:
+Unable to stop a master that's waiting on -ROOT- during initialization
+Description:
+We just had a case where the master (that was just restarted) was having a hard time assigning ROOT (all the PRI handlers were full already) so we tried to shutdown the cluster and even though all the RS closed down properly the master kept running being blocked on:
+"master-sv4r20s12,10302,1331916142866" prio=10 tid=0x00007f3708008800 nid=0x4b20 in Object.wait() [0x00007f370d1d0000]
+   java.lang.Thread.State: WAITING (on object monitor)
+ at java.lang.Object.wait(Native Method)
+ - waiting on <0x00000006030be3f8> (a org.apache.hadoop.hbase.zookeeper.RootRegionTracker)
+ at java.lang.Object.wait(Object.java:485)
+ at org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker.blockUntilAvailable(ZooKeeperNodeTracker.java:131)
+ - locked <0x00000006030be3f8> (a org.apache.hadoop.hbase.zookeeper.RootRegionTracker)
+ at org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker.blockUntilAvailable(ZooKeeperNodeTracker.java:104)
+ - locked <0x00000006030be3f8> (a org.apache.hadoop.hbase.zookeeper.RootRegionTracker)
+ at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForRoot(CatalogTracker.java:313)
+ at org.apache.hadoop.hbase.master.HMaster.assignRootAndMeta(HMaster.java:571)
+ at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:501)
+ at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:336)
+ at java.lang.Thread.run(Thread.java:662)
+I haven't checked the 0.90 code, we got this on 0.92.1
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.1
+Fix_version:
+0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jean-Daniel Cryans
+Create date:
+16/Mar/12 16:56
+Update date:
+23/Sep/13 18:31
+Resolved date:
+22/Mar/12 00:05

@@ -1,0 +1,38 @@
+Summary:
+Ignores char spacing (Tc) and word space (Tw) when rendering PDFs to images
+Description:
+When PDFStreamEngine parses encoded text the resulting rendering to an image does not apply the char spacing (Tc) and word spacing (Tw) through the callbacks to processTextPosition. This is because it passes the complete string block and a individual character width array. The character and word spacings are applied correctly to the matrix calculations however and so all the relevant information is available.
+The problem when writing PDFs to images occurs because text being rendered is issued through calls to AWT Font classes, these do not apply the character and word spacings across a whole string block. For example a PDF I have which has the text fully justified has been rendered so that the line is split into three blocks (arbitary positions in words) each block having a different word spacing. When rendered this comes out with three bocks of text with large gaps in between (or even over writing each other if the character spacing was used to compress the rendered string).
+Having read through the PDF spec it would seem that each glyph should be rendered separately calculating the next ones position taking into account the character and word spacing. To achieve this the attached patch modifies the behaviour of PDFStreamEngine to fire a single processTextPosition event for each character taken from the encoded string. This may or may not make the need for the individual widths array redundant but it has been preserved for backward compatability, as has the string buffer containing the resulting string (which would now only need to contain one character). So both these can be optimiized to a length of one and still preserve backward compatability (this patch does not include that change).
+There is also a patch for PageDrawer itself which i'm not entirely sure if its necessary or not. It makes a minor adjustment to how the AffineTransform is calculated, removing two lines which previosuly were altering the text positions matrix. I made this change as I couldnt see why this was being done so more of an experiment. I could see any difference at first but on closer inspection I see minor changes to some characters positions (when used with the other patch). So together it might give an even closer rendering.
+An alternative approach may be to make the page drawer render each character from the text position offsetting each one using the individual widths as it goes. However noting the behaviour of the second patch that may lead to slightly inaccurate renderings again, so very hard to tell with experimenting and very close examination of the results.
+This may be related to issue PDFBOX-508 which was specifical looking at lost space during text extraction
+I have also looked at text extraction incase this was effecting operations like combining diacritics. This was in case the actual positions of characters may be off slightly when calculating location using the individual character width array as opposed to the glyphs position as it should be rendered. As it stores the calculated glyph position which is subsequently summed whilst scanning the string to look for possible overlaps they should result in the same answer. However this patch means that last text position processed may not be the one to check for the overlap in anymore. Based on a line containing multiple text blocks this is probably true of the normal case anyway so probably needs separate attention.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.8.0-incubator
+Fix_version:
+1.0.0
+Component:
+Utilities, Writing
+Label:
+None
+Environment:
+java
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Antony Scerri
+Create date:
+08/Sep/09 17:18
+Update date:
+22/Feb/10 18:27
+Resolved date:
+18/Dec/09 16:49

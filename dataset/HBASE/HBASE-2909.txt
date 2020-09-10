@@ -1,0 +1,54 @@
+Summary:
+SoftValueSortedMap is broken, can generate NPEs
+Description:
+The way SoftValueSortedMap is using SoftValues, it looks like that it's able to get it's keys garbage collected along with the values themselves. We got this issue in production but I was also able to randomly generate it using YCSB with 300 threads. Here's an example on 0.20 with jdk 1.6u14:
+java.lang.NullPointerException
+        at org.apache.hadoop.hbase.util.Bytes.compareTo(Bytes.java:1036)
+        at org.apache.hadoop.hbase.util.Bytes$ByteArrayComparator.compare(Bytes.java:104)
+        at org.apache.hadoop.hbase.util.Bytes$ByteArrayComparator.compare(Bytes.java:96)
+        at java.util.TreeMap.cmp(TreeMap.java:1911)
+        at java.util.TreeMap.get(TreeMap.java:1835)
+        at org.apache.hadoop.hbase.util.SoftValueSortedMap.get(SoftValueSortedMap.java:91)
+        at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.getCachedLocation(HConnectionManager.java:788)
+        at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.locateRegionInMeta(HConnectionManager.java:651)
+        at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.locateRegion(HConnectionManager.java:634)
+        at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.locateRegion(HConnectionManager.java:601)
+        at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:128)
+        at org.apache.hadoop.hbase.thrift.ThriftServer$HBaseHandler.getTable(ThriftServer.java:262)
+        at org.apache.hadoop.hbase.thrift.ThriftServer$HBaseHandler.mutateRowTs(ThriftServer.java:585)
+        at org.apache.hadoop.hbase.thrift.ThriftServer$HBaseHandler.mutateRow(ThriftServer.java:578)
+        at org.apache.hadoop.hbase.thrift.generated.Hbase$Processor$mutateRow.process(Hbase.java:2345)
+        at org.apache.hadoop.hbase.thrift.generated.Hbase$Processor.process(Hbase.java:1988)
+        at org.apache.thrift.server.TThreadPoolServer$WorkerProcess.run(TThreadPoolServer.java:259)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:619)
+In this specific case, the null cannot be the passed key because it's coming from HTable which uses HConstants.EMPTY_START_ROW. It cannot be a null key that was inserted previously because we would have got the NPE at insert time. This can only mean that some key became null.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.20.6, (1)
+Fix_version:
+0.90.0
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+11/Aug/10 21:07
+Update date:
+20/Nov/15 12:42
+Resolved date:
+13/Aug/10 22:11

@@ -1,0 +1,103 @@
+Summary:
+HBase Out of Memory when the java client connect to the hbase server first time
+Description:
+I installed the hbase and hadoop under the Pseudo-Distributed mode:
+I configure the server side with following configuration:
+hadoop: core-site.xml
+<property>
+<name>fs.default.name</name>
+<value>hdfs://cluster1.office:9000</value>
+</property>
+hadoop:mapred-site.xml
+<property>
+<name>mapred.job.tracker</name>
+<value>localhost:9001</value>
+</property>
+hadoop:hdfs-site.xml
+<property>
+<name>dfs.replication</name>
+<value>1</value>
+</property>
+hbase:hbase-site.xml
+<property>
+<name>hbase.rootdir</name>
+<value>hdfs://cluster1.office:9000/hbase</value>
+<description>The directory shared by region servers.
+</description>
+</property>
+I configure my client side(this is not in the same server as the server side) with following configuration:
+<property>
+<name>hbase.rootdir</name>
+<value>hdfs://cluster1.office/hbase</value>
+</property>
+<property>
+<name>hbase.zookeeper.quorum</name>
+<value>cluster1.office</value>
+</property>
+And then I connect to server side by java API described in the following page:
+http://hbase.apache.org/docs/current/api/org/apache/hadoop/hbase/client/package-summary.html#package_description
+Unfortunately I get the Out of memory error:
+2010-08-04 17:57:49,636 INFO org.apache.hadoop.hbase.regionserver.HRegion: Starting compaction on region ROOT,,0
+2010-08-04 17:57:49,686 INFO org.apache.hadoop.hbase.master.ServerManager: 1 region servers, 0 dead, average load 4.0
+2010-08-04 17:57:49,815 DEBUG org.apache.hadoop.hbase.regionserver.Store: Compaction size of info: 4.0k; Skipped 1 file(s), size: 1849
+2010-08-04 17:57:49,815 INFO org.apache.hadoop.hbase.regionserver.Store: Started compaction of 4 file(s) in info of ROOT,,0 into /hbase/ROOT/compaction.dir/70236052, seqid=112
+2010-08-04 17:57:49,921 INFO org.apache.hadoop.hbase.regionserver.Store: Completed compaction of 4 file(s) in info of ROOT,,0; new storefile is hdfs://cluster1.jsw.office:9000/hbase/ROOT/70236052/info/1636337967443011476; store size is 3.0k
+2010-08-04 17:57:49,926 INFO org.apache.hadoop.hbase.regionserver.HRegion: compaction completed on region ROOT,,0 in 0sec
+2010-08-04 17:57:49,926 INFO org.apache.hadoop.hbase.regionserver.HRegion: Starting compaction on region .META.,,1
+2010-08-04 17:57:49,928 DEBUG org.apache.hadoop.hbase.regionserver.Store: historian: no store files to compact
+2010-08-04 17:57:49,937 DEBUG org.apache.hadoop.hbase.regionserver.Store: Compaction size of info: 5.5k; Skipped 0 file(s), size: 0
+2010-08-04 17:57:49,937 INFO org.apache.hadoop.hbase.regionserver.Store: Started compaction of 5 file(s) in info of .META.,,1 into /hbase/.META./compaction.dir/1028785192, seqid=116
+2010-08-04 17:57:50,000 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scanning meta region
+{server: 192.168.1.81:39859, regionname: -ROOT-,,0, startKey: <>}
+2010-08-04 17:57:50,037 INFO org.apache.hadoop.hbase.regionserver.Store: Completed compaction of 5 file(s) in info of .META.,,1; new storefile is hdfs://cluster1.jsw.office:9000/hbase/.META./1028785192/info/254940474272935789; store size is 4.0k
+2010-08-04 17:57:50,045 INFO org.apache.hadoop.hbase.regionserver.HRegion: compaction completed on region .META.,,1 in 0sec
+2010-08-04 17:57:50,053 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scan of 1 row(s) of meta region
+{server: 192.168.1.81:39859, regionname: -ROOT-,,0, startKey: <>}
+complete
+2010-08-04 17:57:57,278 FATAL org.apache.hadoop.hbase.regionserver.HRegionServer: OutOfMemoryError, aborting.
+java.lang.OutOfMemoryError: Java heap space
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Invocation.readFields(HBaseRPC.java:175)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Connection.processData(HBaseServer.java:867)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Connection.readAndProcess(HBaseServer.java:835)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Listener.doRead(HBaseServer.java:419)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Listener.run(HBaseServer.java:318)
+2010-08-04 17:57:57,279 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Dump of metrics: request=0.0, regions=4, stores=5, storefiles=4, storefileIndexSize=0, memstoreSize=0, compactionQueueSize=0, usedHeap=23, maxHeap=695, blockCacheSize=1208688, blockCacheFree=144726880, blockCacheCount=11, blockCacheHitRatio=82, fsReadLatency=0, fsWriteLatency=0, fsSyncLatency=0
+2010-08-04 17:57:57,279 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server listener on 39859: exiting on OOME
+2010-08-04 17:57:57,793 INFO org.apache.hadoop.ipc.HBaseServer: Stopping server on 39859
+2010-08-04 17:57:57,794 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 24 on 39859: exiting
+2010-08-04 17:57:57,794 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 0 on 39859: exiting
+2010-08-04 17:57:57,794 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 2 on 39859: exiting
+2010-08-04 17:57:57,794 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 20 on 39859: exiting
+2010-08-04 17:57:57,795 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 21 on 39859: exiting
+2010-08-04 17:57:57,795 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Stopping infoServer
+2010-08-04 17:57:57,796 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 1 on 39859: exiting
+2010-08-04 17:57:57,796 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 3 on 39859: exiting
+2010-08-04 17:57:57,796 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 4 on 39859: exiting
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+0.20.5
+Fix_version:
+None
+Component:
+IPC/RPC
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+wei.zhang
+Create date:
+05/Aug/10 01:41
+Update date:
+05/Aug/10 07:03
+Resolved date:
+05/Aug/10 05:40

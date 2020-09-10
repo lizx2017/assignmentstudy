@@ -1,0 +1,56 @@
+Summary:
+Race between SplitRegionHandlers for the same region kills the master
+Description:
+I just saw that multiple SplitRegionHandlers can be created for the same region because of the RS tickling, but it becomes deadly when more than 1 are trying to delete the znode at the same time:
+2011-11-16 02:25:28,778 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_SPLIT, server=sv4r7s38,62023,1321410237387, region=f80b6a904048a99ce88d61420b8906d1
+2011-11-16 02:25:28,780 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_SPLIT, server=sv4r7s38,62023,1321410237387, region=f80b6a904048a99ce88d61420b8906d1
+2011-11-16 02:25:28,796 DEBUG org.apache.hadoop.hbase.master.handler.SplitRegionHandler: Handling SPLIT event for f80b6a904048a99ce88d61420b8906d1; deleting node
+2011-11-16 02:25:28,798 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:62003-0x132f043bbde094b Deleting existing unassigned node for f80b6a904048a99ce88d61420b8906d1 that is in expected state RS_ZK_REGION_SPLIT
+2011-11-16 02:25:28,804 DEBUG org.apache.hadoop.hbase.master.handler.SplitRegionHandler: Handling SPLIT event for f80b6a904048a99ce88d61420b8906d1; deleting node
+2011-11-16 02:25:28,806 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:62003-0x132f043bbde094b Deleting existing unassigned node for f80b6a904048a99ce88d61420b8906d1 that is in expected state RS_ZK_REGION_SPLIT
+2011-11-16 02:25:28,821 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:62003-0x132f043bbde094b Successfully deleted unassigned node for region f80b6a904048a99ce88d61420b8906d1 in expected state RS_ZK_REGION_SPLIT
+2011-11-16 02:25:28,821 INFO org.apache.hadoop.hbase.master.handler.SplitRegionHandler: Handled SPLIT report); parent=TestTable,0000006304,1321409743253.f80b6a904048a99ce88d61420b8906d1. daughter a=TestTable,0000006304,1321410325564.e0f5d201683bcabe14426817224334b8.daughter b=TestTable,0000007054,1321410325564.1b82eeb5d230c47ccc51c08256134839.
+2011-11-16 02:25:28,829 WARN org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper: Node /hbase/unassigned/f80b6a904048a99ce88d61420b8906d1 already deleted, and this is not a retry
+2011-11-16 02:25:28,830 FATAL org.apache.hadoop.hbase.master.HMaster: Error deleting SPLIT node in ZK for transition ZK node (f80b6a904048a99ce88d61420b8906d1)
+org.apache.zookeeper.KeeperException$NoNodeException: KeeperErrorCode = NoNode for /hbase/unassigned/f80b6a904048a99ce88d61420b8906d1
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:102)
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:42)
+at org.apache.zookeeper.ZooKeeper.delete(ZooKeeper.java:728)
+at org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper.delete(RecoverableZooKeeper.java:107)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.deleteNode(ZKUtil.java:884)
+at org.apache.hadoop.hbase.zookeeper.ZKAssign.deleteNode(ZKAssign.java:506)
+at org.apache.hadoop.hbase.zookeeper.ZKAssign.deleteNode(ZKAssign.java:453)
+at org.apache.hadoop.hbase.master.handler.SplitRegionHandler.process(SplitRegionHandler.java:95)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:168)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Stack and I came up with the solution that we need just manage that exception because handleSplitReport is an in-memory thing.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+Jean-Daniel Cryans
+Create date:
+16/Nov/11 02:46
+Update date:
+20/Nov/15 11:53
+Resolved date:
+10/Dec/11 00:15

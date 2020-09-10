@@ -1,0 +1,47 @@
+Summary:
+[Stargate] Unable to delete column families
+Description:
+When trying to delete a column family using Stargate, the following occurs (curl command + Stargate logging):
+> curl http://localhost:8080/books/ff417a5b-c4d0-4a43-b1c7-94c356fe0b72/attribute/5426359469582345882 -X DELETE
+—
+10/01/13 18:57:38 DEBUG stargate.RowResource: DELETE http://localhost:8080/books/ff417a5b-c4d0-4a43-b1c7-94c356fe0b72/attribute/5426359469582345882
+10/01/13 18:57:38 DEBUG stargate.RowResource: DELETE row=ff417a5b-c4d0-4a43-b1c7-94c356fe0b72, ts=9223372036854775807, families=
+{(family=attribute, keyvalues=(ff417a5b-c4d0-4a43-b1c7-94c356fe0b72/attribute:/5426359469582345882/DeleteColumn/vlen=0)}
+—
+> curl http://localhost:8080/books/ff417a5b-c4d0-4a43-b1c7-94c356fe0b72/attribute:/5426359469582345882 -X DELETE
+—
+10/01/13 18:57:49 DEBUG stargate.RowResource: DELETE http://localhost:8080/books/ff417a5b-c4d0-4a43-b1c7-94c356fe0b72/attribute:/5426359469582345882
+10/01/13 18:57:49 DEBUG stargate.RowResource: DELETE row=ff417a5b-c4d0-4a43-b1c7-94c356fe0b72, ts=9223372036854775807, families=
+{(family=attribute, keyvalues=(ff417a5b-c4d0-4a43-b1c7-94c356fe0b72/attribute:/5426359469582345882/DeleteColumn/vlen=0)}
+—
+Both are attempting to delete columns instead of the intended action of deleting families. The problem occurs because RowResource.java (line 282) will always return a split of length 2, since RowSpec.java (line 122) appends a colon if it's missing.
+I've patched it so that a check will occur if the second split's (split[1]) length is 0 and acts accordingly. I'll attach the patch after I've run it against the test suite.
+P.S. It's my first time submitting a patch, so let me know if I screwed anything up.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.2
+Fix_version:
+0.20.3, 0.90.0
+Component:
+None
+Label:
+None
+Environment:
+ubuntu, java 1.6
+Attachment number:
+0
+Assignee:
+Greg Lu
+Reporter:
+Greg Lu
+Create date:
+14/Jan/10 00:44
+Update date:
+12/Oct/12 06:14
+Resolved date:
+14/Jan/10 01:39

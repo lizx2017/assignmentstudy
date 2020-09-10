@@ -1,0 +1,41 @@
+Summary:
+New APIs for Result, faster implementation for some calls
+Description:
+Our existing API for Result hasn't been given much love in the last year. In the mean time, inefficiencies in the existing implementation have come to light, causing issues with benchmarks. Furthermore, some people are finding the API both difficult to use as well as not useful enough (See: HBASE-1937).
+I propose the following new APIs:
+public List<KeyValue> getColumn(byte [] family, byte [] qualifier);
+public KeyValue getColumnLatest(byte [] family, byte [] qualifier);
+The implementation of these use a binary search on the underlying kvs array (which is sorted). I also have new implementations for
+public boolean containsColumn(byte [] family, byte [] qualifier);
+public byte [] getValue(byte [] family, byte [] qualifier);
+Which in the small case run faster, but in the big case seem to run a bit slower. That is if you call getValue() 10 times for a Result it will be faster with the new implementation, but if you call getValue() 100 times for the same Result it is faster using the old implementation. My tests indicated about 10% slower on 'getValue' 100x with an overall 1000x iteration on 1000 different Result objects. Considering most people use getValue() to retrieve named columns and iteration when the qualifier list is unknown I think this is a reasonable trade off.
+Along with the new API, there is a recommendation to use raw() to get the list of KeyValue objects for iteration. This increases the visibility of KeyValue, and also is much faster to iterate (4.9 times on my mini benchmark, 100 columns per Result, redone 1000 times on different Result objects).
+Given my recent major speed boost by changing YCSB to use the raw() interface, I think that this is a must have for 0.90.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.89.20100924
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ryan rawson
+Reporter:
+ryan rawson
+Create date:
+01/Oct/10 23:54
+Update date:
+12/Oct/12 06:17
+Resolved date:
+06/Oct/10 00:44

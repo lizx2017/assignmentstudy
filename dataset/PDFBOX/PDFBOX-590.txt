@@ -1,0 +1,78 @@
+Summary:
+PDFXrefStreamParser iterates when no elements are available
+Description:
+Exception:
+org.apache.pdfbox.exceptions.WrappedIOException
+at org.apache.pdfbox.pdfparser.PDFParser.parse(PDFParser.java:237)
+at mycompany....
+at java.lang.Thread.run(Thread.java:534)
+Caused by: java.util.NoSuchElementException
+at java.util.AbstractList$Itr.next(AbstractList.java:426)
+at org.apache.pdfbox.pdfparser.PDFXrefStreamParser.parse(PDFXrefStreamParser.java:115)
+at org.apache.pdfbox.cos.COSDocument.parseXrefStreams(COSDocument.java:538)
+at org.apache.pdfbox.pdfparser.PDFParser.parse(PDFParser.java:203)
+... 11 more
+PDF file: www.oppenheim.pl/plpl/_download/09_05_11_Archiv.pdf
+This is happening in the PDFXrefStreamParser.parse() method because there is no objIter.hasNext() test to protect the objIter.next() call on line 115. This is an outright bug.
+Specifically, the current code looks like so:
+public void parse() throws IOException {
+...
+Iterator objIter = objNums.iterator(); //<------- here we create the Iterator
+/*
+Calculating the size of the line in bytes
+*/
+int w0 = xrefFormat.getInt(0);
+int w1 = xrefFormat.getInt(1);
+int w2 = xrefFormat.getInt(2);
+int lineSize = w0 + w1 + w2;
+while(pdfSource.available() > 0)
+{
+byte[] currLine = new byte[lineSize];
+pdfSource.read(currLine);
+int type = 0;
+/*
+Grabs the number of bytes specified for the first column in
+the W array and stores it.
+*/
+for(int i = 0; i < w0; i++) { type += (currLine[i] & 0x00ff) << ((w0 - i - 1)* 8); }
+//Need to remember the current objID
+Integer objID = (Integer)objIter.next(); //<---- here we attempt to pull objects out of it.
+/*
+3 different types of entries.
+*/
+switch(type) { // ... do stuff ... }
+}
+...
+}
+The code seems to be written with the assumption that if pdfSource.available() >0 that the object count will have another increment. That seems a bit vulnerable to corrupt streams. Further it is a logic error because the stream seems to contain lines of different types not processed as Xref objects. At least that seems clear from my cursory step through.
+I think it should be
+while(pdfSource.available() > 0 && objIter.hasNext())
+instead, so the call to next() returns the correct Integer when next() is called later on.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+1.0.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Phil Varner
+Create date:
+05/Jan/10 20:11
+Update date:
+11/Feb/10 11:08
+Resolved date:
+05/Jan/10 20:57

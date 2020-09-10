@@ -1,0 +1,83 @@
+Summary:
+ClassCastException in FlateFilter
+Description:
+[imported from SourceForge]
+http://sourceforge.net/tracker/index.php?group_id=78314&atid=552832&aid=1297272
+Originally submitted by yves_bussard on 2005-09-20 22:35.
+Hi Ben,
+There is another Bug in FlateFilter.decode(). Let's
+have a look at the following stream in the attached
+document:
+174 0 obj
+<<
+/Length 94
+/LayerCreator /Neevia
+/LayerID <c5593367f4b69653b3dd4f771209026a>
+/LayerXML 177 0 R
+/Filter [ /FlateDecode ]
+/DecodeParms [ null ]
+>>
+stream
+<the 94 bytes of the stream>
+endstream
+endobj
+As described in the PDF Reference this document uses
+the possibility to define an array of filters instead
+of just one filter(name). In the above case the array
+contains only one element (filter). In this case it
+should also define an array of dictionaries (one for
+each filter) which it does.
+Now the decode() method is passed a parametere options
+which imho should be the dictionary with the parameters
+for this filter instance. Instead the options parameter
+actually is the stream itself (COSStream is derived
+from COSDictionary) which contains the filter
+parameters in DecodeParms. Now if you have a COSArray
+of COSDictionaries in the entry DecodeParms then you
+have no way of knowing which set (index) of parameters
+you should use. I think that the parameter options
+should contain the dictionary with the parameters
+itself (not the stream). This affects a few places
+calling the method.
+Also another bug is on line 78 in the same method:
+predictor = dict.getInt("Predictor");
+colors = dict.getInt("Colors");
+--> bitsPerPixel =
+options.getInt("BitsPerComponent");
+columns = dict.getInt("Columns");
+the parameter BitsPerComponent is stored at the same
+location as columns. Therefore it should be from the
+variable dict that the BitsPerComponent are retrieved.
+To me it looks as if originally the parameter options
+used to be the decode parameters and it has been
+changed later on (I don't know for which reason).
+cheers
+Yves
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Anonymous
+Create date:
+21/Sep/05 05:35
+Update date:
+23/Aug/12 17:20
+Resolved date:
+23/Aug/12 17:20

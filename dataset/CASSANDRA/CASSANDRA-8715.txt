@@ -1,0 +1,41 @@
+Summary:
+Possible Deadlock in Cqlsh in a Kerberos-enabled environment when using "COPY ... FROM ..."
+Description:
+When running a COPY ... FROM ... command in a Kerberos environment, I see the number of rows processed, but eventually, Cqlsh never returns. I can verify, that all the data was copied, but the progress bar shows me the last shown info and cqlsh hangs there and never returns.
+Please note that this issue did not occur in the exact same environment with Cassandra 2.0.12.156.
+With the help of Tyler Hobbs, I investigated the problem a little bit further and added some debug statements at specific points. For example, in the CountdownLatch class at https://github.com/apache/cassandra/blob/a323a1a6d5f28ced1a51ba559055283f3eb356ff/pylib/cqlshlib/async_insert.py#L35-L36 I can see that the counter always stays above zero and therefore never returns (even when the data to be copied is already copied).
+I've also seen that somehow when I type in one cqlsh command, there will be actually two commands. Let me give you an example:
+I added a debug statement just before https://github.com/apache/cassandra/blob/d76450c7986202141f3a917b3623a4c3138c1094/bin/cqlsh#L920
+cqlsh> use libdata ; 
+2015-01-30 18:54:56,113 [DEBUG] root: STATEMENT: [('K_USE', 'use', (0, 3)), ('identifier', 'libdata', (4, 11)), ('endtoken', ';', (12, 13))] 
+2015-01-30 18:54:56,113 [DEBUG] root: STATEMENT: [('K_USE', 'use', (0, 3)), ('identifier', 'libdata', (4, 11)), ('endtoken', ';', (12, 13))]
+and saw that all commands I enter, they end up being executed twice (same goes for the COPY command).
+If I can provide any other input for debugging purposes, please let me know.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+None
+Label:
+cqlsh
+Environment:
+cqlsh
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Eduard Tudenhoefner
+Create date:
+02/Feb/15 07:42
+Update date:
+16/Apr/19 09:31
+Resolved date:
+24/Feb/15 00:33

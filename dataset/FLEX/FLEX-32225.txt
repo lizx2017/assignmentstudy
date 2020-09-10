@@ -1,0 +1,100 @@
+Summary:
+Receive Error #1009 in AxisRenderer.as when you have only 1 dataset and your dataset name is wider than the chart.
+Description:
+Steps to reproduce:
+1. Use the following code.
+<?xml version="1.0"?>
+<!-- charts/BasicColumn.mxml -->
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml">
+<mx:Script><![CDATA[
+import mx.collections.ArrayCollection;
+[Bindable]
+public var expenses:ArrayCollection = new ArrayCollection([
+{Month:"January is a fine Month for sledding and for snowball fights.", Profit:2000, Expenses:1500}
+,
+]);
+]]
+></mx:Script>
+<mx:Panel title="Column Chart">
+<mx:ColumnChart id="myChart" width="50%" dataProvider="
+{expenses}" showDataTips="true">
+<mx:horizontalAxis>
+<mx:CategoryAxis id="a1"
+dataProvider="{expenses}
+"
+categoryField="Month"
+/>
+</mx:horizontalAxis>
+<mx:horizontalAxisRenderers>
+<mx:AxisRenderer
+axis="
+{a1}
+"
+showLine="false"/>
+</mx:horizontalAxisRenderers>
+<mx:series>
+<mx:ColumnSeries
+xField="Month"
+yField="Profit"
+displayName="Profit"
+/>
+</mx:series>
+</mx:ColumnChart>
+<mx:Legend dataProvider="
+{myChart}
+"/>
+</mx:Panel>
+</mx:Application>
+Actual Results:
+TypeError: Error #1009: Cannot access a property or method of a null object reference.
+at mx.charts::AxisRenderer/calcStaggeredSpacing()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\charts\AxisRenderer.as:2195]
+at mx.charts::AxisRenderer/calcRotationAndSpacing()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\charts\AxisRenderer.as:1586]
+at mx.charts::AxisRenderer/adjustGutters()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\charts\AxisRenderer.as:1326]
+at mx.charts::AxisRenderer/set gutters()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\charts\AxisRenderer.as:798]
+at mx.charts.chartClasses::CartesianChart/updateAxisLayout()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\charts\chartClasses\CartesianChart.as:2028]
+at mx.charts.chartClasses::CartesianChart/updateDisplayList()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\charts\chartClasses\CartesianChart.as:1355]
+at mx.core::UIComponent/validateDisplayList()[E:\dev\3.0.x\frameworks\projects\framework\src\mx\core\UIComponent.as:6214]
+at mx.managers::LayoutManager/validateDisplayList()[E:\dev\3.0.x\frameworks\projects\framework\src\mx\managers\LayoutManager.as:602]
+at mx.managers::LayoutManager/doPhasedInstantiation()[E:\dev\3.0.x\frameworks\projects\framework\src\mx\managers\LayoutManager.as:657]
+at Function/http://adobe.com/AS3/2006/builtin::apply()
+at mx.core::UIComponent/callLaterDispatcher2()[E:\dev\3.0.x\frameworks\projects\framework\src\mx\core\UIComponent.as:8460]
+at mx.core::UIComponent/callLaterDispatcher()[E:\dev\3.0.x\frameworks\projects\framework\src\mx\core\UIComponent.as:8403]
+Expected Results:
+No error.
+Workaround (if any):
+The problem stems from an assumption in the AxisRenderer.calcStaggeredSpacing() that you'd have more than 1 label. You can get snuff the error by creating your own AxisRenderer and overriding, like below, but in those cases, much of the chart and axis won't appear....
+override public function adjustGutters(workingGutters:Rectangle, adjustable:Object):Rectangle
+{
+var labelSet:AxisLabelSet = this.axis.getLabels(0);
+if (labelSet.labels.length == 1 && adjustable.hasOwnProperty('right') && adjustable.right == false)
+{ adjustable.right = undefined; }
+return super.adjustGutters(workingGutters, adjustable);
+}
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+Adobe Flex SDK Previ
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+28/Jul/08 17:20
+Update date:
+18/Jul/11 14:36
+Resolved date:
+30/Jul/08 05:28

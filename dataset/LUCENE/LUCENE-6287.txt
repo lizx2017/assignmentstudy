@@ -1,0 +1,57 @@
+Summary:
+Corrupt index (missing .si file) on first 4.x commit to a 3.x index
+Description:
+If you have a 3.x index, and you open it with a 4.x IndexWriter for
+the first time, and you do something that kicks of merges while
+concurrently committing, it's possible the index will corrupt itself
+with exceptions like this:
+java.nio.file.NoSuchFileException: /l/tmp/reruns.TestBackwardsCompatibility3x.testMergeDuringUpgrade.t2/lucene.index.TestBackwardsCompatibility3x-71F31CCCEF6853A-001/manysegments.362-006/_0.si
+ at sun.nio.fs.UnixException.translateToIOException(UnixException.java:86)
+ at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:102)
+ at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:107)
+ at sun.nio.fs.UnixFileSystemProvider.newFileChannel(UnixFileSystemProvider.java:177)
+ at java.nio.channels.FileChannel.open(FileChannel.java:287)
+ at java.nio.channels.FileChannel.open(FileChannel.java:334)
+ at org.apache.lucene.store.NIOFSDirectory.openInput(NIOFSDirectory.java:81)
+ at org.apache.lucene.store.FilterDirectory.openInput(FilterDirectory.java:80)
+ at org.apache.lucene.codecs.lucene3x.Lucene3xSegmentInfoReader.read(Lucene3xSegmentInfoReader.java:106)
+ at org.apache.lucene.index.SegmentInfos.read(SegmentInfos.java:358)
+ at org.apache.lucene.index.SegmentInfos$1.doBody(SegmentInfos.java:454)
+ at org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run(SegmentInfos.java:906)
+ at org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run(SegmentInfos.java:752)
+ at org.apache.lucene.index.SegmentInfos.read(SegmentInfos.java:457)
+ at org.apache.lucene.index.CheckIndex.checkIndex(CheckIndex.java:414)
+ at org.apache.lucene.util.TestUtil.checkIndex(TestUtil.java:207)
+ at org.apache.lucene.util.TestUtil.checkIndex(TestUtil.java:196)
+ at org.apache.lucene.store.BaseDirectoryWrapper.close(BaseDirectoryWrapper.java:45)
+ at org.apache.lucene.index.TestBackwardsCompatibility3x.testMergeDuringUpgrade(TestBackwardsCompatibility3x.java:1035)
+Back compat tests in Elasticsearch hit this, and at first I thought maybe LUCENE-6279 was the cause (I still think we should fix that) but after further debugging there is a different concurrency bug lurking here.
+I have a test case which after substantial beasting is able to reproduce the bug, but I don't yet have a fix. I think IW is missing a checkpoint after writing a new commit...
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+4.10.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+24/Feb/15 15:45
+Update date:
+05/Mar/15 15:36
+Resolved date:
+24/Feb/15 22:34

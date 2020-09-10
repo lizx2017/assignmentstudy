@@ -1,0 +1,47 @@
+Summary:
+PDFParser swallows a CR at the end of a stream
+Description:
+I have a PDF which I cannot share at the moment, maybe later if I get a permission from the customer.
+The PDF is protected by an empty password, all streams are encrypted using AES. The PDF consistently uses the LF character for line endings. One of the streams looks like this:
+10 0 obj
+<</Length 9 0 R/Filter/FlateDecode/N 3/Range[0 1 0 1 0 1 ]>>
+stream
+....<0x0D><0x0A>
+endstream
+i.e. Length field is a reference to an object, in the content, the length object is stored immediately after the stream as
+9 0 obj
+2624
+endobj
+The byte <0x0D> belongs to the stream and is not to be treated as line separator in this case. The parser is not able to read the length field so it manually searches for the stream end in the class EndstreamOutputStream. This class searches both for the pair <0x0D><0x0A> and the single <0x0A>, so it strips off the <0x0D> from this particular stream content. Since the stream is encrypted, PDFBox runs into a BadPaddingException later on when trying to decrypt the stream.
+The problem is reproducible using org.apache.pdfbox.PDFToImage in current 1.8.14-SNAPSHOT. The same works fine in current PDFBox 2.0.x, presumably because it uses the non-sequential parser by default.
+The proposed fix is to analyze the PDF content while reading it and search for the CR character only if it was ever encountered as a line separator prior to the stream being parsed.
+Note: I do not exactly know or understand the usage of the other classes inherited from BaseParser, like PDFObjectStreamParser. Maybe the line ending heuristic should be kept "as before" in these classes, by setting the new field BaseParser.hasCR to true already in the constructor.
+A patch is attached.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.13
+Fix_version:
+1.8.14
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Petr Slaby
+Create date:
+18/Sep/17 12:45
+Update date:
+19/Apr/18 19:31
+Resolved date:
+20/Sep/17 15:59

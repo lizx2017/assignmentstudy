@@ -1,0 +1,47 @@
+Summary:
+PDFBox*.tmp files not deleted by COSParser
+Description:
+When parsing PDFs, temporary files get created under the system temp directory (e.g. PDFBox6525369863339991063.tmp). All files created for each documents are always deleted except for one. So each document parsed adds a new tmp file that never gets deleted. That's likely due to a stream never closed. When processing many PDFs on Linux in the same JVM instance, we get the crashing error: "Too many files open". Changing the max file handle on the OS is not always an option.
+I was able to fix this by modifying the COSParser class to close a COSStream instance:
+COSParser.java, starting on line 312
+    private long parseXrefObjStream(long objByteOffset, boolean isStandalone) throws IOException
+    {
+        // ---- parse indirect object head
+        readObjectNumber();
+        readGenerationNumber();
+        readExpectedString(OBJ_MARKER, true);
+
+        COSDictionary dict = parseCOSDictionary();
+        COSStream xrefStream = parseCOSStream(dict);
+        parseXrefStream(xrefStream, (int) objByteOffset, isStandalone);
+        xrefStream.close();  // <--- *** NEW LINE ***
+        return dict.getLong(COSName.PREV);
+    }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+Parsing
+Label:
+patch
+Environment:
+windows, linux
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Pascal Essiembre
+Create date:
+22/Mar/15 04:45
+Update date:
+17/Mar/16 19:08
+Resolved date:
+23/Mar/15 05:55

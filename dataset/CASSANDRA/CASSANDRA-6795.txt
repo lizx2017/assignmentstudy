@@ -1,0 +1,138 @@
+Summary:
+Forceful restart of C* during compaction on windows leads to exceptions on startup in scrubDataDirectories
+Description:
+From comments on CASSANDRA-6736 (Bill Mitchell):
+Trying to be polite, I started using Drain to shutdown Cassandra before rebooting the machine. In one case, this provoked numerous ThreadPoolExecutor has shutdown messages underneath the compactor:
+INFO [RMI TCP Connection(2095)-127.0.0.1] 2014-02-24 08:34:23,743 StorageService.java (line 947) DRAINING: starting drain process
+INFO [RMI TCP Connection(2095)-127.0.0.1] 2014-02-24 08:34:23,783 ThriftServer.java (line 141) Stop listening to thrift clients
+INFO [RMI TCP Connection(2095)-127.0.0.1] 2014-02-24 08:34:24,980 Server.java (line 181) Stop listening for CQL clients
+INFO [RMI TCP Connection(2095)-127.0.0.1] 2014-02-24 08:34:24,980 Gossiper.java (line 1251) Announcing shutdown
+INFO [RMI TCP Connection(2095)-127.0.0.1] 2014-02-24 08:34:27,001 MessagingService.java (line 665) Waiting for messaging service to quiesce
+INFO [RMI TCP Connection(2095)-127.0.0.1] 2014-02-24 08:34:27,040 ColumnFamilyStore.java (line 784) Enqueuing flush of Memtable-sr@1217138300(1825983/4411193 serialized/live bytes, 29946 ops)
+INFO [RMI TCP Connection(2095)-127.0.0.1] 2014-02-24 08:34:27,040 ColumnFamilyStore.java (line 784) Enqueuing flush of Memtable-etol@703118381(2963818/46129889 serialized/live bytes, 68926 ops)
+INFO [FlushWriter:272] 2014-02-24 08:34:27,040 Memtable.java (line 333) Writing Memtable-sr@1217138300(1825983/4411193 serialized/live bytes, 29946 ops)
+INFO [RMI TCP Connection(2095)-127.0.0.1] 2014-02-24 08:34:27,054 ColumnFamilyStore.java (line 784) Enqueuing flush of Memtable-events@899982591(188/1880 serialized/live bytes, 7 ops)
+INFO [RMI TCP Connection(2095)-127.0.0.1] 2014-02-24 08:34:27,075 ColumnFamilyStore.java (line 784) Enqueuing flush of Memtable-events_timeline@1379706298(16/160 serialized/live bytes, 1 ops)
+INFO [FlushWriter:273] 2014-02-24 08:34:27,075 Memtable.java (line 333) Writing Memtable-etol@703118381(2963818/46129889 serialized/live bytes, 68926 ops)
+INFO [ACCEPT-localhost/127.0.0.1] 2014-02-24 08:34:27,144 MessagingService.java (line 875) MessagingService has terminated the accept() thread
+INFO [FlushWriter:272] 2014-02-24 08:34:27,411 Memtable.java (line 373) Completed flushing C:\Program Files\DataStax Community\data\data\testdb_1393207231382\sr\testdb_1393207231382-sr-jb-473-Data.db (428854 bytes) for commitlog position ReplayPosition(segmentId=1393178353775, position=18771262)
+INFO [FlushWriter:272] 2014-02-24 08:34:27,411 Memtable.java (line 333) Writing Memtable-events@899982591(188/1880 serialized/live bytes, 7 ops)
+INFO [FlushWriter:273] 2014-02-24 08:34:27,932 Memtable.java (line 373) Completed flushing C:\Program Files\DataStax Community\data\data\testdb_1393207231382\etol\testdb_1393207231382-etol-jb-1563-Data.db (1012805 bytes) for commitlog position ReplayPosition(segmentId=1393178353775, position=18771262)
+INFO [FlushWriter:273] 2014-02-24 08:34:27,933 Memtable.java (line 333) Writing Memtable-events_timeline@1379706298(16/160 serialized/live bytes, 1 ops)
+INFO [FlushWriter:272] 2014-02-24 08:34:28,366 Memtable.java (line 373) Completed flushing C:\Program Files\DataStax Community\data\data\OpsCenter\events\OpsCenter-events-jb-32-Data.db (184 bytes) for commitlog position ReplayPosition(segmentId=1393178353775, position=18771262)
+INFO [FlushWriter:273] 2014-02-24 08:34:28,456 Memtable.java (line 373) Completed flushing C:\Program Files\DataStax Community\data\data\OpsCenter\events_timeline\OpsCenter-events_timeline-jb-39-Data.db (47 bytes) for commitlog position ReplayPosition(segmentId=1393178353775, position=18771262)
+INFO [RMI TCP Connection(2095)-127.0.0.1] 2014-02-24 08:34:28,457 ColumnFamilyStore.java (line 784) Enqueuing flush of Memtable-compaction_history@814197203(1725/19675 serialized/live bytes, 45 ops)
+INFO [FlushWriter:272] 2014-02-24 08:34:28,458 Memtable.java (line 333) Writing Memtable-compaction_history@814197203(1725/19675 serialized/live bytes, 45 ops)
+INFO [RMI TCP Connection(2095)-127.0.0.1] 2014-02-24 08:34:28,458 ColumnFamilyStore.java (line 784) Enqueuing flush of Memtable-sstable_activity@446592137(13500/207410 serialized/live bytes, 1442 ops)
+INFO [FlushWriter:273] 2014-02-24 08:34:28,458 Memtable.java (line 333) Writing Memtable-sstable_activity@446592137(13500/207410 serialized/live bytes, 1442 ops)
+INFO [FlushWriter:273] 2014-02-24 08:34:28,732 Memtable.java (line 373) Completed flushing C:\Program Files\DataStax Community\data\data\system\sstable_activity\system-sstable_activity-jb-428-Data.db (4072 bytes) for commitlog position ReplayPosition(segmentId=1393178353775, position=18771471)
+INFO [FlushWriter:272] 2014-02-24 08:34:28,761 Memtable.java (line 373) Completed flushing C:\Program Files\DataStax Community\data\data\system\compaction_history\system-compaction_history-jb-315-Data.db (823 bytes) for commitlog position ReplayPosition(segmentId=1393178353775, position=18771471)
+INFO [RMI TCP Connection(2095)-127.0.0.1] 2014-02-24 08:34:29,089 StorageService.java (line 947) DRAINED
+INFO [CompactionExecutor:70] 2014-02-24 08:34:43,085 ColumnFamilyStore.java (line 784) Enqueuing flush of Memtable-compactions_in_progress@1194966346(0/0 serialized/live bytes, 1 ops)
+INFO [FlushWriter:273] 2014-02-24 08:34:43,086 Memtable.java (line 333) Writing Memtable-compactions_in_progress@1194966346(0/0 serialized/live bytes, 1 ops)
+ERROR [CompactionExecutor:70] 2014-02-24 08:34:43,114 CassandraDaemon.java (line 192) Exception in thread Thread[CompactionExecutor:70,1,main]
+java.util.concurrent.RejectedExecutionException: ThreadPoolExecutor has shut down
+at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor$1.rejectedExecution(DebuggableThreadPoolExecutor.java:61)
+at java.util.concurrent.ThreadPoolExecutor.reject(Unknown Source)
+at java.util.concurrent.ThreadPoolExecutor.execute(Unknown Source)
+at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor.execute(DebuggableThreadPoolExecutor.java:145)
+at java.util.concurrent.AbstractExecutorService.submit(Unknown Source)
+at org.apache.cassandra.db.ColumnFamilyStore.switchMemtable(ColumnFamilyStore.java:796)
+at org.apache.cassandra.db.ColumnFamilyStore.forceFlush(ColumnFamilyStore.java:861)
+at org.apache.cassandra.db.SystemKeyspace.forceBlockingFlush(SystemKeyspace.java:435)
+at org.apache.cassandra.db.SystemKeyspace.finishCompaction(SystemKeyspace.java:202)
+at org.apache.cassandra.db.compaction.CompactionTask.runWith(CompactionTask.java:225)
+at org.apache.cassandra.io.util.DiskAwareRunnable.runMayThrow(DiskAwareRunnable.java:48)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+at org.apache.cassandra.db.compaction.CompactionTask.executeInternal(CompactionTask.java:60)
+at org.apache.cassandra.db.compaction.AbstractCompactionTask.execute(AbstractCompactionTask.java:59)
+at org.apache.cassandra.db.compaction.CompactionManager$BackgroundCompactionTask.run(CompactionManager.java:197)
+at java.util.concurrent.Executors$RunnableAdapter.call(Unknown Source)
+at java.util.concurrent.FutureTask.run(Unknown Source)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+at java.lang.Thread.run(Unknown Source)
+On restart, there was an FSWriteError in deleteWithConfirm:
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,196 ColumnFamilyStore.java (line 254) Initializing testdb_1393204279041.sr
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,199 ColumnFamilyStore.java (line 254) Initializing testdb_1393204279041.etol
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,203 ColumnFamilyStore.java (line 254) Initializing testdb_1393206475253.sr
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,206 ColumnFamilyStore.java (line 254) Initializing testdb_1393206475253.etol
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,209 ColumnFamilyStore.java (line 254) Initializing testdb_1393206779625.sr
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,212 ColumnFamilyStore.java (line 254) Initializing testdb_1393206779625.etol
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,215 ColumnFamilyStore.java (line 254) Initializing OpsCenter.pdps
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,218 ColumnFamilyStore.java (line 254) Initializing OpsCenter.rollups86400
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,223 ColumnFamilyStore.java (line 254) Initializing OpsCenter.rollups7200
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,241 ColumnFamilyStore.java (line 254) Initializing OpsCenter.events
+INFO [SSTableBatchOpen:1] 2014-02-24 09:27:27,246 SSTableReader.java (line 223) Opening C:\Program Files\DataStax Community\data\data\OpsCenter\events\OpsCenter-events-jb-28 (150 bytes)
+INFO [SSTableBatchOpen:2] 2014-02-24 09:27:27,247 SSTableReader.java (line 223) Opening C:\Program Files\DataStax Community\data\data\OpsCenter\events\OpsCenter-events-jb-26 (186 bytes)
+INFO [SSTableBatchOpen:1] 2014-02-24 09:27:27,295 SSTableReader.java (line 223) Opening C:\Program Files\DataStax Community\data\data\OpsCenter\events\OpsCenter-events-jb-31 (149 bytes)
+INFO [SSTableBatchOpen:2] 2014-02-24 09:27:27,314 SSTableReader.java (line 223) Opening C:\Program Files\DataStax Community\data\data\OpsCenter\events\OpsCenter-events-jb-25 (2239 bytes)
+INFO [SSTableBatchOpen:1] 2014-02-24 09:27:27,330 SSTableReader.java (line 223) Opening C:\Program Files\DataStax Community\data\data\OpsCenter\events\OpsCenter-events-jb-27 (149 bytes)
+INFO [SSTableBatchOpen:1] 2014-02-24 09:27:27,360 SSTableReader.java (line 223) Opening C:\Program Files\DataStax Community\data\data\OpsCenter\events\OpsCenter-events-jb-29 (186 bytes)
+INFO [SSTableBatchOpen:2] 2014-02-24 09:27:27,383 SSTableReader.java (line 223) Opening C:\Program Files\DataStax Community\data\data\OpsCenter\events\OpsCenter-events-jb-32 (184 bytes)
+INFO [SSTableBatchOpen:1] 2014-02-24 09:27:27,403 SSTableReader.java (line 223) Opening C:\Program Files\DataStax Community\data\data\OpsCenter\events\OpsCenter-events-jb-30 (149 bytes)
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,427 ColumnFamilyStore.java (line 254) Initializing OpsCenter.rollups300
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,434 ColumnFamilyStore.java (line 254) Initializing OpsCenter.events_timeline
+INFO [SSTableBatchOpen:1] 2014-02-24 09:27:27,437 SSTableReader.java (line 223) Opening C:\Program Files\DataStax Community\data\data\OpsCenter\events_timeline\OpsCenter-events_timeline-jb-39 (47 bytes)
+INFO [SSTableBatchOpen:2] 2014-02-24 09:27:27,438 SSTableReader.java (line 223) Opening C:\Program Files\DataStax Community\data\data\OpsCenter\events_timeline\OpsCenter-events_timeline-jb-38 (706 bytes)
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,476 ColumnFamilyStore.java (line 254) Initializing OpsCenter.settings
+INFO [SSTableBatchOpen:1] 2014-02-24 09:27:27,478 SSTableReader.java (line 223) Opening C:\Program Files\DataStax Community\data\data\OpsCenter\settings\OpsCenter-settings-jb-25 (232 bytes)
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,522 ColumnFamilyStore.java (line 254) Initializing OpsCenter.rollups60
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,526 ColumnFamilyStore.java (line 254) Initializing system_traces.sessions
+INFO [CompactionExecutor:1] 2014-02-24 09:27:27,529 ColumnFamilyStore.java (line 254) Initializing system_traces.events
+INFO [CompactionExecutor:1] 2014-02-24 09:27:29,930 CompactionTask.java (line 275) Compacted 32 sstables to [C:\Program Files\DataStax Community\data\data\system\compactions_in_progress\system-compactions_in_progress-jb-596,]. 2,522 bytes to 322 (~12% of original) in 21,049ms = 0.000015MB/s. 32 total partitions merged to 15. Partition merge counts were
+{1:14, 2:9, }
+INFO [CompactionExecutor:2] 2014-02-24 09:27:29,958 CompactionTask.java (line 275) Compacted 16 sstables to [C:\Program Files\DataStax Community\data\data\system\compactions_in_progress\system-compactions_in_progress-jb-597,]. 3,550 bytes to 1,832 (~51% of original) in 19,577ms = 0.000089MB/s. 16 total partitions merged to 14. Partition merge counts were
+{1:14, 2:1, }
+INFO [main] 2014-02-24 09:27:29,972 ColumnFamilyStore.java (line 784) Enqueuing flush of Memtable-local@2117211498(114/1140 serialized/live bytes, 4 ops)
+INFO [FlushWriter:2] 2014-02-24 09:27:29,972 Memtable.java (line 333) Writing Memtable-local@2117211498(114/1140 serialized/live bytes, 4 ops)
+INFO [FlushWriter:2] 2014-02-24 09:27:30,365 Memtable.java (line 373) Completed flushing C:\Program Files\DataStax Community\data\data\system\local\system-local-jb-631-Data.db (150 bytes) for commitlog position ReplayPosition(segmentId=1393255627523, position=1437)
+INFO [CompactionExecutor:1] 2014-02-24 09:27:30,366 CompactionTask.java (line 115) Compacting [SSTableReader(path='C:\Program Files\DataStax Community\data\data\system\local\system-local-jb-628-Data.db'), SSTableReader(path='C:\Program Files\DataStax Community\data\data\system\local\system-local-jb-629-Data.db'), SSTableReader(path='C:\Program Files\DataStax Community\data\data\system\local\system-local-jb-631-Data.db'), SSTableReader(path='C:\Program Files\DataStax Community\data\data\system\local\system-local-jb-630-Data.db')]
+ERROR [main] 2014-02-24 09:27:30,512 CassandraDaemon.java (line 479) Exception encountered during startup
+FSWriteError in C:\Program Files\DataStax Community\data\data\system\local\system-local-tmp-jb-632-Data.db
+at org.apache.cassandra.io.util.FileUtils.deleteWithConfirm(FileUtils.java:120)
+at org.apache.cassandra.io.util.FileUtils.deleteWithConfirm(FileUtils.java:106)
+at org.apache.cassandra.io.sstable.SSTable.delete(SSTable.java:139)
+at org.apache.cassandra.db.ColumnFamilyStore.scrubDataDirectories(ColumnFamilyStore.java:463)
+at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:264)
+at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:462)
+at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:552)
+Caused by: java.nio.file.FileSystemException: C:\Program Files\DataStax Community\data\data\system\local\system-local-tmp-jb-632-Data.db: The process cannot access the file because it is being used by another process.
+at sun.nio.fs.WindowsException.translateToIOException(Unknown Source)
+at sun.nio.fs.WindowsException.rethrowAsIOException(Unknown Source)
+at sun.nio.fs.WindowsException.rethrowAsIOException(Unknown Source)
+at sun.nio.fs.WindowsFileSystemProvider.implDelete(Unknown Source)
+at sun.nio.fs.AbstractFileSystemProvider.delete(Unknown Source)
+at java.nio.file.Files.delete(Unknown Source)
+at org.apache.cassandra.io.util.FileUtils.deleteWithConfirm(FileUtils.java:116)
+... 6 more
+_________________
+Note: I've reproduced this while working on cleaning up ccm on Windows.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+Local/Compaction,
+Label:
+Windows
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Joshua McKenzie
+Reporter:
+Joshua McKenzie
+Create date:
+03/Mar/14 15:54
+Update date:
+16/Apr/19 09:31
+Resolved date:
+23/Jun/14 17:59

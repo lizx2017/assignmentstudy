@@ -1,0 +1,94 @@
+Summary:
+The English Words are shown as Symbols and wrongly displayed
+Description:
+When i run the below piece of code in my server continuously it is creating the text with symbols and showing incorrect word.
+String fontFile = "Monika.ttf";
+String text="Hello";
+float fontSize = 20;
+Font font = null;
+try
+{ font = Font.createFont(Font.TRUETYPE_FONT, Sample.class.getClassLoader() .getResource(fontFile).openStream()); font = font.deriveFont(fontSize); }
+catch (Exception e)
+{ throw new IOException("could not load TrueTypeFont for file: " + fontFile, e); }
+FontRenderContext fc = new FontRenderContext(null, true, true);
+Rectangle2D bounds = font.getStringBounds(text, fc);
+int width = (int) bounds.getWidth();
+int height = (int) bounds.getHeight();
+int maxWidth = 500;
+int maxHeight = 50;
+int minFontSize = 20;
+while (width > (maxWidth - 2 *5)
+height > (maxHeight - 2 * 5))
+Unknown macro: { if (fontSize <= minFontSize) { break; } fontSize--; font = font.deriveFont(fontSize); bounds = font.getStringBounds(text, fc); width = (int) bounds.getWidth(); height = (int) bounds.getHeight(); }
+int paddingWidth = 5;
+int paddingHeight = 5;
+BufferedImage buffer = null;
+PDDocument doc = new PDDocument();
+PDPage page = new PDPage(new PDRectangle(width + 2 * paddingWidth,
+height + 2 * paddingHeight));
+BufferedImage newBufferedImage = ImageIO.read(Sample.class
+.getClassLoader()
+.getResource(Sample.get("image.blue.background"))
+.openStream());
+PDJpeg newImage = new PDJpeg(doc, newBufferedImage);
+PDFont pdffont = null;
+try
+{ pdffont = PDTrueTypeFont.loadTTF(doc, Sample.class.getClassLoader().getResource(fontFile).openStream()); }
+catch (Exception e)
+{ throw new IOException( "could not load PDTrueTypeFont for file: " + fontFile, e); }
+
+PDPageContentStream stream = new PDPageContentStream(doc, page);
+stream.drawImage(newImage, 0, 0);
+stream.setNonStrokingColor(Color.BLACK);
+stream.setStrokingColor(Color.BLACK);
+stream.beginText();
+stream.setFont(pdffont, fontSize);
+stream.moveTextPositionByAmount(paddingWidth,
+(float) (height / 2.5 + paddingHeight));
+stream.drawString(text);
+stream.endText();
+stream.close();
+buffer = page.convertToImage(BufferedImage.TYPE_INT_RGB,
+94);
+// Convert image image to PDXObjectImage
+PDXObjectImage watermark = new PDJpeg(doc, buffer);
+@SuppressWarnings("rawtypes")
+List pages = doc.getDocumentCatalog().getAllPages();
+Iterator iterator1 = pages.iterator();
+PDPage page1=null;
+while(iterator1.hasNext())
+{ page1 = (PDPage) iterator1.next(); }
+PDPageContentStream stream1 = new PDPageContentStream(doc, page1, true, true);
+stream1.drawImage(watermark,50,60);
+stream1.close();
+ImageIO.write(buffer, "jpeg", new
+File("/Users/test/"+"text.jpeg"));
+doc.close();
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Not A Problem
+Affects_version:
+1.7.0, 1.8.1
+Fix_version:
+None
+Component:
+FontBox, (1)
+Label:
+None
+Environment:
+java, mac os, linux
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Harippriya Parameswa
+Create date:
+24/Apr/13 14:49
+Update date:
+17/Jun/13 06:20
+Resolved date:
+17/Jun/13 06:20

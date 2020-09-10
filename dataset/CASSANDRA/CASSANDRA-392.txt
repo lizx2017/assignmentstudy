@@ -1,0 +1,52 @@
+Summary:
+Deadlock with SelectorManager.doProcess and TcpConnection.write
+Description:
+We ran into a deadlock last night:
+Name: MESSAGE-SERIALIZER-POOL:2
+State: BLOCKED on sun.nio.ch.SelectionKeyImpl@2e257f1b owned by: TCP Selector Manager
+Total blocked: 1 Total waited: 1
+Stack trace:
+org.apache.cassandra.net.SelectionKeyHandler.turnOnInterestOps(SelectionKeyHandler.java:73)
+org.apache.cassandra.net.TcpConnection.write(TcpConnection.java:186)
+locked org.apache.cassandra.net.TcpConnection@5ab9f791
+org.apache.cassandra.net.MessageSerializationTask.run(MessageSerializationTask.java:67)
+java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+java.lang.Thread.run(Thread.java:619)
+Name: TCP Selector Manager
+State: BLOCKED on org.apache.cassandra.net.TcpConnection@5ab9f791 owned by: MESSAGE-SERIALIZER-POOL:2
+Total blocked: 2 Total waited: 0
+Stack trace:
+org.apache.cassandra.net.TcpConnection.connect(TcpConnection.java:360)
+org.apache.cassandra.net.SelectorManager.doProcess(SelectorManager.java:131)
+locked sun.nio.ch.SelectionKeyImpl@2e257f1b
+org.apache.cassandra.net.SelectorManager.run(SelectorManager.java:98)
+The SelectionManager.doProcess acquires a monitor on the SelectionKey and then calls methods such as TcpConnection.connect(SelectionKey key) which obtains a monitor for the TcpConnection object itself. Another task eg: MessageSerializationTask can come along and call write(Message message) which obtains a monitor for the TCPConnection first and then on calls to turnOnInterestOps tries to obtain the monitor for the SelectionKey which causes the deadlock.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jun Rao
+Reporter:
+Sammy Yu
+Create date:
+26/Aug/09 18:35
+Update date:
+16/Apr/19 09:33
+Resolved date:
+31/Aug/09 15:49

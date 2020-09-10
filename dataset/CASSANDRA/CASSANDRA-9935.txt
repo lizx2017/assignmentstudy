@@ -1,0 +1,78 @@
+Summary:
+Repair fails with RuntimeException
+Description:
+We had problems with slow repair in 2.1.7 (CASSANDRA-9702) but after upgrade to 2.1.8 it started to work faster but now it fails with:
+...
+[2015-07-29 20:44:03,956] Repair session 23a811b0-3632-11e5-a93e-4963524a8bde for range (-5474076923322749342,-5468600594078911162] finished
+[2015-07-29 20:44:03,957] Repair session 336f8740-3632-11e5-a93e-4963524a8bde for range (-8631877858109464676,-8624040066373718932] finished
+[2015-07-29 20:44:03,957] Repair session 4ccd8430-3632-11e5-a93e-4963524a8bde for range (-5372806541854279315,-5369354119480076785] finished
+[2015-07-29 20:44:03,957] Repair session 59f129f0-3632-11e5-a93e-4963524a8bde for range (8166489034383821955,8168408930184216281] finished
+[2015-07-29 20:44:03,957] Repair session 6ae7a9a0-3632-11e5-a93e-4963524a8bde for range (6084602890817326921,6088328703025510057] finished
+[2015-07-29 20:44:03,957] Repair session 8938e4a0-3632-11e5-a93e-4963524a8bde for range (-781874602493000830,-781745173070807746] finished
+[2015-07-29 20:44:03,957] Repair command #4 finished
+error: nodetool failed, check server logs
+-- StackTrace --
+java.lang.RuntimeException: nodetool failed, check server logs
+        at org.apache.cassandra.tools.NodeTool$NodeToolCmd.run(NodeTool.java:290)
+        at org.apache.cassandra.tools.NodeTool.main(NodeTool.java:202)
+After running:
+nodetool repair --partitioner-range --parallel --in-local-dc sync
+Last records in logs regarding repair are:
+INFO  [Thread-173887] 2015-07-29 20:44:03,956 StorageService.java:2952 - Repair session 09ff9e40-3632-11e5-a93e-4963524a8bde for range (-7695808664784761779,-7693529816291585568] finished
+INFO  [Thread-173887] 2015-07-29 20:44:03,956 StorageService.java:2952 - Repair session 17d8d860-3632-11e5-a93e-4963524a8bde for range (8063716953988492222,8065203836608925992] finished
+INFO  [Thread-173887] 2015-07-29 20:44:03,956 StorageService.java:2952 - Repair session 23a811b0-3632-11e5-a93e-4963524a8bde for range (-5474076923322749342,-5468600594078911162] finished
+INFO  [Thread-173887] 2015-07-29 20:44:03,956 StorageService.java:2952 - Repair session 336f8740-3632-11e5-a93e-4963524a8bde for range (-8631877858109464676,-8624040066373718932] finished
+INFO  [Thread-173887] 2015-07-29 20:44:03,957 StorageService.java:2952 - Repair session 4ccd8430-3632-11e5-a93e-4963524a8bde for range (-5372806541854279315,-5369354119480076785] finished
+INFO  [Thread-173887] 2015-07-29 20:44:03,957 StorageService.java:2952 - Repair session 59f129f0-3632-11e5-a93e-4963524a8bde for range (8166489034383821955,8168408930184216281] finished
+INFO  [Thread-173887] 2015-07-29 20:44:03,957 StorageService.java:2952 - Repair session 6ae7a9a0-3632-11e5-a93e-4963524a8bde for range (6084602890817326921,6088328703025510057] finished
+INFO  [Thread-173887] 2015-07-29 20:44:03,957 StorageService.java:2952 - Repair session 8938e4a0-3632-11e5-a93e-4963524a8bde for range (-781874602493000830,-781745173070807746] finished
+but a bit above I see (at least two times in attached log):
+ERROR [Thread-173887] 2015-07-29 20:44:03,853 StorageService.java:2959 - Repair session 1b07ea50-3608-11e5-a93e-4963524a8bde for range (5765414319217852786,5781018794516851576] failed with error org.apache.cassandra.exceptions.RepairException: [repair #1b07ea50-3608-11e5-a93e-4963524a8bde on sync/entity_by_id2, (5765414319217852786,5781018794516851576]] Validation failed in /10.195.15.162
+java.util.concurrent.ExecutionException: java.lang.RuntimeException: org.apache.cassandra.exceptions.RepairException: [repair #1b07ea50-3608-11e5-a93e-4963524a8bde on sync/entity_by_id2, (5765414319217852786,5781018794516851576]] Validation failed in /10.195.15.162
+        at java.util.concurrent.FutureTask.report(FutureTask.java:122) [na:1.7.0_80]
+        at java.util.concurrent.FutureTask.get(FutureTask.java:188) [na:1.7.0_80]
+        at org.apache.cassandra.service.StorageService$4.runMayThrow(StorageService.java:2950) ~[apache-cassandra-2.1.8.jar:2.1.8]
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28) [apache-cassandra-2.1.8.jar:2.1.8]
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471) [na:1.7.0_80]
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262) [na:1.7.0_80]
+        at java.lang.Thread.run(Thread.java:745) [na:1.7.0_80]
+Caused by: java.lang.RuntimeException: org.apache.cassandra.exceptions.RepairException: [repair #1b07ea50-3608-11e5-a93e-4963524a8bde on sync/entity_by_id2, (5765414319217852786,5781018794516851576]] Validation failed in /10.195.15.162
+        at com.google.common.base.Throwables.propagate(Throwables.java:160) ~[guava-16.0.jar:na]
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:32) [apache-cassandra-2.1.8.jar:2.1.8]
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471) [na:1.7.0_80]
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262) [na:1.7.0_80]
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145) ~[na:1.7.0_80]
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615) ~[na:1.7.0_80]        ... 1 common frames omitted
+Caused by: org.apache.cassandra.exceptions.RepairException: [repair #1b07ea50-3608-11e5-a93e-4963524a8bde on sync/entity_by_id2, (5765414319217852786,5781018794516851576]] Validation failed in /10.195.15.162
+        at org.apache.cassandra.repair.RepairSession.validationComplete(RepairSession.java:166) ~[apache-cassandra-2.1.8.jar:2.1.8]        at org.apache.cassandra.service.ActiveRepairService.handleMessage(ActiveRepairService.java:406) ~[apache-cassandra-2.1.8.jar:2.1.8]
+        at org.apache.cassandra.repair.RepairMessageVerbHandler.doVerb(RepairMessageVerbHandler.java:134) ~[apache-cassandra-2.1.8.jar:2.1.8]        at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:62) ~[apache-cassandra-2.1.8.jar:2.1.8]
+        ... 3 common frames omittedINFO  [Thread-173887] 2015-07-29 20:44:03,854 StorageService.java:2952 - Repair session 846d9300-3608-11e5-a93e-4963524a8bde for range (-6705935
+742755245856,-6704072966568763453] finished
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.15, 2.2.7, 3.0.6, 3.6
+Component:
+None
+Label:
+lcs
+Environment:
+c*, debian
+Attachment number:
+0
+Assignee:
+Paulo Motta
+Reporter:
+mlowicki
+Create date:
+30/Jul/15 07:43
+Update date:
+16/Apr/19 09:31
+Resolved date:
+26/Apr/16 08:51

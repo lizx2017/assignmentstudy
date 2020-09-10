@@ -1,0 +1,58 @@
+Summary:
+NPE in Flexible StandardQueryParser on boosting
+Description:
+The following exception
+java.lang.IllegalArgumentException: field name should not be null!
+ at org.apache.lucene.queryparser.flexible.core.config.FieldConfig.<init>(FieldConfig.java:36)
+ at org.apache.lucene.queryparser.flexible.core.config.QueryConfigHandler.getFieldConfig(QueryConfigHandler.java:59)
+ at org.apache.lucene.queryparser.flexible.standard.processors.BoostQueryNodeProcessor.postProcessNode(BoostQueryNodeProcessor.java:54)
+ at org.apache.lucene.queryparser.flexible.core.processors.QueryNodeProcessorImpl.processIteration(QueryNodeProcessorImpl.java:99)
+ at org.apache.lucene.queryparser.flexible.core.processors.QueryNodeProcessorImpl.processChildren(QueryNodeProcessorImpl.java:125)
+ at org.apache.lucene.queryparser.flexible.core.processors.QueryNodeProcessorImpl.processIteration(QueryNodeProcessorImpl.java:97)
+ at org.apache.lucene.queryparser.flexible.core.processors.QueryNodeProcessorImpl.process(QueryNodeProcessorImpl.java:90)
+ at org.apache.lucene.queryparser.flexible.core.processors.QueryNodeProcessorPipeline.process(QueryNodeProcessorPipeline.java:90)
+ at org.apache.lucene.queryparser.flexible.core.QueryParserHelper.parse(QueryParserHelper.java:255)
+ at org.apache.lucene.queryparser.flexible.standard.StandardQueryParser.parse(StandardQueryParser.java:168)
+is caused by boosting a tokenizable phrase field within a group.
+public void testFail() throws Exception {
+  test("(mimeType:\"text-html\")");
+}
+
+public void testOkay() throws Exception {
+  test("mimeType:\"text-html\"");
+}
+
+static void test(String qs) throws Exception {
+  Analyzer sa = new StandardAnalyzer(Version.LUCENE_46);
+  StandardQueryParser qp = new StandardQueryParser(sa);
+  qp.getFieldsBoost().put("mimeType", 1f);
+  qp.parse(qs, "content");
+}
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+4.6, 4.7
+Fix_version:
+4.9, 6.0
+Component:
+core/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+André
+Create date:
+05/Mar/14 18:24
+Update date:
+09/May/16 18:33
+Resolved date:
+

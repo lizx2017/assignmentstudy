@@ -1,0 +1,62 @@
+Summary:
+Don't announce migrations to pre-1.2 nodes
+Description:
+I have a mixed version cluster consisting of two 1.1.9 nodes and one 1.2.2 node upgraded from 1.1.9.
+The upgrade works, and I don't see any end user problems, however I see this exception in the logs on the non-upgraded nodes:
+ERROR [MigrationStage:1] 2013-03-11 18:09:09,001 AbstractCassandraDaemon.java (line 135) Exception in thread Thread[MigrationStage:1,5,main]
+java.lang.NullPointerException
+ at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:167)
+ at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:124)
+ at org.apache.cassandra.cql.jdbc.JdbcUTF8.getString(JdbcUTF8.java:77)
+ at org.apache.cassandra.cql.jdbc.JdbcUTF8.compose(JdbcUTF8.java:97)
+ at org.apache.cassandra.db.marshal.UTF8Type.compose(UTF8Type.java:35)
+ at org.apache.cassandra.cql3.UntypedResultSet$Row.getString(UntypedResultSet.java:87)
+ at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:256)
+ at org.apache.cassandra.db.DefsTable.mergeKeyspaces(DefsTable.java:397)
+ at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:373)
+ at org.apache.cassandra.db.DefsTable.mergeRemoteSchema(DefsTable.java:352)
+ at org.apache.cassandra.db.DefinitionsUpdateVerbHandler$1.runMayThrow(DefinitionsUpdateVerbHandler.java:48)
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+ at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:439)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Steps to reproduce:
+ccm create -v 1.1.9 1.1.9
+ccm populate -n 3
+ccm start
+ccm node1 stress
+ccm node1 stop
+edit ~/.ccm/1.1.9/cluster.conf and configure cassandra_dir to point to 1.2.2. Edit node1's cassandra.yaml to be 1.2 compliant.
+ccm node1 start
+The cluster is now a mixed version, and works for user queries, but with the exception above.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.3
+Component:
+None
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Ryan McGuire
+Create date:
+11/Mar/13 22:23
+Update date:
+16/Apr/19 09:32
+Resolved date:
+14/Mar/13 00:11

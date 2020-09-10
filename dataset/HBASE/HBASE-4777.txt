@@ -1,0 +1,53 @@
+Summary:
+Write back to client 'incompatible' if we show up with wrong version
+Description:
+We changed the RPC_VERSION to 4 in hbase-3939. If a client comes in volunteering RPC_VERSION is 3, currently, we'll log 'wrong version' but we'll close the connection; the client has no chance of knowing why the server went away.
+Returning -1 as id up out of here is what causes the connection close:
+    private void setupBadVersionResponse(int clientVersion) throws IOException {
+      String errMsg = "Server IPC version " + CURRENT_VERSION +
+      " cannot communicate with client version " + clientVersion;
+      ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+
+      if (clientVersion >= 3) {
+        Call fakeCall =  new Call(-1, null, this, responder);
+        // Versions 3 and greater can interpret this exception
+        // response in the same manner
+        setupResponse(buffer, fakeCall, Status.FATAL,
+            null, VersionMismatch.class.getName(), errMsg);
+
+        responder.doRespond(fakeCall);
+      }
+    }
+Instead, we need to return an id that does not close the connection so cilent gets chance to read the response.
+Suggestion is that we return a 0 for the id.... the connection will stay up.
+If an old client and it sends the wrong version, it'll move on to do getProtocolVersion... and will fail there.
+Other clients, e.g. asynchbase, if they get a response will have a response to switch what they send to suit the new server.
+(There are other issues – e.g. Invocation is versioned now – but Benoit needs some means of figuring whats on other side)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+12/Nov/11 00:51
+Update date:
+20/Nov/15 11:55
+Resolved date:
+13/Nov/11 04:58

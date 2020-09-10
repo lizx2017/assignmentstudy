@@ -1,0 +1,82 @@
+Summary:
+CLONE - Apache Flex Mavenized SDK Generator Bug
+Description:
+Ir reference to this issue:
+My first error is:
+Exception in thread "main" java.lang.NoClassDefFoundError: org/apache/commons/compress/compressors/gzip/GzipCompressorInputStream
+at air.AirRuntimeGenerator.processFlashRuntime(AirRuntimeGenerator.java:139)
+at air.AirRuntimeGenerator.process(AirRuntimeGenerator.java:41)
+at SDKGenerator.generateAir(SDKGenerator.java:82)
+at SDKGenerator.generateAllAir(SDKGenerator.java:67)
+at SDKGenerator.main(SDKGenerator.java:145)
+Caused by: java.lang.ClassNotFoundException: org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
+at java.net.URLClassLoader$1.run(URLClassLoader.java:202)
+at java.security.AccessController.doPrivileged(Native Method)
+at java.net.URLClassLoader.findClass(URLClassLoader.java:190)
+at java.lang.ClassLoader.loadClass(ClassLoader.java:306)
+at sun.misc.Launcher$AppClassLoader.loadClass(Launcher.java:301)
+at java.lang.ClassLoader.loadClass(ClassLoader.java:247)
+... 5 more
+So it seems the GzipCompressorInputStream is not available in the flex-sdk-generator-1.0.jar.
+That's easily overcome by using the maven shade plugin.
+The problem occurs when running any command using the flex-sdk-generator jar, and is caused by the mavenizer.jar not including the org.apache.commons.compress dependency - you can test this, by opening up the flex-sdk-generator.jar and see there are no classes from the org.apache.commons.compress dependency.
+The maven shade plugin ensures dependencie's classes are packaged in final flex-sdk-generator.jar.
+or maybe you could use the standard integrated java zip api's:
+http://docs.oracle.com/javase/6/docs/api/java/util/zip/package-summary.html
+http://www.javaworld.com/community/node/8362
+I'm running the following java:
+java version "1.6.0_37"
+Java(TM) SE Runtime Environment (build 1.6.0_37-b06-434-11M3909)
+Java HotSpot(TM) 64-Bit Server VM (build 20.12-b01-434, mixed mode)
+The second problem:
+Srens-MacBook-Pro-2:mavenizer soren$ java -cp target/flex-sdk-converter-1.0.jar SDKGenerator sdkhome fdktarget
+---------------------------------------------
+– Generating Air SDK version: 3.5
+---------------------------------------------
+---------------------------------------------
+---------------------------------------------
+– Generating Air SDK version: 3.1
+---------------------------------------------
+---------------------------------------------
+---------------------------------------------
+– Generating Flex SDK version: 4.6.0.23201
+---------------------------------------------
+Exception in thread "main" java.util.zip.ZipException: ZIP file must have at least one entry
+at java.util.zip.ZipOutputStream.finish(ZipOutputStream.java:304)
+at java.util.zip.DeflaterOutputStream.close(DeflaterOutputStream.java:140)
+at java.util.zip.ZipOutputStream.close(ZipOutputStream.java:321)
+at flex.FlexFrameworkGenerator.writeDummyResourceBundleSwc(FlexFrameworkGenerator.java:576)
+at flex.FlexFrameworkGenerator.process(FlexFrameworkGenerator.java:175)
+at SDKGenerator.generateFlex(SDKGenerator.java:120)
+at SDKGenerator.generateAllFlex(SDKGenerator.java:108)
+at SDKGenerator.main(SDKGenerator.java:148)
+Might be resolved by using the integrated zip api of java, as mentioned in the first problem?!?
+Regards.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+InstalApacheFlex 1.0
+Fix_version:
+InstalApacheFlex 1.0
+Component:
+Installation & Packaging
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jose Barragan
+Reporter:
+Michael McCord
+Create date:
+28/Feb/13 23:31
+Update date:
+02/Mar/13 08:48
+Resolved date:
+02/Mar/13 08:48

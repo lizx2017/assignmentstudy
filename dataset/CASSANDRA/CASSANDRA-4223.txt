@@ -1,0 +1,62 @@
+Summary:
+Non Unique Streaming session ID's
+Description:
+I have observed repair processes failing due to duplicate Streaming session ID's. In this installation it is preventing rebalance from completing. I believe it has also prevented repair from completing in the past.
+The attached streaming-logs.txt file contains log messages and an explanation of what was happening during a repair operation. it has the evidence for duplicate session ID's.
+The duplicate session id's were generated on the repairing node and sent to the streaming node. The streaming source replaced the first session with the second which resulted in both sessions failing when the first FILE_COMPLETE message was received.
+The errors were:
+DEBUG [MiscStage:1] 2012-05-03 21:40:33,997 StreamReplyVerbHandler.java (line 47) Received StreamReply StreamReply(sessionId=26132848816442266, file='/var/lib/cassandra/data/FMM_Studio/PartsData-hc-1-Data.db', action=FILE_FINISHED)
+ERROR [MiscStage:1] 2012-05-03 21:40:34,027 AbstractCassandraDaemon.java (line 139) Fatal exception in thread Thread[MiscStage:1,5,main]
+java.lang.IllegalStateException: target reports current file is /var/lib/cassandra/data/FMM_Studio/PartsData-hc-1-Data.db but is null
+        at org.apache.cassandra.streaming.StreamOutSession.validateCurrentFile(StreamOutSession.java:195)
+        at org.apache.cassandra.streaming.StreamReplyVerbHandler.doVerb(StreamReplyVerbHandler.java:58)
+        at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:59)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Unknown Source)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+        at java.lang.Thread.run(Unknown Source)
+and
+DEBUG [MiscStage:2] 2012-05-03 21:40:36,497 StreamReplyVerbHandler.java (line 47) Received StreamReply StreamReply(sessionId=26132848816442266, file='/var/lib/cassandra/data/OpsCenter/rollups7200-hc-3-Data.db', action=FILE_FINISHED)
+ERROR [MiscStage:2] 2012-05-03 21:40:36,497 AbstractCassandraDaemon.java (line 139) Fatal exception in thread Thread[MiscStage:2,5,main]
+java.lang.IllegalStateException: target reports current file is /var/lib/cassandra/data/OpsCenter/rollups7200-hc-3-Data.db but is null
+        at org.apache.cassandra.streaming.StreamOutSession.validateCurrentFile(StreamOutSession.java:195)
+        at org.apache.cassandra.streaming.StreamReplyVerbHandler.doVerb(StreamReplyVerbHandler.java:58)
+        at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:59)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Unknown Source)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+        at java.lang.Thread.run(Unknown Source)
+I think this is because System.nanoTime() is used for the session ID when creating the StreamInSession objects (driven from StorageService.requestRanges()) .
+From the documentation (http://docs.oracle.com/javase/6/docs/api/java/lang/System.html#nanoTime())
+This method provides nanosecond precision, but not necessarily nanosecond accuracy. No guarantees are made about how frequently values change.
+Also some info here on clocks and timers https://blogs.oracle.com/dholmes/entry/inside_the_hotspot_vm_clocks
+The hypervisor may be at fault here. But it seems like we cannot rely on successive calls to nanoTime() to return different values.
+To avoid message/interface changes on the StreamHeader it would be good to keep the session ID a long. The simplest approach may be to make successive calls to nanoTime until the result changes. We could fail if a certain number of milliseconds have passed.
+Hashing the file names and ranges is also a possibility, but more involved.
+(We may also want to drop latency times that are 0 nano seconds.)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.11, 1.1.1
+Component:
+None
+Label:
+datastax_qa
+Environment:
+
+Attachment number:
+0
+Assignee:
+amorton
+Reporter:
+amorton
+Create date:
+06/May/12 23:10
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/May/12 18:40

@@ -1,0 +1,55 @@
+Summary:
+Authentication Support for CqlRecordWriter
+Description:
+The CqlRecordWriter seems not to support authentication. When the keyspace in Cassandra is to set to use authentication our Pig job fails with, when credentials are provided using the URI ('cql://username:password...):
+java.lang.RuntimeException: InvalidRequestException(why:You have not logged in)
+ at org.apache.cassandra.hadoop.cql3.CqlRecordWriter.(CqlRecordWriter.java:123)
+ at org.apache.cassandra.hadoop.cql3.CqlRecordWriter.(CqlRecordWriter.java:90)
+ at org.apache.cassandra.hadoop.cql3.CqlOutputFormat.getRecordWriter(CqlOutputFormat.java:76)
+ at org.apache.cassandra.hadoop.cql3.CqlOutputFormat.getRecordWriter(CqlOutputFormat.java:57)
+ at org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigOutputFormat.getRecordWriter(PigOutputFormat.java:84)
+ at org.apache.hadoop.mapred.ReduceTask.runNewReducer(ReduceTask.java:553)
+ at org.apache.hadoop.mapred.ReduceTask.run(ReduceTask.java:408)
+ at org.apache.hadoop.mapred.Child.main(Child.java:170)
+Caused by: InvalidRequestException(why:You have not logged in)
+ at org.apache.cassandra.thrift.Cassandra$execute_cql3_query_result.read(Cassandra.java:38677)
+ at org.apache.thrift.TServiceClient.receiveBase(TServiceClient.java:78)
+ at org.apache.cassandra.thrift.Cassandra$Client.recv_execute_cql3_query(Cassandra.java:1597)
+ at org.apache.cassandra.thrift.Cassandra$Client.execute_cql3_query(Cassandra.java:1582)
+ at org.apache.cassandra.hadoop.cql3.CqlRecordWriter.retrievePartitionKeyValidator(CqlRecordWriter.java:332)
+ at org.apache.cassandra.hadoop.cql3.CqlRecordWriter.(CqlRecordWriter.java:108)
+ ... 7 more
+If not supplied in the URI but as only in the JobConf the exception is:
+Output Location Validation Failed for: 'cql://...' More info to follow:
+InvalidRequestException(why:You have not logged in)
+        at org.apache.pig.newplan.logical.rules.InputOutputFileValidator$
+Which let to the finding, that authentication is correctly supplied for CqlStorage but not for the CqlRecordWriter.
+Maybe it would make sense to put the authentication part into ConfigHelper.getClientFromAddressList()? Then in CqlStorage the username and password in the conf would need to be set from the URI. If so the ConfigHelper has all the information to authenticate and already returns the client.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+authentication pig
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Henning Kropp
+Create date:
+24/Apr/14 14:07
+Update date:
+16/Apr/19 09:31
+Resolved date:
+06/Nov/14 22:30

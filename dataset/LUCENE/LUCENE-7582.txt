@@ -1,0 +1,65 @@
+Summary:
+"Cannot commit index writer" in some cases on windows
+Description:
+Hi!
+I've an error using lucene on windows. I already post a question on modeshape forum (https://developer.jboss.org/thread/273070) and it looks that NIOFSDirectory is not working well on windows as described in the java documentation of this class.
+NOTE: NIOFSDirectory is not recommended on Windows because of a bug in how FileChannel.read is implemented in Sun's JRE. Inside of the implementation the position is apparently synchronized. See here for details.
+After reading the linked java issue (http://bugs.java.com/bugdatabase/view_bug.do?bug_id=6265734), it seems that there is a workaround to solve it, use an AsynchronousFileChannel.
+Is it a choice that has been made to not use AsynchronousFileChannel or will it be a good fix?
+You'll find the complete stacktrace below:
+Caused by: org.modeshape.jcr.index.lucene.LuceneIndexException: Cannot commit index writer  
+  at org.modeshape.jcr.index.lucene.LuceneIndex.commit(LuceneIndex.java:155) ~[dsdk-launcher.jar:na]  
+  at org.modeshape.jcr.spi.index.provider.IndexChangeAdapter.completeWorkspaceChanges(IndexChangeAdapter.java:104) ~[dsdk-launcher.jar:na]  
+  at org.modeshape.jcr.cache.change.ChangeSetAdapter.notify(ChangeSetAdapter.java:157) ~[dsdk-launcher.jar:na]  
+  at org.modeshape.jcr.spi.index.provider.IndexProvider$AtomicIndex.notify(IndexProvider.java:1493) ~[dsdk-launcher.jar:na]  
+  at org.modeshape.jcr.bus.RepositoryChangeBus.notify(RepositoryChangeBus.java:190) ~[dsdk-launcher.jar:na]  
+  at org.modeshape.jcr.cache.document.WorkspaceCache.changed(WorkspaceCache.java:333) ~[dsdk-launcher.jar:na]  
+  at org.modeshape.jcr.txn.SynchronizedTransactions.updateCache(SynchronizedTransactions.java:223) ~[dsdk-launcher.jar:na]  
+  at org.modeshape.jcr.cache.document.WritableSessionCache.save(WritableSessionCache.java:751) ~[dsdk-launcher.jar:na]  
+  at org.modeshape.jcr.JcrSession.save(JcrSession.java:1171) ~[dsdk-launcher.jar:na]  
+  ... 19 common frames omitted  
+Caused by: java.nio.file.FileSystemException: C:\Users\Christopher\Infiltrea3CLOUDTEST8\christopher@dooapp.com\indexes\default\nodesByPath\_dc_Lucene50_0.doc: The process cannot access the file because it is being used by another process.  
+  at sun.nio.fs.WindowsException.translateToIOException(WindowsException.java:86) ~[na:1.8.0_92]  
+  at sun.nio.fs.WindowsException.rethrowAsIOException(WindowsException.java:97) ~[na:1.8.0_92]  
+  at sun.nio.fs.WindowsException.rethrowAsIOException(WindowsException.java:102) ~[na:1.8.0_92]  
+  at sun.nio.fs.WindowsFileSystemProvider.newFileChannel(WindowsFileSystemProvider.java:115) ~[na:1.8.0_92]  
+  at java.nio.channels.FileChannel.open(FileChannel.java:287) ~[na:1.8.0_92]  
+  at java.nio.channels.FileChannel.open(FileChannel.java:335) ~[na:1.8.0_92]  
+  at org.apache.lucene.util.IOUtils.fsync(IOUtils.java:393) ~[dsdk-launcher.jar:na]  
+  at org.apache.lucene.store.FSDirectory.fsync(FSDirectory.java:281) ~[dsdk-launcher.jar:na]  
+  at org.apache.lucene.store.FSDirectory.sync(FSDirectory.java:226) ~[dsdk-launcher.jar:na]  
+  at org.apache.lucene.store.LockValidatingDirectoryWrapper.sync(LockValidatingDirectoryWrapper.java:62) ~[dsdk-launcher.jar:na]  
+  at org.apache.lucene.index.IndexWriter.startCommit(IndexWriter.java:4456) ~[dsdk-launcher.jar:na]  
+  at org.apache.lucene.index.IndexWriter.prepareCommitInternal(IndexWriter.java:2874) ~[dsdk-launcher.jar:na]  
+  at org.apache.lucene.index.IndexWriter.commitInternal(IndexWriter.java:2977) ~[dsdk-launcher.jar:na]  
+  at org.apache.lucene.index.IndexWriter.commit(IndexWriter.java:2944) ~[dsdk-launcher.jar:na]  
+  at org.modeshape.jcr.index.lucene.LuceneIndex.commit(LuceneIndex.java:152) ~[dsdk-launcher.jar:na] 
+Thank you in advance for your help
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+5.3.1
+Fix_version:
+None
+Component:
+core/store
+Label:
+None
+Environment:
+windows 10, java
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Kevin Senechal
+Create date:
+05/Dec/16 14:21
+Update date:
+06/Dec/16 14:39
+Resolved date:
+

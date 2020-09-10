@@ -1,0 +1,42 @@
+Summary:
+Race condition when closing regions that causes flakiness in TestRestartCluster
+Description:
+In TestRestartCluster.testClusterRestart() we spin up cluster, create three tables, shut it down, start it back up, and ensure we still have three regions.
+A subtle race condition during the first shutdown makes it so the flush of META doesn't finish so when we start back up there are no user regions.
+I'm not sure if there are reasons the ordering is as such, but the is the section of code in CloseRegionHandler around line 118:
+      this.rsServices.removeFromOnlineRegions(regionInfo.getEncodedName());
+      region.close(abort);
+We remove from the online map of regions before actually closing. But what the main run() loop in the RS is waiting on to determine when it can shut down is that the online region map is empty.
+  private void waitOnAllRegionsToClose() {
+    // Wait till all regions are closed before going out.
+    int lastCount = -1;
+    while (!this.onlineRegions.isEmpty()) {
+Any reason not to swap these two and do the close before removing from online regions?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+Jonathan Gray
+Create date:
+30/Sep/10 18:44
+Update date:
+20/Nov/15 12:43
+Resolved date:
+30/Sep/10 18:54

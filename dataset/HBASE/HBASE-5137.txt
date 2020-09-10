@@ -1,0 +1,47 @@
+Summary:
+MasterFileSystem.splitLog() should abort even if waitOnSafeMode() throws IOException
+Description:
+I am not sure if this bug was already raised in JIRA.
+In our test cluster we had a scenario where the RS had gone down and ServerShutDownHandler started with splitLog.
+But as the HDFS was down the check waitOnSafeMode throws IOException.
+try {
+        // If FS is in safe mode, just wait till out of it.
+        FSUtils.waitOnSafeMode(conf,
+          conf.getInt(HConstants.THREAD_WAKE_FREQUENCY, 1000));  
+        splitter.splitLog();
+      } catch (OrphanHLogAfterSplitException e) {
+We catch the exception
+} catch (IOException e) {
+      checkFileSystem();
+      LOG.error("Failed splitting " + logDir.toString(), e);
+    }
+So the HLog split itself did not happen. We encontered like 4 regions that was recently splitted in the crashed RS was lost.
+Can we abort the Master in such scenarios? Pls suggest.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.6, 0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+06/Jan/12 16:53
+Update date:
+20/Nov/15 11:52
+Resolved date:
+10/Jan/12 17:53

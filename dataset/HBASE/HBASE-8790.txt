@@ -1,0 +1,49 @@
+Summary:
+NullPointerException thrown when stopping regionserver
+Description:
+The Hbase cluster is a fresh start with one regionserver.
+When we stop hbase, an unhandled NullPointerException is throwed in the regionserver.
+The regionserver's log is as follows:
+2013-06-21 10:21:11,284 INFO [regionserver61020] regionserver.HRegionServer: Closing user regions
+2013-06-21 10:21:14,288 DEBUG [regionserver61020] regionserver.HRegionServer: Waiting on 1028785192
+2013-06-21 10:21:14,290 FATAL [regionserver61020] regionserver.HRegionServer: ABORTING region server HOSTNAME_TEST,61020,1371781086817
+: Unhandled: null
+java.lang.NullPointerException
+at org.apache.hadoop.hbase.regionserver.HRegionServer.tryRegionServerReport(HRegionServer.java:988)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:832)
+at java.lang.Thread.run(Thread.java:662)
+2013-06-21 10:21:14,292 FATAL [regionserver61020] regionserver.HRegionServer: RegionServer abort: loaded coprocessors are: [org.apache
+.hadoop.hbase.coprocessor.MultiRowMutationEndpoint]
+2013-06-21 10:21:14,293 INFO [regionserver61020] regionserver.HRegionServer: STOPPED: Unhandled: null
+2013-06-21 10:21:14,293 INFO [regionserver61020] ipc.RpcServer: Stopping server on 61020
+It seems that after closing user regions, the rssStub is null.
+update:
+we found that if setting hbase.client.ipc.pool.type to RoundRobinPool(or other pool type) and hbase.client.ipc.pool.size to 10(possibly other values) in hbase-site.xml, the regionserver is continuously attempting connect to master. and if we stop hbase, the above NullPointerException occurred. With hbase.client.ipc.pool.size set to 1, the cluster can be completely stopped.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.1
+Fix_version:
+0.98.0, 0.95.2
+Component:
+regionserver
+Label:
+None
+Environment:
+CentOS 5.9 x86_64, java version "1.6.0_45", CDH4.3
+Attachment number:
+0
+Assignee:
+Liang Xie
+Reporter:
+Xiong LIU
+Create date:
+22/Jun/13 02:56
+Update date:
+23/Sep/13 19:22
+Resolved date:
+28/Jun/13 02:15

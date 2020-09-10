@@ -1,0 +1,86 @@
+Summary:
+Reading columns marked as type different than default validation class from CQL causes errors
+Description:
+As discussed on users mailing list I'm having trouble reading data from a table created via thrift, where some columns are marked as having a validator different than the default one.
+Minimal working example:
+#!/usr/bin/env python
+
+# Run this in virtualenv with pycassa and cassandra-driver installed via pip
+import pycassa
+import cassandra
+import calendar
+import traceback
+import time
+from uuid import uuid4
+
+keyspace = "badcql"
+
+sysmanager = pycassa.system_manager.SystemManager("localhost")
+sysmanager.create_keyspace(keyspace, strategy_options={'replication_factor':'1'})
+sysmanager.create_column_family(keyspace, "Users", key_validation_class=pycassa.system_manager.LEXICAL_UUID_TYPE,
+                                comparator_type=pycassa.system_manager.ASCII_TYPE,
+                                default_validation_class=pycassa.system_manager.UTF8_TYPE)
+sysmanager.create_index(keyspace, "Users", "username", pycassa.system_manager.UTF8_TYPE)
+sysmanager.create_index(keyspace, "Users", "email", pycassa.system_manager.UTF8_TYPE)
+sysmanager.alter_column(keyspace, "Users", "default_account_id", pycassa.system_manager.LEXICAL_UUID_TYPE)
+sysmanager.create_index(keyspace, "Users", "active", pycassa.system_manager.INT_TYPE)
+sysmanager.alter_column(keyspace, "Users", "date_created", pycassa.system_manager.LONG_TYPE)
+
+pool = pycassa.pool.ConnectionPool(keyspace, ['localhost:9160'])
+cf = pycassa.ColumnFamily(pool, "Users")
+
+user_uuid = uuid4()
+
+cf.insert(user_uuid, {'username':'test_username', 'auth_method':'ldap', 'email':'test@example.com', 'active':1, 
+                      'date_created':long(calendar.timegm(time.gmtime())), 'default_account_id':uuid4()})
+
+from cassandra.cluster import Cluster
+cassandra_cluster = Cluster(["localhost"])
+cassandra_session = cassandra_cluster.connect(keyspace)
+print "username", cassandra_session.execute('SELECT value from "Users" where key = %s and column1 = %s', (user_uuid, 'username',))
+print "email", cassandra_session.execute('SELECT value from "Users" where key = %s and column1 = %s', (user_uuid, 'email',))
+try:
+    print "default_account_id", cassandra_session.execute('SELECT value from "Users" where key = %s and column1 = %s', (user_uuid, 'default_account_id',))
+except Exception as e:
+    print "Exception trying to get default_account_id", traceback.format_exc()
+    cassandra_session = cassandra_cluster.connect(keyspace)
+
+try:
+    print "active", cassandra_session.execute('SELECT value from "Users" where key = %s and column1 = %s', (user_uuid, 'active',))
+except Exception as e:
+    print "Exception trying to get active", traceback.format_exc()
+    cassandra_session = cassandra_cluster.connect(keyspace)
+
+try:
+    print "date_created", cassandra_session.execute('SELECT value from "Users" where key = %s and column1 = %s', (user_uuid, 'date_created',))
+except Exception as e:
+    print "Exception trying to get date_created", traceback.format_exc()
+    
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Erik Forsberg
+Create date:
+19/Nov/14 09:34
+Update date:
+16/Apr/19 09:31
+Resolved date:
+10/Feb/15 22:58

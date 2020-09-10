@@ -1,0 +1,37 @@
+Summary:
+Deal with broken ALTER DROP support in CQL3
+Description:
+Currently, ALTER DROP only remove the metadata for the column, making it unavailable, but don't reclaim the data. This is unintuive and CASSANDRA-3919 is opened to fix it. However, that later issue won't make it for 1.2, and I think we should be very careful into shipping 1.2 with the current behavior because 1) it's unintuitive and 2) as unintuitive as it is, we don't want people to start relying on that behavior. So I thing we should do one of:
+remove support for ALTER DROP until CASSANDRA-3919 reintroduce it. After all, there is no real performance impact in keeping a colum that you don't use and if you really really want to get rid of the metadata, you still have the workaround of trashing the schema and recreating it without that column (obviously not user friendly, but at least it's vaguely possible).
+add a specific syntax for the current behavior of ALTER DROP, one that clearly imply that the data is not deleted, if we consider that this behavior can be sometimes useful (that is, even after CASSANDRA-3919 is resolved). One such syntax could one of (not sure which one I prefer):
+ALTER TABLE foo DROP my_column SCHEMA ONLY
+ALTER TABLE foo DROP my_column KEEP DATA
+I have a slight preference for solution 2, but honestly because it will it easier to drop a column you've just added but maybe mispelled the name until CASSANDRA-3919. Once CASSANDRA-3919 is in, I'm not sure this will be so useful anymore.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+07/Nov/12 17:29
+Update date:
+16/Apr/19 09:32
+Resolved date:
+16/Nov/12 11:37

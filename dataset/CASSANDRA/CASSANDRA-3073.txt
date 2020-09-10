@@ -1,0 +1,48 @@
+Summary:
+liveSize() calculation is wrong in case of overwrite
+Description:
+currently liveSize() is the sum of currentThroughput.
+this definition is wrong if most of the operations are overwrite, or counter (which is essentially overwrite).
+for example, the following code should always keep a single entry in db, with one row, one cf, one column, and supposedly should have a size of only about 100 bytes.
+connect localhost/9160;
+create keyspace blah;
+use blah;
+create column family cf2 with memtable_throughput=1024 and memtable_operations=10000 ;
+set the cassandra.yaml
+memtable_total_space_in_mb: 20
+to make the error appear faster (but if u set to default, still same issue will appear)
+then we use a simple pycassa script:
+>>> pool = pycassa.connect('blah')
+>>> mycf = pycassa.ColumnFamily(pool,"cf2");
+>>> for x in range(1,10000000) :
+... xx = mycf.insert('key1',{'col1':"{}".format})
+...
+you will see sstables being generated with only sizes of a few k, though we set the CF options to get high SSTable sizes
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Invalid
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yang Yang
+Reporter:
+Yang Yang
+Create date:
+24/Aug/11 00:47
+Update date:
+16/Apr/19 09:32
+Resolved date:
+02/Nov/11 20:01

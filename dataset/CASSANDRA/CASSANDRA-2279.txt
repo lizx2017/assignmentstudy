@@ -1,0 +1,63 @@
+Summary:
+Tombstones not collected post-repair
+Description:
+The keys would only show up in sstables2json and look like this:
+(root@aps4):/opt/cassandra/storage/queue/data/Panama Wed Feb 23 07:24:34am
+===> /opt/cassandra/bin/sstable2json Queue-2527-Data.db -k waq:publicMessageIndexingWorkArea:PUM8a65ce95-9d35-4941-928c-dd5965e8b29b
+2011-02-23 07:24:43,710 INFO [org.apache.cassandra.config.DatabaseDescriptor] - DiskAccessMode 'auto' determined to be mmap, indexAccessMode is mmap
+2011-02-23 07:24:43,972 INFO [org.apache.cassandra.io.SSTableReader] - Opening /opt/cassandra/storage/queue/data/Panama/Queue-2527-Data.db
+{
+"waq:publicMessageIndexingWorkArea:PUM8a65ce95-9d35-4941-928c-dd5965e8b29b": []
+}
+(root@aps4):/opt/cassandra/storage/queue/data/Panama Wed Feb 23 07:24:44am
+===>
+The steps that I took to reproduce it were:
+Create a keyspace, column family, and a key
+Delete the key on Node 1 using the cli (del cf['key']
+Flush
+Repair on a cluster with more than 1 node
+Wait GCSeconds
+Compact
+And the empty row would appear on Node 2
+However, when I was able to get rid of the empty rows, I was following these steps on a single machine:
+Create a keyspace, column family, and a key
+Delete the key
+Flush
+Sample write (writing to some temporary key)
+Deleting the attribute to that temporary key (not the entire key)
+Flush
+Compact
+or these steps:
+Create a keyspace, column family, and a key
+Delete the key
+Flush
+Wait GCseconds
+Compact
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.5
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Joaquin Casares
+Create date:
+07/Mar/11 17:42
+Update date:
+16/Apr/19 09:33
+Resolved date:
+08/Apr/11 22:23

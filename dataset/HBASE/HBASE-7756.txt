@@ -1,0 +1,47 @@
+Summary:
+Strange code in ServerCallable#shouldRetry
+Description:
+This code is strange.
+If you configure a different value for HBASE_CLIENT_OPERATION_TIMEOUT, you can have only one socket timeout (whatever your setting for the socket timeout). If not, the first time we will retry (again, whatever your setting and the real timeout).
+  public void shouldRetry(Throwable throwable) throws IOException {
+    if (this.callTimeout != HConstants.DEFAULT_HBASE_CLIENT_OPERATION_TIMEOUT)
+      if (throwable instanceof SocketTimeoutException
+          || (this.endTime - this.startTime > this.callTimeout)) {
+        throw (SocketTimeoutException) new SocketTimeoutException(
+            "Call to access row '" + Bytes.toString(row) + "' on table '"
+                + Bytes.toString(tableName)
+                + "' failed on socket timeout exception: " + throwable + " this.callTimeout="+this.callTimeout + " time= "+(this.endTime - this.startTime))
+            .initCause(throwable);
+      } else {
+        this.callTimeout = ((int) (this.endTime - this.startTime));
+      }
+  }
+I don't get all the implications yet, but for sure it's too smart to be good, and, at least, breaks my tests for HBASE-7590
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.4, 0.95.2
+Fix_version:
+0.95.0
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Nicolas Liochon
+Create date:
+04/Feb/13 17:22
+Update date:
+23/Sep/13 18:30
+Resolved date:
+05/Feb/13 12:49

@@ -1,0 +1,36 @@
+Summary:
+SessionValidationScheduler created multiple times, enabling it is not thread safe
+Description:
+DefaultSessionManager superclass AbstractValidatingSessionManager enables SessionValidatorScheduler on-demand, not on creation. Validation is enabled by any of the two SessionManager methods: start(context) or getSession(key). But none of the methods has proper synchronisation around critical methods like org.apache.shiro.session.mgt.AbstractValidatingSessionManager.enableSessionValidation() or org.apache.shiro.session.mgt.AbstractValidatingSessionManager.enableSessionValidationIfNecessary().
+Problem is that in case of parallel incoming requests (like two concurrent HTTP request in web application), two instances (or more than one) instances of SessionValidationScheduler will be created (which are by default ExecutorServiceSessionValidationScheduler). This results in multiple threads competing around for session validation. While this does NOT cause problems in Shiro operations (multiple threads validating sessions is synchronised just fine), it looks very awkward in thread dumps and logs, and is usually source of confusion or "false alarms".
+Repository that contains sample code (with possible workaround for Shiro integrators):
+https://github.com/cstamas/shiro-session-validation-thread
+Note: I did not fiddle to properly assert, but when you run from CLI and inspect the thread dump, you can see how SessionManagerTest ends up with 3 threads (as many concurrent session requests are made), on my system named as "Thread-0", "Thread-1" and "Thread-2". While the SessionManagerWorkaroundTest creates only "Thread-0". If running from IDE, don't forget to run the tests in separate JVMs, otherwise the daemon threads will remain from one test during execution of another!
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.2.1
+Fix_version:
+1.2.5
+Component:
+Session Management
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Cservenak, Tamas
+Create date:
+23/May/13 08:19
+Update date:
+08/Nov/16 16:44
+Resolved date:
+12/May/16 01:06

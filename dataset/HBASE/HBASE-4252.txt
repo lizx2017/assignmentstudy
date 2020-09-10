@@ -1,0 +1,52 @@
+Summary:
+TestLogRolling's low-probability failure
+Description:
+Before I explain why it could happen, I describe how does this test(testLogRollOnDatanodeDeath) works:
+1. There's two datanodes A & B in env. So the log has two replications first which is the expect and default value.
+2. Add a new datanode C and wait it active.
+3. Kill A who is in the pipelines.
+4. Write data. So trigger a new rollWriter while the next sync. And it only happens once. For the new log has two replications.
+5. Kill another datanode B.
+6. Write batch data to trigger consecutive rollWriter. So LowReplication-Roller will be disabled.
+7. Add a new datanode D and wait it active.
+8. Send a rollWriter request. So expect the new log will has the default replications.
+9. Write batch data. Assert the LogReplication-Roller will be enabled.
+Maybe the rollWriter request in step 8 can't be executed affected by the previous roll requests from step 6. So the current log replication is not the expect value.
+  public byte [][] rollWriter() throws FailedLogCloseException, IOException {
+    // Return if nothing to flush.
+    if (this.writer != null && this.numEntries.get() <= 0) {
+      return null;
+    }
+So the following assertion must be safeguarded.
+  log.rollWriter();
+  batchWriteAndWait(table, 14, true, 10000);
+  assertTrue("LowReplication Roller should've been enabled",
+      log.isLowReplicationRollEnabled());
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.5
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jieshan Bean
+Reporter:
+Jieshan Bean
+Create date:
+25/Aug/11 01:50
+Update date:
+20/Nov/15 11:52
+Resolved date:
+27/Aug/11 19:39

@@ -1,0 +1,57 @@
+Summary:
+CustomAnalyzer with a LowerCaseTokenizerFactory fails to normalize multiterms
+Description:
+While working on SOLR-12034, a unit test that relied on the LowerCaseTokenizerFactory failed.
+After some digging, I was able to replicate this at the Lucene level.
+Unit test:
+  @Test
+  public void testLCTokenizerFactoryNormalize() throws Exception {
+
+    Analyzer analyzer =  CustomAnalyzer.builder().withTokenizer(LowerCaseTokenizerFactory.class).build();
+
+    //fails
+    assertEquals(new BytesRef("hello"), analyzer.normalize("f", "Hello"));
+    
+    //now try an integration test with the classic query parser
+    QueryParser p = new QueryParser("f", analyzer);
+    Query q = p.parse("Hello");
+    //passes
+    assertEquals(new TermQuery(new Term("f", "hello")), q);
+
+    q = p.parse("Hello*");
+    //fails
+    assertEquals(new PrefixQuery(new Term("f", "hello")), q);
+
+    q = p.parse("Hel*o");
+    //fails
+    assertEquals(new WildcardQuery(new Term("f", "hel*o")), q);
+  }
+The problem is that the CustomAnalyzer iterates through the tokenfilters, but does not call the tokenizer, which, in the case of the LowerCaseTokenizer, does the filtering work.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+7.4, 8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Tim Allison
+Create date:
+26/Feb/18 17:03
+Update date:
+27/Jun/18 08:31
+Resolved date:
+28/May/18 14:53

@@ -1,0 +1,62 @@
+Summary:
+rowlock release problem with thread interruptions in batchMutate
+Description:
+An earlier version of snapshots would thread interrupt operations. In longer term testing we ran into an exception stack trace that indicated that a rowlock was taken an never released.
+2013-01-26 01:54:56,417 ERROR org.apache.hadoop.hbase.procedure.ProcedureMember: Propagating foreign exception to subprocedure pe-1
+org.apache.hadoop.hbase.errorhandling.ForeignException$ProxyThrowable via timer-java.util.Timer@1cea3151:org.apache.hadoop.hbase.errorhandling.ForeignException$ProxyThrowable: org.apache.hadoop.hbase.errorhandling.TimeoutException: Timeout elapsed! Source:Timeout caused Foreign E
+xception Start:1359194035004, End:1359194095004, diff:60000, max:60000 ms
+        at org.apache.hadoop.hbase.errorhandling.ForeignException.deserialize(ForeignException.java:184)
+        at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs.abort(ZKProcedureMemberRpcs.java:321)
+        at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs.watchForAbortedProcedures(ZKProcedureMemberRpcs.java:150)
+        at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs.access$200(ZKProcedureMemberRpcs.java:56)
+        at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs$1.nodeChildrenChanged(ZKProcedureMemberRpcs.java:112)
+        at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.process(ZooKeeperWatcher.java:315)
+        at org.apache.zookeeper.ClientCnxn$EventThread.processEvent(ClientCnxn.java:519)
+        at org.apache.zookeeper.ClientCnxn$EventThread.run(ClientCnxn.java:495)
+Caused by: org.apache.hadoop.hbase.errorhandling.ForeignException$ProxyThrowable: org.apache.hadoop.hbase.errorhandling.TimeoutException: Timeout elapsed! Source:Timeout caused Foreign Exception Start:1359194035004, End:1359194095004, diff:60000, max:60000 ms
+        at org.apache.hadoop.hbase.errorhandling.TimeoutExceptionInjector$1.run(TimeoutExceptionInjector.java:71)
+        at java.util.TimerThread.mainLoop(Timer.java:512)
+        at java.util.TimerThread.run(Timer.java:462)
+2013-01-26 01:54:56,648 WARN org.apache.hadoop.hbase.regionserver.HRegion: Failed getting lock in batch put, row=0001558252
+java.io.IOException: Timed out on getting lock for row=0001558252
+        at org.apache.hadoop.hbase.regionserver.HRegion.internalObtainRowLock(HRegion.java:3239)
+        at org.apache.hadoop.hbase.regionserver.HRegion.getLock(HRegion.java:3315)
+        at org.apache.hadoop.hbase.regionserver.HRegion.doMiniBatchMutation(HRegion.java:2150)
+        at org.apache.hadoop.hbase.regionserver.HRegion.batchMutate(HRegion.java:2021)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.multi(HRegionServer.java:3511)
+        at sun.reflect.GeneratedMethodAccessor46.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Server.call(WritableRpcEngine.java:364)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1400)
+....
+.. every snapshot attempt that used this region for the next two days encountered this problem.
+Snapshots will now bypass this problem with the fix in HBASE-7703. However, we should make sure hbase regionserver operations are safe when interrupted.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Jonathan Hsieh
+Create date:
+29/Jan/13 19:49
+Update date:
+27/Jun/14 16:47
+Resolved date:
+31/Jan/13 17:13

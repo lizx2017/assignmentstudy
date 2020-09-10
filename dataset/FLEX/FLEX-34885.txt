@@ -1,0 +1,64 @@
+Summary:
+When changing the original Array and marking the item as updated in a sorted collection, the removed item is still in the collection
+Description:
+See the
+ListCollectionView_Sort_Tests.test_marking_entire_item_as_updated_gets_the_old_object_out_of_the_list()
+unit test:
+[Test]
+        public function test_marking_entire_item_as_updated_gets_the_old_object_out_of_the_list():void
+        {
+            //given
+            var from0To4:IList = generateVOs(5, true); //values["name"]: Object4, Object3, Object2, Object1, Object0
+            _sut.addAll(from0To4);
+
+            const sortByNameAscending:Sort = new Sort();
+            sortByNameAscending.fields = [new SortField("name", false, false, false)];
+            _sut.sort = sortByNameAscending;
+            _sut.refresh(); //values["name"]: Object0, Object1, Object2, Object3, Object4
+
+            //when
+            const removedItem:ListCollectionView_Sort_VO = (_sut.list as ArrayList).source[0] as ListCollectionView_Sort_VO;
+            const newItem:ListCollectionView_Sort_VO = generateOneObject(-1);
+            (_sut.list as ArrayList).source[0] = newItem;
+            _sut.itemUpdated(newItem, null, removedItem, newItem);
+
+            removedItem.name = "Object7"; //should make no difference
+            newItem.name = "Object9"; //should place it at the end of the list
+
+            //then
+            const indexOfRemovedItem:int = _sut.getItemIndex(removedItem);
+            assertEquals("the item should have been removed from the list", -1, indexOfRemovedItem);
+            for(var i:int = 0; i < _sut.length; i++)
+            {
+                assertThat(_sut.getItemAt(i) != removedItem);
+            }
+            assertEquals("the new item should have been moved to the end of the list", _sut.length - 1, _sut.getItemIndex(newItem));
+        }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Apache Flex 4.14.1
+Fix_version:
+Apache Flex 4.15.0
+Component:
+Spark: Sort and SortField
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mihai Chira
+Reporter:
+Mihai Chira
+Create date:
+09/Jun/15 08:19
+Update date:
+02/Mar/16 09:21
+Resolved date:
+02/Mar/16 09:21

@@ -1,0 +1,68 @@
+Summary:
+Active Directory succeeds even if the user name and password is not passed.
+Description:
+Here below is how my active directory setup looks like in shiro.ini:
+ldapContextFactory = org.apache.shiro.realm.ldap.JndiLdapContextFactory
+ldapContextFactory.url = ldap://abc.internal:389/
+adRealm = org.apache.shiro.realm.activedirectory.ActiveDirectoryRealm
+adRealm.ldapContextFactory = $ldapContextFactory
+adRealm.searchBase = "CN=Configuration,DC=abc,DC=internal"
+Servlet Code:
+Subject subject = SecurityUtils.getSubject();
+String username = request.getParameter("uid");
+String password = request.getParameter("pwd");
+String rememberMe = request.getParameter("rememberMe");
+Boolean flag = false;
+if (rememberMe != null && rememberMe.equalsIgnoreCase("on")) {
+flag = true;
+}
+if (!subject.isAuthenticated()) {
+logger.info("Authenticating user: " + request.getParameter("uid"));
+UsernamePasswordToken token = new UsernamePasswordToken(username, password, flag);
+try
+{ subject.login(token); }
+catch (UnknownAccountException e)
+{ logger.info("Unknown user account..."); }
+catch (IncorrectCredentialsException e)
+{ logger.info("Incorrect credentials..."); }
+catch (DisabledAccountException e)
+{ logger.info("User account disabled..."); }
+catch (AuthenticationException e)
+{ logger.info("Authentication Exception..."); }
+Actions performed in login.jsp,
+1. With empty username and password field => authentication succeeds - This should not happen
+2. With empty username and some random password => authentication succeeds - This should not happen
+3. With non-existent username and some password => authentication fails - This is correct
+4. With existing username and invalid password => authentication fails - This is correct
+5. With correct username and password => authentication succeeds - This is correct.
+Please let me know if you were able to reproduce this issue in your environment and what other information would you need.
+FYI, The Ldap and Jdbc Realms are working fine except for the ActiveDirectory realm.
+Thank You
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+1.2.2
+Fix_version:
+None
+Component:
+Authentication (log-in)
+Label:
+None
+Environment:
+windows xp, java 1.7, maven
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+skis
+Create date:
+19/Sep/13 17:46
+Update date:
+17/Sep/14 00:04
+Resolved date:
+

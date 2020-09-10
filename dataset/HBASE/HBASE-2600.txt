@@ -1,0 +1,38 @@
+Summary:
+Change how we do meta tables; from tablename+STARTROW+randomid to instead, tablename+ENDROW+randomid
+Description:
+This is an idea that Ryan and I have been kicking around on and off for a while now.
+If regionnames were made of tablename+endrow instead of tablename+startrow, then in the metatables, doing a search for the region that contains the wanted row, we'd just have to open a scanner using passed row and the first row found by the scan would be that of the region we need (If offlined parent, we'd have to scan to the next row).
+If we redid the meta tables in this format, we'd be using an access that is natural to hbase, a scan as opposed to the perverse, expensive getClosestRowBefore we currently have that has to walk backward in meta finding a containing region.
+This issue is about changing the way we name regions.
+If we were using scans, prewarming client cache would be near costless (as opposed to what we'll currently have to do which is first a getClosestRowBefore and then a scan from the closestrowbefore forward).
+Converting to the new method, we'd have to run a migration on startup changing the content in meta.
+Up to this, the randomid component of a region name has been the timestamp of region creation. HBASE-2531 "32-bit encoding of regionnames waaaaaaayyyyy too susceptible to hash clashes" proposes changing the randomid so that it contains actual name of the directory in the filesystem that hosts the region. If we had this in place, I think it would help with the migration to this new way of doing the meta because as is, the region name in fs is a hash of regionname... changing the format of the regionname would mean we generate a different hash... so we'd need hbase-2531 to be in place before we could do this change.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+22/May/10 23:58
+Update date:
+21/Jun/13 20:41
+Resolved date:
+

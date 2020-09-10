@@ -1,0 +1,36 @@
+Summary:
+DatabaseDescriptor static initialization circular reference when initialized through call to StorageService.instance.initClient
+Description:
+In trunk, attempting to invoke StorageService.instance.initClient results in an NPE due to static definition field ordering in StorageService and a circular reference from DatabaseDescriptor back into an uninitialized field (scheduledTasks). Changing the ordering of the static fields such that scheduledTasks is defined before the static partitioner fixes the issue.
+I've also marked the scheduledTasks executor as final as it doesn't seem to make sense changing it.
+All tests pass with this change locally.
+I suspect this hasn't surfaced in tests as calling initServer first in the same JVM will allow later calls to initClient to see the correctly defined scheduledTasks fields.
+I'm following the recommended way to do this from ClientOnlyExample, if this isn't the right way to initialize things let me know.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.0 rc 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+Erik Onnen
+Create date:
+18/Nov/10 21:58
+Update date:
+16/Apr/19 09:33
+Resolved date:
+19/Nov/10 16:31

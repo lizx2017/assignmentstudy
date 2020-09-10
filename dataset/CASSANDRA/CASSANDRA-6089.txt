@@ -1,0 +1,61 @@
+Summary:
+client_only example does not work
+Description:
+client_only example fails out of the box with:
+13/09/24 11:44:53 INFO gms.Gossiper: Node /127.0.0.1 is now part of the cluster
+13/09/24 11:44:53 INFO gms.Gossiper: InetAddress /127.0.0.1 is now UP
+13/09/24 11:44:53 ERROR concurrent.DebuggableThreadPoolExecutor: Error in ThreadPoolExecutor
+java.lang.NullPointerException
+  at org.apache.cassandra.service.MigrationManager.maybeScheduleSchemaPull(MigrationManager.java:113)
+ at org.apache.cassandra.service.MigrationManager.onAlive(MigrationManager.java:95)
+ at org.apache.cassandra.gms.Gossiper.markAlive(Gossiper.java:803)
+ at org.apache.cassandra.gms.Gossiper.handleMajorStateChange(Gossiper.java:846)
+ at org.apache.cassandra.gms.Gossiper.applyStateLocally(Gossiper.java:931)
+ at org.apache.cassandra.gms.GossipDigestAck2VerbHandler.doVerb(GossipDigestAck2VerbHandler.java:50)
+ at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:56)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:895)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:918)
+ at java.lang.Thread.run(Thread.java:680)
+Exception in thread "GossipStage:1" java.lang.NullPointerException
+ at org.apache.cassandra.service.MigrationManager.maybeScheduleSchemaPull(MigrationManager.java:113)
+ at org.apache.cassandra.service.MigrationManager.onAlive(MigrationManager.java:95)
+ at org.apache.cassandra.gms.Gossiper.markAlive(Gossiper.java:803)
+ at org.apache.cassandra.gms.Gossiper.handleMajorStateChange(Gossiper.java:846)
+ at org.apache.cassandra.gms.Gossiper.applyStateLocally(Gossiper.java:931)
+ at org.apache.cassandra.gms.GossipDigestAck2VerbHandler.doVerb(GossipDigestAck2VerbHandler.java:50)
+ at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:56)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:895)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:918)
+ at java.lang.Thread.run(Thread.java:680)
+I've tested this both on the 1.2.8 tag and with 1.2 latest.
+The line in question is
+if (Schema.instance.getVersion().equals(theirVersion) || !shouldPullSchemaFrom(endpoint))
+Seems that Schema.instance.getVersion() returns null in the client_only case. Adding a Schema.instance.getVersion() == null as another || in the conditional appears to fix it, but I don't remember the codepaths well enough to confidently say that that's the correct thing to do.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.11, 2.0.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mikhail Panchenko
+Reporter:
+Mikhail Panchenko
+Create date:
+24/Sep/13 20:10
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Sep/13 19:12

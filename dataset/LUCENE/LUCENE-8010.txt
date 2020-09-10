@@ -1,0 +1,46 @@
+Summary:
+fix or sandbox similarities in core with problems
+Description:
+We want to support scoring optimizations such as LUCENE-4100 and LUCENE-7993, which put very minimal requirements on the similarity impl. Today similarities of various quality are in core and tests.
+The ones with problems currently have warnings in the javadocs about their bugs, and if the problems are severe enough, then they are also disabled in randomized testing too.
+IMO lucene core should only have practical functions that won't return NaN scores at times or cause relevance to go backwards if the user's stopfilter isn't configured perfectly. Also it is important for unit tests to not deal with broken or semi-broken sims, and the ones in core should pass all unit tests.
+I propose we move the buggy ones to sandbox and deprecate them. If they can be fixed we can put them back in core, otherwise bye-bye.
+FWIW tests developed in LUCENE-7997 document the following requirements:
+scores are non-negative and finite.
+score matches the explanation exactly.
+internal explanations calculations are sane (e.g. sum of: and so on actually compute sums)
+scores don't decrease as term frequencies increase: e.g. score(freq=N + 1) >= score(freq=N)
+scores don't decrease as documents get shorter, e.g. score(len=M) >= score(len=M+1)
+scores don't decrease as terms get rarer, e.g. score(term=N) >= score(term=N+1)
+scoring works for floating point frequencies (e.g. sloppy phrase and span queries will work)
+scoring works for reasonably large 64-bit statistic values (e.g. distributed search will work)
+scoring works for reasonably large boost values (0 .. Integer.MAX_VALUE, e.g. query boosts will work)
+scoring works for parameters randomized within valid ranges
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+25/Oct/17 00:37
+Update date:
+06/Apr/18 12:49
+Resolved date:
+06/Apr/18 12:49

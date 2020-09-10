@@ -1,0 +1,84 @@
+Summary:
+FlateDecoder in stream mode
+Description:
+The zlib (the unlying spec for Flate compression) does not require an Z_STREAM_END to terminate the compression. The Java InflateInputStream is really assuming that you are reading a zip or gzip file which will always have a Z_STREAM_END (Z_STREAM_END is a constant in the zlib library which Java calls natively) . So the following chunk decodes fine using the jcraft zlib decoder, but fails using the InflateInputStream.
+3 0 obj
+<<
+/Type /XObject
+/Subtype /Form
+/FormType 1
+/Resources << /Font 4 0 R
+/ProcSet [/PDF /ImageC /Text]>>
+/BBox [0 0 595 842]
+/Matrix [1 0 0 1 0 0]
+/Filter /FlateDecode
+/Length 5 >>
+stream
+H<89>C@
+endstream
+endobj
+The blob is 72, -119, 3, 0, 13 decimal. It decodes to an empty string.
+The fix is to use Inflater and check to see if it has consumed all of the input buffer and make sure it has nothing to write into the output buffer.
+protected ByteArrayOutputStream decompress(InputStream in)
+throws IOException, DataFormatException
+{
+ByteArrayOutputStream out = new ByteArrayOutputStream();
+byte buf[] = new byte[1000];
+Inflater inflater = new Inflater();
+int read = in.read(buf);
+if(read == 0)
+{ return out; }
+inflater.setInput(buf,0,read);
+byte res[] = new byte[1000];
+while(true)
+{
+int resRead = inflater.inflate(res);
+if(resRead !=0)
+{ out.write(res,0,resRead); continue; }
+if(inflater.finished() || inflater.needsDictionary() || in.available()==0)
+{ out.close(); return out; }
+read = in.read(buf);
+inflater.setInput(buf,0,read);
+}
+}
+We then need to change FlateFilter.decode(InputStream compressedData, OutputStream result,
+COSDictionary options, int filterIndex )
+to look like ...
+if (compressedData.available() > 0)
+{
+try
+{ baos = decompress(compressedData); }
+if (predictor==-1 || predictor == 1 )
+{ result.write(baos.toByteArray()); }
+else
+{
+use the bytearrayoutput stream as before ...
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+1.7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Dave Smith
+Create date:
+21/Feb/12 13:04
+Update date:
+29/May/12 16:21
+Resolved date:
+10/Mar/12 15:20

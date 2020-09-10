@@ -1,0 +1,109 @@
+Summary:
+Updates to COMPACT STORAGE tables via cli drop CQL information
+Description:
+If a COMPACT STORAGE table is altered using the CLI all information about the column names reverts to the initial "key, column1, column2" namings. Additionally, the changes in the columns name will not take effect until the Cassandra service is restarted. This means that the clients using CQL will continue to work properly until the service is restarted, at which time they will start getting errors about non-existant columns in the table.
+When attempting to rename the columns back using ALTER TABLE an error stating the column already exists will be raised. The only way to get it back is to ALTER TABLE and change the comment or something, which will bring back all the original column names.
+This seems to be related to CASSANDRA-6676 and CASSANDRA-6370
+In cqlsh
+Connected to cluster1 at 127.0.0.3:9160.
+[cqlsh 3.1.8 | Cassandra 1.2.15-SNAPSHOT | CQL spec 3.0.0 | Thrift protocol 19.36.2]
+Use HELP for help.
+cqlsh> CREATE KEYSPACE test WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };
+cqlsh> USE test;
+cqlsh:test> CREATE TABLE foo (bar text, baz text, qux text, PRIMARY KEY(bar, baz) ) WITH COMPACT STORAGE;
+cqlsh:test> describe table foo;
+
+CREATE TABLE foo (
+  bar text,
+  baz text,
+  qux text,
+  PRIMARY KEY (bar, baz)
+) WITH COMPACT STORAGE AND
+  bloom_filter_fp_chance=0.010000 AND
+  caching='KEYS_ONLY' AND
+  comment='' AND
+  dclocal_read_repair_chance=0.000000 AND
+  gc_grace_seconds=864000 AND
+  read_repair_chance=0.100000 AND
+  replicate_on_write='true' AND
+  populate_io_cache_on_flush='false' AND
+  compaction={'class': 'SizeTieredCompactionStrategy'} AND
+  compression={'sstable_compression': 'SnappyCompressor'};
+Now in cli:
+  Connected to: "cluster1" on 127.0.0.3/9160
+Welcome to Cassandra CLI version 1.2.15-SNAPSHOT
+
+Type 'help;' or '?' for help.
+Type 'quit;' or 'exit;' to quit.
+
+[default@unknown] use test;
+Authenticated to keyspace: test
+[default@test] UPDATE COLUMN FAMILY foo WITH comment='hey this is a comment';
+3bf5fa49-5d03-34f0-b46c-6745f7740925
+Now back in cqlsh:
+cqlsh:test> describe table foo;
+
+CREATE TABLE foo (
+  bar text,
+  column1 text,
+  value text,
+  PRIMARY KEY (bar, column1)
+) WITH COMPACT STORAGE AND
+  bloom_filter_fp_chance=0.010000 AND
+  caching='KEYS_ONLY' AND
+  comment='hey this is a comment' AND
+  dclocal_read_repair_chance=0.000000 AND
+  gc_grace_seconds=864000 AND
+  read_repair_chance=0.100000 AND
+  replicate_on_write='true' AND
+  populate_io_cache_on_flush='false' AND
+  compaction={'class': 'SizeTieredCompactionStrategy'} AND
+  compression={'sstable_compression': 'SnappyCompressor'};
+
+cqlsh:test> ALTER TABLE foo WITH comment='this is a new comment';
+cqlsh:test> describe table foo;
+
+CREATE TABLE foo (
+  bar text,
+  baz text,
+  qux text,
+  PRIMARY KEY (bar, baz)
+) WITH COMPACT STORAGE AND
+  bloom_filter_fp_chance=0.010000 AND
+  caching='KEYS_ONLY' AND
+  comment='this is a new comment' AND
+  dclocal_read_repair_chance=0.000000 AND
+  gc_grace_seconds=864000 AND
+  read_repair_chance=0.100000 AND
+  replicate_on_write='true' AND
+  populate_io_cache_on_flush='false' AND
+  compaction={'class': 'SizeTieredCompactionStrategy'} AND
+  compression={'sstable_compression': 'SnappyCompressor'};
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.17, 2.0.8, 2.1 beta2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Russell Bradberry
+Create date:
+10/Mar/14 17:47
+Update date:
+16/Apr/19 09:31
+Resolved date:
+05/May/14 07:31

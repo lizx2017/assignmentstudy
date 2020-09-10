@@ -1,0 +1,93 @@
+Summary:
+Thread safety issues with Compression.Algorithm.GZ and CompressionTest
+Description:
+I've seen some occasional NullPointerExceptions in ZlibFactory.isNativeZlibLoaded(conf) during region server startups and the completebulkload process. This is being caused by a null configuration getting passed to the isNativeZlibLoaded method. I think this happens when 2 or more threads call the CompressionTest.testCompression method at once. If the GZ algorithm has not been tested yet both threads could continue on and attempt to load the compressor. For GZ the getCodec method is not thread safe which could lead to one thread getting a reference to a GzipCodec that has a null configuration.
+current:
+      DefaultCodec getCodec(Configuration conf) {
+        if (codec == null) {
+          codec = new GzipCodec();
+          codec.setConf(new Configuration(conf));
+        }
+
+        return codec;
+      }
+one possible fix would be something like this:
+      DefaultCodec getCodec(Configuration conf) {
+        if (codec == null) {
+          GzipCodec gzip = new GzipCodec();
+          gzip.setConf(new Configuration(conf));
+          codec = gzip;
+        }
+
+        return codec;
+      }
+But that may not be totally safe without some synchronization. An upstream fix in CompressionTest could also prevent multi thread access to GZ.getCodec(conf)
+exceptions:
+12/02/21 16:11:56 ERROR handler.OpenRegionHandler: Failed open of region=all-monthly,,1326263896983.bf574519a95263ec23a2bad9f5b8cbf4.
+java.io.IOException: java.lang.NullPointerException
+at org.apache.hadoop.hbase.util.CompressionTest.testCompression(CompressionTest.java:89)
+at org.apache.hadoop.hbase.regionserver.HRegion.checkCompressionCodecs(HRegion.java:2670)
+at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:2659)
+at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:2647)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.openRegion(OpenRegionHandler.java:312)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:99)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:158)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Caused by: java.lang.NullPointerException
+at org.apache.hadoop.io.compress.zlib.ZlibFactory.isNativeZlibLoaded(ZlibFactory.java:63)
+at org.apache.hadoop.io.compress.GzipCodec.getCompressorType(GzipCodec.java:166)
+at org.apache.hadoop.io.compress.CodecPool.getCompressor(CodecPool.java:100)
+at org.apache.hadoop.io.compress.CodecPool.getCompressor(CodecPool.java:112)
+at org.apache.hadoop.hbase.io.hfile.Compression$Algorithm.getCompressor(Compression.java:236)
+at org.apache.hadoop.hbase.util.CompressionTest.testCompression(CompressionTest.java:84)
+... 9 more
+Caused by: java.io.IOException: java.lang.NullPointerException
+at org.apache.hadoop.hbase.util.CompressionTest.testCompression(CompressionTest.java:89)
+at org.apache.hadoop.hbase.io.hfile.HFile$Reader.readTrailer(HFile.java:890)
+at org.apache.hadoop.hbase.io.hfile.HFile$Reader.loadFileInfo(HFile.java:819)
+at org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles.groupOrSplit(LoadIncrementalHFiles.java:405)
+at org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles$2.call(LoadIncrementalHFiles.java:323)
+at org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles$2.call(LoadIncrementalHFiles.java:321)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Caused by: java.lang.NullPointerException
+at org.apache.hadoop.io.compress.zlib.ZlibFactory.isNativeZlibLoaded(ZlibFactory.java:63)
+at org.apache.hadoop.io.compress.GzipCodec.getCompressorType(GzipCodec.java:166)
+at org.apache.hadoop.io.compress.CodecPool.getCompressor(CodecPool.java:100)
+at org.apache.hadoop.io.compress.CodecPool.getCompressor(CodecPool.java:112)
+at org.apache.hadoop.hbase.io.hfile.Compression$Algorithm.getCompressor(Compression.java:236)
+at org.apache.hadoop.hbase.util.CompressionTest.testCompression(CompressionTest.java:84)
+... 10 more
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.90.5, (3)
+Fix_version:
+0.94.5, 0.95.0
+Component:
+io
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Elliott Clark
+Reporter:
+David McIntosh
+Create date:
+22/Feb/12 22:11
+Update date:
+26/Feb/13 08:27
+Resolved date:
+18/Jan/13 19:37

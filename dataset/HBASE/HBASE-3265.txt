@@ -1,0 +1,37 @@
+Summary:
+Regionservers waiting for ROOT while Master waiting for RegionServers
+Description:
+After a cluster disastrophe due to a disconnected switch, I ended up in a state where the master was up with no region servers (see HBASE-3263). When I brought the RS back up, because of the aforementioned bug, the master didn't get itself into a happy state (internal datastructure had some null in it). So I killed the master and started it again. Now, the master is in "Waiting for region servers to check in" mode, and the region servers are in the following stack:
+locked <0x00002aaab1bda5d0> (a org.apache.hadoop.hbase.zookeeper.RootRegionTracker)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForRoot(CatalogTracker.java:177)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:537)
+at java.lang.Thread.run(Thread.java:619)
+I imagine what happened is that the RS got through "tryReportForDuty" with the old master, but the old master was unable to assign anything due to bad state. So, when it crashed, all the RS were stuck in waitForRoot(), and when I brought the new one up, no one was reporting for duty.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Todd Lipcon
+Create date:
+23/Nov/10 08:18
+Update date:
+20/Nov/15 12:41
+Resolved date:
+29/Nov/10 22:31

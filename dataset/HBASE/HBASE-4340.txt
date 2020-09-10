@@ -1,0 +1,76 @@
+Summary:
+Hbase can't balance if ServerShutdownHandler encountered exception
+Description:
+Version: 0.90.4
+Cluster : 40 boxes
+As I saw below logs. It said that balance couldn't work because of a dead RS.
+I dug deeply and found two issues:
+1. shutdownhandler didn't clear numProcessing deal with some exceptions. It seems whatever exceptions we should clear the flag or close master.
+2. "dead regionserver(s): [158-1-130-12,20020,1314971097929]" is inaccurate. The dead sever should be " 158-1-130-10,20020,1315068597979"
+//master logs:
+2011-09-05 00:28:00,487 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 00:33:00,489 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 00:38:00,493 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 00:43:00,495 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 00:48:00,499 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 00:53:00,501 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 00:58:00,501 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 01:03:00,502 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 01:08:00,506 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 01:13:00,508 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 01:18:00,512 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 01:23:00,514 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 01:28:00,518 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 01:33:00,520 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 01:38:00,524 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 01:43:00,526 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 01:48:00,530 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 01:53:00,532 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 01:58:00,536 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 02:03:00,537 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 02:08:00,538 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 02:13:00,539 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+2011-09-05 02:18:00,543 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): [158-1-130-12,20020,1314971097929]
+// the exception logs :.
+2011-09-03 18:13:27,550 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=158-1-133-11,20020,1315069437236, region=0db4088d75c58dd22f93f389d90ba6cc
+2011-09-03 18:13:27,550 ERROR org.apache.hadoop.hbase.executor.EventHandler: Caught throwable while processing event M_SERVER_SHUTDOWN java.lang.NullPointerException
+at org.apache.hadoop.hbase.util.Bytes.toLong(Bytes.java:480)
+at org.apache.hadoop.hbase.util.Bytes.toLong(Bytes.java:454)
+at org.apache.hadoop.hbase.catalog.MetaReader.metaRowToRegionPairWithInfo(MetaReader.java:400)
+at org.apache.hadoop.hbase.catalog.MetaReader.getServerUserRegions(MetaReader.java:591)
+at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.process(ServerShutdownHandler.java:176)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:156)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+2011-09-03 18:13:27,550 INFO org.apache.hadoop.hbase.master.handler.ServerShutdownHandler: Splitting logs for 158-1-134-15,20020,1315065238916
+2011-09-03 18:13:27,566 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan was found (or we are ignoring an existing plan) for ufdr,001146,1314955304624.22f6d43e78c903196f206881fc149488. so generated a random one; hri=ufdr,001146,1314955304624.22f6d43e78c903196f206881fc149488., src=, dest=158-1-132-17,20020,1315069441916; 31 (online=31, exclude=null) available servers
+201
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+gaojinchao
+Reporter:
+gaojinchao
+Create date:
+07/Sep/11 02:26
+Update date:
+20/Nov/15 11:53
+Resolved date:
+10/Sep/11 04:39

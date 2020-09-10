@@ -1,0 +1,70 @@
+Summary:
+cql error with ORDER BY when using IN
+Description:
+            CREATE TABLE test(
+                my_id varchar, 
+                col1 int, 
+                value varchar, 
+                PRIMARY KEY (my_id, col1)
+            );
+
+INSERT INTO test(my_id, col1, value) VALUES ( 'key1', 1, 'a');
+INSERT INTO test(my_id, col1, value) VALUES ( 'key2', 3, 'c');
+INSERT INTO test(my_id, col1, value) VALUES ( 'key3', 2, 'b');
+INSERT INTO test(my_id, col1, value) VALUES ( 'key4', 4, 'd');
+SELECT col1 FROM test WHERE my_id in('key1', 'key2', 'key3') ORDER BY col1;
+The following error results: TSocket read 0 bytes
+The log gives a traceback:
+ERROR [Thrift:8] 2012-09-04 12:02:15,894 CustomTThreadPoolServer.java (line 202) Error occurred during processing of message.
+java.lang.IndexOutOfBoundsException: Index: 1, Size: 1
+ at java.util.ArrayList.RangeCheck(ArrayList.java:547)
+ at java.util.ArrayList.get(ArrayList.java:322)
+ at org.apache.cassandra.cql3.statements.SelectStatement$SingleColumnComparator.compare(SelectStatement.java:1356)
+ at org.apache.cassandra.cql3.statements.SelectStatement$SingleColumnComparator.compare(SelectStatement.java:1343)
+ at java.util.Arrays.mergeSort(Arrays.java:1270)
+ at java.util.Arrays.sort(Arrays.java:1210)
+ at java.util.Collections.sort(Collections.java:159)
+ at org.apache.cassandra.cql3.statements.SelectStatement.orderResults(SelectStatement.java:821)
+ at org.apache.cassandra.cql3.statements.SelectStatement.process(SelectStatement.java:793)
+ at org.apache.cassandra.cql3.statements.SelectStatement.executeInternal(SelectStatement.java:136)
+ at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:118)
+ at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:62)
+ at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:107)
+ at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:115)
+ at org.apache.cassandra.thrift.CassandraServer.execute_cql_query(CassandraServer.java:1521)
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3618)
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3606)
+ at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+ at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:184)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.5
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Tyler Patterson
+Create date:
+04/Sep/12 18:20
+Update date:
+16/Apr/19 09:32
+Resolved date:
+07/Sep/12 16:01

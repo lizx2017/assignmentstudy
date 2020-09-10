@@ -1,0 +1,53 @@
+Summary:
+HBase Client doesn't handle master failover
+Description:
+A client on our beta tier was stuck in this exception loop when we issued a new HMaster after the old one died:
+Exception while trying to connect hBase
+java.lang.reflect.UndeclaredThrowableException
+at $Proxy1.getClusterStatus(Unknown Source)
+at org.apache.hadoop.hbase.client.HBaseAdmin.getClusterStatus(HBaseAdmin.java:912)
+at org.apache.hadoop.hbase.client.HTable.getCurrentNrHRS(HTable.java:170)
+at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:143)
+...
+at org.apache.thrift.server.TThreadPoolServer$WorkerProcess.run(TThreadPoolServer.java:253)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:885)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:907)
+at java.lang.Thread.run(Thread.java:619)
+Caused by: java.net.SocketTimeoutException: 20000 millis timeout while waiting for channel to be ready for connect. ch : java.nio.channels.SocketChannel[connection-pending remote=/10.18.34.212:60000]
+at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:213)
+at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:406)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.setupIOstreams(HBaseClient.java:309)
+at org.apache.hadoop.hbase.ipc.HBaseClient.getConnection(HBaseClient.java:856)
+at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:724)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:252)
+... 20 more
+12:52:55,863 [pool-4-thread-5182] INFO PersistentUtil:153 - Retry after 1 second...
+Looking at the client code, the HConnectionManager does not watch ZK for NodeDeleted & NodeCreated of /hbase/master
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+0.90.0
+Fix_version:
+None
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+Nicolas Spiegelberg
+Create date:
+09/Jul/10 23:46
+Update date:
+15/Apr/13 22:45
+Resolved date:
+15/Apr/13 22:45

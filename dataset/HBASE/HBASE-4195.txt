@@ -1,0 +1,63 @@
+Summary:
+Possible inconsistency in a memstore read after a reseek, possible performance improvement
+Description:
+This follows the dicussion around HBASE-3855, and the random errors (20% failure on trunk) on the unit test org.apache.hadoop.hbase.regionserver.TestHRegion.testWritesWhileGetting
+I saw some points related to numIterReseek, used in the MemStoreScanner#getNext (line 690):
+679     protected KeyValue getNext(Iterator it) {
+680       KeyValue ret = null;
+681       long readPoint = ReadWriteConsistencyControl.getThreadReadPoint();
+682       //DebugPrint.println( " MS@" + hashCode() + ": threadpoint = " + readPoint);
+683  
+684       while (ret == null && it.hasNext()) {
+685         KeyValue v = it.next();
+686         if (v.getMemstoreTS() <= readPoint) {
+687           // keep it.
+688           ret = v;
+689         }
+690         numIterReseek--;
+691         if (numIterReseek == 0) {
+692           break;
+693          }
+694       }
+695       return ret;
+696     }
+This function is called by seek, reseek, and next. The numIterReseek is only usefull for reseek.
+There are some issues, I am not totally sure it's the root cause of the test case error, but it could explain partly the randomness of the error, and one point is for sure a bug.
+1) In getNext, numIterReseek is decreased, then compared to zero. The seek function sets numIterReseek to zero before calling getNext. It means that the value will be actually negative, hence the test will always fail, and the loop will continue. It is the expected behaviour, but it's quite smart.
+2) In "reseek", numIterReseek is not set between the loops on the two iterators. If the numIterReseek is equals to zero after the loop on the first one, the loop on the second one will never call seek, as numIterReseek will be negative.
+3) Still in "reseek", the test to call "seek" is (kvsetNextRow == null && numIterReseek == 0). In other words, if kvsetNextRow is not null when numIterReseek equals zero, numIterReseek will start to be negative at the next iteration and seek will never be called.
+4) You can have side effects if reseek ends with a numIterReseek > 0: the following calls to the "next" function will decrease numIterReseek to zero, and getNext will break instead of continuing the loop. As a result, later calls to next() may return null or not depending on how is configured the default value for numIterReseek.
+To check if the issue comes from point 4, you can set the numIterReseek to zero before returning in reseek:
+      numIterReseek = 0;
+      return (kvsetNextRow != null || snapshotNextRow != null);
+    }
+On my env, on trunk, it seems to work, but as it's random I am not really sure. I also had to modify the test (I added a loop) to make it fails more often, the original test was working quite well here.
+It has to be confirmed that this totally fix (it could be partial or unrelated) org.apache.hadoop.hbase.regionserver.TestHRegion.testWritesWhileGetting before implementing a complete solution.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.92.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Nicolas Liochon
+Create date:
+11/Aug/11 22:17
+Update date:
+20/Nov/15 11:53
+Resolved date:
+16/Sep/11 19:39

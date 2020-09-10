@@ -1,0 +1,51 @@
+Summary:
+Race condition on creating system_auth.roles and using it on startup
+Description:
+It looks like it's possible for system_auth.roles to have a statement prepared against it before the table exists on startup:
+ERROR [main] 2015-04-15 15:12:35,626 CassandraDaemon.java: Exception encountered during startup
+java.lang.AssertionError: org.apache.cassandra.exceptions.InvalidRequestException: unconfigured table roles
+    at org.apache.cassandra.auth.CassandraRoleManager.prepare(CassandraRoleManager.java:427) ~[main/:na]
+    at org.apache.cassandra.auth.CassandraRoleManager.setup(CassandraRoleManager.java:139) ~[main/:na]
+    at org.apache.cassandra.service.StorageService.doAuthSetup(StorageService.java:1009) ~[main/:na]
+    at org.apache.cassandra.service.StorageService.joinTokenRing(StorageService.java:936) ~[main/:na]
+    at org.apache.cassandra.service.StorageService.initServer(StorageService.java:670) ~[main/:na]
+    at org.apache.cassandra.service.StorageService.initServer(StorageService.java:557) ~[main/:na]
+    at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:412) [main/:na]
+    at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:561) [main/:na]
+    at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:668) [main/:na]
+Caused by: org.apache.cassandra.exceptions.InvalidRequestException: unconfigured table roles
+    at org.apache.cassandra.thrift.ThriftValidation.validateColumnFamily(ThriftValidation.java:115) ~[main/:na]
+    at org.apache.cassandra.cql3.statements.SelectStatement$RawStatement.prepare(SelectStatement.java:739) ~[main/:na]
+    at org.apache.cassandra.auth.CassandraRoleManager.prepare(CassandraRoleManager.java:423) ~[main/:na]
+    ... 8 common frames omitted
+INFO  [StorageServiceShutdownHook] 2015-04-15 15:12:35,636 Gossiper.java: Announcing shutdown
+INFO  [MigrationStage:1] 2015-04-15 15:12:35,639 Schema.java: Loading org.apache.cassandra.config.CFMetaData@57a4b158[cfId=5bc52802-de25-35ed-aeab-188eecebb090,ksName=system_auth,cfName=roles,cfType=Standard,comparator=org.apache.cassandra.db.marshal.CompositeType(org.apache.cassandra.db.marshal.UTF8Type,org.apache.cassandra.db.marshal.ColumnToCollectionType(6d656d6265725f6f66:org.apache.cassandra.db.marshal.SetType(org.apache.cassandra.db.marshal.UTF8Type))),comment=role definitions,readRepairChance=0.0,dcLocalReadRepairChance=0.0,gcGraceSeconds=7776000,defaultValidator=org.apache.cassandra.db.marshal.BytesType,keyValidator=org.apache.cassandra.db.marshal.UTF8Type,minCompactionThreshold=4,maxCompactionThreshold=32,columnMetadata=[ColumnDefinition{name=member_of, type=org.apache.cassandra.db.marshal.SetType(org.apache.cassandra.db.marshal.UTF8Type), kind=REGULAR, componentIndex=0, indexName=null, indexType=null}, ColumnDefinition{name=is_superuser, type=org.apache.cassandra.db.marshal.BooleanType, kind=REGULAR, componentIndex=0, indexName=null, indexType=null}, ColumnDefinition{name=role, type=org.apache.cassandra.db.marshal.UTF8Type, kind=PARTITION_KEY, componentIndex=null, indexName=null, indexType=null}, ColumnDefinition{name=salted_hash, type=org.apache.cassandra.db.marshal.UTF8Type, kind=REGULAR, componentIndex=0, indexName=null, indexType=null}, ColumnDefinition{name=can_login, type=org.apache.cassandra.db.marshal.BooleanType, kind=REGULAR, componentIndex=0, indexName=null, indexType=null}],compactionStrategyClass=class org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy,compactionStrategyOptions={},compressionParameters={sstable_compression=org.apache.cassandra.io.compress.LZ4Compressor},bloomFilterFpChance=0.01,memtableFlushPeriod=3600000,caching={"keys":"ALL", "rows_per_partition":"NONE"},defaultTimeToLive=0,minIndexInterval=128,maxIndexInterval=2048,speculativeRetry=99.0PERCENTILE,droppedColumns={},triggers=[],isDense=false]
+INFO  [MigrationStage:1] 2015-04-15 15:12:35,654 ColumnFamilyStore.java: Initializing system_auth.roles
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/Distributed Metadata
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Tyler Hobbs
+Create date:
+15/Apr/15 22:38
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/May/15 19:19

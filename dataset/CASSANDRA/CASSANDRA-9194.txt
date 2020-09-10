@@ -1,0 +1,54 @@
+Summary:
+Delete-only workloads crash Cassandra
+Description:
+The size of a tombstone is not properly accounted for in the memtable. A memtable which has only tombstones will never get flushed. It will grow until the JVM runs out of memory. The following program easily demonstrates the problem.
+  Cluster.Builder builder = Cluster.builder();
+  
+  Cluster c = builder.addContactPoints("cas121.devf3.com").build();
+  
+  Session s = c.connect();
+   
+  s.execute("CREATE KEYSPACE IF NOT EXISTS test WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 }");
+
+  s.execute("CREATE TABLE IF NOT EXISTS test.test(id INT PRIMARY KEY)");
+
+  PreparedStatement stmt = s.prepare("DELETE FROM test.test WHERE id = :id");
+
+  int id = 0;
+  
+  while (true)
+  {
+   s.execute(stmt.bind(id));
+   
+   id++;
+  }
+This program should run forever, but eventually Cassandra runs out of heap and craps out. You needn't wait for Cassandra to crash. If you run "nodetool cfstats test.test" while it is running, you'll see Memtable cell count grow, but Memtable data size will remain 0.
+This issue was fixed once before. I received a patch for version 2.0.5 (I believe), which contained the fix, but the fix has apparently been lost, because it is clearly broken, and I don't see the fix in the change logs.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15, 2.1.6, 2.2.0 rc1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Robert Wille
+Create date:
+15/Apr/15 12:41
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/May/15 10:35

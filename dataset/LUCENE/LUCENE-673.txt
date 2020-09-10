@@ -1,0 +1,82 @@
+Summary:
+Exceptions when using Lucene over NFS
+Description:
+I'm opening this issue to track details on the known problems with
+Lucene over NFS.
+The summary is: if you have one machine writing to an index stored on
+an NFS mount, and other machine(s) reading (and periodically
+re-opening the index) then sometimes on re-opening the index the
+reader will hit a FileNotFound exception.
+This has hit many users because this is a natural way to "scale up"
+your searching (single writer, multiple readers) across machines. The
+best current workaround (I think?) is to take the approach Solr takes
+(either by actually using Solr or copying/modifying its approach) to
+take snapshots of the index and then have the readers open the
+snapshots instead of the "live" index being written to.
+I've been working on two patches for Lucene:
+A locking (LockFactory) implementation using native OS locks
+Lock-less commits
+(I'll open separate issues with the details for those).
+I have a simple stress test where one machine is constantly adding
+docs to an index over NFS, and another machine is constantly
+re-opening the index searcher over NFS.
+These tests have revealed new details (at least for me!) about the
+root cause of our NFS problems:
+Even when using native locks over NFS, Lucene still hits these
+exceptions!
+I was surprised by this because I had always thought (assumed?)
+the NFS problem was because the "simple" file-based locking was
+not correct over NFS, and that switching to native OS filesystem
+locking would resolve it, but it doesn't.
+I can reproduce the "FileNotFound" exceptions even when using NFS
+V4 (the latest NFS protocol), so this is not just a "your NFS
+server is too old" issue.
+Then, when running the same stress test with the lock-less
+changes, I don't hit any exceptions. I've tested on NFS version
+2, 3 and 4 (using the "nfsvers=N" mount option).
+I think this means that in fact (as Hoss at one point suggested I
+believe), the NFS problems are likely due to the cache coherence of
+the NFS file system (I think the "segments" file in particular)
+against the existence of the actual segment data files.
+In other words, even if you lock correctly, on the reader side it will
+sometimes see stale contents of the "segments" file which lead it to
+try to open a now deleted segment data file.
+So I think this is good news / bad news: the bad news is, native
+locking doesn't fix our problems with NFS (as at least I had expected
+it to). But the good news is, it looks like (still need to do more
+thorough testing of this) the changes for lock-less commits do enable
+Lucene to work fine over NFS.
+[One quick side note in case it helps others: to get native locks
+working over NFS on Ubuntu/Debian Linux 6.06, I had to "apt-get
+install nfs-common" on the NFS client machines. Before I did this I
+would hit "No locks available" IOExceptions on calling the "tryLock"
+method. The default nfs server install on the server machine just
+worked because it runs in kernel mode and it start a lockd process.]
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.2
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+16/Sep/06 14:56
+Update date:
+10/May/13 10:44
+Resolved date:
+11/Dec/07 21:07

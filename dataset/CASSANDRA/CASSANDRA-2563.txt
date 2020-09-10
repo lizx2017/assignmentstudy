@@ -1,0 +1,80 @@
+Summary:
+Error starting up a cassandra cluster after creating a table in the system keyspace: Attempt to assign id to existing column family.
+Description:
+Repro Steps
+rm -rf /var/lib/cassandra/*
+rm -rf /var/log/cassandra/*
+Start Cassandra
+In cqlsh, create a column family and insert data
+cqlsh> CREATE COLUMNFAMILY users (
+   ...   KEY varchar PRIMARY KEY,
+   ...   password varchar,
+   ...   gender varchar,
+   ...   session_token varchar,
+   ...   state varchar,
+   ...   birth_year bigint);
+
+cqlsh> INSERT INTO users (KEY, password, gender, state, birth_year) VALUES ('user1', 'ch@ngem3', 'f', 'CA', '1971');
+cqlsh> INSERT INTO users (KEY, password, gender, state, birth_year) VALUES ('user2', 'ch@ngem3', 'f', 'CA', '1972');
+cqlsh> INSERT INTO users (KEY, password, gender, state, birth_year) VALUES ('user3', 'ch@ngem3', 'f', 'CA', '1973');
+Quit cqlsh
+Kill Cassandra
+Startup Cassandra and get error
+ INFO 18:38:24,509 Loading schema version 087af100-7034-11e0-0000-242d50cf1fde
+ERROR 18:38:24,774 Exception encountered during startup.
+java.io.IOError: org.apache.cassandra.config.ConfigurationException: Attempt to assign id to existing column family.
+ at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:489)
+ at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:138)
+ at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:313)
+ at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:80)
+Caused by: org.apache.cassandra.config.ConfigurationException: Attempt to assign id to existing column family.
+ at org.apache.cassandra.config.CFMetaData.map(CFMetaData.java:126)
+ at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:485)
+ ... 3 more
+Exception encountered during startup.
+java.io.IOError: org.apache.cassandra.config.ConfigurationException: Attempt to assign id to existing column family.
+ at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:489)
+ at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:138)
+ at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:313)
+ at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:80)
+Caused by: org.apache.cassandra.config.ConfigurationException: Attempt to assign id to existing column family.
+ at org.apache.cassandra.config.CFMetaData.map(CFMetaData.java:126)
+ at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:485)
+ ... 3 more
+UPDATE: This issue happens if I create the CF in the default keyspace.
+Workaround
+cqlsh> CREATE KEYSPACE cqldb with 
+   ...   strategy_class =  
+   ...     'org.apache.cassandra.locator.SimpleStrategy' 
+   ...   and strategy_options:replication_factor=1;
+cqlsh> use cqldb;
+
+The create the table and insert data.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.0 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Cathy Daw
+Create date:
+26/Apr/11 18:50
+Update date:
+16/Apr/19 09:33
+Resolved date:
+27/Apr/11 15:55

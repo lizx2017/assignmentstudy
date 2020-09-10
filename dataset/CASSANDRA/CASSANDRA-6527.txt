@@ -1,0 +1,65 @@
+Summary:
+Random tombstones after adding a CF with sstableloader
+Description:
+I've marked this bug as critical since it results in a data loss without any warnings.
+Here's the scenario:
+create a fresh one-node cluster with cassandra 1.2.11
+add a sample row:
+CREATE KEYSPACE keyspace1 WITH replication = {'class':'SimpleStrategy', 'replication_factor':1};
+use keyspace1;
+create table table1 (key text primary key, value1 text);
+update table1 set value1 = 'some-value' where key = 'some-key';
+flush, drain, shutdown the cluster - you should have a single sstable:
+root@l1:~# ls /var/lib/cassandra/data/keyspace1/table1/
+keyspace1-table1-ic-1-CompressionInfo.db  
+keyspace1-table1-ic-1-Filter.db  
+keyspace1-table1-ic-1-Statistics.db  
+keyspace1-table1-ic-1-TOC.txt
+keyspace1-table1-ic-1-Data.db             
+keyspace1-table1-ic-1-Index.db   
+keyspace1-table1-ic-1-Summary.db
+with a perfectly correct content:
+root@l1:~# sstable2json /var/lib/cassandra/data/keyspace1/table1/keyspace1-table1-ic-1-Data.db
+[
+{"key": "736f6d652d6b6579","columns": [["","",1387822268786000], ["value1","some-value",1387822268786000]]}
+]
+create a new cluster with 2.0.3 (we've used 3 nodes with replication=2, but I guess it doesn't matter)
+copy sstable from the machine in the old cluster to one of the machines in the new cluster (we do not want to use old sstableloader)
+load sstables with sstableloader:
+sstableloader -d 172.16.9.12 keyspace1/table1
+analyze the content of newly loaded sstable:
+root@l13:~# sstable2json /var/lib/cassandra/data/keyspace1/table1/keyspace1-table1-jb-1-Data.db
+[
+{"key": "736f6d652d6b6579","metadata": {"deletionInfo": {"markedForDeleteAt":294205259775,"localDeletionTime":0}},"columns": [["","",1387824835597000], ["value1","some-value",1387824835597000]]}
+]
+There's a random tombstone inserted!
+We've hit this bug in production. We never use delete for this column family, but the tombstones appeared for each row. The timestamp looks random. In our case it was mostly in past, but sometimes (about 3% rows) it was in the future. That's even worse than missing a row. In that case you cannot simply add it again - tombstone from the future will hide it.
+Fortunately, we have noticed that quickly and canceled the migration. However, we were quite lucky. There are no warnings or errors during the whole process. Losing less than 3% of data may be hard to noticed at first sight for many kind of apps.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Bartłomiej Romański
+Create date:
+26/Dec/13 13:58
+Update date:
+16/Apr/19 09:31
+Resolved date:
+26/Dec/13 22:01

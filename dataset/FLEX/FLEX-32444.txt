@@ -1,0 +1,110 @@
+Summary:
+AdvancedDataGridAutomationImpl.replayAutomatableEvent does not handle AdvancedDataGridEvent.ITEM_EDIT_BEGIN properly
+Description:
+Steps to reproduce:
+There is a valid implementation for automating AdvancedDataGridEvent.ITEM_EDIT_BEGIN events in class AdvancedDataGridBaseExAutomationImpl but AdvancedDataGridAutomationImpl never lets super method handle the event. This makes automated editing of ADGs impossible. In addition AdvancedDataGridAutomationImpl.replayAutomatableEvent assumes that the dataProvider of the ADG IS hierarchical, which should not be necessary. The method AdvancedDataGrid.replayAutomatableEvent calls AdvancedDataGrid.isItemOpen that will throw RTE if data provider is not hierarchical.
+Actual Results:
+No effect or RTE if non-hierarchical data provider used. Further will throw RTE if triggerEvent reference is not set.
+Expected Results:
+Automated editing of AdvancedDataGrid items is possible.
+Workaround (if any):
+I guess it should be possible to extend the automation class, fix the bug and register it as the automation delegate of AdvancedDataGrid.
+An example application about the issue:
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" paddingLeft="20" paddingTop="20" creationComplete="init()">
+<mx:Script>
+<![CDATA[
+import mx.controls.listClasses.IListItemRenderer;
+import mx.automation.Automation;
+import mx.automation.events.AutomationReplayEvent;
+import mx.events.AdvancedDataGridEventReason;
+import mx.events.AdvancedDataGridEvent;
+import mx.events.FlexEvent;
+import mx.collections.HierarchicalData;
+import mx.collections.ArrayCollection;
+[Bindable]
+public var flatDp:ArrayCollection = new ArrayCollection([
+{name: "Aapeli"}
+,
+{name: "Pertti"}
+,
+{name: "Aino"}
+,
+{name: "Äiti", children: new ArrayCollection([
+{name: "Muksu"}
+,
+{name: "Taapero"}
+,
+{name: "Ipana"}
+])},
+{name: "Tarmo"}
+,
+{name: "Isä", children: new ArrayCollection([
+{name: "Kersa"}
+,
+{name: "Vintiö"}
+,
+{name: "Mukula"}
+])}]);
+private function init() : void
+{ flatEdit.addEventListener(MouseEvent.CLICK, clickHandler); hierarchicalEdit.addEventListener(MouseEvent.CLICK, clickHandler); }
+private function clickHandler(event:MouseEvent) : void
+{ editItem(event.target == flatEdit ? flatADG : hierarchicalADG); }
+private function editItem(adg:AdvancedDataGrid) : void
+{ var ir:IListItemRenderer = adg.indexToItemRenderer(0); var re:AdvancedDataGridEvent = new AdvancedDataGridEvent(AdvancedDataGridEvent.ITEM_EDIT_BEGIN); re.columnIndex = 0; re.rowIndex = 0; re.itemRenderer = adg.indexToItemRenderer(0); re.triggerEvent = new MouseEvent(MouseEvent.CLICK); var ae:AutomationReplayEvent = new AutomationReplayEvent(); ae.automationObject = adg; ae.replayableEvent = re; Automation.automationManager.replayAutomatableEvent(ae); }
+]]
+>
+</mx:Script>
+<mx:AdvancedDataGrid
+id="flatADG"
+width="200"
+editable="true"
+dataProvider="
+{flatDp}
+">
+<mx:columns>
+<mx:AdvancedDataGridColumn dataField="name" headerText="Name" />
+</mx:columns>
+</mx:AdvancedDataGrid>
+<mx:Button id="flatEdit" label="Edit first row" />
+<mx:AdvancedDataGrid
+id="hierarchicalADG"
+width="200"
+editable="true"
+dataProvider="
+{new HierarchicalData(flatDp)}
+">
+<mx:columns>
+<mx:AdvancedDataGridColumn dataField="name" headerText="Name" />
+</mx:columns>
+</mx:AdvancedDataGrid>
+<mx:Button id="hierarchicalEdit" label="Edit first row" />
+</mx:Application>
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+23/Mar/09 02:01
+Update date:
+29/Jun/11 22:58
+Resolved date:
+15/Mar/11 02:35

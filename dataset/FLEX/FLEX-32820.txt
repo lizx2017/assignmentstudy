@@ -1,0 +1,165 @@
+Summary:
+Can't manage the width of AxisRenderer's labelRenderer items
+Description:
+The main goal was to create AxisRenderer's labelRenderer which should allow word wrapping for the axis labels.
+But it turned-out that it is impossible to manage width of the axis label items correctly.
+Steps to reproduce:
+1. Create new project based on example Using a custom AxisRenderer object
+<?xml version="1.0"?>
+<!-- charts/LabelRendererWithToolTips.mxml -->
+<s:Application 
+    xmlns:fx="http://ns.adobe.com/mxml/2009" 
+    xmlns:mx="library://ns.adobe.com/flex/mx" 
+    xmlns:s="library://ns.adobe.com/flex/spark" 
+    initialize="setupDP()" 
+    >
+    
+    <fx:Script>
+     <![CDATA[
+        import mx.collections.ArrayCollection;
+        import mx.charts.ColumnChart; 
+    
+        [Bindable]
+        private var ac:ArrayCollection;
+        
+        public function setupDP():void{
+            ac =  new ArrayCollection([
+              [ "Label 1 is short.", 200000],
+              [ "Label 2 is a fairly long label.", 150000],
+              [ "Label 3 is an extremely long label. It contains 95 characters " + 
+                "and will likely be truncated.", 40000]
+            ]);
+        }
+     ]]
+      >
+    </fx:Script>
+
+    <s:layout>
+        <s:VerticalLayout />
+    </s:layout>
+
+    <s:Panel title="Column Chart" width="100%">
+        <s:layout>
+            <s:VerticalLayout/>
+        </s:layout>
+        <mx:ColumnChart id="bc1" 
+            showDataTips="true" 
+            dataProvider="{ac}"
+            width="100%">
+            <mx:series>
+                <mx:ColumnSeries xField="0" yField="1"/>
+            </mx:series>
+            <mx:verticalAxis>
+                <mx:LinearAxis id="va1"/>
+            </mx:verticalAxis>
+            <mx:horizontalAxis >
+                <mx:CategoryAxis id="ha1" 
+                    dataProvider="{ac}" 
+                    categoryField="0"
+                    /> 
+            </mx:horizontalAxis>
+            <mx:horizontalAxisRenderers>
+                <mx:AxisRenderer axis="{ha1}" labelAlign="center" canDropLabels="false" labelRenderer="Renderer"  />
+            </mx:horizontalAxisRenderers>
+            <mx:verticalAxisRenderers>
+                <mx:AxisRenderer axis="{va1}" canDropLabels="false"/>                
+            </mx:verticalAxisRenderers>
+        </mx:ColumnChart>           
+        <s:Label id="l1" 
+            color="white" 
+            text="Hover over the horizontal axis's labels to see the entire title rendered as a ToolTip."/>        
+    </s:Panel>         
+</s:Application>
+2. But move labelRenderer to the external file:
+package 
+{
+ import mx.charts.chartClasses.ChartLabel;
+ import mx.controls.Text;
+ import mx.core.IFlexDisplayObject;
+ 
+
+public class Renderer extends ChartLabel implements IFlexDisplayObject
+{
+ 
+ private var _myLabel:Text;
+     
+    public function Renderer():void
+    {
+        super();
+        _myLabel = new Text();
+        addChild(_myLabel);
+        
+        // The original goal is to make axis labels wrap the words dynamically
+        _myLabel.setStyle("wordWrap", true);
+
+  // None of these are applied
+        this.width = 1000;
+        this.setStyle("width", 1000);
+        this.measuredWidth = 1000;
+        this.setStyle("measuredWidth", 1000);
+        this.measuredMinWidth = 1000;
+        this.setStyle("measuredMinWidth", 1000);
+        this.explicitWidth = 1000;
+        this.setStyle("explicitWidth", 1000);
+    }
+    
+ override public function set data(value:Object):void
+ {
+     if(value == null)
+         return;
+
+     _myLabel.text = "Blabla1 Blabla2 Blabla3 Blabla4 Blabla5";
+ }
+ 
+ override protected function updateDisplayList(unscaledWidth:Number,
+                                                  unscaledHeight:Number):void
+    {
+        super.updateDisplayList(unscaledWidth, unscaledHeight);
+        
+        // This should be _label.setActualSize(unscaledWidth, unscaledHeight) but these args don't get the required values
+        _myLabel.setActualSize(_myLabel.getExplicitOrMeasuredWidth(), _myLabel.getExplicitOrMeasuredHeight());
+        
+        // Setting actual size on the renderer doesn't make the work either
+        this.setActualSize(1000, 500);
+    }
+
+}
+
+}
+Actual Results:
+Launching the example demonstrates that it is impossible to manage the width of the axis custom rendered labels
+Internal Text object (_myLabel) used to achieve word wrapping doesn't get required space for rendering, thus displaying in the wrong position
+If <mx:AxisRenderer labelAlign="center" .../> than _myLabel gets rendered starting from the center of the space where axis label should go and continue to the right
+Expected Results:
+There should be ability to set the width for the actual renderer equals to the width of the space which should go for the each axis label (actually the width of each column in the chart)
+This will allow to create custom rendered labels with word wraping
+Workaround (if any):
+No workaround found, would be very nice to have any
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+02/Jun/10 01:43
+Update date:
+14/Jul/11 05:54
+Resolved date:
+

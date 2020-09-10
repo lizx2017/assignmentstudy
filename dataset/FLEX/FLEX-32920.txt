@@ -1,0 +1,118 @@
+Summary:
+Filter function problem in Tree
+Description:
+In the below code, I am trying to put a filter function on parent node.
+if i type "Ratings" and clear the search agian, the Bottom node disappears.
+How can i retain the bottom nodes.
+Please note that the bottom node also contains "Rating" wth one less "s".
+here is the code.
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute"
+viewSourceURL=" srcview/index.html" creationComplete="init()">
+<mx:Script>
+<![CDATA[
+import vo.Person;
+import mx.collections.ArrayCollection;
+private function init():void{
+var person1:Person=new Person("Parent");
+var person2:Person=new Person("Watch Status");
+var chilPerson:Person=new Person("Ratings");
+var childPersion2:Person=new Person("rating");
+person1.children = new ArrayCollection([chilPerson]);
+person2.children = new ArrayCollection([childPersion2]);
+people.addItem(person1);
+people.addItem(person2);
+personsTree.dataProvider = people;
+}
+[Bindable]
+private var people:ArrayCollection = new ArrayCollection();
+private function refreshData():void{
+for (var i:int=0;i<this.people.length;i++){
+//reset the root node to its original unfiltered data
+people[i].children = new ArrayCollection(people[i].children.source);
+//start the recursion at the root node
+refreshRecursiveChildren(people.source[i]);
+}
+//update the Tree after the data has been filtered
+personsTree.invalidateList();
+people.filterFunction=filterData;
+people.refresh();
+}//end refreshData function
+private function refreshRecursiveChildren(person:Person):void{
+if(person.children){
+//loop through each child and filter its children
+for each(var _person:Person in person.children.source){
+refreshRecursiveChildren(_person);
+}
+//reset each "children" ArrayCollection to its original unfiltered data
+person.children = new ArrayCollection(person.children.source);
+//set the filterfunction for the newly updated node
+person.children.filterFunction = filterData;
+//run the fitlerFunction
+person.children.refresh();
+}
+}//end refreshRecursiveChildren function
+public function filterData(item:Object):Boolean{
+//get the string to filter the nodes by
+var searchString:String = iNameFilter.text;
+//if string is found in node return true.
+//since the recursive filtering takes place from bottom up, if
+//a collection still has children after filtering, also return true
+if(searchString.length == 0 || item.name.toLowerCase().indexOf(searchString.toLowerCase()) >= 0)
+return true;
+else if(item.children != null && item.children.length > 0)
+return true;return false;
+}//end filterData function
+]]
+>
+</mx:Script>
+<mx:VBox width="200" height="300" paddingTop="10" paddingBottom="10" paddingLeft="5" paddingRight="5">
+<mx:Tree id="personsTree" dataProvider="
+{people}
+" labelField="name" width="100%" height="100%" />
+<mx:HBox>
+<mx:Label text="Filter the Tree:" />
+<mx:TextInput id="iNameFilter" change="refreshData()" />
+</mx:HBox>
+</mx:VBox>
+</mx:Application>
+Below is the Action script packge
+package
+vo{
+import mx.collections.ArrayCollection;
+public class Person{
+public var name:String;
+public var children:ArrayCollection;
+public function Person(_name:String, _children:ArrayCollection = null)
+{ this.name = _name; if(_children != null) this.children = _children; } //end Person constructor }
+//end Person class
+}
+//end package declaration
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+TreeGrid
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+20/Jan/11 08:39
+Update date:
+10/Mar/11 23:21
+Resolved date:
+10/Mar/11 09:33

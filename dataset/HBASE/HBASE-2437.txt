@@ -1,0 +1,36 @@
+Summary:
+Refactor HLog splitLog
+Description:
+the HLog.splitLog got really long and complex and hard to verify for correctness.
+I started to refactor it and also ported changes from hbase-2337 that deals with premature deletion of log files in case of errors. Further improvements will be possible, however the scope of this issue is to clean the code and make it behave correctly (i.e. not lose any edits)
+Added a suite of unit tests that might be ported to 0.20 as well.
+Added a setting (hbase.skip.errors - feel free to suggest a better name) that, when set to false will make the process less tolerant to failures or corrupted files: in case a log file is corrupted or an error stops the process from consistently splitting the log, will abort the entire operation to avoid losing any edits. When hbase.skip.errors is on any corrupted files will be partially parsed and then moved to the corrupted logs archive (see hbase-2337).
+Like hbase-2337 the splitLog method will first split all the logs and then proceed to archive them. If any splitted log file (oldlogfile.log) that is the result of an earlier splitLog attempt is found in the region directory, it will be deleted - this is safe since we won't move the original log files until the splitLog process completes.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Cosmin Lehene
+Reporter:
+Cosmin Lehene
+Create date:
+13/Apr/10 12:06
+Update date:
+20/Nov/15 12:43
+Resolved date:
+01/Jun/10 18:02

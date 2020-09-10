@@ -1,0 +1,93 @@
+Summary:
+HBase client is blocked forever
+Description:
+Since the client had a temporary network failure, After it recovered.
+I found my client thread was blocked.
+Looks below stack and logs, It said that we use a invalid CatalogTracker in function "tableExists".
+Block stack:
+"WriteHbaseThread33" prio=10 tid=0x00007f76bc27a800 nid=0x2540 in Object.wait() [0x00007f76af4f3000]
+java.lang.Thread.State: TIMED_WAITING (on object monitor)
+at java.lang.Object.wait(Native Method)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMeta(CatalogTracker.java:331)
+locked <0x00007f7a67817c98> (a java.util.concurrent.atomic.AtomicBoolean)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMetaServerConnectionDefault(CatalogTracker.java:366)
+at org.apache.hadoop.hbase.catalog.MetaReader.tableExists(MetaReader.java:427)
+at org.apache.hadoop.hbase.client.HBaseAdmin.tableExists(HBaseAdmin.java:164)
+at com.huawei.hdi.hbase.HbaseFileOperate.checkHtableState(Unknown Source)
+at com.huawei.hdi.hbase.HbaseReOper.reCreateHtable(Unknown Source)
+locked <0x00007f7a4c5dc578> (a com.huawei.hdi.hbase.HbaseReOper)
+at com.huawei.hdi.hbase.HbaseFileOperate.writeToHbase(Unknown Source)
+at com.huawei.hdi.hbase.WriteHbaseThread.run(Unknown Source)
+In ZooKeeperNodeTracker, We don't throw the KeeperException to high level.
+So in CatalogTracker level, We think ZooKeeperNodeTracker start success and
+continue to process .
+[WriteHbaseThread33]2011-12-16 17:07:33,153[WARN ] | hconnection-0x334129cf6890051-0x334129cf6890051-0x334129cf6890051 Unable to get data of znode /hbase/root-region-server | org.apache.hadoop.hbase.zookeeper.ZKUtil.getDataAndWatch(ZKUtil.java:557)
+org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /hbase/root-region-server
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:90)
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:42)
+at org.apache.zookeeper.ZooKeeper.getData(ZooKeeper.java:931)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.getDataAndWatch(ZKUtil.java:549)
+at org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker.start(ZooKeeperNodeTracker.java:73)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.start(CatalogTracker.java:136)
+at org.apache.hadoop.hbase.client.HBaseAdmin.getCatalogTracker(HBaseAdmin.java:111)
+at org.apache.hadoop.hbase.client.HBaseAdmin.tableExists(HBaseAdmin.java:162)
+at com.huawei.hdi.hbase.HbaseFileOperate.checkHtableState(Unknown Source)
+at com.huawei.hdi.hbase.HbaseReOper.reCreateHtable(Unknown Source)
+at com.huawei.hdi.hbase.HbaseFileOperate.writeToHbase(Unknown Source)
+at com.huawei.hdi.hbase.WriteHbaseThread.run(Unknown Source)
+[WriteHbaseThread33]2011-12-16 17:07:33,361[ERROR] | hconnection-0x334129cf6890051-0x334129cf6890051-0x334129cf6890051 Received unexpected KeeperException, re-throwing exception | org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.keeperException(ZooKeeperWatcher.java:385)
+org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /hbase/root-region-server
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:90)
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:42)
+at org.apache.zookeeper.ZooKeeper.getData(ZooKeeper.java:931)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.getDataAndWatch(ZKUtil.java:549)
+at org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker.start(ZooKeeperNodeTracker.java:73)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.start(CatalogTracker.java:136)
+at org.apache.hadoop.hbase.client.HBaseAdmin.getCatalogTracker(HBaseAdmin.java:111)
+at org.apache.hadoop.hbase.client.HBaseAdmin.tableExists(HBaseAdmin.java:162)
+at com.huawei.hdi.hbase.HbaseFileOperate.checkHtableState(Unknown Source)
+at com.huawei.hdi.hbase.HbaseReOper.reCreateHtable(Unknown Source)
+at com.huawei.hdi.hbase.HbaseFileOperate.writeToHbase(Unknown Source)
+at com.huawei.hdi.hbase.WriteHbaseThread.run(Unknown Source)
+[WriteHbaseThread33]2011-12-16 17:07:33,361[FATAL] | Unexpected exception during initialization, aborting | org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.abort(HConnectionManager.java:1351)
+org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /hbase/root-region-server
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:90)
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:42)
+at org.apache.zookeeper.ZooKeeper.getData(ZooKeeper.java:931)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.getDataAndWatch(ZKUtil.java:549)
+at org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker.start(ZooKeeperNodeTracker.java:73)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.start(CatalogTracker.java:136)
+at org.apache.hadoop.hbase.client.HBaseAdmin.getCatalogTracker(HBaseAdmin.java:111)
+at org.apache.hadoop.hbase.client.HBaseAdmin.tableExists(HBaseAdmin.java:162)
+at com.huawei.hdi.hbase.HbaseFileOperate.checkHtableState(Unknown Source)
+at com.huawei.hdi.hbase.HbaseReOper.reCreateHtable(Unknown Source)
+at com.huawei.hdi.hbase.HbaseFileOperate.writeToHbase(Unknown Source)
+at com.huawei.hdi.hbase.WriteHbaseThread.run(Unknown Source)
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.6, 0.92.0
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+gaojinchao
+Reporter:
+gaojinchao
+Create date:
+17/Dec/11 06:34
+Update date:
+20/Nov/15 11:52
+Resolved date:
+21/Dec/11 06:15

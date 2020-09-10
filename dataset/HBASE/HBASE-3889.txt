@@ -1,0 +1,74 @@
+Summary:
+NPE in Distributed Log Splitting
+Description:
+There is an issue with the log splitting under the specific condition of edits belonging to a non existing region (which went away after a split for example). The HLogSplitter fails to check the condition, which is handled on a lower level, logging manifests it as
+2011-05-16 13:56:10,300 INFO org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: This region's directory doesn't exist: hdfs://localhost:8020/hbase/usertable/30c4d0a47703214845d0676d0c7b36f0. It is very likely that it was already split so it's safe to discard those edits.
+The code returns a null reference which is not check in HLogSplitter.splitLogFileToTemp():
+...
+        WriterAndPath wap = (WriterAndPath)o;
+        if (wap == null) {
+          wap = createWAP(region, entry, rootDir, tmpname, fs, conf);
+          if (wap == null) {
+            logWriters.put(region, BAD_WRITER);
+          } else {
+            logWriters.put(region, wap);
+          }
+        }
+        wap.w.append(entry);
+...
+The createWAP does return "null" when the above message is logged based on the obsolete region reference in the edit.
+What made this difficult to detect is that the error (and others) are silently ignored in SplitLogWorker.grabTask(). I added a catch and error logging to see the NPE that was caused by the above.
+...
+          break;
+      }
+    } catch (Exception e) {
+      LOG.error("An error occurred.", e);
+    } finally {
+      if (t > 0) {
+...
+As a side note, there are other errors/asserts triggered that this try/finally not handles. For example
+2011-05-16 13:58:30,647 WARN org.apache.hadoop.hbase.regionserver.SplitLogWorker: BADVERSION failed to assert ownership for /hbase/splitlog/hdfs%3A%2F%2Flocalhost%2Fhbase%2F.logs%2F10.0.0.65%2C60020%2C1305406356765%2F10.0.0.65%252C60020%252C1305406356765.1305409968389
+org.apache.zookeeper.KeeperException$BadVersionException: KeeperErrorCode = BadVersion for /hbase/splitlog/hdfs%3A%2F%2Flocalhost%2Fhbase%2F.logs%2F10.0.0.65%2C60020%2C1305406356765%2F10.0.0.65%252C60020%252C1305406356765.1305409968389
+        at org.apache.zookeeper.KeeperException.create(KeeperException.java:106)
+        at org.apache.zookeeper.KeeperException.create(KeeperException.java:42)
+        at org.apache.zookeeper.ZooKeeper.setData(ZooKeeper.java:1038)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker.ownTask(SplitLogWorker.java:329)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker.access$100(SplitLogWorker.java:68)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker$2.progress(SplitLogWorker.java:265)
+        at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.splitLogFileToTemp(HLogSplitter.java:432)
+        at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.splitLogFileToTemp(HLogSplitter.java:354)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker$1.exec(SplitLogWorker.java:113)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker.grabTask(SplitLogWorker.java:260)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker.taskLoop(SplitLogWorker.java:191)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker.run(SplitLogWorker.java:164)
+        at java.lang.Thread.run(Thread.java:680)
+This should probably be handled - or at least documented - in another issue?
+The NPE made the log split end and the SplitLogManager add an endless amount of RESCAN entries as this never came to an end.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+regionserver
+Label:
+None
+Environment:
+mac os
+Attachment number:
+0
+Assignee:
+Anirudh Todi
+Reporter:
+Lars George
+Create date:
+16/May/11 12:13
+Update date:
+20/Nov/15 12:43
+Resolved date:
+16/Jun/11 20:38

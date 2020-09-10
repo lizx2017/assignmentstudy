@@ -1,0 +1,41 @@
+Summary:
+Fix heap size reporting in HRegion
+Description:
+The size reported by Fixed_Overhead variable in HRegion misses out on a boolean variable. TestHeapSize doesn't report it because of the alignment we do to make it multiple of 8.
+The equation for HRegion heap usage from Fixed_Overhead is:
+Fixed_Overhead = align(100 + 42*ref + 1 arr) = align(284) = 288 on a 32 bit vm
+(On a 32 bit vm, 1 ref = 4bytes, 1 arr = 16 bytes)
+The equation formed using reflection (in Classsize) is:
+Expected_Overehead = align(101 + 42*ref + 1arr) = align(285) = 288.
+So, the testHeapSize doesn't fail currently.
+But if I add a reference (did in last patch in 8741), it starts failing because, now the equations are:
+Fixed_Overhead = align(100 + 43*ref + 1 arr) = align(288) = 288
+Expected_Overhead = align(101 + 43*ref + 1 arr) = align(289) = 296.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.96.0
+Fix_version:
+0.98.0, 0.96.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Himanshu Vashishtha
+Reporter:
+Himanshu Vashishtha
+Create date:
+16/Oct/13 23:08
+Update date:
+16/Dec/13 18:46
+Resolved date:
+23/Oct/13 20:50

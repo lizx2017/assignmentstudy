@@ -1,0 +1,44 @@
+Summary:
+2.0.{5,6} node throws EOFExceptions on the Row mutation forwarding path during rolling upgrade from 1.2.15.
+Description:
+During a rolling upgrade from 1.2.15 to 2.0.5 nodes running on 2.0.5 throw an EOFException:
+ERROR [MutationStage:12] 2014-03-12 09:46:35,706 RowMutationVerbHandler.java (line 63) Error in row mutation
+java.io.EOFException
+ at java.io.DataInputStream.readFully(DataInputStream.java:197)
+ at org.apache.cassandra.net.CompactEndpointSerializationHelper.deserialize(CompactEndpointSerializationHelper.java:37)
+ at org.apache.cassandra.db.RowMutationVerbHandler.forwardToLocalNodes(RowMutationVerbHandler.java:81)
+ at org.apache.cassandra.db.RowMutationVerbHandler.doVerb(RowMutationVerbHandler.java:49)
+ at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:60)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:744)
+In this specific context we have a setup with 3 datacenters, 3 nodes in each datacenter, NetworkTopologyStrategy as placement_strategy with 3 replicas in each DC. We noticed the issue on the only 2.0.5 node in the ring. All nodes run on Java7. We have tried to upgrade the node on 2.0.5 to 2.0.6 but that didn't solve the issue.
+At a first glance it seems that the size of the size of the list of forward addresses in org.apache.cassandra.db.RowMutationVerbHandler.forwardToLocalNodes() in inconsistent with the length of the InputStream, which causes the deserializer to try and read after the end of the InputStream.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Federico Piccinini
+Create date:
+12/Mar/14 10:27
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Mar/14 17:55

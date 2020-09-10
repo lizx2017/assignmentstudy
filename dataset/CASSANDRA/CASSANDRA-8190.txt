@@ -1,0 +1,56 @@
+Summary:
+Compactions stop completely because of RuntimeException in CompactionExecutor
+Description:
+I have a cluster that is recovering from being overloaded with writes. I am using the workaround from CASSANDRA-6621 to prevent the STCS fallback (which is killing the cluster - see CASSANDRA-7949).
+I have observed that after one or more exceptions like this
+ERROR [CompactionExecutor:4087] 2014-10-26 22:50:05,016 CassandraDaemon.java (line 199) Exception in thread Thread[CompactionExecutor:4087,1,main]
+java.lang.RuntimeException: Last written key DecoratedKey(425124616570337476, 0010000000001111000000000000033523da00001000000000033523da000000001111000000001000000000
+00004000000000000000000100) >= current key DecoratedKey(-8778432288598355336, 0010000000001111000000000000040c7a8f00001000000000040c7a8f000000001111000000001000000000
+00004000000000000000000100) writing into /cassandra-data/disk2/myks/mytable/myks-mytable-tmp-jb-130379-Data.db
+        at org.apache.cassandra.io.sstable.SSTableWriter.beforeAppend(SSTableWriter.java:142)
+        at org.apache.cassandra.io.sstable.SSTableWriter.append(SSTableWriter.java:165)
+        at org.apache.cassandra.db.compaction.CompactionTask.runWith(CompactionTask.java:160)
+        at org.apache.cassandra.io.util.DiskAwareRunnable.runMayThrow(DiskAwareRunnable.java:48)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+        at org.apache.cassandra.db.compaction.CompactionTask.executeInternal(CompactionTask.java:60)
+        at org.apache.cassandra.db.compaction.AbstractCompactionTask.execute(AbstractCompactionTask.java:59)
+        at org.apache.cassandra.db.compaction.CompactionManager$BackgroundCompactionTask.run(CompactionManager.java:198)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:745)
+the node completely stops the compactions and I end up in the state like this:
+# nodetool compactionstats
+pending tasks: 1288
+          compaction type        keyspace           table       completed           total      unit  progress
+Active compaction remaining time :        n/a
+The node recovers if restarted and starts compactions - until getting more exceptions like this.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+lcs
+Environment:
+dse
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Nikolai Grigoriev
+Create date:
+26/Oct/14 23:17
+Update date:
+16/Apr/19 09:31
+Resolved date:
+29/Oct/14 15:41

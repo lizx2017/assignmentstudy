@@ -1,0 +1,85 @@
+Summary:
+Error in cqlsh COPY TO
+Description:
+On the current 2.1 branch I notice a few (possibly related) problems with cqlsh copy commands. I'm writing them here together but we can separate if there are different causes.
+1. Cannot import from CSV if column name is 'date'
+Test file monthly.csv contents:
+stationid,metric,date
+LAE,barometricpressure,2014-01-01 00:00:00+0000
+LAE,barometricpressure,2014-02-01 00:00:00+0000
+LAE,barometricpressure,2014-03-01 00:00:00+0000
+Steps:
+CREATE KEYSPACE IF NOT EXISTS weathercql WITH replication = { 'class': 'SimpleStrategy', 'replication_factor': '1' };
+CREATE TABLE IF NOT EXISTS weathercql.monthly (
+    stationid text,
+    metric text,
+    date timestamp,
+    primary key (stationid, metric, date)
+);
+COPY weathercql.monthly (stationid, metric, date) FROM 'monthly.csv' WITH HEADER='true';
+Result: the copy command fails unless date is enclosed in double quotes:
+cqlsh> COPY weathercql.monthly (stationid, metric, date) FROM 'monthly.csv' WITH HEADER='true';
+Improper COPY command.
+cqlsh> COPY weathercql.monthly (stationid, metric, "date") FROM 'monthly.csv' WITH HEADER='true';
+3 rows imported in 0.096 seconds.
+If I instead name the 'date' column as 'datex', it works without quotes.
+The same steps work on Cassandra 2.1.4 (release build).
+2. Cannot copy to CSV
+Sample data:
+create keyspace if not exists test with replication = {'class':'SimpleStrategy', 'replication_factor':1};
+create table if not exists test.kv (key int primary key, value text);
+insert into test.kv (key,value) values (1,'alpha');
+insert into test.kv (key,value) values (2,'beta');
+insert into test.kv (key,value) values (3,'charlie');
+When you try to export to CSV, it throws what appears to be a Python error, and the file is not created correctly:
+cqlsh> copy test.kv (key,value) to 'test.csv';
+global name 'meter' is not defined
+The same steps work on Cassandra 2.1.4 (release build).
+3. Copy from CSV inside CQL command file doesn't work
+File kv.csv:
+key,value
+1,'a'
+2,'b'
+3,'c'
+File kv.cql:
+create keyspace if not exists test with replication = {'class': 'SimpleStrategy', 'replication_factor':1};
+create table if not exists test.kv (key int primary key, value text);
+truncate test.kv;
+copy test.kv (key, value) from 'kv.csv' with header='true';
+select * from test.kv;
+When command file passed to cqlsh, an error is reported on the `copy` command and it doesn't work:
+$ bin/cqlsh -f kv.cql
+kv.cql:5:descriptor 'lower' requires a 'str' object but received a 'unicode'
+ key | value
+-----+-------
+(0 rows)
+The same commands work correctly when run directly inside cqlsh or when executed with -e option like: bin/cqlsh -e "copy test.kv (key, value) from 'kv.csv' with header='true';".
+This third issue appears to also be broken in 2.1.4 and 2.1.3 release builds, but works in 2.1.2.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+None
+Label:
+cqlsh
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Brian Cantoni
+Create date:
+20/Apr/15 23:14
+Update date:
+16/Apr/19 09:31
+Resolved date:
+22/Apr/15 15:52

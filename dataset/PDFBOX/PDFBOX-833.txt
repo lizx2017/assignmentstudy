@@ -1,0 +1,40 @@
+Summary:
+Wrong encoding with Type1C font when specific encoding is defined
+Description:
+The Type1C font implementation overwrites the encoding() method of PDFont base class. This results in a lookup of codes to characters as defined in the font.
+However if an encoding is explicitly given (like WinAnsiEncoding) this leads to wrong results if encoding codes do not match glyph codes.
+In a test document (which unfortunately I cannot make public - an article from Elsevier) a Type1C font is embedded which defines a copyright sign at glyph position 259. The encoding is defines as WinAnsiEncoding. Text characters are defined corresponding to the WinAnsiEncoding. In case of the copyright sign it is 0xa9 (169) where the font has glyph 'quotesingle' defined.
+Since currently I have no other test cases I implemented following workaround for WinAnsiEncoding (which might be relaxed to other PDF encodings as well:
+in PDType1CFont.encode() I start with:
+if ( getEncoding() instanceof WinAnsiEncoding )
+// use PDFont encoding
+return super.encode( bytes, offset, length );
+This resolves the encoding problems for text extraction.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.3.1
+Fix_version:
+2.0.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Timo Boehme
+Create date:
+20/Sep/10 13:39
+Update date:
+17/Mar/16 19:08
+Resolved date:
+11/Aug/13 15:24

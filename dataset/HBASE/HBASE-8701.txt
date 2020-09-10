@@ -1,0 +1,60 @@
+Summary:
+distributedLogReplay need to apply wal edits in the receiving order of those edits
+Description:
+This issue happens in distributedLogReplay mode when recovering multiple puts of the same key + version(timestamp). After replay, the value is nondeterministic of the key
+The original concern situation raised from Elliott Clark:
+For all edits the rowkey is the same.
+There's a log with: [ A (ts = 0), B (ts = 0) ]
+Replay the first half of the log.
+A user puts in C (ts = 0)
+Memstore has to flush
+A new Hfile will be created with [ C, A ] and MaxSequenceId = C's seqid.
+Replay the rest of the Log.
+Flush
+The issue will happen in similar situation like Put(key, t=T) in WAL1 and Put(key,t=T) in WAL2
+Below is the option(proposed by Ted) I'd like to use:
+a) During replay, we pass original wal sequence number of each edit to the receiving RS
+b) In receiving RS, we store negative original sequence number of wal edits into mvcc field of KVs of wal edits
+c) Add handling of negative MVCC in KVScannerComparator and KVComparator
+d) In receiving RS, write original sequence number into an optional field of wal file for chained RS failure situation
+e) When opening a region, we add a safety bumper(a large number) in order for the new sequence number of a newly opened region not to collide with old sequence numbers.
+In the future, when we stores sequence number along with KVs, we can adjust the above solution a little bit by avoiding to overload MVCC field.
+The other alternative options are listed below for references:
+Option one
+a) disallow writes during recovery
+b) during replay, we pass original wal sequence ids
+c) hold flush till all wals of a recovering region are replayed. Memstore should hold because we only recover unflushed wal edits. For edits with same key + version, whichever with larger sequence Id wins.
+Option two
+a) During replay, we pass original wal sequence ids
+b) for each wal edit, we store each edit's original sequence id along with its key.
+c) during scanning, we use the original sequence id if it's present otherwise its store file sequence Id
+d) compaction can just leave put with max sequence id
+Please let me know if you have better ideas.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.99.0
+Component:
+MTTR
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeffrey Zhong
+Reporter:
+Jeffrey Zhong
+Create date:
+06/Jun/13 18:38
+Update date:
+21/Feb/15 23:31
+Resolved date:
+20/Dec/13 22:32

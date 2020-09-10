@@ -1,0 +1,63 @@
+Summary:
+nodetool info -T throws ArrayOutOfBounds when the node has not joined the cluster
+Description:
+To reproduce, bring up a node that does not join the cluster, either using -Dcassandra.write_survey=true or -Dcassandra.join_ring=false, then run 'nodetool info -T'. You'll get the following stack trace:
+ID                     : e384209f-f7a9-4cff-8fd5-03adfaa0d846
+Gossip active          : true
+Thrift active          : true
+Native Transport active: true
+Load                   : 76.69 KB
+Generation No          : 1427229938
+Uptime (seconds)       : 728
+Heap Memory (MB)       : 109.93 / 826.00
+Off Heap Memory (MB)   : 0.01
+Exception in thread "main" java.lang.IndexOutOfBoundsException: Index: 0, Size: 0
+ at java.util.ArrayList.rangeCheck(ArrayList.java:635)
+ at java.util.ArrayList.get(ArrayList.java:411)
+ at org.apache.cassandra.tools.NodeProbe.getEndpoint(NodeProbe.java:676)
+ at org.apache.cassandra.tools.NodeProbe.getDataCenter(NodeProbe.java:694)
+ at org.apache.cassandra.tools.NodeCmd.printInfo(NodeCmd.java:666)
+ at org.apache.cassandra.tools.NodeCmd.main(NodeCmd.java:1277)
+After applying the attached patch, the new error is:
+ID                     : a7d76a2a-82d2-4faa-94e1-a30df6663ebb
+Gossip active          : true
+Thrift active          : false
+Native Transport active: false
+Load                   : 89.36 KB
+Generation No          : 1427231804
+Uptime (seconds)       : 12
+Heap Memory (MB)       : 135.49 / 826.00
+Off Heap Memory (MB)   : 0.01
+Exception in thread "main" java.lang.RuntimeException: This node does not have any tokens. Perhaps it is not part of the ring?
+ at org.apache.cassandra.tools.NodeProbe.getEndpoint(NodeProbe.java:678)
+ at org.apache.cassandra.tools.NodeProbe.getDataCenter(NodeProbe.java:698)
+ at org.apache.cassandra.tools.NodeCmd.printInfo(NodeCmd.java:676)
+ at org.apache.cassandra.tools.NodeCmd.main(NodeCmd.java:1313)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.9, 2.2.1, 3.0 beta 1
+Component:
+Tool/nodetool
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Ron Kuris
+Create date:
+24/Mar/15 21:18
+Update date:
+16/Apr/19 09:31
+Resolved date:
+05/Aug/15 22:07

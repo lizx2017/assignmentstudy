@@ -1,0 +1,62 @@
+Summary:
+hbase zkcli will not start if the zookeeper server chosen to connect to is unavailable
+Description:
+there are 3 zookeeper servers in my cluster.
+s1
+s2
+s3
+after killing s3, i found the hbase zkcli will not start again.
+it will try to connect to s3 continuely.
+/11/07 11:01:01 INFO zookeeper.ClientCnxn: Opening socket connection to server s3
+12/11/07 11:01:01 WARN zookeeper.ClientCnxn: Session 0x0 for server null, unexpected error, closing socket connection and attempting reconnect
+java.net.ConnectException: Connection refused
+from the code
+  public String parse(final Configuration c) {
+    // Note that we do not simply grab the property
+    // HConstants.ZOOKEEPER_QUORUM from the HBaseConfiguration because the
+    // user may be using a zoo.cfg file.
+    Properties zkProps = ZKConfig.makeZKProps(c);
+    String host = null;
+    String clientPort = null;
+    for (Entry<Object, Object> entry: zkProps.entrySet()) {
+      String key = entry.getKey().toString().trim();
+      String value = entry.getValue().toString().trim();
+      if (key.startsWith("server.") && host == null) {
+        String[] parts = value.split(":");
+        host = parts[0];
+      } else if (key.endsWith("clientPort")) {
+        clientPort = value;
+      }
+      if (host != null && clientPort != null) break;
+    }
+    return host != null && clientPort != null? host + ":" + clientPort: null;
+  }
+the code will choose the fixed zookeeper server (here is the unavailable s3), which leads to the script fails
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.2
+Fix_version:
+0.98.0, 0.94.6, 0.95.0
+Component:
+Zookeeper
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Zhou wenjian
+Reporter:
+Zhou wenjian
+Create date:
+07/Nov/12 03:08
+Update date:
+07/May/13 03:51
+Resolved date:
+04/Mar/13 21:56

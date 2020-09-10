@@ -1,0 +1,55 @@
+Summary:
+NullPointerException on gossip state change during startup
+Description:
+In the consistency_test.TestConsistency.short_read_reversed_test dtest where nodes are restarted one-by-one, one of the nodes logged a NullPointerException during startup:
+INFO  [HANDSHAKE-/127.0.0.3] 2015-05-21 13:48:16,724 OutboundTcpConnection.java:489 - Handshaking version with /127.0.0.3
+INFO  [main] 2015-05-21 13:48:16,725 StorageService.java:1862 - Node /127.0.0.2 state jump to normal
+INFO  [main] 2015-05-21 13:48:16,757 CassandraDaemon.java:517 - Waiting for gossip to settle before accepting client requests...
+INFO  [GossipStage:1] 2015-05-21 13:48:16,776 Gossiper.java:995 - Node /127.0.0.1 has restarted, now UP
+INFO  [CompactionExecutor:1] 2015-05-21 13:48:16,780 CompactionTask.java:225 - Compacted (085b4380-ffc0-11e4-b28a-efe71ca64a4e) 4 sstables to [/mnt/tmp/dtest-FLOZYC/test/node2/data/system/local-7ad54392bcdd35a684174e047860b377/la-10-big,] to level=0.  1,783 bytes to 1,217 (~68% of original) in 75ms = 0.015475MB/s.  0 total partitions merged to 1.  Partition merge counts were {4:1, }
+INFO  [GossipStage:2] 2015-05-21 13:48:16,786 Gossiper.java:995 - Node /127.0.0.3 has restarted, now UP
+INFO  [HANDSHAKE-/127.0.0.1] 2015-05-21 13:48:16,788 OutboundTcpConnection.java:489 - Handshaking version with /127.0.0.1
+ERROR [GossipStage:1] 2015-05-21 13:48:16,790 CassandraDaemon.java:154 - Exception in thread Thread[GossipStage:1,5,main]
+java.lang.NullPointerException: null
+    at org.apache.cassandra.service.StorageService.getApplicationStateValue(StorageService.java:1723) ~[main/:na]
+    at org.apache.cassandra.service.StorageService.getTokensFor(StorageService.java:1796) ~[main/:na]
+    at org.apache.cassandra.service.StorageService.handleStateNormal(StorageService.java:1850) ~[main/:na]
+    at org.apache.cassandra.service.StorageService.onChange(StorageService.java:1621) ~[main/:na]
+    at org.apache.cassandra.service.StorageService.onJoin(StorageService.java:2308) ~[main/:na]
+    at org.apache.cassandra.gms.Gossiper.handleMajorStateChange(Gossiper.java:1017) ~[main/:na]
+    at org.apache.cassandra.gms.Gossiper.applyStateLocally(Gossiper.java:1098) ~[main/:na]
+    at org.apache.cassandra.gms.GossipDigestAck2VerbHandler.doVerb(GossipDigestAck2VerbHandler.java:49) ~[main/:na]
+    at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:64) ~[main/:na]
+    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142) ~[na:1.8.0_45]
+    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617) ~[na:1.8.0_45]
+    at java.lang.Thread.run(Thread.java:745) ~[na:1.8.0_45]
+I've attached the logs for the three nodes. Node 2 was the one with the error.
+This error was on the trunk dtests, but I assume 2.2 is affected at a minimum, so I set the fix version for 2.2.x. Please check 2.0 and 2.1 for the same potential problem.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/Distributed Metadata
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Joel Knighton
+Reporter:
+Tyler Hobbs
+Create date:
+21/May/15 16:10
+Update date:
+16/Apr/19 09:31
+Resolved date:
+18/Nov/15 22:26

@@ -1,0 +1,53 @@
+Summary:
+rowcounter does not return the correct number of rows in certain circumstances
+Description:
+When you run
+hadoop jar hbase.jar rowcounter <table>
+the org.apache.hadoop.hbase.mapreduce.RowCounter class is run.
+The RowCounterMapper class in the RowCounter mapreduce job contains the following:
+    @Override
+    public void map(ImmutableBytesWritable row, Result values,
+      Context context)
+    throws IOException {
+      for (KeyValue value: values.list()) {
+        if (value.getValue().length > 0) {
+          context.getCounter(Counters.ROWS).increment(1);
+          break;
+        }
+      }
+    }
+The intention is to go through the column values in the row, and increment the ROWS counter if some value is non-empty. However, values.list() always has size 1. This is because the createSubmittableJob static method uses a Scan as follows:
+    Scan scan = new Scan();
+    scan.setFilter(new FirstKeyOnlyFilter());
+So the input map splits always contain just the first KV. If the column corresponding to that first KV is empty, even though other columns are non-empty, that row is skipped.
+This way, rowcounter can return an incorrect result.
+One way to reproduce this is to create an hbase table with two columns, say f1:q1 and f2:q2. Create some (say 2) rows with empty f1:q1 but non-empty f2:q2, and some (say 3) rows with empty f2:q2 and non-empty f1:q1.
+Then run rowcounter (specifying only the table but not any columns). The count will be either 2 short or 3 short.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.5
+Component:
+mapreduce
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Dave Revell
+Reporter:
+Wing Yew Poon
+Create date:
+30/Aug/11 05:02
+Update date:
+20/Nov/15 11:53
+Resolved date:
+23/Sep/11 17:53

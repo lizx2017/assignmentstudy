@@ -1,0 +1,50 @@
+Summary:
+Empty clustering column not caught for CQL3 update to compact storage counter table
+Description:
+If you update a compact storage counter column through cql3 you can set an empty column name, which is invalid. The server catches this for normal tables, but misses it for counters, and you end up with an assertion when the mutation gets serialized.
+CREATE TABLE nullcoltest (
+  key text,
+  column1 text,
+  value counter,
+  PRIMARY KEY (key, column1)
+) WITH COMPACT STORAGE;
+
+UPDATE nullcoltest SET value = value + 1 WHERE key = 'k1' AND column1 = '';
+ERROR [COMMIT-LOG-WRITER] 2014-08-19 16:11:12,179 CassandraDaemon.java (line 199) Exception in thread Thread[COMMIT-LOG-WRITER,5,main]
+java.lang.AssertionError
+ at org.apache.cassandra.db.ColumnSerializer.serialize(ColumnSerializer.java:56)
+ at org.apache.cassandra.db.ColumnFamilySerializer.serialize(ColumnFamilySerializer.java:77)
+ at org.apache.cassandra.db.RowMutation$RowMutationSerializer.serialize(RowMutation.java:278)
+ at org.apache.cassandra.db.commitlog.CommitLogSegment.write(CommitLogSegment.java:264)
+ at org.apache.cassandra.db.commitlog.CommitLog$LogRecordAdder.run(CommitLog.java:357)
+ at org.apache.cassandra.db.commitlog.PeriodicCommitLogExecutorService$1.runMayThrow(PeriodicCommitLogExecutorService.java:51)
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+ at java.lang.Thread.run(Thread.java:744)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.19, 2.0.10, 2.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Jeremiah Jordan
+Create date:
+19/Aug/14 21:17
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Aug/14 23:40

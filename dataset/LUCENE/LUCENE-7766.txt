@@ -1,0 +1,70 @@
+Summary:
+WordDelimiter(Graph)Filter does not handle split offsets after HTMLStripCharFilter correctly
+Description:
+When using the HTMLStripCharFilter before the WordDelimiterGraphFilter (or WordDelimiterFilter - I tested with both), the stripping of html from the text results in the inability to produce correct offsets for split tokens.
+Configured with generate word parts, split on case change, and preserve original:
+Example string: "MayBe" produces these offsets (Word - start,end)
+MayBe - 0,5
+May - 0,3
+Be - 3,5
+Example string "May<b>Be</b>" produces these offsets (Word- start,end)
+MayBe - 0,12
+May - 0,12
+Be - 0,12
+Notice that 'may' and 'be' are created but the offsets are the same as the original 'MayBe'.
+I traced this down to logic within the WordDelimiterGraphFilter (and the WordDelimiterFilter before that) to how 'hasIllegalOffsets' is calculated, as is in the source code:
+    // if length by start + end offsets doesn't match the term's text then set offsets for all our word parts/concats to the incoming
+    // offsets.  this can happen if WDGF is applied to an injected synonym, or to a stem'd form, etc:
+    hasIllegalOffsets = (savedEndOffset - savedStartOffset != savedTermLength);
+Here is sample code that can show the issue:
+public class TestTokenizationIssue {
+    public static void main(String... args) throws IOException {
+        HTMLStripCharFilter charFilter = new HTMLStripCharFilter(getText());
+        WhitespaceTokenizer whitespaceTokenizer = new WhitespaceTokenizer();
+        whitespaceTokenizer.setReader(charFilter);
+        WordDelimiterGraphFilter wdgf = new WordDelimiterGraphFilter(whitespaceTokenizer,
+                WordDelimiterGraphFilter.GENERATE_WORD_PARTS | WordDelimiterGraphFilter.SPLIT_ON_CASE_CHANGE |
+                        WordDelimiterGraphFilter.PRESERVE_ORIGINAL, CharArraySet.EMPTY_SET);
+        wdgf.reset();
+
+        while (wdgf.incrementToken()) {
+            CharTermAttribute charTermAttribute = wdgf.getAttribute(CharTermAttribute.class);
+            OffsetAttribute offsetAttribute = wdgf.getAttribute(OffsetAttribute.class);
+
+            System.out.println(charTermAttribute.toString() + " - " + offsetAttribute.startOffset() + ',' + offsetAttribute.endOffset());
+        }
+    }
+
+    private static Reader getText() {
+        //return new StringReader("MayBe");
+        return new StringReader("May<b>Be</b>");
+    }
+}
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+6.2.1, 6.5
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Michael Braun
+Create date:
+03/Apr/17 17:55
+Update date:
+03/Apr/17 17:55
+Resolved date:
+

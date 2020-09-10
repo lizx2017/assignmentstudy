@@ -1,0 +1,216 @@
+Summary:
+ChecksumException generates thousands of open sockets
+Description:
+Below is from Stefan Will:
+I just ran into another case where a Regionserver wouldn't properly shut down (this is on my development cluster, so not too critical). In this case, it is also holding over 27000 datanode sockets (port 50010) in CLOSE_WAIT state. I was actually using so many that the SSH daemon wouldn't let me log in to the machine due to too many open file handles (I can probably figure out how to increase that limit). So I shut down the Master and the other regionservers, which might have been the cause for it to be in "handleConnectionFailure()". The last few lines of the log were:
+
+009-12-06 10:30:12,609 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: aborting server at: 10.1.20.144:60020 <http://10.1.20.144:60020>
+- Hide quoted text -
+2009-12-06 10:30:12,646 INFO org.apache.hadoop.hbase.regionserver.LogFlusher: regionserver/10.1.20.144:60020.logFlusher exiting
+2009-12-06 10:30:12,646 INFO org.apache.hadoop.hbase.regionserver.HRegionServer$MajorCompactionChecker: regionserver/10.1.20.144:60020.majorCompactionChecker exiting
+2009-12-06 10:30:14,871 INFO org.apache.hadoop.hbase.Leases: regionserver/10.1.20.144:60020.leaseChecker closing leases
+2009-12-06 10:30:14,871 INFO org.apache.hadoop.hbase.Leases: regionserver/10.1.20.144:60020.leaseChecker closed leases
+2009-12-06 10:30:17,366 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: worker thread exiting
+2009-12-06 10:30:17,366 INFO org.apache.zookeeper.ZooKeeper: Closing session: 0x2255b24f9f1003a
+2009-12-06 10:30:17,366 INFO org.apache.zookeeper.ClientCnxn: Closing ClientCnxn for session: 0x2255b24f9f1003a
+2009-12-06 10:30:17,387 INFO org.apache.zookeeper.ClientCnxn: Exception while closing send thread for session 0x2255b24f9f1003a : Read error rc = -1 java.nio.DirectByteBuffer[
+pos=0 lim=4 cap=4]
+2009-12-06 10:30:17,489 INFO org.apache.zookeeper.ClientCnxn: Disconnecting ClientCnxn for session: 0x2255b24f9f1003a
+2009-12-06 10:30:17,489 INFO org.apache.zookeeper.ZooKeeper: Session: 0x2255b24f9f1003a closed
+2009-12-06 10:30:17,548 INFO org.apache.zookeeper.ClientCnxn: EventThread shut down
+2009-12-06 20:35:25,725 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Starting shutdown thread.
+
+And here is the stacktrace taken after I was able to log back into the machine and send a kill to the process (at the last timestamp). It is now 15 minutes later, and the process is still running with no further log output.
+
+Between midnight and 10:30, there are also over 6700 checksum errors in the log, always with the same log file name:
+
+org.apache.hadoop.fs.ChecksumException: Checksum error: /blk_4234778497757442733:of:/hbase/post/1926133619/oldlogfile.log at 62521344
+        at org.apache.hadoop.fs.FSInputChecker.verifySum(FSInputChecker.java:277)
+        at org.apache.hadoop.fs.FSInputChecker.readChecksumChunk(FSInputChecker.java:241)
+
+Here is the stack dump:
+
+Exception in thread "LeaseChecker" java.lang.NullPointerException
+    at org.apache.hadoop.ipc.Client$Connection.handleConnectionFailure(Client.java:351)
+    at org.apache.hadoop.ipc.Client$Connection.setupIOstreams(Client.java:313)
+    at org.apache.hadoop.ipc.Client$Connection.access$1700(Client.java:176)
+    at org.apache.hadoop.ipc.Client.getConnection(Client.java:859)
+    at org.apache.hadoop.ipc.Client.call(Client.java:719)
+    at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:220)
+    at $Proxy1.renewLease(Unknown Source)
+    at sun.reflect.GeneratedMethodAccessor12.invoke(Unknown Source)
+    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+    at java.lang.reflect.Method.invoke(Method.java:597)
+    at org.apache.hadoop.io.retry.RetryInvocationHandler.invokeMethod(RetryInvocationHandler.java:82)
+    at org.apache.hadoop.io.retry.RetryInvocationHandler.invoke(RetryInvocationHandler.java:59)
+    at $Proxy1.renewLease(Unknown Source)
+    at org.apache.hadoop.hdfs.DFSClient$LeaseChecker.renew(DFSClient.java:1046)
+    at org.apache.hadoop.hdfs.DFSClient$LeaseChecker.run(DFSClient.java:1058)
+    at java.lang.Thread.run(Thread.java:619)
+2009-12-06 20:43:32
+Full thread dump Java HotSpot(TM) 64-Bit Server VM (14.0-b16 mixed mode):
+
+"Thread-28" prio=10 tid=0x00000000539e5800 nid=0x742e in Object.wait() [0x0000000040a45000]
+   java.lang.Thread.State: WAITING (on object monitor)
+    at java.lang.Object.wait(Native Method)
+    - waiting on <0x00002aaab7803738> (a java.lang.Thread)
+    at java.lang.Thread.join(Thread.java:1143)
+    - locked <0x00002aaab7803738> (a java.lang.Thread)
+    at org.apache.hadoop.hbase.util.Threads.shutdown(Threads.java:77)
+    at org.apache.hadoop.hbase.util.Threads.shutdown(Threads.java:66)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer$ShutdownThread.run(HRegionServer.java:992)
+
+"SIGTERM handler" daemon prio=10 tid=0x0000000053ca6000 nid=0x742d in Object.wait() [0x0000000043b02000]
+   java.lang.Thread.State: WAITING (on object monitor)
+    at java.lang.Object.wait(Native Method)
+    - waiting on <0x00002aaab7941978> (a org.apache.hadoop.hbase.regionserver.HRegionServer$ShutdownThread)
+    at java.lang.Thread.join(Thread.java:1143)
+    - locked <0x00002aaab7941978> (a org.apache.hadoop.hbase.regionserver.HRegionServer$ShutdownThread)
+    at java.lang.Thread.join(Thread.java:1196)
+    at java.lang.ApplicationShutdownHooks.runHooks(ApplicationShutdownHooks.java:79)
+    at java.lang.ApplicationShutdownHooks$1.run(ApplicationShutdownHooks.java:24)
+    at java.lang.Shutdown.runHooks(Shutdown.java:79)
+    at java.lang.Shutdown.sequence(Shutdown.java:123)
+    at java.lang.Shutdown.exit(Shutdown.java:168)
+    - locked <0x00002aaaed6f2ef0> (a java.lang.Class for java.lang.Shutdown)
+    at java.lang.Terminator$1.handle(Terminator.java:35)
+    at sun.misc.Signal$1.run(Signal.java:195)
+    at java.lang.Thread.run(Thread.java:619)
+
+"Thread-23" prio=10 tid=0x00002aab08019800 nid=0x2036 sleeping[0x00000000413de000]
+   java.lang.Thread.State: TIMED_WAITING (sleeping)
+    at java.lang.Thread.sleep(Native Method)
+    at org.apache.hadoop.ipc.Client.stop(Client.java:679)
+    at org.apache.hadoop.ipc.RPC$ClientCache.stopClient(RPC.java:192)
+    at org.apache.hadoop.ipc.RPC$ClientCache.access$400(RPC.java:141)
+    at org.apache.hadoop.ipc.RPC$Invoker.close(RPC.java:234)
+    - locked <0x00002aaab7955f10> (a org.apache.hadoop.ipc.RPC$Invoker)
+    at org.apache.hadoop.ipc.RPC$Invoker.access$500(RPC.java:199)
+    at org.apache.hadoop.ipc.RPC.stopProxy(RPC.java:393)
+    at org.apache.hadoop.hdfs.DFSClient.close(DFSClient.java:241)
+    - locked <0x00002aaab78e5078> (a org.apache.hadoop.hdfs.DFSClient)
+    at org.apache.hadoop.hdfs.DistributedFileSystem.close(DistributedFileSystem.java:269)
+    at org.apache.hadoop.fs.FileSystem$Cache.closeAll(FileSystem.java:1419)
+    - locked <0x00002aaab79563f0> (a org.apache.hadoop.fs.FileSystem$Cache)
+    at org.apache.hadoop.fs.FileSystem.closeAll(FileSystem.java:212)
+    at org.apache.hadoop.fs.FileSystem$ClientFinalizer.run(FileSystem.java:197)
+    - locked <0x00002aaab78037e0> (a org.apache.hadoop.fs.FileSystem$ClientFinalizer)
+
+"LruBlockCache.EvictionThread" daemon prio=10 tid=0x0000000053920800 nid=0x31a4 in Object.wait() [0x0000000043900000]
+   java.lang.Thread.State: WAITING (on object monitor)
+    at java.lang.Object.wait(Native Method)
+    - waiting on <0x00002aaab7a56160> (a org.apache.hadoop.hbase.io.hfile.LruBlockCache$EvictionThread)
+    at java.lang.Object.wait(Object.java:485)
+    at org.apache.hadoop.hbase.io.hfile.LruBlockCache$EvictionThread.run(LruBlockCache.java:512)
+    - locked <0x00002aaab7a56160> (a org.apache.hadoop.hbase.io.hfile.LruBlockCache$EvictionThread)
+
+"DestroyJavaVM" prio=10 tid=0x00002aaaf800f000 nid=0x2f53 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"regionserver/10.1.20.144:60020 <http://10.1.20.144:60020> " prio=10 tid=0x00002aaaf800e000 nid=0x2f6c waiting for monitor entry [0x00000000415e2000]
+- Hide quoted text -
+
+   java.lang.Thread.State: BLOCKED (on object monitor)
+    at java.lang.Object.wait(Native Method)
+    - waiting on <0x00002aaab78037e0> (a org.apache.hadoop.fs.FileSystem$ClientFinalizer)
+    at java.lang.Thread.join(Thread.java:1151)
+    - locked <0x00002aaab78037e0> (a org.apache.hadoop.fs.FileSystem$ClientFinalizer)
+    at org.apache.hadoop.hbase.util.Threads.shutdown(Threads.java:77)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.runThread(HRegionServer.java:722)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:677)
+    at java.lang.Thread.run(Thread.java:619)
+
+"Low Memory Detector" daemon prio=10 tid=0x00000000536b5000 nid=0x2f66 runnable [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"CompilerThread1" daemon prio=10 tid=0x00000000536b2800 nid=0x2f65 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"CompilerThread0" daemon prio=10 tid=0x00000000536ae000 nid=0x2f64 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Signal Dispatcher" daemon prio=10 tid=0x00000000536ac000 nid=0x2f63 runnable [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Surrogate Locker Thread (CMS)" daemon prio=10 tid=0x00000000536aa000 nid=0x2f62 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Finalizer" daemon prio=10 tid=0x0000000053687800 nid=0x2f61 in Object.wait() [0x00000000421e9000]
+   java.lang.Thread.State: WAITING (on object monitor)
+    at java.lang.Object.wait(Native Method)
+    - waiting on <0x00002aaab77f0108> (a java.lang.ref.ReferenceQueue$Lock)
+    at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:118)
+    - locked <0x00002aaab77f0108> (a java.lang.ref.ReferenceQueue$Lock)
+    at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:134)
+    at java.lang.ref.Finalizer$FinalizerThread.run(Finalizer.java:159)
+
+"Reference Handler" daemon prio=10 tid=0x0000000053685800 nid=0x2f60 in Object.wait() [0x00000000420e8000]
+   java.lang.Thread.State: WAITING (on object monitor)
+    at java.lang.Object.wait(Native Method)
+    - waiting on <0x00002aaab77f32b8> (a java.lang.ref.Reference$Lock)
+    at java.lang.Object.wait(Object.java:485)
+    at java.lang.ref.Reference$ReferenceHandler.run(Reference.java:116)
+    - locked <0x00002aaab77f32b8> (a java.lang.ref.Reference$Lock)
+
+"VM Thread" prio=10 tid=0x000000005367e800 nid=0x2f5f runnable
+
+"Gang worker#0 (Parallel GC Threads)" prio=10 tid=0x00000000534c1800 nid=0x2f54 runnable
+
+"Gang worker#1 (Parallel GC Threads)" prio=10 tid=0x00000000534c3800 nid=0x2f55 runnable
+
+"Gang worker#2 (Parallel GC Threads)" prio=10 tid=0x00000000534c5800 nid=0x2f56 runnable
+
+"Gang worker#3 (Parallel GC Threads)" prio=10 tid=0x00000000534c7000 nid=0x2f57 runnable
+
+"Gang worker#4 (Parallel GC Threads)" prio=10 tid=0x00000000534c9000 nid=0x2f58 runnable
+
+"Gang worker#5 (Parallel GC Threads)" prio=10 tid=0x00000000534cb000 nid=0x2f59 runnable
+
+"Gang worker#6 (Parallel GC Threads)" prio=10 tid=0x00000000534cc800 nid=0x2f5a runnable
+
+"Gang worker#7 (Parallel GC Threads)" prio=10 tid=0x00000000534ce800 nid=0x2f5b runnable
+
+"Concurrent Mark-Sweep GC Thread" prio=10 tid=0x000000005359e800 nid=0x2f5e runnable
+"Gang worker#0 (Parallel CMS Threads)" prio=10 tid=0x000000005359b000 nid=0x2f5c runnable
+
+"Gang worker#1 (Parallel CMS Threads)" prio=10 tid=0x000000005359c800 nid=0x2f5d runnable
+
+"VM Periodic Task Thread" prio=10 tid=0x00000000536b7800 nid=0x2f67 waiting on condition
+
+JNI global references: 960
+
+Heap
+ par new generation   total 115200K, used 67320K [0x00002aaaae6f0000, 0x00002aaab63f0000, 0x00002aaab63f0000)
+  eden space 102400K,  65% used [0x00002aaaae6f0000, 0x00002aaab28a6130, 0x00002aaab4af0000)
+  from space 12800K,   0% used [0x00002aaab5770000, 0x00002aaab5777f10, 0x00002aaab63f0000)
+  to   space 12800K,   0% used [0x00002aaab4af0000, 0x00002aaab4af0000, 0x00002aaab5770000)
+ concurrent mark-sweep generation total 896000K, used 705982K [0x00002aaab63f0000, 0x00002aaaecef0000, 0x00002aaaecef0000)
+ concurrent-mark-sweep perm gen total 27204K, used 16361K [0x00002aaaecef0000, 0x00002aaaee981000, 0x00002aaaf22f0000)
+Status:
+RESOLVED
+Priority:
+Blocker
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+delete moved_from_0_
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+12/Dec/09 18:07
+Update date:
+03/Oct/17 22:23
+Resolved date:
+03/Oct/17 22:23

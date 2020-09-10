@@ -1,0 +1,51 @@
+Summary:
+GCInspector logs very different times after CASSANDRA-7638
+Description:
+After the GCInspector rewrite in CASSANDRA-7638 the times reported for CMS are the full time (including all the concurrent time), not just the stop the world pause time. In previous versions we reported just the stop the world pause time. This change is kind of scary for someone used to the old logs, and is also not as useful. You can't get "how long were things really stopped" from the log message any more.
+For example, this is a CMS that got logged in C* 2.1:
+INFO  [Service Thread] 2015-04-03 23:58:37,583  GCInspector.java:142 - ConcurrentMarkSweep GC in 12926ms.  CMS Old Gen: 5305346280 -> 1106799064; Par Eden Space: 223080 -> 158423560; Par Survivor Space: 42081744 -> 51339584
+And here is the corresponding information for that CMS from the gc log.
+2015-04-03T23:58:24.656+0000: 8064.780: [GC [1 CMS-initial-mark: 5181002K(6901760K)] 5222315K(7639040K), 0.0316710 secs] [Times: user=0.03 sys=0.00, real=0.03 secs] 
+2015-04-03T23:58:24.688+0000: 8064.812: Total time for which application threads were stopped: 0.0324490 seconds
+2015-04-03T23:58:24.688+0000: 8064.812: [CMS-concurrent-mark-start]
+2015-04-03T23:58:26.939+0000: 8067.062: [CMS-concurrent-mark: 2.176/2.250 secs] [Times: user=12.94 sys=1.73, real=2.25 secs] 
+2015-04-03T23:58:26.939+0000: 8067.063: [CMS-concurrent-preclean-start]
+2015-04-03T23:58:27.209+0000: 8067.333: [CMS-concurrent-preclean: 0.187/0.270 secs] [Times: user=1.53 sys=0.15, real=0.28 secs] 
+2015-04-03T23:58:27.210+0000: 8067.333: [CMS-concurrent-abortable-preclean-start]
+2015-04-03T23:58:27.988+0000: 8068.112: [CMS-concurrent-abortable-preclean: 0.759/0.779 secs] [Times: user=4.07 sys=0.74, real=0.77 secs] 
+2015-04-03T23:58:27.989+0000: 8068.113: [GC[YG occupancy: 488441 K (737280 K)]2015-04-03T23:58:27.989+0000: 8068.113: [Rescan (parallel) , 0.3688960 secs]2015-04-03T23:58:28.358+0000: 8068.482: [weak refs processing, 0.0009620 secs]2015-04-03T23:58:28.359+0000: 8068.483: [class unloading, 0.0060870 secs]2015-04-03T23:58:28.365+0000: 8068.489: [scrub symbol table, 0.0146010 secs]2015-04-03T23:58:28.380+0000: 8068.504: [scrub string table, 0.0031270 secs] [1 CMS-remark: 5231445K(6901760K)] 5719886K(7639040K), 0.3953770 secs] [Times: user=2.96 sys=0.00, real=0.39 secs] 
+2015-04-03T23:58:28.385+0000: 8068.508: Total time for which application threads were stopped: 0.3962470 seconds
+2015-04-03T23:58:28.385+0000: 8068.509: [CMS-concurrent-sweep-start]
+2015-04-03T23:58:37.582+0000: 8077.706: [CMS-concurrent-sweep: 8.661/9.197 secs] [Times: user=44.80 sys=9.58, real=9.20 secs] 
+2015-04-03T23:58:37.589+0000: 8077.713: [CMS-concurrent-reset-start]
+2015-04-03T23:58:37.633+0000: 8077.757: [CMS-concurrent-reset: 0.044/0.044 secs] [Times: user=0.19 sys=0.10, real=0.04 secs] 
+The entire CMS took the 12 seconds reported in the GCIspector log message. Previously we would have only reported the 0.39 seconds that were spent in STW pauses.
+At the least we need to change the log message so that people don't think we are still just reporting STW time. But it would be more helpful if we could get the STW time and put that into the log message like we had previously.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.6, 2.2.0 beta 1
+Component:
+Legacy/Observability
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ariel Weisberg
+Reporter:
+Jeremiah Jordan
+Create date:
+06/Apr/15 13:31
+Update date:
+16/Apr/19 09:31
+Resolved date:
+29/Apr/15 21:52

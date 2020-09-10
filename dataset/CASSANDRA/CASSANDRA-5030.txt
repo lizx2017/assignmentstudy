@@ -1,0 +1,58 @@
+Summary:
+IndexHelper.IndexFor call throws AOB exception when passing multiple slices
+Description:
+While testing multiple slices I'm seeing some exceptions when a slice hits the end of an index.
+ERROR [ReadStage:138179] 2012-12-04 18:04:28,796 CassandraDaemon.java (line 132) Exception in thread Thread[ReadStage:138179,5,main]
+java.lang.IndexOutOfBoundsException: toIndex = 6
+        at java.util.SubList.<init>(AbstractList.java:602)
+        at java.util.RandomAccessSubList.<init>(AbstractList.java:758)
+        at java.util.AbstractList.subList(AbstractList.java:468)
+        at org.apache.cassandra.io.sstable.IndexHelper.indexFor(IndexHelper.java:182)
+        at org.apache.cassandra.db.columniterator.IndexedSliceReader$IndexedBlockFetcher.setNextSlice(IndexedSliceReader.java:253)
+        at org.apache.cassandra.db.columniterator.IndexedSliceReader$IndexedBlockFetcher.<init>(IndexedSliceReader.java:246)
+        at org.apache.cassandra.db.columniterator.IndexedSliceReader.<init>(IndexedSliceReader.java:91)
+        at org.apache.cassandra.db.columniterator.SSTableSliceIterator.createReader(SSTableSliceIterator.java:68)
+        at org.apache.cassandra.db.columniterator.SSTableSliceIterator.<init>(SSTableSliceIterator.java:44)
+        at org.apache.cassandra.db.filter.SliceQueryFilter.getSSTableColumnIterator(SliceQueryFilter.java:101)
+        at org.apache.cassandra.db.filter.QueryFilter.getSSTableColumnIterator(QueryFilter.java:68)
+        at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:267)
+        at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:61)
+        at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1387)
+        at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1247)
+        at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1159)
+        at org.apache.cassandra.db.Table.getRow(Table.java:348)
+        at org.apache.cassandra.db.SliceFromReadCommand.getRow(SliceFromReadCommand.java:70)
+        at org.apache.cassandra.db.ReadVerbHandler.doVerb(ReadVerbHandler.java:48)
+        at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:56)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+I can reproduce this in a test, attached
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 rc1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+T Jake Luciani
+Reporter:
+T Jake Luciani
+Create date:
+05/Dec/12 17:26
+Update date:
+16/Apr/19 09:32
+Resolved date:
+07/Dec/12 19:49

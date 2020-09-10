@@ -1,0 +1,55 @@
+Summary:
+Null pointer exception in HBaseClient receiveResponse
+Description:
+Relevant Stack trace:
+2011-11-30 13:10:26,557 [IPC Client (47) connection to xx.xx.xx/172.22.4.68:60020 from an unknown user] WARN org.apache.hadoop.ipc.HBaseClient - Unexpected exception receiving call responses
+java.lang.NullPointerException
+>-at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.receiveResponse(HBaseClient.java:583)
+>-at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.run(HBaseClient.java:511)
+  if (LOG.isDebugEnabled())
+          LOG.debug(getName() + " got value #" + id);
+        Call call = calls.remove(id);
+        // Read the flag byte
+        byte flag = in.readByte();
+        boolean isError = ResponseFlag.isError(flag);
+        if (ResponseFlag.isLength(flag)) {
+          // Currently length if present is unused.
+          in.readInt();
+        }
+        int state = in.readInt(); // Read the state.  Currently unused.
+        if (isError) {
+          //noinspection ThrowableInstanceNeverThrown
+          call.setException(new RemoteException( WritableUtils.readString(in),
+              WritableUtils.readString(in)));
+        } else {
+This line
+Call call = calls.remove(id);
+may return a null 'call'. It is so because if you have rpc timeout enable, we proactively clean up other calls which have expired their lifetime along with the call for which socket timeout exception happend.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Shrijeet Paliwal
+Reporter:
+Shrijeet Paliwal
+Create date:
+08/Dec/11 04:00
+Update date:
+20/Nov/15 11:52
+Resolved date:
+08/Dec/11 22:23

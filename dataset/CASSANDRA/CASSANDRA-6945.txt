@@ -1,0 +1,40 @@
+Summary:
+Calculate liveRatio on per-memtable basis, non per-CF
+Description:
+Currently we recalculate live ratio every doubling of write ops to the CF, not to an individual memtable. The value itself is also CF-bound, not memtable-bound. This is causing at least several issues:
+1. Depending on what stage the current memtable is, the live ratio calculated can vary a lot
+2. That calculated live ratio will potentially stay that way for quite a while - the longer C* process is on, the longer it would stay incorrect
+3. Incorrect live ratio means inefficient MeteredFlusher - flushing less or more often than needed, picking bad candidates for flushing, etc.
+4. Incorrect live ratio means incorrect size returned to the metrics consumers
+5. Compaction strategies that rely on memtable size estimation are affected
+6. All of the above is slightly amplified by the fact that all the memtables pending flush would also use that one incorrect value
+Depending on the stage the current memtable at the moment of live ratio recalculation is, the value calculated can be extremely wrong (say, a recently created, fresh memtable - would have a much higher than average live ratio).
+The suggested fix is to bind live ratio to individual memtables, not column families as a whole, with some optimizations to make recalculations run less often by inheriting previous memtable's stats.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Aleksey Yeschenko
+Create date:
+28/Mar/14 00:16
+Update date:
+16/Apr/19 09:31
+Resolved date:
+28/Mar/14 21:45

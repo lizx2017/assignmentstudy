@@ -1,0 +1,40 @@
+Summary:
+Do not collect deleted KVs when they are still in use by a scanner.
+Description:
+I noticed this because TestAtomicOperation.testMultiRowMutationMultiThreads fails rarely.
+The solution is similar to HBASE-2856, where expired KVs are not collected when in use by a scanner.
+—
+What I pieced together so far is that it is the scanning side that has problems sometimes.
+Every time I see a assertion failure in the log I see this before:
+2012-03-12 21:48:49,523 DEBUG [Thread-211] regionserver.StoreScanner(499): Storescanner.peek() is changed where before = rowB/colfamily11:qual1/75366/Put/vlen=6,and after = rowB/colfamily11:qual1/75203/DeleteColumn/vlen=0
+The order of if the Put and Delete is sometimes reversed.
+The test threads should always see exactly one KV, if the "before" was the Put the thread see 0 KVs, if the "before" was the Delete the threads see 2 KVs.
+This debug message comes from StoreScanner to checkReseek. It seems we still some consistency issue with scanning sometimes
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.0, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Lars Hofhansl
+Create date:
+13/Mar/12 04:40
+Update date:
+26/Feb/13 08:12
+Resolved date:
+21/Mar/12 00:01

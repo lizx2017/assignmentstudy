@@ -1,0 +1,40 @@
+Summary:
+ReadResponseResolver Race
+Description:
+When receiving a response, ReadResponseResolver uses a 3 step process to decide whether to trigger the condition that enough responses have arrived:
+Add new response
+Check response set size
+Check that data is present
+I think that these steps must have been reordered by the compiler in some cases, because I was able to reproduce a case for a QUORUM read where the condition is not properly triggered:
+INFO [RequestResponseStage:15] 2011-04-25 00:26:53,514 ReadResponseResolver.java (line 87) post append for 1087367065: hasData=false in 2 messages
+INFO [RequestResponseStage:8] 2011-04-25 00:26:53,514 ReadResponseResolver.java (line 87) post append for 1087367065: hasData=true in 1 messages
+INFO [pool-1-thread-54] 2011-04-25 00:27:03,516 StorageProxy.java (line 623) Read timeout: java.util.concurrent.TimeoutException: ReadResponseResolver@1087367065(/10.34.131.109=false,/10.34.132.122=true,)
+The last line shows that both results were present, and that one of them was holding data.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.6, 0.8.0 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Stu Hood
+Create date:
+25/Apr/11 01:21
+Update date:
+16/Apr/19 09:33
+Resolved date:
+28/Apr/11 13:26

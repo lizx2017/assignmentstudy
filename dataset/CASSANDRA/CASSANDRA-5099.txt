@@ -1,0 +1,50 @@
+Summary:
+Since 1.1, get_count sometimes returns value smaller than actual column count
+Description:
+We have a CF where rows have thousands of TTLd columns. The columns are continually added at a regular rate, and TTL out after 15 minutes. We continually run a 'get_count' on these keys to get a count of the number of live columns.
+Since we upgrade from 1.0 to 1.1.7, "get_count" regularly returns much smaller values than are possible. For example, with roughly 15,000 columns that have well-distributed TTLs, running a get_count 10 times will result in 1 or 2 results that are up to half the actual column count. Using a normal 'get' to count those columns always results in proper values.
+For example:
+(all of these counts were ran within a second or less of eachother)
+[default@reddit] count  AccountsActiveBySR['2qh0u'];
+13665 columns
+[default@reddit] count  AccountsActiveBySR['2qh0u'];
+13665 columns
+[default@reddit] count  AccountsActiveBySR['2qh0u'];
+13666 columns
+[default@reddit] count  AccountsActiveBySR['2qh0u'];
+3069 columns
+[default@reddit] count  AccountsActiveBySR['2qh0u'];
+13660 columns
+[default@reddit] count  AccountsActiveBySR['2qh0u'];
+13661 columns
+I should note that this issue happens much more frequently with larger (>10k columns) rows than smaller rows. It never seems to happen with rows having fewer than 1k columns.
+There are no supercolumns in use. The key names and column names are very short, and there are no column values. The CF is LCS, and due to the TTL only hovers around a few MB in size. GC grace is normally at zero, but the problem is consistent with non-zero gc grace times.
+It appears that there was an issue (CASSANDRA-4833) fixed in 1.1.7 regarding get_count. Some logic was added to prevent an infinite loop case. Could that change have resulted in this problem somehow? I can't find any other relevant 1.1 changes that might explain this issue.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.9, 1.2.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Jason Harvey
+Create date:
+02/Jan/13 22:51
+Update date:
+16/Apr/19 09:32
+Resolved date:
+11/Jan/13 17:06

@@ -1,0 +1,85 @@
+Summary:
+assert err on ArrayBackedSortedColumns.addColumn(ArrayBackedSortedColumns.java:126)
+Description:
+I have the following in trunk:
+RowKey: b
+=> (column=a, value=38383838383838383838, timestamp=1317421952793000)
+=> (column=d, value=617364646661736466, timestamp=1317420968944000)
+=> (column=e, value=38383838383838383838, timestamp=1317421096152000)
+=> (column=f, value=33343334333433343334, timestamp=1317422838818000)
+=> (column=g, value=33343334333433343334, timestamp=1317422565130000)
+=> (column=i, value=33343334333433343334, timestamp=1317422879258000)
+=> (column=j, value=33343334333433343334, timestamp=1317422814873000)
+=> (column=o, value=33343334333433343334, timestamp=1317422867106000)
+=> (column=x, value=33343334333433343334, timestamp=1317422394097000)
+=> (column=z, value=38383838383838383838, timestamp=1317421982057000)
+Keyspace: testks:
+Replication Strategy: org.apache.cassandra.locator.NetworkTopologyStrategy
+Durable Writes: true
+Options: [168:1]
+Column Families:
+ColumnFamily: testcf
+Key Validation Class: org.apache.cassandra.db.marshal.BytesType
+Default column value validator: org.apache.cassandra.db.marshal.BytesType
+Columns sorted by: org.apache.cassandra.db.marshal.BytesType
+Row cache size / save period in seconds / keys to save : 0.0/0/all
+Key cache size / save period in seconds: 200000.0/14400
+GC grace seconds: 864000
+Compaction min/max thresholds: 4/32
+Read repair chance: 1.0
+Replicate on write: true
+Built indexes: []
+Compaction Strategy: org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy
+every thing is flushed to the sstables, but not in the same sstables, and the columns are in some what 'random' form:
+/var/lib/cassandra/data/testks/testcf-h-10-Data.db
+{
+"61": [["0c","76",1317405903119000], ["0d","76",1317405977002000], ["7a","38383838383838383838",1317422276322000]],
+"62": [["61","38383838383838383838",1317421952793000], ["63","4e864303",1317421827329000,"d"], ["64","617364646661736466",1317420968944000], ["65","38383838383838383838",1317421096152000], ["67","33343334333433343334",1317422565130000], ["78","33343334333433343334",1317422394097000], ["7a","38383838383838383838",1317421982057000]]
+}
+/var/lib/cassandra/data/testks/testcf-h-12-Data.db
+{
+"62": [["6a","33343334333433343334",1317422814873000]]
+}
+/var/lib/cassandra/data/testks/testcf-h-13-Data.db
+{
+"62": [["66","33343334333433343334",1317422838818000]]
+}
+/var/lib/cassandra/data/testks/testcf-h-14-Data.db
+{
+"62": [["6f","33343334333433343334",1317422867106000]]
+}
+/var/lib/cassandra/data/testks/testcf-h-15-Data.db
+{
+"62": [["69","33343334333433343334",1317422879258000]]
+}
+then i basically make a call to get key=b with all the column names (yes included column names that didn't exist to save time):
+ColumnFamilyResult<String, String> queryColumns = template.queryColumns("b", Arrays.asList("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"));
+(let me know if it would be easier to just upload the sstables to the ticket)
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jackson Chung
+Create date:
+30/Sep/11 23:06
+Update date:
+16/Apr/19 09:32
+Resolved date:
+01/Oct/11 15:04

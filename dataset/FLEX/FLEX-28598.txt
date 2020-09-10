@@ -1,0 +1,44 @@
+Summary:
+DataGridLayout memory leak
+Description:
+Steps to reproduce:
+1. Create a DataGrid instance and bind it's dataProvider to some ArrayCollection
+2. Add some items to the ArrayCollection (possibly large enough to detect the memory change)
+3. remove all items from the ArrayCollection
+Actual Results:
+The memory taken by the items of the ArrayCollection (large byteArrays for example) is not freed up. Some of it is freed after you add another item to the ArrayCollection
+Expected Results:
+After removing the items from the collection, there should be no reference to them, therefore they should be garbage-collected and the memory taken by them should be freed
+Workaround (if any):
+The problem as I understood comes from DataGridLayout, it creates renderers for each item that is added and uppon removing the item it just removes the renderer from its parent and hides it, but still keeps it in a local dictionary with the "data" property of this renderer still being the removed item.
+The workaround should be to create a new class extending DataGridLayout, copy all of its code (override the public function where needed), keeping the same logic, but in the private function freeItemRenderer, we should set the data property of the renderer to null.
+After this class is created, you should create a new Skin based on DataGridSkin and for the grid component set its layout to out custom extended layout and of course set this skin to the DataGrid
+I am attaching the application that reproduces the problem, as well as the modified version of the DataGridLayout and the custom skin for the DataGrid, to see the fix.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK 4.5.1
+Fix_version:
+None
+Component:
+Spark: DataGrid
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+22/Sep/11 02:17
+Update date:
+30/Sep/11 11:01
+Resolved date:
+29/Sep/11 12:13

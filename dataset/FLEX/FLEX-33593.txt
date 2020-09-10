@@ -1,0 +1,54 @@
+Summary:
+mx.controls.MenuBar#mouseOutHandler TypeError
+Description:
+When changing MenuBar dataProvider within click on Menu sometimes causes a TypeError in mouseOutHandler.
+I solved this with following workaround:
+public override function addChild(child:DisplayObject):DisplayObject
+{
+if( child is IMenuBarItemRenderer )
+{ var item: IMenuBarItemRenderer = IMenuBarItemRenderer( child ); item.addEventListener( MouseEvent.MOUSE_OUT, patchedMouseOutHandler, false, int.MAX_VALUE ); }
+return super.addChild( child );
+}
+private function patchedMouseOutHandler( event: MouseEvent ) : void
+{
+//stop the event to avoid npe
+event.stopImmediatePropagation();
+event.stopPropagation();
+var item:IMenuBarItemRenderer = IMenuBarItemRenderer(event.target);
+var index:int = item.menuBarItemIndex;
+var m:Menu = getMenuAt(index);
+if (item.enabled && selectedIndex != index)
+{ if( menuBarItems.indexOf( item ) >= 0 ) menuBarItems[index].menuBarItemState = "itemUpSkin"; }
+// Fire the appropriate rollout event
+if (item.data &&
+(m.dataDescriptor.getType(item.data) != "separator"))
+{ var menuEvent:MenuEvent = new MenuEvent(MenuEvent.ITEM_ROLL_OUT); menuEvent.index = index; menuEvent.menuBar = this; menuEvent.label = itemToLabel(item.data); menuEvent.item = item.data; menuEvent.itemRenderer = item; dispatchEvent(menuEvent); }
+}
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Apache Flex 4.9.0
+Fix_version:
+Apache Flex 4.10.0
+Component:
+mx: Menu Bar
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Philip Mair
+Create date:
+19/Jun/13 10:25
+Update date:
+20/Jun/13 13:08
+Resolved date:
+20/Jun/13 13:08

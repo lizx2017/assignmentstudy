@@ -1,0 +1,36 @@
+Summary:
+Rebuffer called excessively during seeks
+Description:
+When doing an strace tonight, I noticed during memtable flushes that we were only writing 1KB per every write() system call...After diving more into it, it's because of a bug in the seek() code.
+if (newPosition >= bufferOffset + validBufferBytes || newPosition < bufferOffset)
+vs.
+if (newPosition > (bufferOffset + validBufferBytes) || newPosition < bufferOffset)
+Two things I noticed, we shouldn't need to rebuffer if newPosition is equal to bufferOffset + validBufferBytes, second the evaluation was doing (newPosition >= bufferOffset) + validBufferBytes which always seemed to be true.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.6, 0.8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Chris Goffinet
+Reporter:
+Chris Goffinet
+Create date:
+29/Apr/11 04:34
+Update date:
+16/Apr/19 09:33
+Resolved date:
+03/May/11 15:50

@@ -1,0 +1,52 @@
+Summary:
+addRowLock() may allocate duplicate lock id, causing the client to be blocked
+Description:
+protected long addRowLock(Integer r, HRegion region) throws LeaseStillHeldException
+{
+ long lockId = -1L;
+ lockId = rand.nextLong();               //!!!may generate duplicated id，bug?
+ String lockName = String.valueOf(lockId);
+ rowlocks.put(lockName, r);
+ this.leases.createLease(lockName, new RowLockListener(lockName, region));
+ return lockId;
+}
+In addRowLock(),rand may generate duplicated lock id, it may cause regionserver throw exception(Leases$LeaseStillHeldException).The client will be blocked until old rowlock is released.
+2012-02-03 15:21:50,084 ERROR org.apache.hadoop.hbase.regionserver.HRegionServer: Error obtaining row lock (fsOk: true)
+org.apache.hadoop.hbase.regionserver.Leases$LeaseStillHeldException
+        at org.apache.hadoop.hbase.regionserver.Leases.createLease(Leases.java:150)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.addRowLock(HRegionServer.java:1986)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.lockRow(HRegionServer.java:1963)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:570)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1039)
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.95.0
+Component:
+regionserver
+Label:
+None
+Environment:
+redhat
+Attachment number:
+0
+Assignee:
+Ian Varley
+Reporter:
+liaoxiangui
+Create date:
+03/Feb/12 07:49
+Update date:
+23/Sep/13 18:31
+Resolved date:
+28/Sep/12 03:45

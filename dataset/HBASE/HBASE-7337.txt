@@ -1,0 +1,61 @@
+Summary:
+SingleColumnValueFilter seems to get unavailble data
+Description:
+put multi versions of a row.
+r1 cf:q version:1 value:1
+r1 cf:q version:2 value:3
+r1 cf:q version:3 value:2
+the filter in scan is set as below:
+SingleColumnValueFilter valueF = new SingleColumnValueFilter(
+family,qualifier,CompareOp.EQUAL,new BinaryComparator(Bytes
+.toBytes("2")));
+then i found all of the three versions will be emmitted, then i set latestVersionOnly to false, the result does no change.
+  public ReturnCode filterKeyValue(KeyValue keyValue) {
+    // System.out.println("REMOVE KEY=" + keyValue.toString() + ", value=" + Bytes.toString(keyValue.getValue()));
+    if (this.matchedColumn) {
+      // We already found and matched the single column, all keys now pass
+      return ReturnCode.INCLUDE;
+    } else if (this.latestVersionOnly && this.foundColumn) {
+      // We found but did not match the single column, skip to next row
+      return ReturnCode.NEXT_ROW;
+    }
+    if (!keyValue.matchingColumn(this.columnFamily, this.columnQualifier)) {
+      return ReturnCode.INCLUDE;
+    }
+    foundColumn = true;
+    if (filterColumnValue(keyValue.getBuffer(),
+        keyValue.getValueOffset(), keyValue.getValueLength())) {
+      return this.latestVersionOnly? ReturnCode.NEXT_ROW: ReturnCode.INCLUDE;
+    }
+    this.matchedColumn = true;
+    return ReturnCode.INCLUDE;
+  }
+From the code above, it seeems that version 3 will be first emmited, and set matchedColumn to true, which leads the following version 2 and 1 emmited too.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.94.3, 0.95.2
+Fix_version:
+None
+Component:
+Filters
+Label:
+None
+Environment:
+0.94
+Attachment number:
+0
+Assignee:
+Zhou wenjian
+Reporter:
+Zhou wenjian
+Create date:
+12/Dec/12 07:29
+Update date:
+26/Feb/13 04:29
+Resolved date:
+26/Feb/13 04:28

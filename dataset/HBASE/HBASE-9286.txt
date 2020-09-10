@@ -1,0 +1,41 @@
+Summary:
+[0.94] ageOfLastShippedOp replication metric doesn't update if the slave regionserver is stalled
+Description:
+In replicationmanager
+HRegionInterface rrs = getRS();
+rrs.replicateLogEntries(Arrays.copyOf(this.entriesArray, currentNbEntries));
+....
+this.metrics.setAgeOfLastShippedOp(
+this.entriesArray[currentNbEntries-1].getKey().getWriteTime());
+break;
+which makes sense, but is wrong. The problem is that rrs.replicateLogEntries will block for a very long time if the slave server is suspended or unavailable but not down.
+However this is easy to fix. We just need to call refreshAgeOfLastShippedOp();
+on a regular basis, in a different thread. I've attached a patch which fixed this for cdh4. I can make one for trunk and the like as well if you need me to do but it's a small change.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.12
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Newman
+Reporter:
+Alex Newman
+Create date:
+21/Aug/13 04:42
+Update date:
+09/May/14 06:34
+Resolved date:
+06/Sep/13 17:59

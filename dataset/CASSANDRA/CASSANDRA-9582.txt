@@ -1,0 +1,114 @@
+Summary:
+MarshalException after upgrading to 2.1.6
+Description:
+I've upgraded a node from 2.0.10 to 2.1.6. Before taking down the node, I've run nodetool upgradesstables and nodetool scrub.
+When starting up the node with 2.1.6, I'm getting a MarshalException (stacktrace included below). For some reason, it seems that C* is trying to convert a text value from the column 'currencyCode' to a UUID, which it isn't.
+I've had similar errors for two other columns as well, which I could work around by dropping the table, since it wasn't used anymore.
+The only thing I could do was restoring a snapshot and starting up the old 2.0.10 again.
+The schema of the table (I've got only one table containing a column named 'currencyCode') is:
+CREATE TABLE "InvoiceItem" (
+  key blob,
+  column1 uuid,
+  "currencyCode" text,
+  description text,
+  "priceGross" bigint,
+  "priceNett" bigint,
+  quantity varint,
+  sku text,
+  "unitPriceGross" bigint,
+  "unitPriceNett" bigint,
+  vat bigint,
+  "vatRateBasisPoints" varint,
+  PRIMARY KEY ((key), column1)
+) WITH COMPACT STORAGE AND
+  bloom_filter_fp_chance=0.010000 AND
+  caching='KEYS_ONLY' AND
+  comment='' AND
+  dclocal_read_repair_chance=0.000000 AND
+  gc_grace_seconds=864000 AND
+  index_interval=128 AND
+  read_repair_chance=1.000000 AND
+  replicate_on_write='true' AND
+  populate_io_cache_on_flush='false' AND
+  default_time_to_live=0 AND
+  speculative_retry='99.0PERCENTILE' AND
+  memtable_flush_period_in_ms=0 AND
+  compaction={'class': 'SizeTieredCompactionStrategy'} AND
+  compression={};
+The stack trace when starting up:
+ERROR 13:51:57 Exception encountered during startup
+org.apache.cassandra.serializers.MarshalException: unable to make version 1 UUID from 'currencyCode'
+ at org.apache.cassandra.db.marshal.UUIDType.fromString(UUIDType.java:188) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.db.marshal.AbstractCompositeType.fromString(AbstractCompositeType.java:242) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:397) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.config.CFMetaData.fromSchemaNoTriggers(CFMetaData.java:1750) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1860) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:321) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:302) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.db.DefsTables.loadFromKeyspace(DefsTables.java:133) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:696) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:672) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:293) [apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:536) [apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:625) [apache-cassandra-2.1.6.jar:2.1.6]
+Caused by: org.apache.cassandra.serializers.MarshalException: unable to coerce 'currencyCode' to a  formatted date (long)
+ at org.apache.cassandra.serializers.TimestampSerializer.dateStringToTimestamp(TimestampSerializer.java:111) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.db.marshal.UUIDType.fromString(UUIDType.java:184) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ ... 12 common frames omitted
+Caused by: java.text.ParseException: Unable to parse the date: currencyCode
+ at org.apache.commons.lang3.time.DateUtils.parseDateWithLeniency(DateUtils.java:336) ~[commons-lang3-3.1.jar:3.1]
+ at org.apache.commons.lang3.time.DateUtils.parseDateStrictly(DateUtils.java:286) ~[commons-lang3-3.1.jar:3.1]
+ at org.apache.cassandra.serializers.TimestampSerializer.dateStringToTimestamp(TimestampSerializer.java:107) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ ... 13 common frames omitted
+org.apache.cassandra.serializers.MarshalException: unable to make version 1 UUID from 'currencyCode'
+ at org.apache.cassandra.db.marshal.UUIDType.fromString(UUIDType.java:188)
+ at org.apache.cassandra.db.marshal.AbstractCompositeType.fromString(AbstractCompositeType.java:242)
+ at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:397)
+ at org.apache.cassandra.config.CFMetaData.fromSchemaNoTriggers(CFMetaData.java:1750)
+ at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1860)
+ at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:321)
+ at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:302)
+ at org.apache.cassandra.db.DefsTables.loadFromKeyspace(DefsTables.java:133)
+ at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:696)
+ at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:672)
+ at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:293)
+ at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:536)
+ at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:625)
+Caused by: org.apache.cassandra.serializers.MarshalException: unable to coerce 'currencyCode' to a  formatted date (long)
+ at org.apache.cassandra.serializers.TimestampSerializer.dateStringToTimestamp(TimestampSerializer.java:111)
+ at org.apache.cassandra.db.marshal.UUIDType.fromString(UUIDType.java:184)
+ ... 12 more
+Caused by: java.text.ParseException: Unable to parse the date: currencyCode
+ at org.apache.commons.lang3.time.DateUtils.parseDateWithLeniency(DateUtils.java:336)
+ at org.apache.commons.lang3.time.DateUtils.parseDateStrictly(DateUtils.java:286)
+ at org.apache.cassandra.serializers.TimestampSerializer.dateStringToTimestamp(TimestampSerializer.java:107)
+ ... 13 more
+Exception encountered during startup: unable to make version 1 UUID from 'currencyCode'
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.9
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Tom van den Berge
+Create date:
+11/Jun/15 15:36
+Update date:
+16/Apr/19 09:31
+Resolved date:
+22/Jul/15 08:24

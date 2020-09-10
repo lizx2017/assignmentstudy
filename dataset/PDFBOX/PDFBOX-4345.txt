@@ -1,0 +1,45 @@
+Summary:
+FDFAnnotation.richContentsToString does not evaluate text nodes which have siblings in the XML
+Description:
+The method FDFAnnotation.richContentsToString does not evaluate text nodes which have siblings in the XML which can lead to missing text when you parse XFDF data and add the annotations to a PDF.
+Example : parsing a XFDF string containing
+<p>Text A <span style="text-decoration:word;">Text B</span> Text C</p>
+and adding the annotation will display only "Text B".
+I've included a code sample (MergeTest.java) which generates two PDFs.
+For one PDF, the paragraph contains only spans with text nodes as their only children and all the text is included, for the other PDF, the paragraph has mixed text nodes and elements as children and here, the content from the text siblings of the "span" is missing.
+I propose the following fix:
+Instead of traversing the children of an element with the XPath "*" expression, simply iterate the children obtained from Node.getChildNodes(), process Text and CDATASection nodes directly and call richContentsToString for any elements.
+(source : FDFAnnotation_new.java, diff to 2.0.12 : FDFAnnotation_diff.txt)
+Furthermore, this method needs to escape "<" and "&" in the text values read from the node values, because if these characters are added to the markup, it'll cause corruption of annotations as described in PDFBOX-3646.
+Additionally, I added quoting " as " to the attribute values to avoid possible corruption there.
+  Note : my first attempt of a fix was to replace the XPath "*" expression with "node()", but for some reason, when I used this on a test case of
+<p><![CDATA[A]]> B <span>C</span> D</p>
+I would only obtain a NodeList containing the CDATASection, the "span" element and the final text node, but not the text node containing "B".
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.12
+Fix_version:
+2.0.13, 3.0.0 PDFBox
+Component:
+PDModel
+Label:
+xfdf
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Kai Keggenhoff
+Create date:
+17/Oct/18 08:16
+Update date:
+02/Dec/18 17:06
+Resolved date:
+20/Oct/18 13:08

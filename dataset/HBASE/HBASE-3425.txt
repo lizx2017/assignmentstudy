@@ -1,0 +1,49 @@
+Summary:
+HMaster sends duplicate ports to regionserver in HServerAddress
+Description:
+On regionserver startup, the regionserver receives an HServerAddress from the master as a Writable. It's a string hostname and an integer port. Our master is also appending the port to the string, so when they are concatenated it becomes hadoopnode98:60020:60020 and the HServerAddress cannot be instantiated.
+This should probably be fixed in the master as well, but I don't know where it happens. The attached patch handles it in the regionserver.
+Regionserver startup log:
+2011-01-06 15:55:48,813 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Connected to master at hadoopmaster.hotpads.srv:60000
+2011-01-06 15:55:48,857 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Telling master at hadoopmaster.hotpads.srv:60000 that we are up
+2011-01-06 15:55:48,910 DEBUG org.apache.hadoop.hbase.regionserver.HRegionServer: Config from master: hbase.regionserver.address=HadoopNode98.hotpads.srv:60020
+2011-01-06 15:55:48,910 DEBUG org.apache.hadoop.hbase.regionserver.HRegionServer: Config from master: fs.default.name=hdfs://hadoopmaster.hotpads.srv:54310/hbase
+2011-01-06 15:55:48,910 DEBUG org.apache.hadoop.hbase.regionserver.HRegionServer: Config from master: hbase.rootdir=hdfs://hadoopmaster.hotpads.srv:54310/hbase
+2011-01-06 15:55:48,945 ERROR org.apache.hadoop.hbase.HServerAddress: Could not resolve the DNS name of HadoopNode98.hotpads.srv:60020:60020
+2011-01-06 15:55:48,945 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: STOPPED: Failed initialization
+2011-01-06 15:55:48,947 ERROR org.apache.hadoop.hbase.regionserver.HRegionServer: Failed init
+java.lang.IllegalArgumentException: Could not resolve the DNS name of HadoopNode98.hotpads.srv:60020:60020
+at org.apache.hadoop.hbase.HServerAddress.checkBindAddressCanBeResolved(HServerAddress.java:105)
+at org.apache.hadoop.hbase.HServerAddress.<init>(HServerAddress.java:76)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.handleReportForDutyResponse(HRegionServer.java:798)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.tryReportForDuty(HRegionServer.java:1394)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:522)
+at java.lang.Thread.run(Thread.java:619)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.90.0
+Fix_version:
+0.92.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Matt Corgan
+Create date:
+06/Jan/11 22:46
+Update date:
+20/Nov/15 12:42
+Resolved date:
+23/May/11 23:06

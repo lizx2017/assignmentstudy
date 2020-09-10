@@ -1,0 +1,56 @@
+Summary:
+Prefetching .META. rows in case only when useCache is set to true
+Description:
+While doing a .META. lookup (HCM#locateRegionInMeta), we also prefetch some other region's info for that table. The usual call to the meta lookup has useCache variable set to true.
+Currently, it calls preFetch irrespective of the value useCache flag:
+            if (Bytes.equals(parentTable, HConstants.META_TABLE_NAME) &&
+                (getRegionCachePrefetch(tableName)))  {
+              prefetchRegionCache(tableName, row);
+            }
+Later on, if useCache flag is set to false, it deletes the entry for that row from the cache with a forceDeleteCachedLocation() call. This always results in two calls to the .META. table in this case. The useCache variable is set to false in case we are retrying to find a region (regionserver failover).
+It can be verified from the log statements of a client while having a regionserver failover. In the below example, the client was connected to a1217, when a1217 got killed. The region in question is moved to a1215. Client got this info from META scan, where as client cache this info from META, but then delete it from cache as it want the latest info.
+The result is even the meta provides the latest info, it is still deleted This causes even the latest info to be deleted. Thus, client deletes a1215.abc.com even though it is correct info.
+13/04/15 09:49:12 DEBUG client.HConnectionManager$HConnectionImplementation: Cached location for t,user7225973201630273569,1365536809331.40382355b8c45e1338d620c018f8ff6c. is a1217.abc.com:40020
+13/04/15 09:49:12 WARN client.ServerCallable: Received exception, tries=1, numRetries=30 message=Connection refused
+
+13/04/15 09:49:12 DEBUG client.HConnectionManager$HConnectionImplementation: Removed all cached region locations that map to a1217.abc.com,40020,1365621947381
+13/04/15 09:49:13 DEBUG client.MetaScanner: Current INFO from scan results = {NAME => 't,user7225973201630273569,1365536809331.40382355b8c45e1338d620c018f8ff6c.', STARTKEY => 'user7225973201630273569', ENDKEY => '', ENCODED => 40382355b8c45e1338d620c018f8ff6c,}
+
+13/04/15 09:49:13 DEBUG client.MetaScanner: Scanning .META. starting at row=t,user7225973201630273569,00000000000000 for max=10 rows using hconnection-0x7786df0f
+13/04/15 09:49:13 DEBUG client.MetaScanner: Current INFO from scan results = {NAME => 't,user7225973201630273569,1365536809331.40382355b8c45e1338d620c018f8ff6c.', STARTKEY => 'user7225973201630273569', ENDKEY => '', ENCODED => 40382355b8c45e1338d620c018f8ff6c,}
+
+13/04/15 09:49:13 DEBUG client.HConnectionManager$HConnectionImplementation: Cached location for t,user7225973201630273569,1365536809331.40382355b8c45e1338d620c018f8ff6c. is a1215.abc.com:40020
+13/04/15 09:49:13 DEBUG client.HConnectionManager$HConnectionImplementation: Removed a1215.abc.com:40020 as a location of t,user7225973201630273569,1365536809331.40382355b8c45e1338d620c018f8ff6c. for tableName=t from cache
+
+13/04/15 09:49:13 DEBUG client.MetaScanner: Current INFO from scan results = {NAME => 't,user7225973201630273569,1365536809331.40382355b8c45e1338d620c018f8ff6c.', STARTKEY => 'user7225973201630273569', ENDKEY => '', ENCODED => 40382355b8c45e1338d620c018f8ff6c,}
+13/04/15 09:49:13 DEBUG client.HConnectionManager$HConnectionImplementation: Cached location for t,user7225973201630273569,1365536809331.40382355b8c45e1338d620c018f8ff6c. is a1215.abc.com:40020
+13/04/15 09:49:13 WARN client.ServerCallable: Received exception, tries=2, numRetries=30 message=org.apache.hadoop.hbase.exceptions.UnknownScannerException: Name: -6313340536390503703, already closed?
+13/04/15 09:49:13 DEBUG client.ClientScanner: Advancing internal scanner to startKey at 'user760712450403198900'
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.95.0
+Fix_version:
+0.98.0, 0.95.1
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Himanshu Vashishtha
+Reporter:
+Himanshu Vashishtha
+Create date:
+15/Apr/13 21:18
+Update date:
+23/Sep/13 19:08
+Resolved date:
+03/May/13 23:28

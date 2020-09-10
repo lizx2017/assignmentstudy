@@ -1,0 +1,61 @@
+Summary:
+config file option DiskAccessMode has no-op option "mmap_index_only"
+Description:
+Per http://wiki.apache.org/cassandra/StorageConfiguration :
+"
+Access mode. mmapped i/o is substantially faster, but only practical on a 64bit machine (which notably does not include EC2 "small" instances) or relatively small datasets. "auto", the safe choice, will enable mmapping on a 64bit JVM. Other values are "mmap", "mmap_index_only" (which may allow you to get part of the benefits of mmap on a 32bit machine by mmapping only index files) and "standard". (The buffer size settings that follow only apply to standard, non-mmapped i/o.)
+"
+The actual code referring to "mmap_index_only" is in src/java/org/apache/cassandra/config/DatabaseDescriptor.java :
+"
+public static enum DiskAccessMode
+{ auto, mmap, mmap_index_only, standard, }
+...
+private static DiskAccessMode diskAccessMode;
+private static DiskAccessMode indexAccessMode;
+...
+if (diskAccessMode == DiskAccessMode.auto)
+{ diskAccessMode = System.getProperty("os.arch").contains("64") ? DiskAccessMode.mmap : DiskAccessMode.standard; indexAccessMode = diskAccessMode; logger.info("Auto DiskAccessMode determined to be " + diskAccessMode); }
+else if (diskAccessMode == DiskAccessMode.mmap_index_only)
+{ diskAccessMode = DiskAccessMode.standard; indexAccessMode = DiskAccessMode.mmap; }
+else
+{ indexAccessMode = diskAccessMode; }
+"
+As indicated by this snippet, IndexAccessMode is set to "mmap" if "mmap_index_only" is set in the conf file. However it does not appear that IndexAccessMode or getIndexAccessMode() are used by any other cassandra code.
+"
+~/repos/cassandra$ grep -ri indexAccessMode .
+./src/java/org/apache/cassandra/config/DatabaseDescriptor.java: private static Config.DiskAccessMode indexAccessMode;
+./src/java/org/apache/cassandra/config/DatabaseDescriptor.java: indexAccessMode = conf.disk_access_mode;
+./src/java/org/apache/cassandra/config/DatabaseDescriptor.java: indexAccessMode = Config.DiskAccessMode.mmap;
+./src/java/org/apache/cassandra/config/DatabaseDescriptor.java: indexAccessMode = conf.disk_access_mode;
+./src/java/org/apache/cassandra/config/DatabaseDescriptor.java: public static Config.DiskAccessMode getIndexAccessMode()
+./src/java/org/apache/cassandra/config/DatabaseDescriptor.java: return indexAccessMode;
+"
+If I understand the code correctly, this means that setting DiskAccessMode to "mmap_index_only" is functionally the same as setting it to "standard." As people might be tempted to try/test "mmap_index_only" as a mode in-between "standard" and "mmap" in order to mitigate concerns about https://issues.apache.org/jira/browse/CASSANDRA-1214, it would probably be good to either complete the feature or remove the configuration option. I am willing to submit a patch for the latter and fix the docs if that's the decision.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 2
+Component:
+Legacy/Documentation and Website
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Robert Coli
+Create date:
+30/Jun/10 23:35
+Update date:
+16/Apr/19 09:33
+Resolved date:
+13/Aug/10 17:12

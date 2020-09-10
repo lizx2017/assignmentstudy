@@ -1,0 +1,66 @@
+Summary:
+Backup master does not become Active master after ZK exception
+Description:
+-> Active master gets ZK expiry exception.
+-> Backup master becomes active.
+-> The previous active master retries and becomes the back up master.
+Now when the new active master goes down and the current back up master comes up, it goes down again with the zk expiry exception it got in the first step.
+if (abortNow(msg, t)) {
+      if (t != null) LOG.fatal(msg, t);
+      else LOG.fatal(msg);
+      this.abort = true;
+      stop("Aborting");
+    }
+In ActiveMasterManager.blockUntilBecomingActiveMaster we try to wait till the back up master becomes active.
+    synchronized (this.clusterHasActiveMaster) {
+      while (this.clusterHasActiveMaster.get() && !this.master.isStopped()) {
+        try {
+          this.clusterHasActiveMaster.wait();
+        } catch (InterruptedException e) {
+          // We expect to be interrupted when a master dies, will fall out if so
+          LOG.debug("Interrupted waiting for master to die", e);
+        }
+      }
+      if (!clusterStatusTracker.isClusterUp()) {
+        this.master.stop("Cluster went down before this master became active");
+      }
+      if (this.master.isStopped()) {
+        return cleanSetOfActiveMaster;
+      }
+      // Try to become active master again now that there is no active master
+      blockUntilBecomingActiveMaster(startupStatus,clusterStatusTracker);
+    }
+    return cleanSetOfActiveMaster;
+When the back up master (it is in back up mode as he got ZK exception), once again tries to come to active we don't get the return value that comes out from
+// Try to become active master again now that there is no active master
+      blockUntilBecomingActiveMaster(startupStatus,clusterStatusTracker);
+We tend to return the 'cleanSetOfActiveMaster' which was previously false.
+Now because of this instead of again becoming active the back up master goes down in the abort() code. Thanks to Gopi,my colleague for reporting this issue.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.0
+Fix_version:
+0.92.2, 0.94.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+29/May/12 17:08
+Update date:
+12/Oct/12 05:36
+Resolved date:
+31/May/12 16:21

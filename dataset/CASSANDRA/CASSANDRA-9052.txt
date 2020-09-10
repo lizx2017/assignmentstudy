@@ -1,0 +1,80 @@
+Summary:
+CQLSSTableWriter close does not work - Regression bug: CASSANDRA-8281
+Description:
+Hello,
+I have just noticed that the last C* version 2.1.3 reintroduced an old bug "CASSANDRA-8281".
+When closing the CQLSSTableWriter after adding rows it generated the following Exception:
+Exception
+Exception in thread "main" java.lang.ExceptionInInitializerError
+        at org.apache.cassandra.db.Keyspace.initCf(Keyspace.java:324)
+        at org.apache.cassandra.db.Keyspace.<init>(Keyspace.java:277)
+        at org.apache.cassandra.db.Keyspace.open(Keyspace.java:119)
+        at org.apache.cassandra.db.Keyspace.open(Keyspace.java:96)
+        at org.apache.cassandra.cql3.statements.UpdateStatement.addUpdateForKey(UpdateStatement.java:101)
+        at org.apache.cassandra.io.sstable.CQLSSTableWriter.rawAddRow(CQLSSTableWriter.java:225)
+        at org.apache.cassandra.io.sstable.CQLSSTableWriter.addRow(CQLSSTableWriter.java:144)
+        at org.apache.cassandra.io.sstable.CQLSSTableWriter.addRow(CQLSSTableWriter.java:119)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.lang.reflect.Method.invoke(Method.java:606)
+        at org.codehaus.groovy.runtime.callsite.PojoMetaMethodSite$PojoCachedMethodSite.invoke(PojoMetaMethodSite.java:189)
+        at org.codehaus.groovy.runtime.callsite.PojoMetaMethodSite.call(PojoMetaMethodSite.java:53)
+        at org.codehaus.groovy.runtime.callsite.CallSiteArray.defaultCall(CallSiteArray.java:45)
+        at org.codehaus.groovy.runtime.callsite.AbstractCallSite.call(AbstractCallSite.java:110)
+        at org.codehaus.groovy.runtime.callsite.AbstractCallSite.call(AbstractCallSite.java:122)
+        at BulkDataLoader.main(BulkDataLoader.groovy:26)
+Caused by: java.lang.NullPointerException
+        at org.apache.cassandra.config.DatabaseDescriptor.getFlushWriters(DatabaseDescriptor.java:1053)
+        at org.apache.cassandra.db.ColumnFamilyStore.<clinit>(ColumnFamilyStore.java:85)
+        ... 18 more
+Note that is this works correctly in 2.1.2 and not with 2.1.3, we can reproduce this issue with the following code:
+test.java
+import org.apache.cassandra.config.Config;
+import org.apache.cassandra.io.sstable.CQLSSTableWriter;
+
+public static void main(String[] args) {
+  Config.setClientMode(true);
+
+  // These folders needs must exist: mkdir -p /tmp/kspc/t1
+  CQLSSTableWriter w1 = CQLSSTableWriter.builder()
+    .inDirectory("/tmp/kspc/t1")
+    .forTable("CREATE TABLE kspc.t1 ( id  int, PRIMARY KEY (id));")
+    .using("INSERT INTO kspc.t1 (id) VALUES ( ? );")
+    .build();
+
+  try {
+    w1.addRow(1);
+    w1.close();
+  } catch (Exception e) {
+    System.out.println(e);
+  }
+}
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+API CQL SSTableWrite
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Sebastian YEPES FERNANDEZ
+Create date:
+27/Mar/15 10:58
+Update date:
+16/Apr/19 09:31
+Resolved date:
+27/Mar/15 13:00

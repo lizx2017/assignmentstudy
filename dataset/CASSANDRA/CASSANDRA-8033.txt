@@ -1,0 +1,140 @@
+Summary:
+Filtering for CONTAINS on sets is broken
+Description:
+With compound partition key, when you add index for one part and query by that AND with CONTAINS, the CONTAINS clause does nothing.
+Steps to reproduce:
+-- drop existing data
+DROP TABLE IF EXISTS test;
+
+-- create data
+CREATE TABLE test (id1 int, id2 int, tag text, items set<text>, PRIMARY KEY ((id1, id2), tag));
+INSERT INTO test (id1, id2, tag, items) VALUES (1, 1, 'cars', {'ford', 'toyota'});
+INSERT INTO test (id1, id2, tag, items) VALUES (1, 2, 'planes', {'airbus', 'boeing'});
+INSERT INTO test (id1, id2, tag, items) VALUES (2, 1, 'cars', {'bmw', 'ford'});
+
+-- if we create INDEX for items, query works ok
+CREATE INDEX test_items ON test(items);
+SELECT * FROM test WHERE items CONTAINS 'ford';  -- returns 2 rows
+
+-- even this works now (but won't work later)
+SELECT * FROM test WHERE id1 = 1 AND items CONTAINS 'ford' ALLOW FILTERING;  -- returns 1 row
+
+-- let's create the index on id1 instead
+DROP INDEX test_items;
+CREATE INDEX test_id1s ON test(id1);
+
+-- these return all rows of id1 = 1 now, CONTAINS clause does nothing
+SELECT * FROM test WHERE id1 = 1 AND items CONTAINS 'ford' ALLOW FILTERING;  -- should return 1 row but returns 2
+SELECT * FROM test WHERE id1 = 1 AND items CONTAINS 'doesnotexist' ALLOW FILTERING;  -- should return 0 rows but returns 2
+
+-- add index back
+CREATE INDEX test_items ON test(items);
+
+-- no effect, same as before
+SELECT * FROM test WHERE id1 = 1 AND items CONTAINS 'ford' ALLOW FILTERING;  -- should return 1 row but returns 2
+SELECT * FROM test WHERE id1 = 1 AND items CONTAINS 'doesnotexist' ALLOW FILTERING;  -- should return 0 rows but returns 2
+Sample output:
+cqlsh:stable> -- drop existing data
+cqlsh:stable> DROP TABLE IF EXISTS test;
+cqlsh:stable> 
+cqlsh:stable> -- create data
+cqlsh:stable> CREATE TABLE test (id1 int, id2 int, tag text, items set<text>, PRIMARY KEY ((id1, id2), tag));
+cqlsh:stable> INSERT INTO test (id1, id2, tag, items) VALUES (1, 1, 'cars', {'ford', 'toyota'});
+cqlsh:stable> INSERT INTO test (id1, id2, tag, items) VALUES (1, 2, 'planes', {'airbus', 'boeing'});
+cqlsh:stable> INSERT INTO test (id1, id2, tag, items) VALUES (2, 1, 'cars', {'bmw', 'ford'});
+cqlsh:stable> 
+cqlsh:stable> -- if we create INDEX for items, query works ok
+cqlsh:stable> CREATE INDEX test_items ON test(items);
+cqlsh:stable> SELECT * FROM test WHERE items CONTAINS 'ford';  -- returns 2 rows
+
+ id1 | id2 | tag  | items
+-----+-----+------+--------------------
+   2 |   1 | cars |    {'bmw', 'ford'}
+   1 |   1 | cars | {'ford', 'toyota'}
+
+(2 rows)
+
+cqlsh:stable> 
+cqlsh:stable> -- even this works now (but won't work later)
+cqlsh:stable> SELECT * FROM test WHERE id1 = 1 AND items CONTAINS 'ford' ALLOW FILTERING;  -- returns 1 row
+
+ id1 | id2 | tag  | items
+-----+-----+------+--------------------
+   1 |   1 | cars | {'ford', 'toyota'}
+
+(1 rows)
+
+cqlsh:stable> 
+cqlsh:stable> -- let's create the index on id1 instead
+cqlsh:stable> DROP INDEX test_items;
+cqlsh:stable> CREATE INDEX test_id1s ON test(id1);
+cqlsh:stable> 
+cqlsh:stable> -- these return all rows of id1 = 1 now, CONTAINS clause does nothing
+cqlsh:stable> SELECT * FROM test WHERE id1 = 1 AND items CONTAINS 'ford' ALLOW FILTERING;  -- should return 1 row but returns 2
+
+ id1 | id2 | tag    | items
+-----+-----+--------+----------------------
+   1 |   2 | planes | {'airbus', 'boeing'}
+   1 |   1 |   cars |   {'ford', 'toyota'}
+
+(2 rows)
+
+cqlsh:stable> SELECT * FROM test WHERE id1 = 1 AND items CONTAINS 'doesnotexist' ALLOW FILTERING;  -- should return 0 rows but returns 2
+
+ id1 | id2 | tag    | items
+-----+-----+--------+----------------------
+   1 |   2 | planes | {'airbus', 'boeing'}
+   1 |   1 |   cars |   {'ford', 'toyota'}
+
+(2 rows)
+
+cqlsh:stable> 
+cqlsh:stable> -- add index back
+cqlsh:stable> CREATE INDEX test_items ON test(items);
+cqlsh:stable> 
+cqlsh:stable> -- no effect, same as before
+cqlsh:stable> SELECT * FROM test WHERE id1 = 1 AND items CONTAINS 'ford' ALLOW FILTERING;  -- should return 1 row but returns 2
+
+ id1 | id2 | tag    | items
+-----+-----+--------+----------------------
+   1 |   2 | planes | {'airbus', 'boeing'}
+   1 |   1 |   cars |   {'ford', 'toyota'}
+
+(2 rows)
+
+cqlsh:stable> SELECT * FROM test WHERE id1 = 1 AND items CONTAINS 'doesnotexist' ALLOW FILTERING;  -- should return 0 rows but returns 2
+
+ id1 | id2 | tag    | items
+-----+-----+--------+----------------------
+   1 |   2 | planes | {'airbus', 'boeing'}
+   1 |   1 |   cars |   {'ford', 'toyota'}
+
+(2 rows)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.1
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Tuukka Mustonen
+Create date:
+01/Oct/14 13:07
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Oct/14 15:23

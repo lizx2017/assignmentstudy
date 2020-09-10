@@ -1,0 +1,70 @@
+Summary:
+java.lang.OutOfMemoryError when extracting images
+Description:
+We are trying to extract images from PDF file. As part of that, we are converting a PDPage into an image. using PDPage.convertImage method. Its a 52 page document.
+At that time, We are seeing the following trace:
+Here are the steps:
+PDDocument document = PDDocument.load(inputStream);
+List<PDPage> pages = document.getDocumentCatalog().getAllPages();
+for (PDPage pdPage : pages)
+{ if (pdPage.getResources() != null && pdPage.getResources().getImages() != null) PageInfo page = new PageInfo(pdPage, true, rotation); ... }
+}
+In PageInfo, we are doing:
+BufferedImage bimage = page.convertToImage();
+And after processing about 12 or so pages, it starts complaining as follows.
+java.lang.OutOfMemoryError: Java heap space
+at org.apache.pdfbox.io.RandomAccessBuffer.expandBuffer(RandomAccessBuffer.java:263)
+at org.apache.pdfbox.io.RandomAccessBuffer.write(RandomAccessBuffer.java:222)
+at org.apache.pdfbox.io.RandomAccessFileOutputStream.write(RandomAccessFileOutputStream.java:108)
+at java.io.OutputStream.write(OutputStream.java:75)
+at org.apache.pdfbox.filter.FlateFilter.decode(FlateFilter.java:102)
+at org.apache.pdfbox.cos.COSStream.doDecode(COSStream.java:295)
+at org.apache.pdfbox.cos.COSStream.doDecode(COSStream.java:237)
+at org.apache.pdfbox.cos.COSStream.getUnfilteredStream(COSStream.java:172)
+at org.apache.pdfbox.pdmodel.common.PDStream.createInputStream(PDStream.java:231)
+at org.apache.pdfbox.pdmodel.common.PDStream.getByteArray(PDStream.java:509)
+at org.apache.pdfbox.pdmodel.graphics.xobject.PDPixelMap.getRGBImage(PDPixelMap.java:185)
+at org.apache.pdfbox.util.operator.pagedrawer.Invoke.process(Invoke.java:83)
+at org.apache.pdfbox.util.PDFStreamEngine.processOperator(PDFStreamEngine.java:554)
+at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:268)
+at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:235)
+at org.apache.pdfbox.util.PDFStreamEngine.processStream(PDFStreamEngine.java:215)
+at org.apache.pdfbox.pdfviewer.PageDrawer.drawPage(PageDrawer.java:125)
+at org.apache.pdfbox.pdmodel.PDPage.convertToImage(PDPage.java:781)
+at org.apache.pdfbox.pdmodel.PDPage.convertToImage(PDPage.java:712)
+at oss.rcpt.PageInfo.<init>(PageInfo.java:328)
+at oss.utl.PDFImageSplitter.execute(PDFImageSplitter.java:217)
+at oss.utl.PDFUtilities.getImageCount(PDFUtilities.java:165)
+at cms.utl.PDFImageOperations.main(PDFImageOperations.java:157)
+when we run this from command line,
+if we set -Xms=512m and -Xmx=512m, its complaining after 12 pages.
+if we set -Xms=1024m and -Xmx=1024m, its complaining after 27 pages.
+On the side, we are also getting "Colour key masking isn't supported" message for each image in the file.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+1.8.1
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+sarathy
+Create date:
+10/Sep/13 09:50
+Update date:
+06/May/14 22:33
+Resolved date:
+06/May/14 22:33

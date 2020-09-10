@@ -1,0 +1,139 @@
+Summary:
+Error on encrypted node communication upgrading from 2.1.6 to 2.2.0
+Description:
+After updating to Cassandra 2.2.0 from 2.1.6 I am having SSL issues.
+The configuration had not changed from one version to the other, the JVM is still the same however on 2.2.0 it is erroring. I am yet to investigate the source code for it. But for now, this is the information I have to share on it:
+My JVM is java version "1.8.0_45"
+Java(TM) SE Runtime Environment (build 1.8.0_45-b14)
+Java HotSpot(TM) 64-Bit Server VM (build 25.45-b02, mixed mode)
+Ubuntu 14.04.2 LTS is on all nodes, they are the same.
+Below is the encryption settings from cassandra.yaml of all nodes.
+I am using the same keystore and trustore as I had used before on 2.1.6
+Enable or disable inter-node encryption
+Default settings are TLS v1, RSA 1024-bit keys (it is imperative that
+users generate their own keys) TLS_RSA_WITH_AES_128_CBC_SHA as the cipher
+suite for authentication, key exchange and encryption of the actual data transfers.
+Use the DHE/ECDHE ciphers if running in FIPS 140 compliant mode.
+NOTE: No custom encryption options are enabled at the moment
+The available internode options are : all, none, dc, rack
+#
+If set to dc cassandra will encrypt the traffic between the DCs
+If set to rack cassandra will encrypt the traffic between the racks
+#
+The passwords used in these options must match the passwords used when generating
+the keystore and truststore. For instructions on generating these files, see:
+http://download.oracle.com/javase/6/docs/technotes/guides/security/jsse/JSSERefGuide.html#CreateKeystore
+#
+server_encryption_options:
+internode_encryption: all
+keystore: /etc/cassandra/certs/node.keystore
+keystore_password: mypasswd
+truststore: /etc/cassandra/certs/global.truststore
+truststore_password: mypasswd
+More advanced defaults below:
+protocol: TLS
+algorithm: SunX509
+store_type: JKS
+cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA]
+require_client_auth: false
+enable or disable client/server encryption.
+Nodes cannot talk to each other as per SSL errors bellow.
+WARN [MessagingService-Outgoing-/192.168.1.31] 2015-07-22 17:29:48,764 SSLFactory.java:163 - Filtering out TLS_DHE_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA as it isnt supported by the socket
+ERROR [MessagingService-Outgoing-/192.168.1.31] 2015-07-22 17:29:48,764 OutboundTcpConnection.java:229 - error processing a message intended for /192.168.1.31
+java.lang.NullPointerException: null
+at com.google.common.base.Preconditions.checkNotNull(Preconditions.java:213) ~[guava-16.0.jar:na]
+at org.apache.cassandra.io.util.BufferedDataOutputStreamPlus.<init>(BufferedDataOutputStreamPlus.java:74) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.connect(OutboundTcpConnection.java:404) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:218) ~[apache-cassandra-2.2.0.jar:2.2.0]
+ERROR [MessagingService-Outgoing-/192.168.1.31] 2015-07-22 17:29:48,764 OutboundTcpConnection.java:316 - error writing to /192.168.1.31
+java.lang.NullPointerException: null
+at org.apache.cassandra.net.OutboundTcpConnection.writeInternal(OutboundTcpConnection.java:323) [apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.writeConnected(OutboundTcpConnection.java:285) [apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:219) [apache-cassandra-2.2.0.jar:2.2.0]
+WARN [MessagingService-Outgoing-/192.168.1.33] 2015-07-22 17:29:49,764 SSLFactory.java:163 - Filtering out TLS_DHE_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA as it isnt supported by the socket
+WARN [MessagingService-Outgoing-/192.168.1.31] 2015-07-22 17:29:49,764 SSLFactory.java:163 - Filtering out TLS_DHE_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA as it isnt supported by the socket
+ERROR [MessagingService-Outgoing-/192.168.1.33] 2015-07-22 17:29:49,764 OutboundTcpConnection.java:229 - error processing a message intended for /192.168.1.33
+java.lang.NullPointerException: null
+at com.google.common.base.Preconditions.checkNotNull(Preconditions.java:213) ~[guava-16.0.jar:na]
+at org.apache.cassandra.io.util.BufferedDataOutputStreamPlus.<init>(BufferedDataOutputStreamPlus.java:74) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.connect(OutboundTcpConnection.java:404) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:218) ~[apache-cassandra-2.2.0.jar:2.2.0]
+ERROR [MessagingService-Outgoing-/192.168.1.31] 2015-07-22 17:29:49,764 OutboundTcpConnection.java:229 - error processing a message intended for /192.168.1.31
+java.lang.NullPointerException: null
+at com.google.common.base.Preconditions.checkNotNull(Preconditions.java:213) ~[guava-16.0.jar:na]
+at org.apache.cassandra.io.util.BufferedDataOutputStreamPlus.<init>(BufferedDataOutputStreamPlus.java:74) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.connect(OutboundTcpConnection.java:404) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:218) ~[apache-cassandra-2.2.0.jar:2.2.0]
+ERROR [MessagingService-Outgoing-/192.168.1.31] 2015-07-22 17:29:50,763 OutboundTcpConnection.java:316 - error writing to /192.168.1.31
+java.lang.NullPointerException: null
+at org.apache.cassandra.net.OutboundTcpConnection.writeInternal(OutboundTcpConnection.java:323) [apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.writeConnected(OutboundTcpConnection.java:285) [apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:219) [apache-cassandra-2.2.0.jar:2.2.0]
+WARN [MessagingService-Outgoing-/192.168.1.31] 2015-07-22 17:29:51,766 SSLFactory.java:163 - Filtering out TLS_DHE_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA as it isnt supported by the socket
+ERROR [MessagingService-Outgoing-/192.168.1.31] 2015-07-22 17:29:51,767 OutboundTcpConnection.java:229 - error processing a message intended for /192.168.1.31
+java.lang.NullPointerException: null
+at com.google.common.base.Preconditions.checkNotNull(Preconditions.java:213) ~[guava-16.0.jar:na]
+at org.apache.cassandra.io.util.BufferedDataOutputStreamPlus.<init>(BufferedDataOutputStreamPlus.java:74) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.connect(OutboundTcpConnection.java:404) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:218) ~[apache-cassandra-2.2.0.jar:2.2.0]
+ERROR [MessagingService-Outgoing-/192.168.1.33] 2015-07-22 17:29:52,764 OutboundTcpConnection.java:316 - error writing to /192.168.1.33
+java.lang.NullPointerException: null
+at org.apache.cassandra.net.OutboundTcpConnection.writeInternal(OutboundTcpConnection.java:323) [apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.writeConnected(OutboundTcpConnection.java:285) [apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:219) [apache-cassandra-2.2.0.jar:2.2.0]
+ERROR [MessagingService-Outgoing-/192.168.1.31] 2015-07-22 17:29:52,764 OutboundTcpConnection.java:316 - error writing to /192.168.1.31
+java.lang.NullPointerException: null
+at org.apache.cassandra.net.OutboundTcpConnection.writeInternal(OutboundTcpConnection.java:323) [apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.writeConnected(OutboundTcpConnection.java:285) [apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:219) [apache-cassandra-2.2.0.jar:2.2.0]
+WARN [MessagingService-Outgoing-/192.168.1.31] 2015-07-22 17:29:53,767 SSLFactory.java:163 - Filtering out TLS_DHE_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA as it isnt supported by the socket
+ERROR [MessagingService-Outgoing-/192.168.1.31] 2015-07-22 17:29:53,767 OutboundTcpConnection.java:229 - error processing a message intended for /192.168.1.31
+java.lang.NullPointerException: null
+at com.google.common.base.Preconditions.checkNotNull(Preconditions.java:213) ~[guava-16.0.jar:na]
+at org.apache.cassandra.io.util.BufferedDataOutputStreamPlus.<init>(BufferedDataOutputStreamPlus.java:74) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.connect(OutboundTcpConnection.java:404) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:218) ~[apache-cassandra-2.2.0.jar:2.2.0]
+I had also tried to have the unrestricted JCE for Java 8 in and the error has changed.
+http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html
+From:
+java.lang.NullPointerException: null
+at com.google.common.base.Preconditions.checkNotNull(Preconditions.java:213) ~[guava-16.0.jar:na]
+at org.apache.cassandra.io.util.BufferedDataOutputStreamPlus.<init>(BufferedDataOutputStreamPlus.java:74) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.connect(OutboundTcpConnection.java:404) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:218) ~[apache-cassandra-2.2.0.jar:2.2.0]
+ERROR [MessagingService-Outgoing-/192.168.1.33] 2015-07-22 17:29:52,764 OutboundTcpConnection.java:316 - error writing to /192.168.1.33
+To:
+ERROR [MessagingService-Outgoing-/192.168.1.33] 2015-07-23 14:51:01,319 OutboundTcpConnection.java:229 - error processing a message intended for /192.168.1.33
+java.lang.NullPointerException: null
+at com.google.common.base.Preconditions.checkNotNull(Preconditions.java:213) ~[guava-16.0.jar:na]
+at org.apache.cassandra.io.util.BufferedDataOutputStreamPlus.<init>(BufferedDataOutputStreamPlus.java:74) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.connect(OutboundTcpConnection.java:404) ~[apache-cassandra-2.2.0.jar:2.2.0]
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:218) ~[apache-cassandra-2.2.0.jar:2.2.0]
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.1
+Component:
+Local/Config
+Label:
+security
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Carlos Scheidecker
+Create date:
+23/Jul/15 21:02
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Aug/15 03:06

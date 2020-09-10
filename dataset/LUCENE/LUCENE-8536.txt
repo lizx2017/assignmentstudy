@@ -1,0 +1,89 @@
+Summary:
+The bytes parameter of the copy method is not carefully checked.
+Description:
+The copy method of the PagedBytes class is as follow:
+    public void copy(BytesRef bytes, BytesRef out) {
+int left = blockSize - upto;
+if (bytes.length > left || currentBlock==null) {
+if (currentBlock != null) {
+addBlock(currentBlock);
+didSkipBytes = true;
+}
+currentBlock = new byte[blockSize];
+upto = 0;
+left = blockSize;
+assert bytes.length <= blockSize;
+// TODO: we could also support variable block sizes
+}
+
+out.bytes = currentBlock;
+out.offset = upto;
+out.length = bytes.length;
+
+System.arraycopy(bytes.bytes, bytes.offset, currentBlock, upto, bytes.length);
+upto += bytes.length;
+}
+The method does not throw exceptions for illegal inputs. In the same class, the copyUsingLengthPrefix method checks the input value"
+      public long copyUsingLengthPrefix(BytesRef bytes) {
+if (bytes.length >= 32768) {
+throw new IllegalArgumentException("max length is 32767 (got " + bytes.length + ")");
+}
+
+if (upto + bytes.length + 2 > blockSize) {
+if (bytes.length + 2 > blockSize) {
+throw new IllegalArgumentException("block size " + blockSize + " is too small to store length " + bytes.length + " bytes");
+}
+if (currentBlock != null) {
+addBlock(currentBlock); 
+}
+currentBlock = new byte[blockSize];
+upto = 0;
+}
+
+final long pointer = getPointer();
+
+if (bytes.length < 128) {
+currentBlock[upto++] = (byte) bytes.length;
+} else {
+currentBlock[upto++] = (byte) (0x80 | (bytes.length >> 8));
+currentBlock[upto++] = (byte) (bytes.length & 0xff);
+}
+System.arraycopy(bytes.bytes, bytes.offset, currentBlock, upto, bytes.length);
+upto += bytes.length;
+
+return pointer;
+}
+I understand that in the first method, 
+assert bytes.length <= blockSize;
+checks whether the length of the bytes is too large. However,  the method does not check blockSize either. As a result, the length of the bytes can still be overflowed, if blockSize is too large.  In addition, the second method also checks whether 
+bytes.length + 2 > blockSize
+Shall the first method also checks the requirement?
+   
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+trunk
+Fix_version:
+None
+Component:
+-tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Hao Zhong
+Create date:
+18/Oct/18 08:46
+Update date:
+18/Oct/18 08:47
+Resolved date:
+

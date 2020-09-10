@@ -1,0 +1,56 @@
+Summary:
+NullPointerException when signing a PDF with AcroForm and no fields
+Description:
+This is related to PDFBOX-1719. The workaround made there calls PDAcroForm.setFields with an empty list when the acro form has no fields:
+PDDocument.java (Line 286)
+List<PDField> fields = acroForm.getFields();
+if (fields == null)
+{
+    fields = new ArrayList<PDField>();
+    acroForm.setFields(fields);
+}
+else
+{
+    COSArray fieldArray = (COSArray) acroForm.getCOSObject().getDictionaryObject(COSName.FIELDS);
+    fieldArray.setNeedToBeUpdated(true);
+}
+This doesn't work anymore because PDAcroFrom.getFields never returns null in the current version, instead it returns an empty list and a NPE raises in line 295.
+The source of the problem seems to be that the PDAcroForm's dictionary's COSName.FIELDS field contains null instead of an empty array. An empty array is implicitly created when calling PDAcroForm.setFields with an empty list. The PDAcroForm(PDDocument) constructor also sets an empty COSArray for the field. You could also do this in the second constrcutor, that would fix the error:
+PDAcroForm.java
+public PDAcroForm(PDDocument doc, COSDictionary form)
+{
+    document = doc;
+    dictionary = form;
+    if (dictionary.getItem(COSName.FIELDS) == null)
+    {
+      dictionary.setItem(COSName.FIELDS, new COSArray());
+    }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.4, 3.0.0 PDFBox
+Fix_version:
+2.0.5, 3.0.0 PDFBox
+Component:
+AcroForm
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Moritz Orth
+Create date:
+26/Jan/17 13:58
+Update date:
+25/Mar/17 18:12
+Resolved date:
+30/Jan/17 08:36

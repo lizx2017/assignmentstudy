@@ -1,0 +1,38 @@
+Summary:
+cassandra should chdir / when daemonizing
+Description:
+Common practice when daemonizing is to cd / to avoid pinning a filesystem. For example, if the oper happens to start Cassandra (by itself, or with a manual jsvc invocation, or with the initscript) in /mnt/usb-storage, and there is something mounted there, then the oper will not be able to unmount the usb device that was mounted at that location, since the cassandra process has it open as its cwd.
+evidence that this isn't being done already:
+~% sudo lsof -p 9775 | awk '$4=="cwd"'
+jsvc    9775 cassandra  cwd    DIR                8,1     4096 147675 /home/paul/packages/cassandra/trunk
+(That instance was invoked using the Debian initscript.)
+Obviously chdir("/") isn't necessary when not daemonizing, although it shouldn't hurt either.
+If there are concerns about Cassandra having an ongoing ability to open filenames relative to its original working directory, then it should be sufficient just to do a "cd /" in the initscript before starting Cassandra. That case, at least, is particularly important.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.1
+Component:
+Packaging
+Label:
+None
+Environment:
+debian
+Attachment number:
+0
+Assignee:
+Eric Evans
+Reporter:
+paul cannon
+Create date:
+08/Nov/10 19:40
+Update date:
+16/Apr/19 09:33
+Resolved date:
+20/Jan/11 16:11

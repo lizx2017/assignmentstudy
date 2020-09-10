@@ -1,0 +1,56 @@
+Summary:
+Hadoop integration does not perform reverse DNS lookup correctly on EC2
+Description:
+The split assignment on AbstractColumnFamilyInputFormat:247 peforms a reverse DNS lookup of Cassandra IPs in order to preserve locality in Hadoop (task trackers are identified by hostnames).
+However, the reverse lookup of an EC2 IP does not yield the EC2 hostname of that endpoint when running from an EC2 instance due to the use of InetAddress.getHostname().
+In order to show this, consider the following piece of code:
+DnsResolver.java
+public class DnsResolver {
+    public static void main(String[] args) throws Exception {
+        InetAddress namenodePublicAddress = InetAddress.getByName(args[0]);
+        System.out.println("getHostAddress: " + namenodePublicAddress.getHostAddress());
+        System.out.println("getHostName: " + namenodePublicAddress.getHostName());
+    }
+}
+When this code is run from my machine to perform reverse lookup of an EC2 IP, the output is:
+➜  java DnsResolver 54.201.254.99
+getHostAddress: 54.201.254.99
+getHostName: ec2-54-201-254-99.compute-1.amazonaws.com
+When this code is executed from inside an EC2 machine, the output is:
+➜  java DnsResolver 54.201.254.99
+getHostAddress: 54.201.254.99
+getHostName: 54.201.254.99
+However, when using linux tools such as "host" or "dig", the EC2 hostname is properly resolved from the EC2 instance, so there's some problem with Java's InetAddress.getHostname() and EC2.
+Two consequences of this bug during AbstractColumnFamilyInputFormat split definition are:
+1) If the Hadoop cluster is configured to use EC2 public DNS, the locality will be lost, because Hadoop will try to match the CFIF split location (public IP) with the task tracker location (public DNS), so no matches will be found.
+2) If the Cassandra nodes' broadcast_address is set to public IPs, all hadoop communication will be done via the public IP, what will incurr additional transference charges. If the public IP is mapped to the EC2 DNS during split definition, when the task is executed, ColumnFamilyRecordReader will resolve the public DNS to the private IP of the instance, so there will be not additional charges.
+A similar bug was filed in the WHIRR project:
+https://issues.apache.org/jira/browse/WHIRR-128
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Paulo Motta
+Reporter:
+Paulo Motta
+Create date:
+21/Jun/14 04:25
+Update date:
+16/Apr/19 09:31
+Resolved date:
+18/Sep/15 15:56

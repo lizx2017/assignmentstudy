@@ -1,0 +1,102 @@
+Summary:
+JSON.stringify is not working with object marked by Bindable
+Description:
+FlexJS is using JSON.stringify to produce json from value objects.
+Two general issues has been discovered during development:
+1) "stringify" function is not able to parse object which is marked by [Bindable] tag
+Description:
+In the attached example there is class Book which is marked by [Bindable] tag. During parsing we are getting stack trace:
+Uncaught TypeError: Converting circular structure to JSON
+    at JSON.stringify (<anonymous>)
+This happened cause compiled VO object contains additional properties which "stringify" is not able to parse. (book_js_with_bindable.png)
+2) there are differences between swf and js sight in results of parsing by "stringify" function
+JSON.stringify SWF:
+{
+    "authors":["Kitten","Puppy"],
+    "date":"Wed Apr 19 14:00:50 GMT-0500 2017",
+    "doNotHide":99,
+    "page":0,
+    "title":"Trump",
+    "topic":{"name":"Politics"},
+    "dedication":"Lucy"
+}
+JSON.stringify JS:
+{
+     "topic":{},
+     "internalDate":"2017-04-19T21:30:27.959Z",
+     "title":"Trump",
+     "date":"2017-04-19T21:30:27.959Z",
+     "authors":["Kitten","Puppy"],
+     "_dedication":"Lucy"
+}
+Expected results:
+1) We should be able to parse object with [Bindable] tag without any issues
+2) SWF and JS stringify function should produce exact same json results.
+Proposition:
+In order to avoid issues above VO should contains "toJSON" function.
+Example class with toJSON function:
+[Bindable]
+public class Book
+{
+        public var title:String;
+        public var page:int;
+        public var date:Date;
+        public var authors:Array;
+        public var topic:Topic = new Topic();
+
+
+        public var doNotHide:uint = 99;
+        private var internalDate: Date = new Date();
+
+  private var _dedication:String;
+
+        public function get dedication():String
+        {
+            return _dedication;
+        }
+
+        public function set dedication(value:String):void
+        {
+            _dedication = value;
+        }
+
+  public function toJSON(k:String):Object
+  {
+   return {title: title,
+    page: page,
+    date: date,
+    authors: authors,
+    topic: {name: topic.name},
+    doNotHide: doNotHide,
+    internalDate: internalDate,
+       dedication: dedication};
+  }
+ }
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Apache FlexJS 0.8.0,
+Fix_version:
+None
+Component:
+FlexJS
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Greg Dove
+Reporter:
+Piotr Zarzycki
+Create date:
+19/Apr/17 21:36
+Update date:
+20/Apr/17 08:17
+Resolved date:
+

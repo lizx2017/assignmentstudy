@@ -1,0 +1,64 @@
+Summary:
+Internal error processing get_slice (NullPointerException)
+Description:
+I get this pretty regularly. It seems to happen transiently on multiple nodes in my cluster, every so often, and goes away.
+ERROR [Thrift:45] 2012-03-26 19:59:12,024 Cassandra.java (line 3041) Internal error processing get_slice
+java.lang.NullPointerException
+at org.apache.cassandra.db.SliceFromReadCommand.maybeGenerateRetryCommand(SliceFromReadCommand.java:76)
+at org.apache.cassandra.service.StorageProxy.fetchRows(StorageProxy.java:724)
+at org.apache.cassandra.service.StorageProxy.read(StorageProxy.java:564)
+at org.apache.cassandra.thrift.CassandraServer.readColumnFamily(CassandraServer.java:128)
+at org.apache.cassandra.thrift.CassandraServer.getSlice(CassandraServer.java:283)
+at org.apache.cassandra.thrift.CassandraServer.multigetSliceInternal(CassandraServer.java:365)
+at org.apache.cassandra.thrift.CassandraServer.get_slice(CassandraServer.java:326)
+at org.apache.cassandra.thrift.Cassandra$Processor$get_slice.process(Cassandra.java:3033)
+at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:2889)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:187)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+The line in question is (I think) the one below, so it looks like the column family reference for a row can sometimes be null?
+int liveColumnsInRow = row != null ? row.cf.getLiveColumnCount() : 0;
+Here is my column family (on 1.0.8):
+ColumnFamily: WorkQueue (Super)
+Key Validation Class: org.apache.cassandra.db.marshal.UTF8Type
+Default column value validator: org.apache.cassandra.db.marshal.UTF8Type
+Columns sorted by: org.apache.cassandra.db.marshal.UTF8Type/org.apache.cassandra.db.marshal.UTF8Type
+Row cache size / save period in seconds / keys to save : 0.0/0/all
+Row Cache Provider: org.apache.cassandra.cache.ConcurrentLinkedHashCacheProvider
+Key cache size / save period in seconds: 0.0/0
+GC grace seconds: 0
+Compaction min/max thresholds: 4/32
+Read repair chance: 0.0
+Replicate on write: false
+Bloom Filter FP chance: default
+Built indexes: []
+Compaction Strategy: org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.9, 1.1.0
+Component:
+None
+Label:
+None
+Environment:
+java 1.6
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+John Laban
+Create date:
+28/Mar/12 03:09
+Update date:
+16/Apr/19 09:32
+Resolved date:
+30/Mar/12 15:24

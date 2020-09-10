@@ -1,0 +1,91 @@
+Summary:
+Paging with SortingMergePolicy and EarlyTerminatingSortingCollector
+Description:
+EarlyTerminatingSortingCollector seems to don't work when used with a TopDocsCollector searching for documents after a certain FieldDoc. That is, it can't be used for paging. The following code allows to reproduce the problem:
+// Sort to be used both with merge policy and queries
+Sort sort = new Sort(new SortedNumericSortField(FIELD_NAME, SortField.Type.INT));
+
+// Create directory
+RAMDirectory directory = new RAMDirectory();
+
+// Setup merge policy
+TieredMergePolicy tieredMergePolicy = new TieredMergePolicy();
+SortingMergePolicy sortingMergePolicy = new SortingMergePolicy(tieredMergePolicy, sort);
+
+// Setup index writer
+IndexWriterConfig indexWriterConfig = new IndexWriterConfig(new SimpleAnalyzer());
+indexWriterConfig.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
+indexWriterConfig.setMergePolicy(sortingMergePolicy);
+IndexWriter indexWriter = new IndexWriter(directory, indexWriterConfig);
+
+// Index values
+for (int i = 1; i <= 1000; i++) {
+    Document document = new Document();
+    document.add(new NumericDocValuesField(FIELD_NAME, i));
+    indexWriter.addDocument(document);
+}
+
+// Force index merge to ensure early termination
+indexWriter.forceMerge(1, true);
+indexWriter.commit();
+
+// Create index searcher
+IndexReader reader = DirectoryReader.open(directory);
+IndexSearcher searcher = new IndexSearcher(reader);
+
+// Paginated read
+int pageSize = 10;
+FieldDoc pageStart = null;
+while (true) {
+
+    logger.info("Collecting page starting at: {}", pageStart);
+
+    Query query = new MatchAllDocsQuery();
+
+    TopDocsCollector tfc = TopFieldCollector.create(sort, pageSize, pageStart, true, false, false);
+    EarlyTerminatingSortingCollector collector = new EarlyTerminatingSortingCollector(tfc, sort, pageSize, sort);
+    searcher.search(query, collector);
+    ScoreDoc[] scoreDocs = tfc.topDocs().scoreDocs;
+    for (ScoreDoc scoreDoc : scoreDocs) {
+        pageStart = (FieldDoc) scoreDoc;
+        logger.info("FOUND {}", scoreDoc);
+    }
+
+    logger.info("Terminated early: {}", collector.terminatedEarly());
+
+    if (scoreDocs.length < pageSize) break;
+}
+
+// Close
+reader.close();
+indexWriter.close();
+directory.close();
+The query for the second page doesn't return any results. However, it gets the expected results when if we don't wrap the TopFieldCollector with the EarlyTerminatingSortingCollector.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+5.3, 5.4, 5.5, 6.0
+Fix_version:
+None
+Component:
+None
+Label:
+EarlyTerminatingSort
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Andrés de la Peña
+Create date:
+26/Apr/16 09:26
+Update date:
+28/Apr/16 15:24
+Resolved date:
+

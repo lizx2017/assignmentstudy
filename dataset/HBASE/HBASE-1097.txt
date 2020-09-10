@@ -1,0 +1,32 @@
+Summary:
+SequenceFile.Reader keeps around buffer whose size is that of largest item read -> results in lots of dead heap
+Description:
+Andrew is OOMEing again. Looking at some of his heaps, I can count Reader with DataOutputBuffers of ~600MB in a 2G heap. Testing I see that the DataOutputBuffer allocated at head of Mapfile.Reader is reused when we call next, a reset is called. If I trace, the DataOutputBuffer has in it an internal Buffer class which is based on ByteArrayOutputStream. Reset of the DOB eventually goes through to the BAOS reset. This just sets the position. It keeps the buffer sized to whatever it grew to last time this BAOS was used (Figuring this was a little complicated by the fact that DOB does some fancy footwork in a reset override to avoid copies).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.19.0
+Component:
+None
+Label:
+None
+Environment:
+hadoop
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+29/Dec/08 22:35
+Update date:
+13/Sep/09 22:26
+Resolved date:
+30/Dec/08 18:37

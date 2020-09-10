@@ -1,0 +1,38 @@
+Summary:
+incremental repair vs. bitrot
+Description:
+Incremental repair is a great improvement in Cassandra, but it does not contain a feature that non-incremental repair does : protection against bitrot.
+Scenario :
+1) repair SSTable, marking it repaired
+2) cosmic ray hits hard drive, corrupting a record in SSTable
+3) range is actually unrepaired as of the time that SSTable was repaired, but thinks it is repaired
+From my understanding, if bitrot is detected (via eg the CRC on the read path) then all SSTables containing the corrupted range needs to be marked unrepaired on all replicas. Per marcuse@IRC, the naive/simplest response would be to just trigger a full repair in this case.
+I am concerned about incremental repair as an operational default while it does not handle this case. As an aside, this would also seem to require a new CRC on the uncompressed read path, as otherwise one cannot detect the corruption without periodic checksumming of SSTables. Alternately, a "nodetool checksum" function which verified table checksums, marking ranges unrepaired on failure, and which could be run every gc_grace_seconds would seem to meet the requirement.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeff Jirsa
+Reporter:
+Robert Coli
+Create date:
+29/Jan/15 20:36
+Update date:
+16/Apr/19 09:31
+Resolved date:
+06/Feb/15 23:31

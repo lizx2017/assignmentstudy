@@ -1,0 +1,54 @@
+Summary:
+ConfigHelper.setInputColumnFamily incompatible with upper-cased keyspaces since 2.0.7
+Description:
+Hi,
+We have a keyspace starting with an upper-case character: Visitors.
+We are trying to run a map reduce job on one of the column family of this keyspace.
+To specify the keyspace it seems we have to use:
+org.apache.cassandra.hadoop.
+ConfigHelper.setInputColumnFamily(conf, keyspace, columnFamily);
+If we do:
+ConfigHelper.setInputColumnFamily(conf, "Visitors", columnFamily); we get:
+com.datastax.driver.core.exceptions.InvalidQueryException: Keyspace 'visitors' does not exist
+at com.datastax.driver.core.exceptions.InvalidQueryException.copy(InvalidQueryException.java:35)
+at com.datastax.driver.core.DefaultResultSetFuture.extractCauseFromExecutionException(DefaultResultSetFuture.java:256)
+at com.datastax.driver.core.SessionManager.setKeyspace(SessionManager.java:335)
+...
+And if we do:
+ConfigHelper.setInputColumnFamily(conf, "\"Visitors\"", columnFamily); we get:
+Exception in thread "main" java.lang.RuntimeException: InvalidRequestException(why:No such keyspace: "Visitors")
+at org.apache.cassandra.hadoop.AbstractColumnFamilyInputFormat.getRangeMap(AbstractColumnFamilyInputFormat.java:339)
+at org.apache.cassandra.hadoop.AbstractColumnFamilyInputFormat.getSplits(AbstractColumnFamilyInputFormat.java:125)
+at org.apache.hadoop.mapred.JobClient.writeNewSplits(JobClient.java:962)
+at org.apache.hadoop.mapred.JobClient.writeSplits(JobClient.java:979)
+...
+This is working just fine if the keyspace is lowercase.
+And it was working just fine with Cassandra 2.0.6. But with Cassandra 2.0.7, and the addition of Datastax's java driver in the dependencies, I am getting this error.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.8, 2.1 rc1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Liu
+Reporter:
+Maxime Nay
+Create date:
+25/Apr/14 20:39
+Update date:
+16/Apr/19 09:31
+Resolved date:
+20/May/14 16:15

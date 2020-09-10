@@ -1,0 +1,61 @@
+Summary:
+Query failing due to AssertionError
+Description:
+I am trying out Cassandra for the first time and running it locally for simple session management db. [Cassandra-2.0.4, CQL3, datastax driver 2.0.0-rc2]
+The following count query works fine when there is no data in the table:
+select count(*) from session_data where app_name=? and account=? and last_access > ?
+But after even a single row is inserted into the table, the query fails with the following error:
+    java.lang.AssertionError
+ at org.apache.cassandra.db.filter.ExtendedFilter$WithClauses.getExtraFilter(ExtendedFilter.java:258)
+ at org.apache.cassandra.db.ColumnFamilyStore.filter(ColumnFamilyStore.java:1719)
+ at org.apache.cassandra.db.ColumnFamilyStore.getRangeSlice(ColumnFamilyStore.java:1674)
+ at org.apache.cassandra.db.PagedRangeCommand.executeLocally(PagedRangeCommand.java:111)
+ at org.apache.cassandra.service.StorageProxy$LocalRangeSliceRunnable.runMayThrow(StorageProxy.java:1418)
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1931)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:744)
+Here is the schema I am using:
+    CREATE KEYSPACE session WITH replication= {'class': 'SimpleStrategy', 'replication_factor': 1};
+
+    CREATE TABLE session_data (
+    username text,
+    session_id text,
+    app_name text,
+    account text,
+    last_access timestamp,
+    created_on timestamp,
+    PRIMARY KEY (username, session_id, app_name, account)
+    );
+
+    create index sessionIndex ON session_data (session_id);
+    create index sessionAppName ON session_data (app_name);
+    create index lastAccessIndex ON session_data (last_access);
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10
+Component:
+None
+Label:
+None
+Environment:
+datastax, cql
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+A Verma
+Create date:
+22/Jan/14 23:20
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Aug/14 16:37

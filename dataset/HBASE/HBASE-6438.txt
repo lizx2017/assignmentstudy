@@ -1,0 +1,43 @@
+Summary:
+RegionAlreadyInTransitionException needs to give more info to avoid assignment inconsistencies
+Description:
+Seeing some of the recent issues in region assignment, RegionAlreadyInTransitionException is one reason after which the region assignment may or may not happen(in the sense we need to wait for the TM to assign).
+In HBASE-6317 we got one problem due to RegionAlreadyInTransitionException on master restart.
+Consider the following case, due to some reason like master restart or external assign call, we try to assign a region that is already getting opened in a RS.
+Now the next call to assign has already changed the state of the znode and so the current assign that is going on the RS is affected and it fails. The second assignment that started also fails getting RAITE exception. Finally both assignments not carrying on. Idea is to find whether any such RAITE exception can be retried or not.
+Here again we have following cases like where
+-> The znode is yet to transitioned from OFFLINE to OPENING in RS
+-> RS may be in the step of openRegion.
+-> RS may be trying to transition OPENING to OPENED.
+-> RS is yet to add to online regions in the RS side.
+Here in openRegion() and updateMeta() any failures we are moving the znode to FAILED_OPEN. So in these cases getting an RAITE should be ok. But in other cases the assignment is stopped.
+The idea is to just add the current state of the region assignment in the RIT map in the RS side and using that info we can determine whether the assignment can be retried or not on getting an RAITE.
+Considering the current work going on in AM, pls do share if this is needed atleast in the 0.92/0.94 versions?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+21/Jul/12 12:05
+Update date:
+07/Apr/13 04:39
+Resolved date:
+16/Sep/12 09:01

@@ -1,0 +1,36 @@
+Summary:
+[Coprocessors] Table coprocessor loaded twice when region is initialized
+Description:
+I'm debugging a prePut hook which I've implemented as part of the coprocessor work being developed. This hook is loaded via a table COPROCESSOR attribute and I've noticed that the prePut method is being called twice for a single Put. After setting up the region server to run in a debugger, I'm noticing the call to loadTableCoprocessors() being invoked twice during region initialization, specifically:
+1. HRegion.init => RegionCoprocessorHost.init => RegionCoprocessorHost.loadTableCoprocessors
+2. ... => RegionCoprocessorHost.preOpen => RegionCoprocessorHost.loadTableCoprocessors
+This results in two RegionEnvironment instances, each containing a new instance of my coprocessor, being added to the RegionCoprocessorHost. When I issue a put, the list of RegionEnvironments is iterated over and each calls the prePut method in my coprocessor. Reason why this is posing a problem for me is that I modify the family map passed in to my prePut method. Since this family map is the same instance used in both prePut calls, the second prePut call operates on the modified family map, which leads to an unexpected result.
+Is the double loading of the same coprocessor class intentional, is this a bug?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+Coprocessors
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Andrew Purtell
+Reporter:
+Terry Siu
+Create date:
+30/Jun/11 23:03
+Update date:
+20/Nov/15 11:52
+Resolved date:
+01/Jul/11 03:26

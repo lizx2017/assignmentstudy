@@ -1,0 +1,73 @@
+Summary:
+NPE in HFileBlock#AbstractFSReader#readAtOffset
+Description:
+HFileBlock#istream seems to be null. I was wondering should we hide FSDataInputStreamWrapper#useHBaseChecksum.
+By the way, this happened when online schema change is enabled (encoding)
+2013-10-22 10:58:43,321 ERROR [RpcServer.handler=28,port=36020] regionserver.HRegionServer:
+java.lang.NullPointerException
+        at org.apache.hadoop.hbase.io.hfile.HFileBlock$AbstractFSReader.readAtOffset(HFileBlock.java:1200)
+        at org.apache.hadoop.hbase.io.hfile.HFileBlock$FSReaderV2.readBlockDataInternal(HFileBlock.java:1436)
+        at org.apache.hadoop.hbase.io.hfile.HFileBlock$FSReaderV2.readBlockData(HFileBlock.java:1318)
+        at org.apache.hadoop.hbase.io.hfile.HFileReaderV2.readBlock(HFileReaderV2.java:359)
+        at org.apache.hadoop.hbase.io.hfile.HFileBlockIndex$BlockIndexReader.loadDataBlockWithScanInfo(HFileBlockIndex.java:254)
+        at org.apache.hadoop.hbase.io.hfile.HFileReaderV2$AbstractScannerV2.seekTo(HFileReaderV2.java:503)
+        at org.apache.hadoop.hbase.io.hfile.HFileReaderV2$AbstractScannerV2.reseekTo(HFileReaderV2.java:553)
+        at org.apache.hadoop.hbase.regionserver.StoreFileScanner.reseekAtOrAfter(StoreFileScanner.java:245)
+        at org.apache.hadoop.hbase.regionserver.StoreFileScanner.reseek(StoreFileScanner.java:166)
+        at org.apache.hadoop.hbase.regionserver.StoreFileScanner.enforceSeek(StoreFileScanner.java:361)
+        at org.apache.hadoop.hbase.regionserver.KeyValueHeap.pollRealKV(KeyValueHeap.java:336)
+        at org.apache.hadoop.hbase.regionserver.KeyValueHeap.generalizedSeek(KeyValueHeap.java:293)
+        at org.apache.hadoop.hbase.regionserver.KeyValueHeap.requestSeek(KeyValueHeap.java:258)
+        at org.apache.hadoop.hbase.regionserver.StoreScanner.reseek(StoreScanner.java:603)
+        at org.apache.hadoop.hbase.regionserver.StoreScanner.next(StoreScanner.java:476)
+        at org.apache.hadoop.hbase.regionserver.KeyValueHeap.next(KeyValueHeap.java:129)
+        at org.apache.hadoop.hbase.regionserver.HRegion$RegionScannerImpl.populateResult(HRegion.java:3546)
+        at org.apache.hadoop.hbase.regionserver.HRegion$RegionScannerImpl.nextInternal(HRegion.java:3616)
+        at org.apache.hadoop.hbase.regionserver.HRegion$RegionScannerImpl.nextRaw(HRegion.java:3494)
+        at org.apache.hadoop.hbase.regionserver.HRegion$RegionScannerImpl.nextRaw(HRegion.java:3485)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.scan(HRegionServer.java:3079)
+        at org.apache.hadoop.hbase.protobuf.generated.ClientProtos$ClientService$2.callBlockingMethod(ClientProtos.java:27022)
+        at org.apache.hadoop.hbase.ipc.RpcServer.call(RpcServer.java:1979)
+        at org.apache.hadoop.hbase.ipc.CallRunner.run(CallRunner.java:90)
+        at org.apache.hadoop.hbase.ipc.SimpleRpcScheduler.consumerLoop(SimpleRpcScheduler.java:160)
+        at org.apache.hadoop.hbase.ipc.SimpleRpcScheduler.access$000(SimpleRpcScheduler.java:38)
+        at org.apache.hadoop.hbase.ipc.SimpleRpcScheduler$1.run(SimpleRpcScheduler.java:110)
+        at java.lang.Thread.run(Thread.java:724)
+2013-10-22 10:58:43,665 ERROR [RpcServer.handler=23,port=36020] regionserver.HRegionServer:
+org.apache.hadoop.hbase.exceptions.OutOfOrderScannerNextException: Expected nextCallSeq: 53438 But the nextCallSeq got from client: 53437; request=scanner_id: 1252577470624375060 number_of_rows: 100 close_scanner: false next_call_seq: 53437
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.scan(HRegionServer.java:3030)
+        at org.apache.hadoop.hbase.protobuf.generated.ClientProtos$ClientService$2.callBlockingMethod(ClientProtos.java:27022)
+        at org.apache.hadoop.hbase.ipc.RpcServer.call(RpcServer.java:1979)
+        at org.apache.hadoop.hbase.ipc.CallRunner.run(CallRunner.java:90)
+        at org.apache.hadoop.hbase.ipc.SimpleRpcScheduler.consumerLoop(SimpleRpcScheduler.java:160)
+        at org.apache.hadoop.hbase.ipc.SimpleRpcScheduler.access$000(SimpleRpcScheduler.java:38)
+        at org.apache.hadoop.hbase.ipc.SimpleRpcScheduler$1.run(SimpleRpcScheduler.java:110)
+        at java.lang.Thread.run(Thread.java:724)
+Status:
+PATCH AVAILABLE
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Jimmy Xiang
+Create date:
+22/Oct/13 19:15
+Update date:
+13/Nov/13 02:50
+Resolved date:
+

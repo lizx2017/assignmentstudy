@@ -1,0 +1,99 @@
+Summary:
+Potential problem with GarbageCollectorMXBean
+Description:
+I am not certain this is definitely a bug, but I thought it might be worth posting to see if someone with more JVM//JMX knowledge could disprove my reasoning. Apologies if I've failed to understand something.
+We've seen an intermittent problem where there is an uncaught exception in the scheduled task of logging gc results in GcInspector.java:
+...
+ ERROR [ScheduledTasks:1] 2013-03-08 01:09:06,335 AbstractCassandraDaemon.java (line 139) Fatal exception in thread Thread[ScheduledTasks:1,5,main]
+java.lang.reflect.UndeclaredThrowableException
+        at $Proxy0.getName(Unknown Source)
+        at org.apache.cassandra.service.GCInspector.logGCResults(GCInspector.java:95)
+        at org.apache.cassandra.service.GCInspector.access$000(GCInspector.java:41)
+        at org.apache.cassandra.service.GCInspector$1.run(GCInspector.java:85)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+        at java.util.concurrent.FutureTask$Sync.innerRunAndReset(FutureTask.java:317)
+        at java.util.concurrent.FutureTask.runAndReset(FutureTask.java:150)
+        at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$101(ScheduledThreadPoolExecutor.java:98)
+        at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.runPeriodic(ScheduledThreadPoolExecutor.java:180)
+        at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:204)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+Caused by: javax.management.InstanceNotFoundException: java.lang:name=ParNew,type=GarbageCollector
+        at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.getMBean(DefaultMBeanServerInterceptor.java:1094)
+        at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.getAttribute(DefaultMBeanServerInterceptor.java:662)
+        at com.sun.jmx.mbeanserver.JmxMBeanServer.getAttribute(JmxMBeanServer.java:638)
+        at com.sun.jmx.mbeanserver.MXBeanProxy$GetHandler.invoke(MXBeanProxy.java:106)
+        at com.sun.jmx.mbeanserver.MXBeanProxy.invoke(MXBeanProxy.java:148)
+        at javax.management.MBeanServerInvocationHandler.invoke(MBeanServerInvocationHandler.java:248)
+        ... 13 more
+...
+I think the problem, may be caused by the following reasoning:
+In GcInspector we populate a list of mxbeans when the GcInspector instance is instantiated:
+...
+List<GarbageCollectorMXBean> beans = new ArrayList<GarbageCollectorMXBean>();
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+        try
+        {
+            ObjectName gcName = new ObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE + ",*");
+            for (ObjectName name : server.queryNames(gcName, null))
+            {
+                GarbageCollectorMXBean gc = ManagementFactory.newPlatformMXBeanProxy(server, name.getCanonicalName(), GarbageCollectorMXBean.class);
+                beans.add(gc);
+            }
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
+...
+Cassandra then periodically calls:
+...
+    private void logGCResults()
+    {
+        for (GarbageCollectorMXBean gc : beans)
+        {
+            Long previousTotal = gctimes.get(gc.getName());
+...
+In the oracle javadocs, they seem to suggest that these beans could disappear at any time.(I'm not sure why when or how this might happen)
+http://docs.oracle.com/javase/6/docs/api/
+See: getGarbageCollectorMXBeans
+...
+public static List<GarbageCollectorMXBean> getGarbageCollectorMXBeans()
+Returns a list of GarbageCollectorMXBean objects in the Java virtual machine. The Java virtual machine may have one or more GarbageCollectorMXBean objects. It may add or remove GarbageCollectorMXBean during execution.
+Returns:
+a list of GarbageCollectorMXBean objects.
+...
+Correct me if I'm wrong, but do you think this might be causing the problem? That somehow the JVM decides to remove the GarbageCollectorMXBean temporarily or permanently (causing said exception) and if this is expected behaviour, should it be handled in some way?
+Also I'd like to point out that this may be an issue on other versions as well as I don't believe this code has changed in quite a long time.
+Unfortunately I haven't been able to reproduce this outside of the production environment, if you have any tips, questions or are able to explain//disprove my concerns, I'd be very grateful.
+Thanks,
+Matt
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10, 2.1.1
+Component:
+Legacy/Observability
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Joshua McKenzie
+Reporter:
+Matt Byrd
+Create date:
+14/Mar/13 13:45
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/Jul/14 23:15

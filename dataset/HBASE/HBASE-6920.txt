@@ -1,0 +1,41 @@
+Summary:
+On timeout connecting to master, client can get stuck and never make progress
+Description:
+HBASE-5058 appears to have introduced an issue where a timeout in HConnection.getMaster() can cause the client to never be able to connect to the master. So, for example, an HBaseAdmin object can never successfully be initialized.
+The issue is here:
+if (tryMaster.isMasterRunning()) {
+  this.master = tryMaster;
+  this.masterLock.notifyAll();
+  break;
+}
+If isMasterRunning times out, it throws an UndeclaredThrowableException, which is already not ideal, because it can be returned to the application.
+But if the first call to getMaster succeeds, it will set masterChecked = true, which makes us never try to reconnect; that is, we will set this.master = null and just throw MasterNotRunningExceptions, without even trying to connect.
+I tried out a 94 client (actually a 92 client with some 94 patches) on a cluster with some network issues, and it would constantly get stuck as described above.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.2
+Fix_version:
+0.94.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gregory Chanan
+Reporter:
+Gregory Chanan
+Create date:
+02/Oct/12 17:06
+Update date:
+05/Nov/12 01:35
+Resolved date:
+06/Oct/12 02:30

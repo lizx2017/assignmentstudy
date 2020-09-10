@@ -1,0 +1,61 @@
+Summary:
+DateType columns not properly converted to TimestampType when in ReversedType columns.
+Description:
+The org.apache.cassandra.transport.DataType.fromType(AbstractType) method has a bug that prevents sending the correct Protocol ID for reversed DateType columns. This results in clients receiving Protocol ID 0, which maps to a CUSTOM type, for timestamp columns that are clustered in reverse order.
+Some clients can handle this properly since they recognize the "org.apache.cassandra.db.marshal.DateType" marshaling type, however the native Datastax java-driver does not. It will produce errors like the one below when trying to prepare queries against such tables:
+    com.datastax.driver.core.exceptions.InvalidTypeException: Invalid type for value 2 of CQL type 'org.apache.cassandra.db.marshal.DateType', expecting class java.nio.ByteBuffer but class java.util.Date provided
+ at com.datastax.driver.core.BoundStatement.bind(BoundStatement.java:190)
+ at com.datastax.driver.core.DefaultPreparedStatement.bind(DefaultPreparedStatement.java:103)
+On the Cassandra side, there is a check for DateType columns that is supposed to convert these columns to TimestampType. However, the check is skipped when the column is also reversed. Specifically:
+DataType.java
+public static Pair<DataType, Object> fromType(AbstractType type)
+{
+    // For CQL3 clients, ReversedType is an implementation detail and they
+    // shouldn't have to care about it.
+    if (type instanceof ReversedType)
+        type = ((ReversedType)type).baseType;
+    // For compatibility sake, we still return DateType as the timestamp type in resultSet metadata (#5723)
+    else if (type instanceof DateType)
+        type = TimestampType.instance;
+    // ...
+The else if should be changed to just an if, like so:
+DataType.java
+public static Pair<DataType, Object> fromType(AbstractType type)
+{
+    // For CQL3 clients, ReversedType is an implementation detail and they
+    // shouldn't have to care about it.
+    if (type instanceof ReversedType)
+        type = ((ReversedType)type).baseType;
+    // For compatibility sake, we still return DateType as the timestamp type in resultSet metadata (#5723)
+    if (type instanceof DateType)
+        type = TimestampType.instance;
+    // ...
+This bug is preventing us from upgrading our 1.2.11 cluster to 2.0.9 because our clients keep throwing exceptions trying to read or write data to tables with reversed timestamp columns. This issue can be reproduced by creating a CQL table in Cassandra 1.2.11 that clusters on a timestamp in reverse, then upgrading the node to 2.0.9. When querying the metadata for the table, the node will return Protocol ID 0 (CUSTOM) instead of Protocol ID 11 (TIMESTAMP).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10, 2.1 rc5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Karl Rieb
+Reporter:
+Karl Rieb
+Create date:
+19/Jul/14 18:31
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/Jul/14 22:55

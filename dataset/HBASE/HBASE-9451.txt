@@ -1,0 +1,44 @@
+Summary:
+Meta remains unassigned when the meta server crashes with the ClusterStatusListener set
+Description:
+While running tests described in HBASE-9338, ran into this problem. The hbase.status.listener.class was set to org.apache.hadoop.hbase.client.ClusterStatusListener$MultiCastListener.
+1. I had the meta server coming down
+2. The metaSSH got triggered. The call chain:
+2.1 verifyAndAssignMetaWithRetries
+2.2 verifyMetaRegionLocation
+2.3 waitForMetaServerConnection
+2.4 getMetaServerConnection
+2.5 getCachedConnection
+2.6 HConnectionManager.getAdmin(serverName, false)
+2.7 isDeadServer(serverName) -> This is hardcoded to return 'false' when the clusterStatusListener field is null. If clusterStatusListener is not null (in my test), then it could return true in certain cases (and in this case, indeed it should return true since the server is down). I am trying to understand why it's hardcoded to 'false' for former case.
+3. When isDeadServer returns true, the method HConnectionManager.getAdmin(ServerName, boolean) throws RegionServerStoppedException.
+4. Finally, after the retries are over verifyAndAssignMetaWithRetries gives up and the master aborts.
+The methods in the above call chain don't handle RegionServerStoppedException. Maybe something to look at...
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.96.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Devaraj Das
+Create date:
+06/Sep/13 07:16
+Update date:
+20/Nov/15 11:52
+Resolved date:
+10/Sep/13 14:44

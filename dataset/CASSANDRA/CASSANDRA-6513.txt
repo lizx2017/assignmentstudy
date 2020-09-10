@@ -1,0 +1,62 @@
+Summary:
+CqlPaging for hadoop fails when writetime(column_name) is set as one of the input columns
+Description:
+InvalidRequestException thrown when running a hadoop job with CqlPaging with writetime(column_name) set as one of the input columns.
+java.lang.RuntimeException
+at org.apache.cassandra.hadoop.cql3.CqlPagingRecordReader$RowIterator.executeQuery(CqlPagingRecordReader.java:665)
+at org.apache.cassandra.hadoop.cql3.CqlPagingRecordReader$RowIterator.<init>(CqlPagingRecordReader.java:301)
+at org.apache.cassandra.hadoop.cql3.CqlPagingRecordReader.initialize(CqlPagingRecordReader.java:167)
+at org.apache.hadoop.mapred.MapTask$NewTrackingRecordReader.initialize(MapTask.java:522)
+at org.apache.hadoop.mapred.MapTask.runNewMapper(MapTask.java:763)
+at org.apache.hadoop.mapred.MapTask.run(MapTask.java:370)
+at org.apache.hadoop.mapred.Child$4.run(Child.java:255)
+at java.security.AccessController.doPrivileged(Native Method)
+at javax.security.auth.Subject.doAs(Subject.java:415)
+at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1121)
+at org.apache.hadoop.mapred.Child.main(Child.java:249)
+Caused by: InvalidRequestException(why:Undefined name WRITETIME(foo) in selection clause)
+at org.apache.cassandra.thrift.Cassandra$prepare_cql3_query_result.read(Cassandra.java:40395)
+at org.apache.thrift.TServiceClient.receiveBase(TServiceClient.java:78)
+at org.apache.cassandra.thrift.Cassandra$Client.recv_prepare_cql3_query(Cassandra.java:1660)
+at org.apache.cassandra.thrift.Cassandra$Client.prepare_cql3_query(Cassandra.java:1646)
+at org.apache.cassandra.hadoop.cql3.CqlPagingRecordReader$RowIterator.prepareQuery(CqlPagingRecordReader.java:605)
+at org.apache.cassandra.hadoop.cql3.CqlPagingRecordReader$RowIterator.executeQuery(CqlPagingRecordReader.java:635)
+... 10 more
+The hadoop config lines look as such:
+//read input from cassandra column family using CQL Input Format
+job.setInputFormatClass(CqlPagingInputFormat.class);
+ConfigHelper.setInputColumnFamily(job.getConfiguration(), KEYSPACE, INPUT_COLUMN_FAMILY);
+ConfigHelper.setInputRpcPort(job.getConfiguration(), "9160");
+ConfigHelper.setInputInitialAddress(job.getConfiguration(), HOST);
+ConfigHelper.setInputPartitioner(job.getConfiguration(), "RandomPartitioner");
+CqlConfigHelper.setInputColumns(job.getConfiguration(), "foo,WRITETIME(foo)");
+job.getConfiguration().set("cassandra.consistencylevel.read", READ_CONSISTENCY);
+CqlConfigHelper.setInputCQLPageRowSize(job.getConfiguration(), "3000");
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+2.0.10
+Component:
+None
+Label:
+CqlPaging Hadoop
+Environment:
+ubuntu, hadoop
+Attachment number:
+0
+Assignee:
+Ala' Alkhaldi
+Reporter:
+Sheetal Gosrani
+Create date:
+19/Dec/13 20:49
+Update date:
+16/Apr/19 09:31
+Resolved date:
+06/Aug/14 14:24

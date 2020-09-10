@@ -1,0 +1,65 @@
+Summary:
+Automation in AdvancedDataGrid with hierarchical data confuses column datafield name with row data, breaks recording
+Description:
+The AdvancedDataGridTabularData.getAutomationValueForData calls AdvancedDataGrid.getMeasuringRenderer with a wrong argument. The third argument ("data") is supposed to be the data for the row, but instead it passes the dataField name of the column (which makes no sense at all).
+The AdvancedDataGrid eventually passes this argument to the dataProvider, who is then asked if that column name is a row that can have children (IHierarchicalData.canHaveChildren).
+Some standard implementations of IHierarchicalData in Flex silently ignore this problem (just return false because they don't recognize the data they're given), so that hides this bug in the most common cases.
+This is a real problem when either:
+When the item renderer for grouping lines is really different from normal renderers, in a way that matters for automation. The automation will use the normal item renderer instead of the grouping one.
+With a custom data provider, this usually leads to errors being thrown, making it impossible to record anything in the datagrid with automation tools.
+Steps to reproduce:
+1. Run the attached simplified test case
+2. Attach an automation tool like QuickTest Pro and start recording
+3. Click on a cell in the datagrid
+Actual Results:
+Error: hasChildren with node that's not mine: a
+That's just an error thrown by the attached custom dataprovider when it is being misused ("a" is the datafield of a column, and is treated as if it's a node in the hierarchical data).
+Stack:
+at MyHierarchicalData/canHaveChildren()[...\MyHierarchicalData.as:23]
+at mx.controls::AdvancedDataGrid/isBranch()[C:\work\flex\dmv_automation\projects\datavisualisation\src\mx\controls\AdvancedDataGrid.as:4248]
+at mx.controls::AdvancedDataGrid/http://www.adobe.com/2006/flex/mx/internal::columnItemRendererFactory()[C:\work\flex\dmv_automation\projects\datavisualisation\src\mx\controls\AdvancedDataGrid.as:2082]
+at mx.controls::AdvancedDataGridBaseEx/http://www.adobe.com/2006/flex/mx/internal::getMeasuringRenderer()[C:\work\flex\dmv_automation\projects\datavisualisation\src\mx\controls\AdvancedDataGridBaseEx.as:2019]
+at mx.controls::AdvancedDataGrid/http://www.adobe.com/2006/flex/mx/internal::getMeasuringRenderer()[C:\work\flex\dmv_automation\projects\datavisualisation\src\mx\controls\AdvancedDataGrid.as:8545]
+at mx.automation.tabularData::AdvancedDataGridTabularData/getAutomationValueForData()[C:\work\flex\dmv_automation\projects\automation\src\mx\automation\tabularData\AdvancedDataGridTabularData.as:107]
+at mx.automation.tabularData::AdvancedListBaseTabularData/getValues()[C:\work\flex\dmv_automation\projects\automation\src\mx\automation\tabularData\AdvancedListBaseTabularData.as:128]
+at mx.automation.delegates.advancedDataGrid::AdvancedDataGridBaseExAutomationImpl/getItemAutomationNameOrValueHelper()[C:\work\flex\dmv_automation\projects\automation_dmv\src\mx\automation\delegates\advancedDataGrid\AdvancedDataGridBaseExAutomationImpl.as:165]
+at mx.automation.delegates.advancedDataGrid::AdvancedDataGridAutomationImpl/getItemAutomationNameOrValueHelper()[C:\work\flex\dmv_automation\projects\automation_dmv\src\mx\automation\delegates\advancedDataGrid\AdvancedDataGridAutomationImpl.as:191]
+at mx.automation.delegates.advancedDataGrid::AdvancedDataGridAutomationImpl/getItemAutomationValue()[C:\work\flex\dmv_automation\projects\automation_dmv\src\mx\automation\delegates\advancedDataGrid\AdvancedDataGridAutomationImpl.as:167]
+at mx.automation::AutomationManager/helpCreateIDPart()[C:\work\flex\dmv_automation\projects\automation\src\mx\automation\AutomationManager.as:1572]
+at mx.automation.delegates.advancedDataGrid::AdvancedListBaseAutomationImpl/createAutomationIDPart()[C:\work\flex\dmv_automation\projects\automation_dmv\src\mx\automation\delegates\advancedDataGrid\AdvancedListBaseAutomationImpl.as:314]
+at mx.core::UIComponent/createAutomationIDPart()[C:\autobuild\3.2.0\frameworks\projects\framework\src\mx\core\UIComponent.as:9162]
+at mx.automation::AutomationManager/captureID()[C:\work\flex\dmv_automation\projects\automation\src\mx\automation\AutomationManager.as:2227]
+at mx.automation::AutomationManager/captureIDFromMouseDownEvent()[C:\work\flex\dmv_automation\projects\automation\src\mx\automation\AutomationManager.as:2158]
+Expected Results:
+Being able to record without such "wrong" calls, with automation values based on the right (grouping or not) item renderer.
+Workaround:
+Override AdvancedDataGrid.columnItemRendererFactory (which is an mx_internal method) in a subclass, and if the data argument is a String assume it's because of this bug and return the standard item renderer for that column.
+This is quite ugly, and not a complete workaround because it would break in datagrids where a row really is a String (but that would be quite unusual), and it still doesn't use grouping item renderers (because it can't know if the AdvancedDataGridTabularData is looking at the grouping line or not).
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+AgentAPI
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+02/Dec/09 08:54
+Update date:
+22/Dec/10 21:43
+Resolved date:
+

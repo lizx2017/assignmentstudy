@@ -1,0 +1,85 @@
+Summary:
+bin/rolling-restart.sh restarts all active RS's with each iteration instead of one at a time
+Description:
+I'm exercising the patch over on HBASE-8803 and I've noticed something in the logs: it looks like rolling-restart.sh is restarting all the region servers multiple times instead of just the current entry in the loop iteration.
+The logic looks like this:
+for each rs in active region server list:
+  unload $rs // move all regions to other RS's
+  restart all Region Servers // !?! bug?
+  reload $rs // pile 'em back on
+Shouldn't that step 2 be only restart $rs?
+This is what I see in the logs. My cluster has 9 active RegionServers. Notice the bit in the middle where all 9 are stopped and started again after unloading the target RS.
+$ time /usr/lib/hbase/bin/rolling-restart.sh --rs-only --graceful --maxthreads 30                                                                                                       
+Gracefully restarting: hor18n39.gq1.ygridcore.net
+Disabling balancer!
+...
+Unloading hor18n39.gq1.ygridcore.net region(s)
+...
+Valid region move targets: 
+hor18n37.gq1.ygridcore.net,60020,1374094975268
+hor17n37.gq1.ygridcore.net,60020,1374094975264
+hor18n35.gq1.ygridcore.net,60020,1374094975327
+hor17n39.gq1.ygridcore.net,60020,1374094975281
+hor18n36.gq1.ygridcore.net,60020,1374094975254
+hor17n36.gq1.ygridcore.net,60020,1374094975277
+hor17n34.gq1.ygridcore.net,60020,1374094975291
+hor18n38.gq1.ygridcore.net,60020,1374094975259
+13/07/17 21:44:38 INFO region_mover: Moving 330 region(s) from hor18n39.gq1.ygridcore.net,60020,1374094975326 during this cycle
+13/07/17 21:44:38 INFO region_mover: Moving region b59050cf97aabcef838e3c50e93e6d13 (1 of 330) to server=hor18n37.gq1.ygridcore.net,60020,1374094975268
+...
+13/07/17 21:54:20 INFO region_mover: Moving region d00026d7cc396bb3e6ea91106cc6ab55 (329 of 330) to server=hor18n37.gq1.ygridcore.net,60020,1374094975268
+13/07/17 21:54:20 INFO region_mover: Moving region a722179b33e6ece8c9cee3fba3056acd (330 of 330) to server=hor17n37.gq1.ygridcore.net,60020,1374094975264
+13/07/17 21:54:21 INFO region_mover: Wrote list of moved regions to /tmp/hor18n39.gq1.ygridcore.net
+Unloaded hor18n39.gq1.ygridcore.net region(s)
+hor18n35.gq1.ygridcore.net: stopping regionserver.
+hor17n39.gq1.ygridcore.net: stopping regionserver.
+hor18n36.gq1.ygridcore.net: stopping regionserver.
+hor17n37.gq1.ygridcore.net: stopping regionserver.
+hor17n34.gq1.ygridcore.net: stopping regionserver.
+hor18n38.gq1.ygridcore.net: stopping regionserver.
+hor18n37.gq1.ygridcore.net: stopping regionserver.
+hor17n36.gq1.ygridcore.net: stopping regionserver.
+hor18n39.gq1.ygridcore.net: stopping regionserver.
+hor18n36.gq1.ygridcore.net: starting regionserver, logging to /grid/0/var/log/hbase/hbase-hbase-regionserver-hor18n36.gq1.ygridcore.net.out
+hor17n36.gq1.ygridcore.net: starting regionserver, logging to /grid/0/var/log/hbase/hbase-hbase-regionserver-hor17n36.gq1.ygridcore.net.out
+hor17n37.gq1.ygridcore.net: starting regionserver, logging to /grid/0/var/log/hbase/hbase-hbase-regionserver-hor17n37.gq1.ygridcore.net.out
+hor18n37.gq1.ygridcore.net: starting regionserver, logging to /grid/0/var/log/hbase/hbase-hbase-regionserver-hor18n37.gq1.ygridcore.net.out
+hor18n38.gq1.ygridcore.net: starting regionserver, logging to /grid/0/var/log/hbase/hbase-hbase-regionserver-hor18n38.gq1.ygridcore.net.out
+hor17n34.gq1.ygridcore.net: starting regionserver, logging to /grid/0/var/log/hbase/hbase-hbase-regionserver-hor17n34.gq1.ygridcore.net.out
+hor18n35.gq1.ygridcore.net: starting regionserver, logging to /grid/0/var/log/hbase/hbase-hbase-regionserver-hor18n35.gq1.ygridcore.net.out
+hor18n39.gq1.ygridcore.net: starting regionserver, logging to /grid/0/var/log/hbase/hbase-hbase-regionserver-hor18n39.gq1.ygridcore.net.out
+hor17n39.gq1.ygridcore.net: starting regionserver, logging to /grid/0/var/log/hbase/hbase-hbase-regionserver-hor17n39.gq1.ygridcore.net.out
+Reloading hor18n39.gq1.ygridcore.net region(s)
+...
+13/07/17 21:54:27 INFO region_mover: Moving 330 regions to hor18n39.gq1.ygridcore.net,60020,1374098064602
+13/07/17 21:56:47 INFO region_mover: Moving region 7d0a02f452c334a12026b45346a87d36 (1 of 330) to server=hor18n39.gq1.ygridcore.net,60020,1374098064602 in thread 0
+13/07/17 21:56:54 INFO region_mover: Moving region af5448c90e78a8f0d935efb0b380502e (2 of 330) to server=hor18n39.gq1.ygridcore.net,60020,1374098064602 in thread 1
+...
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Not A Problem
+Affects_version:
+None
+Fix_version:
+None
+Component:
+scripts
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nick Dimiduk
+Reporter:
+Nick Dimiduk
+Create date:
+17/Jul/13 22:31
+Update date:
+23/Sep/13 19:16
+Resolved date:
+02/Aug/13 17:25

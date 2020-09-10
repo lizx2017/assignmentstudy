@@ -1,0 +1,79 @@
+Summary:
+maxFieldLength design flaw: large documents silently truncated
+Description:
+I have a large document (more than one megabyte) and terms appearing
+in the end of the document are not appearing in the index.
+The IndexWriter class has a field "maxFieldLength". From the documentation:
+The maximum number of terms that will be indexed for a single field in
+a document. This limits the amount of memory required for indexing, so
+that collections with very large files will not crash the indexing
+process by running out of memory.
+By default, no more than 10,000 terms will be indexed for a field.
+This means that Lucene will silently discard all tokens after it has
+indexed 10,000 in a particular document.
+The solution is to remove this limitation. We have had success with
+writer.maxFieldLength = Integer.MAX_VALUE.
+In our opinion, this is a very dangerous design flaw, especially since
+Lucene will truncate large documents without any warning, and the
+searches will appear to work correctly, since some terms will work. It
+was only by chance that a customer noticed and reported that some
+documents were not appearing in the search results.
+I'm sure there are many people using Lucene on large documents who
+think that it's working correctly, yet their products are buggy. This
+is what's most bothersome to me: that the default mode of usage
+encourages a serious bug (for that subset of users who have large –
+but not absurdly large! – documents).
+The default should be to index all tokens via Integer.MAX_VALUE, and
+if a user requires memory efficiency, she should be able to set a
+lower threshold explicitly.
+Saying "RTFM" is not a useful response, since this is critical enough
+that it should perform correctly upon first use. Moreover, the documentation
+is buried (it wasn't even in a FAQ or (as others have pointed out) in
+a setter method – it just the JavaDoc for a random public instance
+variable).
+Saying "it's for performance reasons" is even less useful. Either
+IndexWriter should be rewritten to perfom gracefully under low memory
+conditions, or it should loudly announce (via an OutOfMemoryError,
+which is the expeected way of doing things, or a new descriptive runtime
+exception like TooManyTermsException, or a message logged to stderr or to the
+default logging target) its failure and suggest to
+the developer that they may actively and consciously lower the threshold
+with the knowledge that it will potentially introduce a defect into
+their product. It's better to get a failure report for which there are known
+solutions (increase your VM heap size or lower the field length) than for it to
+fail in a silent and insidious way.
+To put it another way, the only people who would ever even see this
+hypothetical OutOfMemoryError are those who are attempting to index large
+documents; would they prefer to be informed or not informed that their attempt
+has failed?
+Thanks for a great product! I hope this bug report helps make it even
+better.
+(Reported against both 1.3rc1 and 1.2)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Alex Chaffee
+Create date:
+09/Apr/03 02:16
+Update date:
+02/Jun/11 22:04
+Resolved date:
+27/May/06 01:36

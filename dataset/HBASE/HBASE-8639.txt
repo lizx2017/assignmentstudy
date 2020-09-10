@@ -1,0 +1,36 @@
+Summary:
+Poor performance of htable#getscanner in multithreaded environment due to DNS.getDefaultHost() being called in ScannerCallable#prepare()
+Description:
+Hi, I am running a app on top of phoenix which will fork say around 100+ thread to call htable.getscanner(scan) to do parallel scan ( say each scan is actually targeting one Region), And each scan will only match a few result and return thus will be very fast.
+under this case, I found that the htable.getscanner(scan) op itself runs pretty slow. by profiling with jvisualvm. I found 90% of app time is cost on org.apache.hadoop.net.DNS.getDefaultHost. Which been invoked by scannnercallable.checkIfRegionServerIsRemote.
+The root cause is that DNS.getDefaultHost involves synchronized methods in java.net.Inet4AddressImpl which have the 100+ thread to lock and wait upon each other. each call to DNS.getDefaultHost cost around 30ms, while in another case, I run single thread to call 100K times DNS.getDefaultHost , each cost leas than 0.06ms.
+By hacking the code and remove the call to checkIfRegionServerIsRemote, my app runs 5 times faster, say, 50K op in my app cost 200+ seconds instead of 1000+ seconds.
+by check the code further, I found this checkIfRegionServerIsRemote seems just for use of metrics collection. ( or maybe retry logic?) I am wondering that could this been removed or switch to some other implementation? so that cases like mine which run large number of small scan with multi threads could performance way better?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.7
+Fix_version:
+0.98.0, 0.95.2, 0.94.9
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Raymond Liu
+Create date:
+29/May/13 05:37
+Update date:
+04/Jul/13 22:10
+Resolved date:
+29/May/13 20:17

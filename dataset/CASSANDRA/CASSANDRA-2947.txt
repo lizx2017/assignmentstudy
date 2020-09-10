@@ -1,0 +1,40 @@
+Summary:
+New nodes always think dead nodes are alive
+Description:
+If a new node is brought up while a node is down, it will think it is up forever.
+To reproduce:
+Take nodes A, B and C.
+1. Bring up nodes A and B in a cluster
+2. Take down B and wait for A to mark it as down
+3. Bring up C with A as a seed
+4. nodetool ring on C shows all 3 nodes as up and never marks B as down
+The problem is that the failure detector never learns about node B - FD.report is never called for B. This means requests are constantly routed to B from C and timeout, but they should fail with UnavailableException.
+The attached (hack) patch appears to fix it, but I expect the problem is actually elsewhere in the gossip code.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Richard Low
+Create date:
+25/Jul/11 17:14
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Jul/11 20:22

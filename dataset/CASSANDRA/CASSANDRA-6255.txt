@@ -1,0 +1,75 @@
+Summary:
+Exception count not incremented on OutOfMemoryError (HSHA)
+Description:
+One of our nodes decided to stop listening on 9160 (netstat -l was showing nothing and telnet was reporting connection refused). Nodetool status showed no hosts down and on the offending node nodetool info gave the following:
+nodetool info
+Token            : (invoke with -T/--tokens to see all 256 tokens)
+ID               : (removed)
+Gossip active    : true
+Thrift active    : true
+Native Transport active: false
+Load             : 2.05 TB
+Generation No    : 1382536528
+Uptime (seconds) : 432970
+Heap Memory (MB) : 8098.05 / 14131.25
+Data Center      : DC1
+Rack             : RAC2
+Exceptions       : 0
+Key Cache        : size 536854996 (bytes), capacity 536870912 (bytes), 41383646 hits, 1710831591 requests, 0.024 recent hit rate, 0 save period in seconds
+Row Cache        : size 0 (bytes), capacity 0 (bytes), 0 hits, 0 requests, NaN recent hit rate, 0 save period in seconds
+After looking at the cassandra log, I saw a bunch of the following:
+ERROR [Selector-Thread-16] 2013-10-27 17:36:00,370 CustomTHsHaServer.java (line 187) Uncaught Exception: 
+java.lang.OutOfMemoryError: unable to create new native thread
+        at java.lang.Thread.start0(Native Method)
+        at java.lang.Thread.start(Thread.java:691)
+        at java.util.concurrent.ThreadPoolExecutor.addWorker(ThreadPoolExecutor.java:949)
+        at java.util.concurrent.ThreadPoolExecutor.execute(ThreadPoolExecutor.java:1371)
+        at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor.execute(DebuggableThreadPoolExecutor.java:145)
+        at org.apache.cassandra.thrift.CustomTHsHaServer.requestInvoke(CustomTHsHaServer.java:337)
+        at org.apache.cassandra.thrift.CustomTHsHaServer$SelectorThread.handleRead(CustomTHsHaServer.java:281)
+        at org.apache.cassandra.thrift.CustomTHsHaServer$SelectorThread.select(CustomTHsHaServer.java:224)
+        at org.apache.cassandra.thrift.CustomTHsHaServer$SelectorThread.run(CustomTHsHaServer.java:182)
+ERROR [Selector-Thread-7] 2013-10-27 17:36:00,370 CustomTHsHaServer.java (line 187) Uncaught Exception: 
+java.lang.OutOfMemoryError: unable to create new native thread
+        at java.lang.Thread.start0(Native Method)
+        at java.lang.Thread.start(Thread.java:691)
+        at java.util.concurrent.ThreadPoolExecutor.addWorker(ThreadPoolExecutor.java:949)
+        at java.util.concurrent.ThreadPoolExecutor.execute(ThreadPoolExecutor.java:1371)
+        at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor.execute(DebuggableThreadPoolExecutor.java:145)
+        at org.apache.cassandra.thrift.CustomTHsHaServer.requestInvoke(CustomTHsHaServer.java:337)
+        at org.apache.cassandra.thrift.CustomTHsHaServer$SelectorThread.handleRead(CustomTHsHaServer.java:281)
+        at org.apache.cassandra.thrift.CustomTHsHaServer$SelectorThread.select(CustomTHsHaServer.java:224)
+        at org.apache.cassandra.thrift.CustomTHsHaServer$SelectorThread.run(CustomTHsHaServer.java:182)
+There wasn't anything else overtly suspicious in the logs except for the occasional
+ERROR [Selector-Thread-0] 2013-10-27 17:35:58,662 TNonblockingServer.java (line 468) Read an invalid frame size of 0. Are you using TFramedTransport on the client side?
+but that periodically comes up - I have looked into it before but it has never seemed to have any serious impact.
+This ticket is not about why an OutOfMemoryError occurred - which is bad but I don't think I have enough information to reproduce or speculate on a cause. This ticket is about the fact that an OutOfMemoryError occurred and nodetool info was reporting Thrift active : true and Exceptions : 0.
+Our monitoring systems and investigation processes are both starting to rely on on the exception count. The fact that it was not accurate here is disconcerting.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.14
+Component:
+None
+Label:
+None
+Environment:
+java 1.7
+Attachment number:
+0
+Assignee:
+Mikhail Stepura
+Reporter:
+Dan Hendry
+Create date:
+28/Oct/13 14:49
+Update date:
+16/Apr/19 09:32
+Resolved date:
+17/Jan/14 16:09

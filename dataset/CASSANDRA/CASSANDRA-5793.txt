@@ -1,0 +1,52 @@
+Summary:
+OPP seems completely unsupported
+Description:
+We were using 0.7.6 version. And upgraded to 1.2.5 today. We were using OPP (OrderPreservingPartitioner).
+OPP throws error when any node join the cluster. Cluster can not be brought up due to this error. After digging little deep, We realized that "peers" column family is defined with key as type "inet". Looks like many other column families in system keyspace has same issue.
+Exception trace:
+java.lang.RuntimeException: The provided key was not UTF8 encoded.
+at org.apache.cassandra.dht.OrderPreservingPartitioner.getToken(OrderPreservingPartitioner.java:172)
+at org.apache.cassandra.dht.OrderPreservingPartitioner.decorateKey(OrderPreservingPartitioner.java:44)
+at org.apache.cassandra.db.Table.apply(Table.java:379)
+at org.apache.cassandra.db.Table.apply(Table.java:353)
+at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:258)
+at org.apache.cassandra.cql3.statements.ModificationStatement.executeInternal(ModificationStatement.java:117)
+at org.apache.cassandra.cql3.QueryProcessor.processInternal(QueryProcessor.java:172)
+at org.apache.cassandra.db.SystemTable.updatePeerInfo(SystemTable.java:258)
+at org.apache.cassandra.service.StorageService.onChange(StorageService.java:1231)
+at org.apache.cassandra.service.StorageService.onJoin(StorageService.java:1948)
+at org.apache.cassandra.gms.Gossiper.handleMajorStateChange(Gossiper.java:823)
+at org.apache.cassandra.gms.Gossiper.applyStateLocally(Gossiper.java:901)
+at org.apache.cassandra.gms.GossipDigestAck2VerbHandler.doVerb(GossipDigestAck2VerbHandler.java:50)
+Possibilities:
+Changing partitioner to BOP (or something else) fails while loading schema_keyspaces. So, it does not look like an option.
+One possibility is that getToken of OPP can return hex value if it fails to encode bytes to UTF-8 instead of throwing error. By this system tables seem to be working fine with OPP.
+Or Completely remove OPP from code base & configuration files. Mark clearly that OPP is no longer supported in upgrade instructions.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.9
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Vara Kumar
+Reporter:
+Vara Kumar
+Create date:
+23/Jul/13 09:42
+Update date:
+16/Apr/19 09:32
+Resolved date:
+30/Jul/13 20:40

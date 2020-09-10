@@ -1,0 +1,55 @@
+Summary:
+server side ClassCastException using compact storage
+Description:
+The following snippet fails on the current 2.0 branch and succeeds on the 2.1 branch.
+create KEYSPACE test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+
+USE test ;
+
+CREATE TABLE lock (
+ partition text,
+ key text,
+ owner text,
+ PRIMARY KEY ((partition), key)
+) WITH COMPACT STORAGE;
+
+INSERT INTO lock(partition,key,owner) VALUES ('a','b',null) ;
+
+UPDATE lock SET owner='z' WHERE partition='a' AND key='b' IF owner=null;
+On the 2.0 branch a ClassCastException is logged in the server log file.
+ERROR [ReadStage:244] 2014-03-07 09:38:47,227 CassandraDaemon.java (line 196) Exception in thread Thread[ReadStage:244,5,main]
+java.lang.RuntimeException: java.lang.ClassCastException: org.apache.cassandra.db.marshal.BytesType cannot be cast to org.apache.cassandra.db.marshal.CompositeType
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1900)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:744)
+Caused by: java.lang.ClassCastException: org.apache.cassandra.db.marshal.BytesType cannot be cast to org.apache.cassandra.db.marshal.CompositeType
+ at org.apache.cassandra.db.filter.SliceQueryFilter.columnCounter(SliceQueryFilter.java:231)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Paul Kendall
+Create date:
+06/Mar/14 21:56
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Mar/14 12:24

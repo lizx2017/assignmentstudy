@@ -1,0 +1,48 @@
+Summary:
+Applying deletes is sometimes dog slow
+Description:
+I hit this while testing various use cases for LUCENE-6119 (adding auto-throttle to ConcurrentMergeScheduler).
+When I tested "always call updateDocument" (each add buffers a delete term), with many indexing threads, opening an NRT reader once per second (forcing all deleted terms to be applied), I see that BufferedUpdatesStream.applyDeletes sometimes seems to take a loooong time, e.g.:
+BD 0 [2015-01-04 09:31:12.597; Lucene Merge Thread #69]: applyDeletes took 339 msec for 10 segments, 117 deleted docs, 607333 visited terms
+BD 0 [2015-01-04 09:31:18.148; Thread-4]: applyDeletes took 5533 msec for 62 segments, 10989 deleted docs, 8517225 visited terms
+BD 0 [2015-01-04 09:31:21.463; Lucene Merge Thread #71]: applyDeletes took 1065 msec for 10 segments, 470 deleted docs, 1825649 visited terms
+BD 0 [2015-01-04 09:31:26.301; Thread-5]: applyDeletes took 4835 msec for 61 segments, 14676 deleted docs, 9649860 visited terms
+BD 0 [2015-01-04 09:31:35.572; Thread-11]: applyDeletes took 6073 msec for 72 segments, 13835 deleted docs, 11865319 visited terms
+BD 0 [2015-01-04 09:31:37.604; Lucene Merge Thread #75]: applyDeletes took 251 msec for 10 segments, 58 deleted docs, 240721 visited terms
+BD 0 [2015-01-04 09:31:44.641; Thread-11]: applyDeletes took 5956 msec for 64 segments, 15109 deleted docs, 10599034 visited terms
+BD 0 [2015-01-04 09:31:47.814; Lucene Merge Thread #77]: applyDeletes took 396 msec for 10 segments, 137 deleted docs, 719914 visit
+What this means is even though I want an NRT reader every second, often I don't get one for up to ~7 or more seconds.
+This is on an SSD, machine has 48 GB RAM, heap size is only 2 GB. 12 indexing threads.
+As hideously complex as this code is, I think there are some inefficiencies, but fixing them could be hard / make code even hairier ...
+Also, this code is mega-locked: holds IW's lock, holds BD's lock. It blocks things like merges kicking off or finishing...
+E.g., we pull the MergedIterator many times on the same set of sub-iterators. Maybe we can create the sorted terms up front and reuse that?
+Maybe we should go "term stride" (one term visits all N segments) not "segment stride" (visit each segment, iterating all deleted terms for it). Just iterating the terms to be deleted takes a sizable part of the time, and we now do that once for every segment in the index.
+Also, the "isUnique" bit in LUCENE-6005 should help here, since if we know the field is unique, we can stop seekExact once we found a segment that has the deleted term, we can maybe pass false for removeDuplicates to MergedIterator...
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.1, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+04/Jan/15 14:51
+Update date:
+09/May/16 18:34
+Resolved date:
+22/Jan/15 15:29

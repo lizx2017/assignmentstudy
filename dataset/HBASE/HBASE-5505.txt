@@ -1,0 +1,42 @@
+Summary:
+if max file size set to 256M, Per table hbase.hregion.max.filesize setting(at htable creation) overwritten by value set in hbase-site.conf(which might not be 256MB)
+Description:
+seems to me that when set to DEFAULT_MAX_FILE_SIZE, the max region file size set at Htable creation time may later be overwritten by value set in hbase-site.conf, i.e. no "Per table" hbase.hregion.max.filesize at all.
+in this case, on Web UI in the table description, max file is still 256M, but we can find region file much bigger on HDFS.
+In 0.92.0, o.a.h.hbase.regionserver.ConstantSizeRegionSplitPolicy, around line 33:
+long maxFileSize = region.getTableDesc().getMaxFileSize();
+// By default we split region if a file > HConstants.DEFAULT_MAX_FILE_SIZE.
+if (maxFileSize == HConstants.DEFAULT_MAX_FILE_SIZE)
+{ //zx: here setting is over written by configuaration from hbase-site.conf maxFileSize = getConf().getLong("hbase.hregion.max.filesize", HConstants.DEFAULT_MAX_FILE_SIZE); }
+In 0.90.4(cdh3u3) or earlier version, this is found in o.a.h.hbase.regionserver.Store, around line 188:
+long maxFileSize = info.getTableDesc().getMaxFileSize();
+if (maxFileSize == HConstants.DEFAULT_MAX_FILE_SIZE)
+{ maxFileSize = conf.getLong("hbase.hregion.max.filesize", HConstants.DEFAULT_MAX_FILE_SIZE); }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Later
+Affects_version:
+0.90.4, 0.92.0
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+steven zhuang
+Create date:
+02/Mar/12 02:38
+Update date:
+16/Nov/16 21:18
+Resolved date:
+16/Nov/16 21:18

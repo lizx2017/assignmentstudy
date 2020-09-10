@@ -1,0 +1,42 @@
+Summary:
+Unit tests using StringHelper fail with ExceptionInInitializerError for maven surefire >= 2.18
+Description:
+This happens when multiple conditions are met:
+The client code is built with Maven
+To execute its unit tests, the client code relies on the maven-surefire-plugin, with a version greater than 2.17 (last working version)
+The client code uses the org.apache.lucene.util.StringHelper class (even transitively)
+The client is configured as with the standard Lucene maven build (i.e. it is possible to fix the test seed using the tests.seed property)
+There was a change in Surefire's behavior starting with 2.18: when a property is empty, instead of not sending it to the test runner, it will be sent with an empty value.
+This behavior can be observed with the attached sample project:
+mvn test: fails with a java.lang.ExceptionInInitializerError
+mvn test -Dtests.seed=123456: succeeds because the property is set to a real value
+mvn test -Dsurefire.version=2.17: succeeds because the surefire version is lower than 2.18
+Attached is a patch (built against branch_7x) that centralizes accesses to the tests.seed system property; it also makes sure that if it is empty, it is treated as absent.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+7.2.1
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Julien Massenet
+Create date:
+31/Jan/18 15:58
+Update date:
+01/Feb/18 12:36
+Resolved date:
+

@@ -1,0 +1,96 @@
+Summary:
+Unnecessary ReadRepair request during RangeScan
+Description:
+During reading with Quorum level and replication factor greater then 2, Cassandra sends at least one ReadRepair, even if there is no need to do that.
+With the fact that read requests await until ReadRepair will finish it slows down requsts a lot, up to the Timeout
+It seems that the problem has been introduced by the CASSANDRA-2494, unfortunately I have no enought knowledge of Cassandra internals to fix the problem and do not broke CASSANDRA-2494 functionality, so my report without a patch.
+Code explanations:
+RangeSliceResponseResolver.java
+class RangeSliceResponseResolver {
+    // ....
+    private class Reducer extends MergeIterator.Reducer<Pair<Row,InetAddress>, Row>
+    {
+    // ....
+
+        protected Row getReduced()
+        {
+            ColumnFamily resolved = versions.size() > 1
+                                  ? RowRepairResolver.resolveSuperset(versions)
+                                  : versions.get(0);
+            if (versions.size() < sources.size())
+            {
+                for (InetAddress source : sources)
+                {
+                    if (!versionSources.contains(source))
+                    {
+                          
+                        // [PA] Here we are adding null ColumnFamily.
+                        // later it will be compared with the "desired"
+                        // version and will give us "fake" difference which
+                        // forces Cassandra to send ReadRepair to a given source
+                        versions.add(null);
+                        versionSources.add(source);
+                    }
+                }
+            }
+            // ....
+            if (resolved != null)
+                repairResults.addAll(RowRepairResolver.scheduleRepairs(resolved, table, key, versions, versionSources));
+            // ....
+        }
+    }
+}
+RowRepairResolver.java
+public class RowRepairResolver extends AbstractRowResolver {
+    // ....
+    public static List<IAsyncResult> scheduleRepairs(ColumnFamily resolved, String table, DecoratedKey<?> key, List<ColumnFamily> versions, List<InetAddress> endpoints)
+    {
+        List<IAsyncResult> results = new ArrayList<IAsyncResult>(versions.size());
+
+        for (int i = 0; i < versions.size(); i++)
+        {
+            // On some iteration we have to compare null and resolved which are obviously
+            // not equals, so it will fire a ReadRequest, however it is not needed here
+            ColumnFamily diffCf = ColumnFamily.diff(versions.get(i), resolved);
+            if (diffCf == null)
+                continue;
+        // .... 
+Imagine the following situation:
+NodeA has X.1 // row X with the version 1
+NodeB has X.2
+NodeC has X.? // Unknown version, but because write was with Quorum it is 1 or 2
+During the Quorum read from nodes A and B, Cassandra creates version 12 and send ReadRepair, so now nodes has the following content:
+NodeA has X.12
+NodeB has X.12
+which is correct, however Cassandra also will fire ReadRepair to NodeC. There is no need to do that, the next consistent read have a chance to be served by nodes
+{A, B}
+(no ReadRepair) or by pair {?, C} and in that case ReadRepair will be fired and brings nodeC to the consistent state
+Right now we are reading from the Index a lot and starting from some point in time we are getting TimeOutException because cluster is overloaded by the ReadRepairRequests even if all nodes has the same data
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.8
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Philip Andronov
+Create date:
+03/Feb/12 11:40
+Update date:
+16/Apr/19 09:32
+Resolved date:
+09/Feb/12 21:43

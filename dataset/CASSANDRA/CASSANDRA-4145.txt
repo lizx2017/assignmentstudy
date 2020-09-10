@@ -1,0 +1,56 @@
+Summary:
+NullPointerException when using sstableloader with PropertyFileSnitch configured
+Description:
+I got a NullPointerException when using sstableloader on 1.0.6. The cluster is using PropertyFileSnitch. The same configuration file is used for sstableloader.
+The problem is if StorageService is initialized before DatabaseDescriptor, PropertyFileSnitch will try to access StorageService.instance before it finishes initialization.
+ ERROR 01:14:05,601 Fatal configuration error
+org.apache.cassandra.config.ConfigurationException: Error instantiating snitch class 'org.apache.cassandra.locator.PropertyFileSnitch'.
+        at org.apache.cassandra.utils.FBUtilities.construct(FBUtilities.java:607)
+        at org.apache.cassandra.config.DatabaseDescriptor.createEndpointSnitch(DatabaseDescriptor.java:454)
+        at org.apache.cassandra.config.DatabaseDescriptor.<clinit>(DatabaseDescriptor.java:306)
+        at org.apache.cassandra.service.StorageService.<init>(StorageService.java:187)
+        at org.apache.cassandra.service.StorageService.<clinit>(StorageService.java:190)
+        at org.apache.cassandra.tools.BulkLoader$ExternalClient.init(BulkLoader.java:183)
+        at org.apache.cassandra.io.sstable.SSTableLoader.stream(SSTableLoader.java:106)
+        at org.apache.cassandra.tools.BulkLoader.main(BulkLoader.java:62)
+Caused by: java.lang.reflect.InvocationTargetException
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance(Unknown Source)
+        at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(Unknown Source)
+        at java.lang.reflect.Constructor.newInstance(Unknown Source)
+        at org.apache.cassandra.utils.FBUtilities.construct(FBUtilities.java:589)
+        ... 7 more
+Caused by: java.lang.NullPointerException
+        at org.apache.cassandra.locator.PropertyFileSnitch.reloadConfiguration(PropertyFileSnitch.java:170)
+        at org.apache.cassandra.locator.PropertyFileSnitch.<init>(PropertyFileSnitch.java:60)
+        ... 12 more
+Error instantiating snitch class 'org.apache.cassandra.locator.PropertyFileSnitch'.
+Fatal configuration error; unable to start server.  See log for stacktrace.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.10, 1.1.0
+Component:
+Legacy/Tools
+Label:
+bulkloader
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ji Cheng
+Reporter:
+Ji Cheng
+Create date:
+13/Apr/12 07:08
+Update date:
+16/Apr/19 09:32
+Resolved date:
+13/Apr/12 15:33

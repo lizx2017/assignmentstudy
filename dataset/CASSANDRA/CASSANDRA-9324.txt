@@ -1,0 +1,53 @@
+Summary:
+Map Mutation rejected by Cassandra: IllegalArgumentException
+Description:
+We use a collection (map<ascii,ascii>) in a CQL3 table. We write into that cql3 table using thrift mutations, from a c++ application. We are prototyping migrating from our current Cassandra (2.0.7) to 2.1.5, and are unable to write rows to this cql3 table. We have no problems when we remove the writes to the map column, and all other writes succeed in this case. Cassandra is rejecting our writes and we are catching a TTransportException (no more data to read). The below call stack is from the Cassandra instance that is rejecting the write.
+ERROR 14:08:10 Error occurred during processing of message.
+java.lang.IllegalArgumentException: null
+        at java.nio.Buffer.limit(Unknown Source) ~[na:1.7.0_71]
+        at org.apache.cassandra.utils.ByteBufferUtil.readBytes(ByteBufferUtil.java:543) ~[apache-cassandra-2.1.5.jar:2.1.5]
+        at org.apache.cassandra.serializers.CollectionSerializer.readValue(CollectionSerializer.java:124) ~[apache-cassandra-2.1.5.jar:2.1.5]
+        at org.apache.cassandra.serializers.MapSerializer.validateForNativeProtocol(MapSerializer.java:80) ~[apache-cassandra-2.1.5.jar:2.1.5]
+        at org.apache.cassandra.serializers.CollectionSerializer.validate(CollectionSerializer.java:61) ~[apache-cassandra-2.1.5.jar:2.1.5]
+        at org.apache.cassandra.db.marshal.AbstractType.validate(AbstractType.java:97) ~[apache-cassandra-2.1.5.jar:2.1.5]
+        at org.apache.cassandra.thrift.ThriftValidation.validateColumnData(ThriftValidation.java:449) ~[apache-cassandra-2.1.5.jar:2.1.5]
+        at org.apache.cassandra.thrift.ThriftValidation.validateColumnOrSuperColumn(ThriftValidation.java:318) ~[apache-cassandra-2.1.5.jar:2.1.5]
+        at org.apache.cassandra.thrift.ThriftValidation.validateMutation(ThriftValidation.java:385) ~[apache-cassandra-2.1.5.jar:2.1.5]
+        at org.apache.cassandra.thrift.CassandraServer.createMutationList(CassandraServer.java:861) ~[apache-cassandra-2.1.5.jar:2.1.5]
+        at org.apache.cassandra.thrift.CassandraServer.batch_mutate(CassandraServer.java:976) ~[apache-cassandra-2.1.5.jar:2.1.5]
+        at org.apache.cassandra.thrift.Cassandra$Processor$batch_mutate.getResult(Cassandra.java:3996) ~[apache-cassandra-thrift-2.1.5.jar:2.1.5]
+        at org.apache.cassandra.thrift.Cassandra$Processor$batch_mutate.getResult(Cassandra.java:3980) ~[apache-cassandra-thrift-2.1.5.jar:2.1.5]
+        at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:39) ~[libthrift-0.9.2.jar:0.9.2]
+        at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:39) ~[libthrift-0.9.2.jar:0.9.2]
+        at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:205) ~[apache-cassandra-2.1.5.jar:2.1.5]
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source) [na:1.7.0_71]
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source) [na:1.7.0_71]
+        at java.lang.Thread.run(Unknown Source) [na:1.7.0_71]
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Mark Wick
+Create date:
+07/May/15 14:55
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Aug/15 18:58

@@ -1,0 +1,98 @@
+Summary:
+Popping up a spark component in a spark Module causes RTE
+Description:
+Steps to reproduce:
+1. Create a spark Application with a spark Module that pops up a SkinnableComponent.
+Main.mxml:
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+creationComplete="appModule.loadModule();">
+<s:ModuleLoader id="appModule" url='module/Module.swf' width="100%" height="50%" />
+</s:Application>
+Module.mxml:
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+width="100%" height="100%">
+<fx:Script>
+<![CDATA[
+import mx.managers.PopUpManager;
+private function openPopUp():void
+{ PopUpManager.createPopUp(this.parentApplication.root, SomeCustomComponent); }
+]]
+>
+</fx:Script>
+<fx:Declarations>
+<fx:Component className="SomeCustomComponent">
+<s:Group>
+<s:Button id="button" />
+</s:Group>
+</fx:Component>
+</fx:Declarations>
+<s:Button label="Open Popup" click="openPopUp()" />
+</s:Module>
+2. Click "Open Popup"
+Actual Results:
+RTE:
+Error: Skin for SomeCustomComponent13.button cannot be found.
+at spark.components.supportClasses::SkinnableComponent/attachSkin()[E:\dev\4.5.1\frameworks\projects\spark\src\spark\components\supportClasses\SkinnableComponent.as:698]
+at spark.components.supportClasses::SkinnableComponent/validateSkinChange()[E:\dev\4.5.1\frameworks\projects\spark\src\spark\components\supportClasses\SkinnableComponent.as:443]
+at spark.components.supportClasses::SkinnableComponent/createChildren()[E:\dev\4.5.1\frameworks\projects\spark\src\spark\components\supportClasses\SkinnableComponent.as:406]
+at mx.core::UIComponent/initialize()[E:\dev\4.5.1\frameworks\projects\framework\src\mx\core\UIComponent.as:7624]
+at mx.core::UIComponent/http://www.adobe.com/2006/flex/mx/internal::childAdded()[E:\dev\4.5.1\frameworks\projects\framework\src\mx\core\UIComponent.as:7485]
+at mx.core::UIComponent/addChildAt()[E:\dev\4.5.1\frameworks\projects\framework\src\mx\core\UIComponent.as:7189]
+at spark.components::Group/addDisplayObjectToDisplayList()[E:\dev\4.5.1\frameworks\projects\spark\src\spark\components\Group.as:2037]
+at spark.components::Group/http://www.adobe.com/2006/flex/mx/internal::elementAdded()[E:\dev\4.5.1\frameworks\projects\spark\src\spark\components\Group.as:1628]
+at spark.components::Group/setMXMLContent()[E:\dev\4.5.1\frameworks\projects\spark\src\spark\components\Group.as:633]
+at spark.components::Group/createChildren()[E:\dev\4.5.1\frameworks\projects\spark\src\spark\components\Group.as:855]
+at mx.core::UIComponent/initialize()[E:\dev\4.5.1\frameworks\projects\framework\src\mx\core\UIComponent.as:7624]
+at module::SomeCustomComponent/initialize()
+at mx.managers.systemClasses::ChildManager/childAdded()[E:\dev\4.5.1\frameworks\projects\framework\src\mx\managers\systemClasses\ChildManager.as:189]
+at mx.managers::SystemManager/http://www.adobe.com/2006/flex/mx/internal::rawChildren_addChildAt()[E:\dev\4.5.1\frameworks\projects\framework\src\mx\managers\SystemManager.as:2139]
+at mx.managers::SystemManager/addChildAt()[E:\dev\4.5.1\frameworks\projects\framework\src\mx\managers\SystemManager.as:1759]
+at mx.managers::SystemManager/addChild()[E:\dev\4.5.1\frameworks\projects\framework\src\mx\managers\SystemManager.as:1742]
+at mx.managers::PopUpManagerImpl/addPopUp()[E:\dev\4.5.1\frameworks\projects\framework\src\mx\managers\PopUpManagerImpl.as:340]
+at mx.managers::PopUpManagerImpl/createPopUp()[E:\dev\4.5.1\frameworks\projects\framework\src\mx\managers\PopUpManagerImpl.as:229]
+at mx.managers::PopUpManager$/createPopUp()[E:\dev\4.5.1\frameworks\projects\framework\src\mx\managers\PopUpManager.as:139]
+at module::Module/openPopUp()[/Users/stshongr/Desktop/test/src/module/Module.mxml:10]
+at module::Module/___Module_Button1_click()[/Users/stshongr/Desktop/test/src/module/Module.mxml:23]
+It appears that the Button in the popup is not getting its skin applied which is causing this RTE.
+Expected Results:
+No RTE
+Workaround (if any):
+Add a Button in the main application (not the module) and set that it is not include in the layout and that it is invisible:
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+creationComplete="appModule.loadModule();">
+<s:Button includeInLayout="false" visible="false" />
+<s:ModuleLoader id="appModule" url='module/Module.swf' width="100%" height="50%" />
+</s:Application>
+I'm not sure if this is a valid workaround since if the user has a few SkinnableComponents in the module's pop up (like RadioButton, CheckBox, etc.) they all need to be defined as invisible in the main app.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Not A Problem
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Spark: SkinnableComponent
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+13/Oct/11 03:47
+Update date:
+13/Dec/11 10:48
+Resolved date:
+21/Oct/11 15:10

@@ -1,0 +1,91 @@
+Summary:
+nodetool getendpoints doesn't validate key arity
+Description:
+I have a complex row key.
+$ create table b (x int, s text, ((x,s)) primary key);
+In cqlsh I cannot fill row key partially:
+$ insert into b (x) values(4);
+Bad Request: Missing mandatory PRIMARY KEY part s
+But nodetool can find hosts by incomplete key
+$ nodetool -h cas3 getendpoints anti_portal b 12
+192.168.4.4
+192.168.4.5
+192.168.4.6
+No error is reported.
+I found that columns are separated by ":".
+And If I pass to many elements then the error happens.
+$ nodetool -h cas3 getendpoints anit_portal b 12:dd:dd
+Exception in thread "main" org.apache.cassandra.serializers.MarshalException: unable to make int from '12:dd:dd'
+    at org.apache.cassandra.db.marshal.Int32Type.fromString(Int32Type.java:69)
+    at org.apache.cassandra.service.StorageService.getNaturalEndpoints(StorageService.java:2495)
+    at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+    at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+    at java.lang.reflect.Method.invoke(Method.java:606)
+    at sun.reflect.misc.Trampoline.invoke(MethodUtil.java:75)
+    at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+    at java.lang.reflect.Method.invoke(Method.java:606)
+    at sun.reflect.misc.MethodUtil.invoke(MethodUtil.java:279)
+    at com.sun.jmx.mbeanserver.StandardMBeanIntrospector.invokeM2(StandardMBeanIntrospector.java:112)
+    at com.sun.jmx.mbeanserver.StandardMBeanIntrospector.invokeM2(StandardMBeanIntrospector.java:46)
+    at com.sun.jmx.mbeanserver.MBeanIntrospector.invokeM(MBeanIntrospector.java:237)
+    at com.sun.jmx.mbeanserver.PerInterface.invoke(PerInterface.java:138)
+    at com.sun.jmx.mbeanserver.MBeanSupport.invoke(MBeanSupport.java:252)
+    at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.invoke(DefaultMBeanServerInterceptor.java:819)
+    at com.sun.jmx.mbeanserver.JmxMBeanServer.invoke(JmxMBeanServer.java:801)
+    at javax.management.remote.rmi.RMIConnectionImpl.doOperation(RMIConnectionImpl.java:1487)
+    at javax.management.remote.rmi.RMIConnectionImpl.access$300(RMIConnectionImpl.java:97)
+    at javax.management.remote.rmi.RMIConnectionImpl$PrivilegedOperation.run(RMIConnectionImpl.java:1328)
+    at javax.management.remote.rmi.RMIConnectionImpl.doPrivilegedOperation(RMIConnectionImpl.java:1420)
+    at javax.management.remote.rmi.RMIConnectionImpl.invoke(RMIConnectionImpl.java:848)
+    at sun.reflect.GeneratedMethodAccessor12.invoke(Unknown Source)
+    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+    at java.lang.reflect.Method.invoke(Method.java:606)
+    at sun.rmi.server.UnicastServerRef.dispatch(UnicastServerRef.java:322)
+    at sun.rmi.transport.Transport$1.run(Transport.java:177)
+    at sun.rmi.transport.Transport$1.run(Transport.java:174)
+    at java.security.AccessController.doPrivileged(Native Method)
+    at sun.rmi.transport.Transport.serviceCall(Transport.java:173)
+    at sun.rmi.transport.tcp.TCPTransport.handleMessages(TCPTransport.java:556)
+    at sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run0(TCPTransport.java:811)
+    at sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run(TCPTransport.java:670)
+    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+    at java.lang.Thread.run(Thread.java:744)
+Caused by: java.lang.NumberFormatException: For input string: "12:dd:dd"
+    at java.lang.NumberFormatException.forInputString(NumberFormatException.java:65)
+    at java.lang.Integer.parseInt(Integer.java:492)
+    at java.lang.Integer.parseInt(Integer.java:527)
+    at org.apache.cassandra.db.marshal.Int32Type.fromString(Int32Type.java:65)
+    ... 36 more
+I think showing huge stack trace is not proper behavior.
+Error message should be printer if arity of passed key and table key are not equal.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+Tool/nodetool
+Label:
+lhf
+Environment:
+
+Attachment number:
+0
+Assignee:
+Philip Thompson
+Reporter:
+Daneel Yaitskov
+Create date:
+06/Dec/13 15:40
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/Apr/15 17:48

@@ -1,0 +1,42 @@
+Summary:
+Overlapping sstables in L1+
+Description:
+Seems we have a bug that can create overlapping sstables in L1:
+WARN [main] 2014-10-28 04:09:42,295 LeveledManifest.java (line 164) At level 2, SSTableReader(path='<sstable>') [DecoratedKey(2838397575996053472, 00
+10000000001111000000000000066059b200001000000000066059b200000000111100000000100000000000004000000000000000000100), DecoratedKey(5516674013223138308, 001000000000111100000000000000ff2d160000100000000000ff2d1600000
+000111100000000100000000000004000000000000000000100)] overlaps SSTableReader(path='<sstable>') [DecoratedKey(2839992722300822584, 00100000000011110000
+0000000000229ad20000100000000000229ad200000000111100000000100000000000004000000000000000000100), DecoratedKey(5532836928694021724, 0010000000001111000000000000034b05a600001000000000034b05a600000000111100000000100
+000000000004000000000000000000100)].  This could be caused by a bug in Cassandra 1.1.0 .. 1.1.3 or due to the fact that you have dropped sstables from another node into the data directory. Sending back to L0.  If
+ you didn't drop in sstables, and have not yet run scrub, you should do so since you may also have rows out-of-order within an sstable
+Which might manifest itself during compaction with this exception:
+ERROR [CompactionExecutor:3152] 2014-10-28 00:24:06,134 CassandraDaemon.java (line 199) Exception in thread Thread[CompactionExecutor:3152,1,main]
+java.lang.RuntimeException: Last written key DecoratedKey(5516674013223138308, 001000000000111100000000000000ff2d160000100000000000ff2d1600000000111100000000100000000000004000000000000000000100) >= current key DecoratedKey(2839992722300822584, 001000000000111100000000000000229ad20000100000000000229ad200000000111100000000100000000000004000000000000000000100) writing into <sstable>
+since we use LeveledScanner when compacting (the backing sstable scanner might go beyond the start of the next sstable scanner)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.12, 2.1.3
+Component:
+Local/Compaction
+Label:
+lcs
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Marcus Eriksson
+Create date:
+29/Oct/14 15:33
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Nov/14 12:46

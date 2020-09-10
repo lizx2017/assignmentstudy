@@ -1,0 +1,50 @@
+Summary:
+Deadlock if WrongRegionException is thrown from getLock in HRegion.delete
+Description:
+In the HRegion.delete function, If getLock throws a WrongRegionException, no lock id is ever returned, yet in the finally block, it tries to release the row lock using that lock id (which is null). This causes an NPE in the finally clause, and the closeRegionOperation() to never execute, keeping a read lock open forever.
+ERROR org.apache.hadoop.hbase.regionserver.HRegionServer:
+java.lang.NullPointerException
+at org.apache.hadoop.hbase.util.Bytes.compareTo(Bytes.java:840)
+at org.apache.hadoop.hbase.util.Bytes$ByteArrayComparator.compare(Bytes.java:108)
+at org.apache.hadoop.hbase.util.Bytes$ByteArrayComparator.compare(Bytes.java:100)
+at java.util.TreeMap.getEntryUsingComparator(TreeMap.java:351)
+at java.util.TreeMap.getEntry(TreeMap.java:322)
+at java.util.TreeMap.remove(TreeMap.java:580)
+at java.util.TreeSet.remove(TreeSet.java:259)
+at org.apache.hadoop.hbase.regionserver.HRegion.releaseRowLock(HRegion.java:2145)
+at org.apache.hadoop.hbase.regionserver.HRegion.delete(HRegion.java:1174)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.delete(HRegionServer.java:1914)
+at sun.reflect.GeneratedMethodAccessor22.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:570)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1039)
+When the region later attempts to close, the write lock can never be acquired, and the region remains in transition forever.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.90.4
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adam Warrington
+Reporter:
+Adam Warrington
+Create date:
+07/Jul/11 18:23
+Update date:
+20/Nov/15 11:55
+Resolved date:
+07/Jul/11 21:43

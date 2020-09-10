@@ -1,0 +1,40 @@
+Summary:
+CheckAndPut should properly read MVCC
+Description:
+See, for example:
+// TODO: Use MVCC to make this set of increments atomic to reads
+Here's an example of what I can happen (would probably be good to write up a test case for each read/update):
+Concurrent update via increment and put.
+The put grabs the row lock first and updates the memstore, but releases the row lock before the MVCC is advanced. Then, the increment grabs the row lock and reads right away, reading the old value and incrementing based on that.
+There are a few options here:
+1) Waiting for the MVCC to advance for read/updates: the downside is that you have to wait for updates on other rows.
+2) Have an MVCC per-row (table configuration): this avoids the unnecessary contention of 1)
+3) Transform the read/updates to write-only with rollup on read.. E.g. an increment would just have the number of values to increment.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.94.3, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Gregory Chanan
+Create date:
+25/Oct/12 03:27
+Update date:
+26/Feb/13 08:20
+Resolved date:
+31/Oct/12 22:05

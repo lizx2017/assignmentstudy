@@ -1,0 +1,89 @@
+Summary:
+JVM crash in PDColorSpaceInstance.createColor()
+Description:
+Similar to PDFBOX-488, the JVM (here JDK 1.6 on Windows XP) crashes when PDFBox tries to create a java.awt.Color instance with some specific ICC profile. The root cause of the problem is a low-level bug in the JVM (most likely http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6645513), but it would be really good if PDFBox could work around that issue or at least throw a normal exception in troublesome cases instead of crashing the entire JVM.
+See below for the relevant parts of the crash report.
+#
+An unexpected error has been detected by Java Runtime Environment:
+#
+EXCEPTION_ACCESS_VIOLATION (0xc0000005) at pc=0x6d17205d, pid=1512, tid=1324
+#
+Java VM: Java HotSpot(TM) Client VM (11.3-b02 mixed mode windows-x86)
+Problematic frame:
+C [cmm.dll+0x205d]
+#
+If you would like to submit a bug report, please visit:
+http://java.sun.com/webapps/bugreport/crash.jsp
+The crash happened outside the Java Virtual Machine in native code.
+See problematic frame for where to report the bug.
+#
+--------------- T H R E A D ---------------
+Current thread (0x492f6800): JavaThread "pool-3-thread-11" [_thread_in_native,
+id=1324, stack(0x4aa40000,0x4aa90000)]
+siginfo: ExceptionCode=0xc0000005, writing address 0x00000008
+Registers:
+EAX=0x001cc20b, EBX=0x4aa8eda0, ECX=0x00000000, EDX=0x6d19c88c
+ESP=0x4aa8ed34, EBP=0x4aa8edc0, ESI=0x4aa8ed6c, EDI=0x00000003
+EIP=0x6d17205d, EFLAGS=0x00010246
+Top of Stack: (sp=0x4aa8ed34)
+0x4aa8ed34: 00000008 000000ff 4aa8ee34 73a6ef68
+0x4aa8ed44: 790739f0 5577e7e0 00000000 00000000
+0x4aa8ed54: 00000000 00000000 00000000 7dff9f58
+0x4aa8ed64: 5d29bb60 7e87fca0 00000000 00000000
+0x4aa8ed74: 00000000 00000000 00000000 565bff20
+0x4aa8ed84: 618b6ca0 618b6d50 581b1ed8 00000000
+0x4aa8ed94: 00000000 00000000 00000000 00000003
+0x4aa8eda4: 6d173f79 00000000 3ff00000 0000000f
+Instructions: (pc=0x6d17205d)
+0x6d17204d: 83 c4 14 89 06 e8 e8 34 02 00 83 7d 1c 00 8b 0e
+0x6d17205d: 89 41 08 74 0e 8b 45 f8 8b 34 30 85 f6 74 04 8b
+Stack: [0x4aa40000,0x4aa90000], sp=0x4aa8ed34, free space=315k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C [cmm.dll+0x205d]
+C [cmm.dll+0x40f1]
+C [cmm.dll+0x435e]
+C [cmm.dll+0x1ff75]
+C [cmm.dll+0x20413]
+Java frames: (J=compiled Java code, j=interpreted, Vv=VM code)
+J sun.awt.color.CMM.cmmCombineTransforms([Lsun/awt/color/ICC_Transform;Lsun/awt/color/ICC_Transform;)I
+J java.awt.color.ICC_ColorSpace.toRGB([F)[F
+J java.awt.Color.<init>(Ljava/awt/color/ColorSpace;[FF)V
+J org.apache.pdfbox.pdmodel.graphics.color.PDColorSpaceInstance.createColor()Ljava/awt/Color;
+J org.apache.pdfbox.pdfviewer.PageDrawer.fillPath(I)V
+J org.apache.pdfbox.util.operator.pagedrawer.FillNonZeroRule.process(Lorg/apache/pdfbox/util/PDFOperator;Ljava/util/List;)V
+J org.apache.pdfbox.util.PDFStreamEngine.processOperator(Lorg/apache/pdfbox/util/PDFOperator;Ljava/util/List;)V
+J org.apache.pdfbox.util.PDFStreamEngine.processSubStream(Lorg/apache/pdfbox/pdmodel/PDPage;Lorg/apache/pdfbox/pdmodel/PDResources;Lorg/apache/pdfbox/cos/COSStream;)V
+j org.apache.pdfbox.util.operator.pagedrawer.Invoke.process(Lorg/apache/pdfbox/util/PDFOperator;Ljava/util/List;)V+419
+J org.apache.pdfbox.util.PDFStreamEngine.processOperator(Lorg/apache/pdfbox/util/PDFOperator;Ljava/util/List;)V
+J org.apache.pdfbox.util.PDFStreamEngine.processSubStream(Lorg/apache/pdfbox/pdmodel/PDPage;Lorg/apache/pdfbox/pdmodel/PDResources;Lorg/apache/pdfbox/cos/COSStream;)V
+j org.apache.pdfbox.util.PDFStreamEngine.processStream(Lorg/apache/pdfbox/pdmodel/PDPage;Lorg/apache/pdfbox/pdmodel/PDResources;Lorg/apache/pdfbox/cos/COSStream;)V+39
+j org.apache.pdfbox.pdfviewer.PageDrawer.drawPage(Ljava/awt/Graphics;Lorg/apache/pdfbox/pdmodel/PDPage;Ljava/awt/Dimension;)V+57
+j org.apache.pdfbox.pdmodel.PDPage.convertToImage()Ljava/awt/image/BufferedImage;+107
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.7.3
+Fix_version:
+0.8.0-incubator
+Component:
+PDModel
+Label:
+None
+Environment:
+java
+Attachment number:
+0
+Assignee:
+Jukka Zitting
+Reporter:
+Jukka Zitting
+Create date:
+31/Aug/09 17:37
+Update date:
+21/Oct/09 09:52
+Resolved date:
+14/Sep/09 11:46

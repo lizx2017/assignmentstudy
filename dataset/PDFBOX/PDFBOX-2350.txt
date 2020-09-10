@@ -1,0 +1,45 @@
+Summary:
+Type1 Parser hangs indefinitely
+Description:
+When rendering the first page of my pdf document the Type1Parser (org.apache.fontbox.type1.Type1Parser) hangs in a loop in
+parseBinary(byte[] bytes) throws IOException
+and "kills" our rendering pipeline. Please find the loop that hangs below:
+// find /Private dict
+while (!lexer.peekToken().getText().equals("Private"))
+{ lexer.nextToken(); }
+There is no token named "Private" ever in the list of returned tokens (they're empty all the time).
+Furthermore going deeper into the source code it seems the class reading the tokens (Type1Lexer) does never finally advance the buffer position and always returns an empty name token in the readToken(Token prevToken) method.
+Looking at the decrypted buffer i cannot get something useful out of it based on my current understanding.
+Unfortunately i cannot provide the pdf in question as it contains confidental data.
+Acrobat Reader XI Version 11.0.08 renders the document just fine.
+In addition it seems the pdf was encrypted (40-Bit RC4) with an empty password and says it's pdf version 1.5.
+Does this provide enough information or can i do anything else to help nailing this one down?
+I guess this might be a pdf document structure/feature that is not yet supported completely but at least pdfbox should throw an exception instead of failing "silently"...
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+FontBox
+Label:
+None
+Environment:
+windows 7, java 1.7
+Attachment number:
+0
+Assignee:
+John Hewson
+Reporter:
+Daniel Scheibe
+Create date:
+15/Sep/14 12:56
+Update date:
+08/Feb/17 17:59
+Resolved date:
+26/Sep/14 17:25

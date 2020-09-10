@@ -1,0 +1,43 @@
+Summary:
+Deleting from an empty list produces an error
+Description:
+While deleting an element from a list that does not contain it is a no-op, deleting it from an empty list causes an error.
+This edge case is a bit inconsistent, because it makes list deletion non idempotent:
+cqlsh:test> create table foo (k int primary key, v list<int>);
+cqlsh:test> insert into foo(k,v) values (1, [1,2]);
+
+cqlsh:test> update foo set v = v - [1] where k = 1;
+cqlsh:test> update foo set v = v - [1] where k = 1;
+
+cqlsh:test> update foo set v = v - [2] where k = 1;
+cqlsh:test> update foo set v = v - [2] where k = 1;
+InvalidRequest: code=2200 [Invalid query] message="Attempted to delete an element from a list which is null"
+With speculative retries coming to the drivers, idempotency becomes more important because it determines which query we might retry or not. So it would be better if deleting from an empty list succeeded.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.6
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeff Jirsa
+Reporter:
+Olivier Michallat
+Create date:
+15/Apr/15 21:28
+Update date:
+16/Apr/19 09:31
+Resolved date:
+22/Apr/15 08:45

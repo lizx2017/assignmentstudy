@@ -1,0 +1,37 @@
+Summary:
+Doing a descending range still returns columns in ascending order
+Description:
+If I do
+result = table.getSliceFrom(row, "Standard1:col5", false, 2);
+cf = result.getColumnFamily("Standard1");
+I expect to get back columns in the order 5, 4, 3 (at the thrift level, it's turned into a list) but instead I get 3, 4, 5 because using a CF as the return vehicle re-sorts them by the standard comparator.
+The simplest solution is to allow user-defined column ordering as in CASSANDRA-185 and always return columns in that order (i.e., remove the ascending bool). This also allows us to make the columngroup fetching more efficient in the best case (deserializing one column at a time instead of a group at a time).
+OTOH using one index to allow fetching items relatively efficiently in either directly is cool. But my gut says it's relatively uncommon to want to access in both directions at once, and even more uncommon to not be able to do a reverse() on the client side (because of data volume, for instance). Forcing a separate CF for this special case of a special case might be worth the tradeoff.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jun Rao
+Reporter:
+Jonathan Ellis
+Create date:
+22/May/09 15:25
+Update date:
+16/Apr/19 09:33
+Resolved date:
+22/Jul/09 21:14

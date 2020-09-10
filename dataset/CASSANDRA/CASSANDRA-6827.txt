@@ -1,0 +1,63 @@
+Summary:
+Using static with a counter column is broken
+Description:
+From a client:
+Looks like there is a problem with serialisation//deserialisation of static counters.
+It reproduces on the 2.0 branch, but doesn't appear to be a problem on trunk.
+Here is a small cql script which reproduces the problem:
+CREATE KEYSPACE ks1 WITH replication =
+{'class': 'SimpleStrategy', 'replication_factor': 1}
+;
+use ks1;
+CREATE COLUMNFAMILY problematic ( stat_cnt counter static, norm_cnt counter, pk text, ck text, PRIMARY KEY (pk, ck) );
+UPDATE problematic SET stat_cnt = stat_cnt + 1 WHERE pk = 'foo';
+SELECT * FROM problematic ;
+and an example of the error from cqlsh:
+cqlsh:ks1> SELECT * FROM problematic ;
+pk | ck | stat_cnt | norm_cnt
+--------------------------------------------------------------------------------------------------------------------------------------------+---------
+foo | null | '\x00\x01\x00\x00\xf1$\t`\xa6\x1d\x11\xe3\x82\x9a\x9fqi\x80\x1f\xec\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x01' | null
+(1 rows)
+Failed to decode value '\x00\x01\x00\x00\xf1$\t`\xa6\x1d\x11\xe3\x82\x9a\x9fqi\x80\x1f\xec\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x01' (for column 'stat_cnt') as counter: unpack requires a string argument of length 8
+It seems like the problem lies in SelectStatement, it doesn't resolve the counter and ends up sending the entire 36 bytes of raw counter rather than the 8 bytes.
+In select statement we seem to keep the bytebuffer and then in two different places we end up calling the following method:
+Selection.ResultSetBuilder.add(ByteBuffer v )
+rather than: add(Column c)
+(Which in turn calls value() and invokes the CounterContext)
+I suppose the fix is just to ensure that the CounterContext is invoked for static counters.
+I can see various ways and places of putting it in place.
+Presumably you'd want to reconcile the static counters just once, earlier and keep the resolved value around to be ouput in several rows.
+I suppose somewhere here either by extending the ternary or changing getSimpleValue :
+staticValues.put(name, name.type.isCollection() ? getCollectionValue(name, group) : getSimpleValue(name, group));
+ColumnGroupMap seems to contain the relevant byte buffers and has methods:
+getCollection
+getSimple
+which could be extended to contain some counter related call wrapped in SelectStatement similarly.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Jeremiah Jordan
+Create date:
+08/Mar/14 01:15
+Update date:
+16/Apr/19 09:31
+Resolved date:
+12/Mar/14 12:09

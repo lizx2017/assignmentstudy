@@ -1,0 +1,95 @@
+Summary:
+NullPointerException from using PDFTextStripper w/ some URLs
+Description:
+[imported from SourceForge]
+http://sourceforge.net/tracker/index.php?group_id=78314&atid=552832&aid=1335941
+Originally submitted by pkorn78 on 2005-10-23 21:51.
+Hi,
+I've tried to extract text from this URL:
+http://www.ischool.washington.edu/mcdonald/papers/Lutters.AMCIS00.pdf
+However, it throws java.lang.NullPointerException on me
+although the PDF file does exist on that URL.
+Here's the code where I invoke the PDFTextStripper:
+String docURL =
+"http://www.ischool.washington.edu/mcdonald/papers/Lutters.AMCIS00.pdf";
+try{
+PDFTextStripper stripper = new PDFTextStripper();
+PDDocument pdfDoc =
+PDDocument.load(getInputStreamFromURL(docURL));
+String strippedText = stripper.getText(pdfDoc);
+pdfDoc.close();
+return stippedText;
+}
+catch(IOException e){
+e.printStackTrace();
+}
+Here's getInputStreamFromURL method used in the above code:
+public InputStream getInputStreamFromURL(String url){
+try
+{ URL myURL = new URL(url); URLConnection con = myURL.openConnection(); con.setRequestProperty("User-Agent",""); return con.getInputStream(); }
+catch(MalformedURLException e)
+{ e.printStackTrace(); }
+catch(IOException ie)
+{ ie.printStackTrace(); }
+return null;
+}
+Please advise, Thanks
+-Palakorn
+[comment on SourceForge]
+Originally sent by brzrkr.
+Logged In: YES
+user_id=1489602
+I am chasing a similar problem which might be related.
+What I found (using PDFDebugger.java) was that the PDF
+has an invalid PageTree: the root node and 5 of the 6
+Page objects are valid, but the 6th is a Stream, and
+not a Dictionary(Page). The offending code is:
+private static COSArray
+org.pdfbox.pdmodel.PDPageNode.getAllKids(
+List result, COSDictionary page, boolean recurse
+);
+which needs to check that kids is non-null before
+using it.
+[comment on SourceForge]
+Originally sent by brzrkr.
+Logged In: YES
+user_id=1489602
+I am chasing a similar problem which might be related.
+What I found (using PDFDebugger.java) was that the PDF
+has an invalid PageTree: the root node and 5 of the 6
+Page objects are valid, but the 6th is a Stream, and
+not a Dictionary(Page). The offending code is:
+private static COSArray
+org.pdfbox.pdmodel.PDPageNode.getAllKids(
+List result, COSDictionary page, boolean recurse
+);
+which needs to check that kids is non-null before
+using it.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Anonymous
+Create date:
+24/Oct/05 04:51
+Update date:
+13/Mar/13 18:43
+Resolved date:
+13/Mar/13 18:43

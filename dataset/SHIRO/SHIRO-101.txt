@@ -1,0 +1,38 @@
+Summary:
+Comma in role in the properties file is not read correctly by the PropertyRealm
+Description:
+I had the following the property file.
+user.luke=luke,Pilot
+role.Pilot=xWing:fly:xxx,yyy
+Now supposdly subject.isPermitted("xWing:fly:xxx") and Subject.isPermitted("xWing:fly:yyy") should both return true. this is not the case, since the first returns true and the second false. Now lets exchange the last term as follows: role.Pilot=xWing:fly:yyy,xxx. and make the same calls again. Now we see the forst returns false and the second returns true. So now we know that only the first token before the comma is read.
+Looking into shiro code in org.apache.shiro.util.PermissionUtils.toPermissionStrings() which calls in turn StringUtils.split(permissionString). This function splits the string around the comma. So from role.Pilot=xWing:fly:xxx,yyy we get two string: xWing:fly:xxx and yyy. To prove this theory I called Subject.isPermitted("yyy") which returned true.
+My suggestion would be not to call PermissionUtils at all, since its being called from WildcardPermission which in turn splits the String using * then the comma afterwards. So it makes no sense splitting the string with the comma two times, since the second time there would be nothing to split anyway.
+Best regards and thanks for your efforts
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+0.9-RC1, 0.9
+Fix_version:
+1.0.0
+Component:
+Configuration
+Label:
+None
+Environment:
+ubuntu, eclipse
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Moataz Elmasry
+Create date:
+17/Sep/09 15:31
+Update date:
+11/Jun/10 22:00
+Resolved date:
+18/Dec/09 21:00

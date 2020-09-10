@@ -1,0 +1,53 @@
+Summary:
+Flexible StandardQueryParser behaves differently than ClassicQueryParser
+Description:
+AnalyzerQueryNodeProcessor creates a BooleanQueryNode instead of a MultiPhraseQueryNode for some circumstances.
+Classic query parser output: +content:a +content:320 (correct)
+QueryParser classicQueryParser;
+classicQueryParser = new QueryParser(Version.LUCENE_45, "content", anaylzer);
+classicQueryParser.setDefaultOperator(Operator.AND);
+classicQueryParser.parse("a320"));
+Flexible query parser output: content:a content:320 (wrong)
+StandardQueryParser flexibleQueryParser;
+flexibleQueryParser = new StandardQueryParser(anaylzer);
+flexibleQueryParser.setDefaultOperator(Operator.AND);
+flexibleQueryParser.parse("a320", "content"));
+The used analyzer:
+Analyzer anaylzer = return new Analyzer() {
+  protected TokenStreamComponents createComponents(String field, Reader in) {
+  Tokenizer   src = new WhitespaceTokenizer(Version.LUCENE_45, in);
+  TokenStream tok = new WordDelimiterFilter(src,
+     WordDelimiterFilter.SPLIT_ON_NUMERICS |
+     WordDelimiterFilter.GENERATE_WORD_PARTS |
+     WordDelimiterFilter.GENERATE_NUMBER_PARTS,
+     CharArraySet.EMPTY_SET); 
+  return new TokenStreamComponents(src, tok);
+};
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+4.5
+Fix_version:
+4.6.1, 4.7, 6.0
+Component:
+core/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adriano Crestani
+Reporter:
+Krishna Keldec
+Create date:
+20/Nov/13 12:01
+Update date:
+09/May/16 18:38
+Resolved date:
+15/Jan/14 06:39

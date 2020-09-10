@@ -1,0 +1,34 @@
+Summary:
+The native protocol server can deadlock
+Description:
+Until CASSANDRA-5239 (i.e. since StorageProxy is blocking), the native protocol server needs to use a thread per request being processed. For that, it currently use a DebuggableThreadPoolExecutor, but with a limited queue. The rational being that we don't want to OOM if a client overwhelm the server. Rather, we prefer blocking (which DTPE gives us) on the submission of new request by the netty worker threads when all threads are busy.
+However, as it happens, when netty sends back a response to a query, there is cases where some events (technically, InterestChanged and WriteComplete events) are send up the pipeline. And those event are submitted on the request executor as other requests. Long story short, a request thread can end blocking on the submission to its own executor, hence deadlocking.
+The simplest solution is probably to reuse MemoryAwareThreadPoolExecutor from netty rather that our own DTPE as it also allow to block task submission when all threads are busy but knows not to block it's own internal events.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.9
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+23/Aug/13 11:57
+Update date:
+16/Apr/19 09:32
+Resolved date:
+30/Aug/13 11:32

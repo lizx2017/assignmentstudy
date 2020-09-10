@@ -1,0 +1,35 @@
+Summary:
+AssignmentManager's handleRegion should respect the single threaded nature of the processing
+Description:
+While debugging a case where a region was getting opened on a RegionServer and then closed soon after (and then never re-opened anywhere thereafter), it seemed like the processing in handleRegion to do with deletion of ZK nodes should be non-asynchronous. This achieves two things:
+1. The synchronous deletion prevents more than one processing on the same event data twice. Assuming that we do get more than one notification (on let's say, region OPENED event), the subsequent processing(s) in handleRegion for the same znode would end up with a zookeeper node not found exception. The return value of the data read would be null and that's already handled. If it is asynchronous, it leads to issues like - master opens a region on a certain RegionServer and soon after it sends that RegionServer a close for the same region, and then the znode is deleted.
+2. The deletion is currently handled in an executor service. This is problematic since by design the events for a given region should be processed in order. By delegating a part of the processing to executor service we are somewhat violating this contract since there is no guarantee of the ordering in the executor service executions...
+Thanks to Jeffrey Zhong and Enis Soztutar for the discussions on this issue.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.95.2
+Component:
+Region Assignment
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Devaraj Das
+Reporter:
+Devaraj Das
+Create date:
+30/Jul/13 23:46
+Update date:
+23/Sep/13 19:22
+Resolved date:
+05/Aug/13 23:10

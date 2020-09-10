@@ -1,0 +1,54 @@
+Summary:
+StartupBulkAssigner would cause a lot of timeout on RIT when assigning large numbers of regions (timeout = 3 mins)
+Description:
+In our produce environment
+We find a lot of timeout on RIT when cluster up, there are about 7w regions in the cluster( 25 regionservers ).
+First, we could see the following log:(See the region 33cf229845b1009aa8a3f7b0f85c9bd0)
+master's log
+2012-02-13 18:07:41,409 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x348f4a94723da5 Async create of unassigned node for 33cf229845b1009aa8a3f7b0f85c9bd0 with OFFLINE state
+2012-02-13 18:07:42,560 DEBUG org.apache.hadoop.hbase.master.AssignmentManager$CreateUnassignedAsyncCallback: rs=item_20120208,\x009,1328794343859.33cf229845b1009aa8a3f7b0f85c9bd0. state=OFFLINE, ts=1329127661409, server=r03f11025.yh.aliyun.com,60020,1329127549907
+2012-02-13 18:07:42,996 DEBUG org.apache.hadoop.hbase.master.AssignmentManager$ExistsUnassignedAsyncCallback: rs=item_20120208,\x009,1328794343859.33cf229845b1009aa8a3f7b0f85c9bd0. state=OFFLINE, ts=1329127661409
+2012-02-13 18:10:48,072 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: item_20120208,\x009,1328794343859.33cf229845b1009aa8a3f7b0f85c9bd0. state=PENDING_OPEN, ts=1329127662996
+2012-02-13 18:10:48,072 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_OPEN for too long, reassigning region=item_20120208,\x009,1328794343859.33cf229845b1009aa8a3f7b0f85c9bd0.
+2012-02-13 18:11:16,744 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=r03f11025.yh.aliyun.com,60020,1329127549907, region=33cf229845b1009aa8a3f7b0f85c9bd0
+2012-02-13 18:38:07,310 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Handling OPENED event for 33cf229845b1009aa8a3f7b0f85c9bd0; deleting unassigned node
+2012-02-13 18:38:07,310 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x348f4a94723da5 Deleting existing unassigned node for 33cf229845b1009aa8a3f7b0f85c9bd0 that is in expected state RS_ZK_REGION_OPENED
+2012-02-13 18:38:07,314 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x348f4a94723da5 Successfully deleted unassigned node for region 33cf229845b1009aa8a3f7b0f85c9bd0 in expected state RS_ZK_REGION_OPENED
+2012-02-13 18:38:07,573 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Opened region item_20120208,\x009,1328794343859.33cf229845b1009aa8a3f7b0f85c9bd0. on r03f11025.yh.aliyun.com,60020,1329127549907
+2012-02-13 18:50:54,428 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan was found (or we are ignoring an existing plan) for item_20120208,\x009,1328794343859.33cf229845b1009aa8a3f7b0f85c9bd0. so generated a random one; hri=item_20120208,\x009,1328794343859.33cf229845b1009aa8a3f7b0f85c9bd0., src=, dest=r01b05043.yh.aliyun.com,60020,1329127549041; 29 (online=29, exclude=null) available servers
+2012-02-13 18:50:54,428 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region item_20120208,\x009,1328794343859.33cf229845b1009aa8a3f7b0f85c9bd0. to r01b05043.yh.aliyun.com,60020,1329127549041
+2012-02-13 19:31:50,514 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: item_20120208,\x009,1328794343859.33cf229845b1009aa8a3f7b0f85c9bd0. state=PENDING_OPEN, ts=1329132528086
+2012-02-13 19:31:50,514 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_OPEN for too long, reassigning region=item_20120208,\x009,1328794343859.33cf229845b1009aa8a3f7b0f85c9bd0.
+Regionserver's log
+2012-02-13 18:07:43,537 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Received request to open region: item_20120208,\x009,1328794343859.33cf229845b1009aa8a3f7b0f85c9bd0.
+2012-02-13 18:11:16,560 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Processing open of item_20120208,\x009,1328794343859.33cf229845b1009aa8a3f7b0f85c9bd0.
+Through the RS's log, we could find it is larger than 3mins from receive openRegion request to start processing openRegion, causing timeout on RIT in master for the region.
+Let's see the code of StartupBulkAssigner, we could find regionPlans are not added when assigning regions, therefore, when one region opened, it will not updateTimers of other regions whose destination is the same.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.1
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+17/Feb/12 03:33
+Update date:
+20/Nov/15 11:54
+Resolved date:
+22/Feb/12 17:47

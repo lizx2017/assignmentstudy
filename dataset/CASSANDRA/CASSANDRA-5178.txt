@@ -1,0 +1,107 @@
+Summary:
+Sometimes repair process doesn't work properly
+Description:
+Pre-conditions:
+1. We have two separate datacenters called "DC1" and "DC2" correspondingly. Each of them contains of 6 nodes.
+2. DC2 is disabled.
+3. Tokens for DC1 are calculated via https://raw.github.com/riptano/ComboAMI/2.2/tokentoolv2.py. Tokens for DC2 are the same as for DC1 but they have an offset: +100. So for token 0 in DC1 we'll have token 100 in DC2 and so on.
+4. We have a test data set (1 billion keys).
+Steps to reproduce:
+Step 1:
+Lets check current configuration.
+nodetool ring:
+    <ip>     DC1         RAC1        Up     Normal  44,53 KB        33,33%              0                                           
+    <ip>     DC1         RAC1        Up     Normal  51,8 KB         33,33%              28356863910078205288614550619314017621      
+    <ip>     DC1         RAC1        Up     Normal  21,82 KB        33,33%              56713727820156410577229101238628035242      
+    <ip>     DC1         RAC1        Up     Normal  21,82 KB        33,33%              85070591730234615865843651857942052864      
+    <ip>     DC1         RAC1        Up     Normal  51,8 KB         33,33%              113427455640312821154458202477256070485     
+    <ip>     DC1         RAC1        Up     Normal  21,82 KB        33,33%              141784319550391026443072753096570088106  
+Current schema:
+    create keyspace benchmarks
+      with placement_strategy = 'NetworkTopologyStrategy'
+      *and strategy_options = \{DC1 : 2};*
+    use benchmarks;
+    create column family test_family
+      with compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+
+      ... 
+
+      and compaction_strategy_options = \{'sstable_size_in_mb' : '20'}
+      and compression_options = \{'chunk_length_kb' : '32', 'sstable_compression' : 'org.apache.cassandra.io.compress.SnappyCompressor'};
+STEP 2:
+Write first part of test data set (500 000 of keys) to DC1 with LOCAL_QUORUM consistency level.
+STEP 3:
+Update cassandra.yaml,cassandra-topology.properties with new IP's from DC2 and current keyspace schema with strategy_options = {DC1 : 2, DC2 : 0};
+STEP 4:
+Start all nodes from DC2.
+Check that nodes are started successfully:
+    <ip>     DC1         RAC1        Up     Normal  11,4 MB         33,33%              0                                           
+    <ip>     DC2         RAC2        Up     Normal  27,7 KB         0,00%               100                                         
+    <ip>     DC1         RAC1        Up     Normal  11,34 MB        33,33%              28356863910078205288614550619314017621      
+    <ip>     DC2         RAC2        Up     Normal  42,69 KB        0,00%               28356863910078205288614550619314017721      
+    <ip>     DC1         RAC1        Up     Normal  11,37 MB        33,33%              56713727820156410577229101238628035242      
+    <ip>     DC2         RAC2        Up     Normal  52,02 KB        0,00%               56713727820156410577229101238628035342      
+    <ip>     DC1         RAC1        Up     Normal  11,4 MB         33,33%              85070591730234615865843651857942052864      
+    <ip>     DC2         RAC2        Up     Normal  42,69 KB        0,00%               85070591730234615865843651857942052964      
+    <ip>     DC1         RAC1        Up     Normal  11,43 MB        33,33%              113427455640312821154458202477256070485     
+    <ip>     DC2         RAC2        Up     Normal  42,69 KB        0,00%               113427455640312821154458202477256070585     
+    <ip>     DC1         RAC1        Up     Normal  11,39 MB        33,33%              141784319550391026443072753096570088106     
+    <ip>     DC2         RAC2        Up     Normal  42,69 KB        0,00%               141784319550391026443072753096570088206     
+STEP 5:
+Update keyspace schema with strategy_options = {DC1 : 2, DC2 : 2};
+STEP 6:
+Write last 500 000 keys of the test data set to DC1 with LOCAL_QUORUM consistency level.
+STEP 7:
+Check that first part of the test data set (first 500 000 of keys) was written correct to DC1.
+Check that last part of the test data set (last 500 000 of keys) was written correct to both datacenters.
+STEP 8:
+Run nodetool repair on each node of DC2 and wait until it's completed.
+STEP 9:
+Current nodetool ring:
+    <ip>     DC1         RAC1        Up     Normal  21,45 MB        33,33%              0                                           
+    <ip>     DC2         RAC2        Up     Normal  23,5 MB         33,33%              100                                         
+    <ip>     DC1         RAC1        Up     Normal  20,67 MB        33,33%              28356863910078205288614550619314017621      
+    <ip>     DC2         RAC2        Up     Normal  23,55 MB        33,33%              28356863910078205288614550619314017721      
+    <ip>     DC1         RAC1        Up     Normal  21,18 MB        33,33%              56713727820156410577229101238628035242      
+    <ip>     DC2         RAC2        Up     Normal  23,5 MB         33,33%              56713727820156410577229101238628035342      
+    <ip>     DC1         RAC1        Up     Normal  23,5 MB         33,33%              85070591730234615865843651857942052864      
+    <ip>     DC2         RAC2        Up     Normal  23,55 MB        33,33%              85070591730234615865843651857942052964      
+    <ip>     DC1         RAC1        Up     Normal  21,44 MB        33,33%              113427455640312821154458202477256070485     
+    <ip>     DC2         RAC2        Up     Normal  23,46 MB        33,33%              113427455640312821154458202477256070585     
+    <ip>     DC1         RAC1        Up     Normal  20,53 MB        33,33%              141784319550391026443072753096570088106     
+    <ip>     DC2         RAC2        Up     Normal  23,55 MB        33,33%              141784319550391026443072753096570088206   
+Check that full test data set has been written to both datacenters.
+Resulit :
+Full test data set was successfully written to DC1. 24448 of them are not present on DC1.
+Repeating nodetool repair doesn’t help.
+Result:
+It seems that problem is related with the process of identifying keys which must be repaired when current datacenter already had some keys.
+If we start empty DC2 nodes after DC1 have got all 1 000 000 - nodetool repair works fine, without missing keys.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Zarutin
+Reporter:
+Vladimir Barinov
+Create date:
+21/Jan/13 13:40
+Update date:
+16/Apr/19 09:32
+Resolved date:
+09/Jul/13 21:36

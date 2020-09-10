@@ -1,0 +1,82 @@
+Summary:
+Compaction has no effects
+Description:
+Hi there,
+I'm on cassandra 2.1 since then I figured out that in some circumstances (I can't find a way to reproduce them constantly) minor compactions and full compactions had no effects.
+We are on a cluster composed of 5 nodes with around 500gb of data, no deletions around 1.5k updates/s and same on reads.
+After a repair I saw that a couple of nodes were `slow`, I investigate further and I found that on these two nodes the number of sstable were around 20.000+ ! We use STC.
+So with node tool I triggered a full compaction, It took less than I minute (with nothing in the logs) and of course the number of sstable didn't go down.
+Then I drained the node, and I ran again with `nodetool compact`, at that point the number of sstables went down to less than 10.
+I tough was a strange spot problem. However after a week I noticed that one node had ~100 sstabels where others just 8-10.
+I ran again the compaction (It last less than a minute with nothing in logs) and didn't change anything. I drained it and restarted then compacted and took several hours to get it back close to 2/3 sstables.
+What could be? We never incurred this behavior before.
+Here informations about the table:
+CREATE TABLE xyz (
+    ppk text PRIMARY KEY,
+   .. ten more columns...
+) WITH bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'min_threshold': '4', 'cold_reads_to_omit': '0.0', 'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'}
+    AND dclocal_read_repair_chance = 0.0
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99.0PERCENTILE';
+Here the current cf stats:
+  SSTable count: 11
+  Space used (live), bytes: 118007220865
+  Space used (total), bytes: 118007220865
+  Space used by snapshots (total), bytes: 170591332257
+  SSTable Compression Ratio: 0.3643916626015517
+  Memtable cell count: 920306
+  Memtable data size, bytes: 70034097
+  Memtable switch count: 25
+  Local read count: 5358772
+  Local read latency: 54.621 ms
+  Local write count: 4715106
+  Local write latency: 0.069 ms
+  Pending flushes: 0
+  Bloom filter false positives: 53757
+  Bloom filter false ratio: 0.04103
+  Bloom filter space used, bytes: 220634056
+  Compacted partition minimum bytes: 18
+  Compacted partition maximum bytes: 61214
+  Compacted partition mean bytes: 1935
+  Average live cells per slice (last five minutes): 0.8139232271871242
+  Average tombstones per slice (last five minutes): 0.5493417148555677
+Is there anything else that I can provide?
+Thanks!
+DD
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Davide
+Create date:
+19/Oct/14 00:33
+Update date:
+16/Apr/19 09:31
+Resolved date:
+20/Oct/14 18:19

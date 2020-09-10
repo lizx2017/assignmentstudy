@@ -1,0 +1,105 @@
+Summary:
+cassandra 1.2.0 beta: atomic_batch_mutate fails with Default TException
+Description:
+Hi,
+We have installed cassandra 1.2.0 beta with thrift 0.7.0. We are using cpp interface. When we use batch_mutate API, it works fine. But when we are using the new atomic_batch_mutate API with same parameters as batch_mutate, it fails with org::apache::cassandra::TimedOutException, what(): Default TException. We get the same TException error even after increasing Send/Reciv timeout values of Tsocket to 15 seconds or more.
+Details:
+cassandra ring:
+cassandra ring with single node
+consistency level paramter to atomic_batch_mutate
+ConsistencyLevel::ONE
+Thrift version:
+same results with thrift 0.5.0 and thrift 0.7.0.
+thrift 0.8.0 seems unsupported with cassanda 1.2.0. Gives compilation error for cpp interface build.
+We are calling atomic_batch_mutate() with same parameters as batch_mutate.
+cassclient.atomic_batch_mutate(outermap1, ConsistencyLevel::ONE);
+where outmap1 is
+map<string, map<string, vector<Mutation> > > outermap1;
+Please point out if anything is missing while using atomic_batch_mutate or the reason behind the failure.
+The logs in cassandra system.log we get during atomic_batch_mutate failure are:
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,604 MessagingService.java (line 800) 1 MUTATION messages dropped in last 5000ms
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,606 StatusLogger.java (line 53) Pool Name Active Pending Blocked
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,607 StatusLogger.java (line 68) ReadStage 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,608 StatusLogger.java (line 68) RequestResponseStage 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,608 StatusLogger.java (line 68) ReadRepairStage 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,608 StatusLogger.java (line 68) MutationStage 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,608 StatusLogger.java (line 68) ReplicateOnWriteStage 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,609 StatusLogger.java (line 68) GossipStage 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,609 StatusLogger.java (line 68) AntiEntropyStage 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,609 StatusLogger.java (line 68) MigrationStage 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,609 StatusLogger.java (line 68) StreamStage 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,609 StatusLogger.java (line 68) MemtablePostFlusher 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,610 StatusLogger.java (line 68) FlushWriter 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,610 StatusLogger.java (line 68) MiscStage 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,610 StatusLogger.java (line 68) commitlog_archiver 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,610 StatusLogger.java (line 68) InternalResponseStage 0 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,610 StatusLogger.java (line 73) CompactionManager 0 0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,611 StatusLogger.java (line 85) MessagingService n/a 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,611 StatusLogger.java (line 95) Cache Type Size Capacity KeysToSave Provider
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,611 StatusLogger.java (line 96) KeyCache 227 74448896 all
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,611 StatusLogger.java (line 102) RowCache 0 0 all org.apache.cassandra.cache.SerializingCacheProvider
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,612 StatusLogger.java (line 109) ColumnFamily Memtable ops,data
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,612 StatusLogger.java (line 112) KeyspaceTest.CF_Test 1,71
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,612 StatusLogger.java (line 112) system.local 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,612 StatusLogger.java (line 112) system.peers 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,612 StatusLogger.java (line 112) system.batchlog 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,612 StatusLogger.java (line 112) system.NodeIdInfo 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,612 StatusLogger.java (line 112) system.LocationInfo 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,612 StatusLogger.java (line 112) system.Schema 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,613 StatusLogger.java (line 112) system.Migrations 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,613 StatusLogger.java (line 112) system.schema_keyspaces 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,613 StatusLogger.java (line 112) system.schema_columns 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,613 StatusLogger.java (line 112) system.schema_columnfamilies 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,613 StatusLogger.java (line 112) system.IndexInfo 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,613 StatusLogger.java (line 112) system.range_xfers 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,613 StatusLogger.java (line 112) system.hints 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,613 StatusLogger.java (line 112) system.HintsColumnFamily 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,614 StatusLogger.java (line 112) system_traces.sessions 0,0
+INFO [ScheduledTasks:1] 2012-10-10 04:47:30,614 StatusLogger.java (line 112) system_traces.events 0,0
+ERROR [EXPIRING-MAP-REAPER:1] 2012-10-10 04:47:41,857 CassandraDaemon.java (line 132) Exception in thread Thread[EXPIRING-MAP-REAPER:1,5,main]
+java.lang.AssertionError: rwcvmx84q0379/10.17.122.99
+at org.apache.cassandra.service.StorageProxy.scheduleLocalHint(StorageProxy.java:565)
+at org.apache.cassandra.net.MessagingService$5.apply(MessagingService.java:333)
+at org.apache.cassandra.net.MessagingService$5.apply(MessagingService.java:321)
+at org.apache.cassandra.utils.ExpiringMap$1.run(ExpiringMap.java:94)
+at org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor$UncomplainingRunnable.run(DebuggableScheduledThreadPoolExecutor.java:75)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+at java.util.concurrent.FutureTask$Sync.innerRunAndReset(FutureTask.java:351)
+at java.util.concurrent.FutureTask.runAndReset(FutureTask.java:178)
+at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$201(ScheduledThreadPoolExecutor.java:165)
+at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:267)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:679)
+A sample program in CPP we have tested is attached.
+Regards,
+Debadatta,
+Openwave
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+1.2.0 beta 2
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+c++
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+debadatta das
+Create date:
+11/Oct/12 15:17
+Update date:
+16/Apr/19 09:32
+Resolved date:
+22/Oct/12 16:15

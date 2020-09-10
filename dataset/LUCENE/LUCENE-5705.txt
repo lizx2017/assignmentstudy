@@ -1,0 +1,35 @@
+Summary:
+ConcurrentMergeScheduler/maxMergeCount default is too low
+Description:
+The default value for maxMergeCount in ConcurrentMergeScheduler is 2. This causes problems for Solr's dataimport handler when very large imports are done from a JDBC source.
+What happens is that when three merge tiers are scheduled at the same time, the add/update thread will stop for several minutes while the largest merge finishes. In the meantime, the dataimporter JDBC connection to the database will time out, and when the add/update thread resumes, the import will fail because the ResultSet throws an exception. Setting maxMergeCount to 6 eliminates this issue for virtually any size import – although it is theoretically possible to have that many simultaneous merge tiers, I've never seen it.
+As long as maxThreads is properly set (the default value of 1 is appropriate for most installations), I cannot think of a really good reason that the default for maxMergeCount should be so low. If someone does need to strictly control the number of threads that get created, they can reduce the number. Perhaps someone with more experience knows of a really good reason to make this default low?
+I'm not sure what the new default number should be, but I'd like to avoid bikeshedding. I don't think it should be Integer.MAX_VALUE.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+4.8
+Fix_version:
+4.9
+Component:
+core/other
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Shawn Heisey
+Reporter:
+Shawn Heisey
+Create date:
+24/May/14 15:24
+Update date:
+26/May/14 08:45
+Resolved date:
+

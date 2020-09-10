@@ -1,0 +1,56 @@
+Summary:
+Global memstore size will be calculated wrongly if replaying recovered edits throws exception
+Description:
+Recently we encountered such a case in 0.94-version:
+Flush is triggered frequently because:
+DEBUG org.apache.hadoop.hbase.regionserver.MemStoreFlusher: Flush thread woke up because memory above low water=14.4g
+But, the real global memstore size is about 1g.
+It seems the global memstore size has been calculated wrongly.
+Through the logs, I find the following root cause log:
+ERROR org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Failed open of region=notifysub2_index,\x83\xDC^\xCD\xA3\x8A<\x
+E2\x8E\xE6\xAD!\xDC\xE8t\xED,1379148697072.46be7c2d71c555379278a7494df3015e., starting to roll back the global memstore size.
+java.lang.NegativeArraySizeException
+        at org.apache.hadoop.hbase.KeyValue.getFamily(KeyValue.java:1096)
+        at org.apache.hadoop.hbase.regionserver.HRegion.replayRecoveredEdits(HRegion.java:2933)
+        at org.apache.hadoop.hbase.regionserver.HRegion.replayRecoveredEditsIfAny(HRegion.java:2811)
+        at org.apache.hadoop.hbase.regionserver.HRegion.initializeRegionInternals(HRegion.java:583)
+        at org.apache.hadoop.hbase.regionserver.HRegion.initialize(HRegion.java:499)
+        at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:3939)
+        at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:3887)
+        at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.openRegion(OpenRegionHandler.java:332)
+        at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:108)
+        at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:169)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+Browse the code of this part, seems a critial bug about global memstore size when replaying recovered edits.
+(RegionServerAccounting#clearRegionReplayEditsSize is called for each edit file, it means the roll back size is smaller than actual when calling RegionServerAccounting#rollbackRegionReplayEditsSize)
+Anyway, the solution is easy as the patch.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.96.1
+Fix_version:
+0.98.0, 0.96.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+21/Oct/13 02:55
+Update date:
+28/Apr/15 16:18
+Resolved date:
+14/Nov/13 02:19

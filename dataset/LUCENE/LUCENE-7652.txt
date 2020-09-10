@@ -1,0 +1,35 @@
+Summary:
+LRUQueryCache / IndexSearcher.DEFAULT_QUERY_CACHE memory leak
+Description:
+Our IndexSearcher.DEFAULT_QUERY_CACHE is set to use 32MB of heap (the default), however upon inspection of our application's heap, it's retaining ~280MB of memory and increasing slowly.
+LRUQueryCache.cache.size was at 12,099, and LRUQueryCache.cache.modCount was also 12,099, meaning nothing was removed from LRUQueryCache.cache at all.
+The keys of LRUQueryCache.cache are instances of SegmentCoreReaders, and I've checked many of the keys, the only reference to them is LRUQueryCache.cache, given LRUQueryCache.cache is an IdentityHashMap, that means you can't even get to them outside of the cache because you can't get a key that's equivalent to one of these in the cache.
+This affectively makes IndexSearcher.DEFAULT_QUERY_CACHE a memory black hole.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Duplicate
+Affects_version:
+5.4, 5.5
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Lae
+Create date:
+23/Jan/17 03:19
+Update date:
+25/Jan/17 23:21
+Resolved date:
+25/Jan/17 15:02

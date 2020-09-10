@@ -1,0 +1,68 @@
+Summary:
+RowIndexEntry.deletionTime raises UnsupportedOperationException when upgrading to 1.2.7
+Description:
+Upgrading from 1.2.5 to 1.2.7 immediately caused the following exception. We stopped the node and reverted to 1.2.5.
+I'll note that we also run a 1.2.6 cluster that is doing fine, so I think this is caused by a change in 1.2.7.
+ERROR [MutationStage:59] 2013-07-26 19:35:10,460 CassandraDaemon.java (line 192) Exception in thread Thread[MutationStage:59,5,main]
+java.lang.ExceptionInInitializerError
+ at org.apache.cassandra.utils.CounterId.localIds(CounterId.java:49)
+ at org.apache.cassandra.utils.CounterId.getLocalId(CounterId.java:54)
+ at org.apache.cassandra.db.context.CounterContext.create(CounterContext.java:105)
+ at org.apache.cassandra.db.CounterUpdateColumn.localCopy(CounterUpdateColumn.java:84)
+ at org.apache.cassandra.db.CounterUpdateColumn.localCopy(CounterUpdateColumn.java:34)
+ at org.apache.cassandra.db.CounterMutation.apply(CounterMutation.java:133)
+ at org.apache.cassandra.service.StorageProxy$7.runMayThrow(StorageProxy.java:758)
+ at org.apache.cassandra.service.StorageProxy$LocalMutationRunnable.run(StorageProxy.java:1630)
+ at org.apache.cassandra.service.StorageProxy$3.apply(StorageProxy.java:142)
+ at org.apache.cassandra.service.StorageProxy.performWrite(StorageProxy.java:385)
+ at org.apache.cassandra.service.StorageProxy.applyCounterMutationOnLeader(StorageProxy.java:733)
+ at org.apache.cassandra.db.CounterMutationVerbHandler.doVerb(CounterMutationVerbHandler.java:53)
+ at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:56)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+ at java.lang.Thread.run(Thread.java:722)
+Caused by: java.lang.UnsupportedOperationException
+ at org.apache.cassandra.db.RowIndexEntry.deletionTime(RowIndexEntry.java:81)
+ at org.apache.cassandra.db.columniterator.IndexedSliceReader.<init>(IndexedSliceReader.java:109)
+ at org.apache.cassandra.db.columniterator.SSTableSliceIterator.createReader(SSTableSliceIterator.java:68)
+ at org.apache.cassandra.db.columniterator.SSTableSliceIterator.<init>(SSTableSliceIterator.java:44)
+ at org.apache.cassandra.db.filter.SliceQueryFilter.getSSTableColumnIterator(SliceQueryFilter.java:101)
+ at org.apache.cassandra.db.filter.QueryFilter.getSSTableColumnIterator(QueryFilter.java:68)
+ at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:272)
+ at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:65)
+ at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1390)
+ at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1213)
+ at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1125)
+ at org.apache.cassandra.db.SystemTable.getCurrentLocalCounterId(SystemTable.java:595)
+ at org.apache.cassandra.utils.CounterId$LocalCounterIdHistory.<init>(CounterId.java:194)
+ at org.apache.cassandra.utils.CounterId$LocalIds.<clinit>(CounterId.java:42)
+ ... 16 more
+The code causing it seems to have changed in 1.2.7 via https://issues.apache.org/jira/browse/CASSANDRA-5677
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.8, 2.0 rc1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Brett Hoerner
+Create date:
+26/Jul/13 21:19
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Jul/13 19:20

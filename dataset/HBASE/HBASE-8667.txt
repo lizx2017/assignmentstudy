@@ -1,0 +1,76 @@
+Summary:
+Master and Regionserver not able to communicate if both bound to different network interfaces on the same machine.
+Description:
+While testing HBASE-8640 fix found that master and regionserver running on different interfaces are not communicating properly.
+I have two interfaces 1) lo 2) eth0 in my machine and default hostname interface is lo.
+I have configured master ipc address to ip of eth0 interface.
+Started master and regionserver on the same machine.
+1) master rpc server bound to eth0 and RS rpc server bound to lo
+2) Since rpc client is not binding to any ip address, when RS is reporting RS startup its getting registered with eth0 ip address(but actually it should register localhost)
+Here are RS logs:
+2013-05-31 06:05:28,608 WARN  [regionserver60020] org.apache.hadoop.hbase.regionserver.HRegionServer: reportForDuty failed; sleeping and then retrying.
+2013-05-31 06:05:31,609 INFO  [regionserver60020] org.apache.hadoop.hbase.regionserver.HRegionServer: Attempting connect to Master server at 192.168.0.100,60000,1369960497008
+2013-05-31 06:05:31,609 INFO  [regionserver60020] org.apache.hadoop.hbase.regionserver.HRegionServer: Telling master at 192.168.0.100,60000,1369960497008 that we are up with port=60020, startcode=1369960502544
+2013-05-31 06:05:31,618 DEBUG [regionserver60020] org.apache.hadoop.hbase.regionserver.HRegionServer: Config from master: hbase.rootdir=hdfs://localhost:2851/hbase
+2013-05-31 06:05:31,618 DEBUG [regionserver60020] org.apache.hadoop.hbase.regionserver.HRegionServer: Config from master: fs.default.name=hdfs://localhost:2851
+2013-05-31 06:05:31,618 INFO  [regionserver60020] org.apache.hadoop.hbase.regionserver.HRegionServer: Master passed us a different hostname to use; was=localhost, but now=192.168.0.100
+Here are master logs:
+2013-05-31 06:05:31,615 INFO  [IPC Server handler 9 on 60000] org.apache.hadoop.hbase.master.ServerManager: Registering server=192.168.0.100,60020,1369960502544
+Since master has wrong rpc server address of RS, META is not getting assigned.
+2013-05-31 06:05:34,362 DEBUG [master-192.168.0.100,60000,1369960497008] org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan was found (or we are ignoring an existing plan) for .META.,,1.1028785192 so generated a random one; hri=.META.,,1.1028785192, src=, dest=192.168.0.100,60020,1369960502544; 1 (online=1, available=1) available servers, forceNewPlan=false
+-----
+org.apache.hadoop.hbase.master.AssignmentManager: Failed assignment of .META.,,1.1028785192 to 192.168.0.100,60020,1369960502544, trying to assign elsewhere instead; try=1 of 10
+java.net.ConnectException: Connection refused
+ at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+ at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:592)
+ at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:206)
+ at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:511)
+ at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:481)
+ at org.apache.hadoop.hbase.ipc.RpcClient$Connection.setupConnection(RpcClient.java:549)
+ at org.apache.hadoop.hbase.ipc.RpcClient$Connection.setupIOstreams(RpcClient.java:813)
+ at org.apache.hadoop.hbase.ipc.RpcClient.getConnection(RpcClient.java:1422)
+ at org.apache.hadoop.hbase.ipc.RpcClient.call(RpcClient.java:1315)
+ at org.apache.hadoop.hbase.ipc.RpcClient.callBlockingMethod(RpcClient.java:1532)
+ at org.apache.hadoop.hbase.ipc.RpcClient$BlockingRpcChannelImplementation.callBlockingMethod(RpcClient.java:1587)
+ at org.apache.hadoop.hbase.protobuf.generated.AdminProtos$AdminService$BlockingStub.openRegion(AdminProtos.java:15039)
+ at org.apache.hadoop.hbase.master.ServerManager.sendRegionOpen(ServerManager.java:627)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1826)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1453)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1432)
+ at org.apache.hadoop.hbase.master.handler.ClosedRegionHandler.process(ClosedRegionHandler.java:104)
+ at org.apache.hadoop.hbase.master.AssignmentManager.addToRITandCallClose(AssignmentManager.java:699)
+ at org.apache.hadoop.hbase.master.AssignmentManager.processRegionsInTransition(AssignmentManager.java:584)
+ at org.apache.hadoop.hbase.master.AssignmentManager.processRegionInTransition(AssignmentManager.java:517)
+ at org.apache.hadoop.hbase.master.AssignmentManager.processRegionInTransitionAndBlockUntilAssigned(AssignmentManager.java:473)
+ at org.apache.hadoop.hbase.master.HMaster.assignMeta(HMaster.java:917)
+ at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:803)
+ at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:547)
+ at java.lang.Thread.run(Thread.java:636)
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.2
+Component:
+IPC/RPC
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+rajeshbabu
+Create date:
+31/May/13 01:37
+Update date:
+31/Oct/13 21:49
+Resolved date:
+15/Aug/13 18:27

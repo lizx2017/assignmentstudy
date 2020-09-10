@@ -1,0 +1,55 @@
+Summary:
+get_slice and multiget_slice failing on trunk
+Description:
+get_slice and multiget_slice are failing on trunk with the following error:
+java.lang.AssertionError: null
+ at org.apache.cassandra.db.filter.ClusteringIndexNamesFilter.<init>(ClusteringIndexNamesFilter.java:53) ~[cassandra-all-3.0.0.592.jar:3.0.0.592]
+ at org.apache.cassandra.thrift.CassandraServer.toInternalFilter(CassandraServer.java:405) ~[cassandra-all-3.0.0.592.jar:5.0.0-SNAPSHOT]
+ at org.apache.cassandra.thrift.CassandraServer.multigetSliceInternal(CassandraServer.java:547) ~[cassandra-all-3.0.0.592.jar:5.0.0-SNAPSHOT]
+ at org.apache.cassandra.thrift.CassandraServer.multiget_slice(CassandraServer.java:348) ~[cassandra-all-3.0.0.592.jar:5.0.0-SNAPSHOT]
+ at org.apache.cassandra.thrift.Cassandra$Processor$multiget_slice.getResult(Cassandra.java:3716) ~[cassandra-thrift-3.0.0.592.jar:5.0.0-SNAPSHOT]
+ at org.apache.cassandra.thrift.Cassandra$Processor$multiget_slice.getResult(Cassandra.java:3700) ~[cassandra-thrift-3.0.0.592.jar:5.0.0-SNAPSHOT]
+ at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:39) ~[libthrift-0.9.2.jar:0.9.2]
+ at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:39) ~[libthrift-0.9.2.jar:0.9.2]
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:204) ~[cassandra-all-3.0.0.592.jar:5.0.0-SNAPSHOT]
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142) ~[na:1.8.0_45]
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617) ~[na:1.8.0_45]
+ at java.lang.Thread.run(Thread.java:745) ~[na:1.8.0_45]
+The schema used for this was
+create table test (k int, v int, primary key(k)) with compact storage;
+and the code used for the call was
+        SlicePredicate predicate = new SlicePredicate();
+        predicate.column_names = Collections.singletonList(ByteBufferUtil.bytes("v"));
+        client.multiget_slice(Collections.singletonList(key), new ColumnParent("test"), predicate, ConsistencyLevel.ONE);
+The error is coming from this line in ClusteringIndexNamesFilter
+        assert !clusterings.contains(Clustering.STATIC_CLUSTERING);
+which is failing the assertion because column 'v' is static.
+Apologies for the line mismatches in ClusteringIndexNamesFilter I had some debug statements in the code to help track down what was happening
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+3.0 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Mike Adamson
+Create date:
+28/Jul/15 09:58
+Update date:
+16/Apr/19 09:31
+Resolved date:
+24/Aug/15 12:52

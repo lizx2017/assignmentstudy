@@ -1,0 +1,71 @@
+Summary:
+Dropping a table while compacting causes exceptions
+Description:
+Run the attached test:
+ [junit] ------------- ---------------- ---------------
+    [junit] Testcase: testDropDuringCompaction(org.apache.cassandra.cql3.CrcCheckChanceTest): Caused an ERROR
+    [junit] java.util.concurrent.ExecutionException: java.lang.AssertionError
+    [junit] java.lang.RuntimeException: java.util.concurrent.ExecutionException: java.lang.AssertionError
+    [junit]  at org.apache.cassandra.utils.FBUtilities.waitOnFuture(FBUtilities.java:402)
+    [junit]  at org.apache.cassandra.utils.FBUtilities.waitOnFutures(FBUtilities.java:391)
+    [junit]  at org.apache.cassandra.cql3.CrcCheckChanceTest.testDropDuringCompaction(CrcCheckChanceTest.java:144)
+    [junit] Caused by: java.util.concurrent.ExecutionException: java.lang.AssertionError
+    [junit]  at java.util.concurrent.FutureTask.report(FutureTask.java:122)
+    [junit]  at java.util.concurrent.FutureTask.get(FutureTask.java:188)
+    [junit]  at org.apache.cassandra.utils.FBUtilities.waitOnFuture(FBUtilities.java:398)
+    [junit] Caused by: java.lang.AssertionError
+    [junit]  at org.apache.cassandra.io.sstable.SSTableReader.markObsolete(SSTableReader.java:1706)
+    [junit]  at org.apache.cassandra.db.DataTracker.unmarkCompacting(DataTracker.java:240)
+    [junit]  at org.apache.cassandra.io.sstable.SSTableRewriter.replaceWithFinishedReaders(SSTableRewriter.java:495)
+    [junit]  at org.apache.cassandra.io.sstable.SSTableRewriter.finishAndMaybeThrow(SSTableRewriter.java:475)
+    [junit]  at org.apache.cassandra.io.sstable.SSTableRewriter.finish(SSTableRewriter.java:416)
+    [junit]  at org.apache.cassandra.io.sstable.SSTableRewriter.finish(SSTableRewriter.java:396)
+    [junit]  at org.apache.cassandra.db.compaction.CompactionTask.runMayThrow(CompactionTask.java:212)
+    [junit]  at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+    [junit]  at org.apache.cassandra.db.compaction.CompactionTask.executeInternal(CompactionTask.java:72)
+    [junit]  at org.apache.cassandra.db.compaction.AbstractCompactionTask.execute(AbstractCompactionTask.java:59)
+    [junit]  at org.apache.cassandra.db.compaction.CompactionManager$7.runMayThrow(CompactionManager.java:512)
+    [junit]  at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+    [junit]  at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+    [junit]  at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+    [junit]  at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+    [junit]  at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+    [junit]  at java.lang.Thread.run(Thread.java:745)
+    [junit]  Suppressed: java.lang.IllegalStateException: Attempted to release a reference that has already been released
+    [junit]   at org.apache.cassandra.utils.concurrent.Ref$State.release(Ref.java:173)
+    [junit]   at org.apache.cassandra.utils.concurrent.Ref.release(Ref.java:77)
+    [junit]   at org.apache.cassandra.utils.concurrent.Refs.release(Refs.java:212)
+    [junit]   at org.apache.cassandra.db.DataTracker.replaceReaders(DataTracker.java:413)
+    [junit]   at org.apache.cassandra.db.DataTracker.replaceEarlyOpenedFiles(DataTracker.java:322)
+    [junit]   at org.apache.cassandra.io.sstable.SSTableRewriter.replaceWithFinishedReaders(SSTableRewriter.java:494)
+    [junit]   at org.apache.cassandra.io.sstable.SSTableRewriter.abort(SSTableRewriter.java:252)
+    [junit]   at org.apache.cassandra.db.compaction.CompactionTask.runMayThrow(CompactionTask.java:218)
+    [junit] 
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+T Jake Luciani
+Create date:
+27/Apr/15 19:19
+Update date:
+16/Apr/19 09:31
+Resolved date:
+04/May/15 18:39

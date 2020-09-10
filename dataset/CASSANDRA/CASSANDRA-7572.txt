@@ -1,0 +1,56 @@
+Summary:
+cassandra-env.sh fails to find Java version if JAVA_TOOL_OPTIONS in environment
+Description:
+Parsing of Java version is done in cassandra-env.sh via
+java_ver_output=`"${JAVA:-java}" -version 2>&1`
+
+jvmver=`echo "$java_ver_output" | awk -F'"' 'NR==1 {print $2}'`
+This fails if the first line of output from `java -version` does not contain the version. When JAVA_TOOL_OPTIONS is set as the output is
+Picked up JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8
+java version "1.7.0_40"
+Java(TM) SE Runtime Environment (build 1.7.0_40-b43)
+Java HotSpot(TM) 64-Bit Server VM (build 24.0-b56, mixed mode)
+Parsing this is not guaranteed to work as there is no contract for this output. The recommended way of dealing with this is via a Java application (which will have access to each of these pieces).
+If you want to keep with this model of doing things, you can apply a very small but hacky patch:
+-jvmver=`echo "$java_ver_output" | awk -F'"' 'NR==1 {print $2}'`
++jvmver=`echo "$java_ver_output" | grep 'java version' | awk -F'"' 'NR==1 {print $2}'`
+ JVM_VERSION=${jvmver%_*}
+ JVM_PATCH_VERSION=${jvmver#*_}
+
+@@ -100,7 +100,7 @@
+ fi
+
+
+-jvm=`echo "$java_ver_output" | awk 'NR==2 {print $1}'`
++jvm=`echo "$java_ver_output" | grep -A 1 'java version' | awk 'NR==2 {print $1}'`
+ case "$jvm" in
+     OpenJDK)
+Otherwise, you need to write a java app, compiled for older versions, that returns this data via the java.specification.version and a combination of java.vm.name and java.vm.vendor.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10, 2.1 rc5
+Component:
+Local/Config
+Label:
+None
+Environment:
+linux, darwin
+Attachment number:
+0
+Assignee:
+Gregory Ramsperger
+Reporter:
+Gregory Ramsperger
+Create date:
+18/Jul/14 21:16
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/Jul/14 12:53

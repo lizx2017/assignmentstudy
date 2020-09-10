@@ -1,0 +1,39 @@
+Summary:
+Memory leak when using snapshot repairs
+Description:
+Running nodetool repair repeatedly with the -snapshot parameter results in a native memory leak. The JVM process will take up more and more physical memory until it is killed by the Linux OOM killer.
+The command used was as follows:
+nodetool repair keyspace -local -snapshot -pr -st start_token -et end_token
+Removing the -snapshot flag prevented the memory leak. The subrange repair necessitated multiple repairs, so it made the problem noticeable, but I believe the problem would be reproducible even if you ran repair repeatedly without specifying a start and end token.
+Notes from Yuki Morishita:
+Probably the cause is too many snapshots. Snapshot sstables are opened during validation, but memories used are freed when releaseReferences called. But since snapshots never get marked compacted, memories never freed.
+We only cleanup mmap'd memories when sstable is mark compacted. https://github.com/apache/cassandra/blob/cassandra-1.2/src/java/org/apache/cassandra/io/sstable/SSTableReader.java#L974
+Validation compaction never marks snapshots compacted.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.10, 2.0.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+J.B. Langston
+Create date:
+17/Sep/13 21:47
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/Sep/13 19:27

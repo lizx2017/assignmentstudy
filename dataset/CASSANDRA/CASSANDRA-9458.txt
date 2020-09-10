@@ -1,0 +1,40 @@
+Summary:
+Race condition causing StreamSession to get stuck in WAIT_COMPLETE
+Description:
+I think there is a race condition in StreamSession where one side of the stream could get stuck in WAIT_COMPLETE although both have sent COMPLETE messages. Consider a scenario that node B is being bootstrapped and it only receives files during the session:
+1- During a stream session A sends some files to B and B sends no files to A.
+2- Once B completes the last task (receiving), StreamSession::maybeComplete is invoked.
+3- While B is sending the COMPLETE message via StreamSession::maybeComplete, it also receives the COMPLETE message from A and therefore StreamSession::complete() is invoked.
+4- Therefore both maybeComplete() and complete() functions have branched into the state != State.WAIT_COMPLETE case and both set the state to WAIT_COMPLETE.
+5- Now B is waiting to receive COMPLETE although it's already received it and nothing triggers checking the state again, until it times out after streaming_socket_timeout_in_ms.
+In the log below:
+https://gist.github.com/omidaladini/003de259958ad8dfb07e
+although the node has received COMPLETE, "SocketTimeoutException" is thrown after streaming_socket_timeout_in_ms (30 minutes here).
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Omid Aladini
+Reporter:
+Omid Aladini
+Create date:
+22/May/15 14:30
+Update date:
+16/Apr/19 09:31
+Resolved date:
+29/May/15 09:19

@@ -1,0 +1,58 @@
+Summary:
+BaseScanner says "Current assignment of X is not valid" over and over for same region
+Description:
+From IRC today
+12:41 < cmorgan> hey guys. I'm having a recent  issue with a single node cluster running 0.20.4. After stopping for a backup I now get region assignment churn. Seems master keeps thinking that region
+                 assignment is not valid even when it is. Following is a log snippet:
+12:41 < cmorgan> [21/05/10 00:59:42] 3443246 [        HMaster] DEBUG ter.RegionServerOperationQueue  - Processing todo: PendingOpenOperation from localhost.,7802,1274425405680
+12:41 < cmorgan> [21/05/10 00:59:42] 3443246 [        HMaster] INFO  e.master.RegionServerOperation  - net_troove_coin_account_AccountCredentials,,1234913258116 open on 127.0.0.1:7802
+12:41 < cmorgan> [21/05/10 00:59:42] 3443246 [        HMaster] INFO  e.master.RegionServerOperation  - Updated row net_troove_coin_account_AccountCredentials,,1234913258116 in region .META.,,1 with
+                 startcode=1274425405680, server=127.0.0.1:7802
+12:41 < cmorgan> [21/05/10 00:59:42] 3443246 [        HMaster] DEBUG ter.RegionServerOperationQueue  - Processing todo: PendingOpenOperation from localhost.,7802,1274425405680
+12:41 < cmorgan> [21/05/10 00:59:42] 3443246 [        HMaster] INFO  e.master.RegionServerOperation  - net_troove_application_request_TemporaryRequest,,1234913268355 open on 127.0.0.1:7802
+12:41 < cmorgan> [21/05/10 00:59:42] 3443247 [        HMaster] INFO  e.master.RegionServerOperation  - Updated row net_troove_application_request_TemporaryRequest,,1234913268355 in region .META.,,1 with
+                 startcode=1274425405680, server=127.0.0.1:7802
+12:41 < cmorgan> [21/05/10 00:59:42] 3443247 [ger.metaScanner] DEBUG adoop.hbase.master.BaseScanner  - Current assignment of net_troove_coin_account_AccountEntry,,1271448856984 is not valid;
+                 serverAddress=127.0.0.1:7802, startCode=1274425405680 unknown.
+12:41 < cmorgan> [21/05/10 00:59:42] 3443248 [ger.metaScanner] DEBUG adoop.hbase.master.BaseScanner  - Current assignment of net_troove_coin_account_AccountEntry-Base_EntryDay_DESCENDING,,1273266418876
+                 is not valid;  serverAddress=127.0.0.1:7802, startCode=1274425405680 unknown.
+12:41 < cmorgan> [21/05/10 00:59:42] 3443251 [ger.metaScanner] DEBUG adoop.hbase.master.BaseScanner  - Current assignment of net_troove_coin_bank_BankStatement,,1266433980935 is not valid;
+                 serverAddress=127.0.0.1:7802, startCode=1274425405680 unknown.
+
+12:58 < cmorgan> stack: I'd been running with 0.20.4 for a week or so starting/stopping every night. Now this happens...
+
+14:11 < cmorgan> stack: some more info: On our mini production server the regionserver is getting "My address is localhost.:7802" (notice the dot after localhost). But the master is also sometimes
+                 referring to it as 127.0.0.1. I just used the same data and config on my laptop, and its binding to my external LAN ip ("My address is 10.0.1.4:7802"). Under this setup hbase comes up
+                 stable (no region assignment churn).
+Looking at this, I think issue is that when we register a server we use a getServerName on a HServerInfo provided by the regionserver (though we are on the master side) but BaseScanner uses a getServerName that is made by doing a dns lookup using the IP that it finds in the server column of .META. My sense is that is possible for the regionserver hostname and what the master finds when it does a lookup against dns can disagree, fatally.
+This issue seems popular over last few weeks. Was reported at least once more on a standalone instance and also on krispykola's 15-node ec2 cluster (He went back to 0.20.3 and then it went away?). It made for what looked like double-assignment in his case (Our attempt at caching DNS names may be amiss – I tihnk tht the main diff between 0.20.3 and 0.20.4 in this area).
+My thought is to purge DNS from the HServerInfo passed by the RS to Master on startup and heartbeating and to use IPs only (and even then, the IP that the master tells the RS to use, its remote address as seen by the master). We might have to do this fix for 0.20.5 since it seems to happen more in 0.20.4.
+I'm looking into this. Opinions welcome.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+22/May/10 04:45
+Update date:
+20/Nov/15 12:43
+Resolved date:
+29/May/10 00:41

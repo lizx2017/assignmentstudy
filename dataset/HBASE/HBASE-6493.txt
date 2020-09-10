@@ -1,0 +1,53 @@
+Summary:
+HashSet of byte array is being used in couple of places
+Description:
+While working on a jira I realized I had made a mistake of making a HashSet of byte array.
+Then out of curiosity I checked if we do same any where else in code base. I came with following files.
+/src/main/java/org/apache/hadoop/hbase/mapreduce/RowCounter.java: Set<byte []> qualifiers = new HashSet<byte[]>();
+/src/main/java/org/apache/hadoop/hbase/regionserver/HRegionServer.java: columnFamilies = new HashSet<byte[]>();
+/src/test/java/org/apache/hadoop/hbase/filter/TestFirstKeyValueMatchingQualifiersFilter.java: Set<byte[]> quals = new HashSet<byte[]>();
+/src/test/java/org/apache/hadoop/hbase/regionserver/metrics/TestSchemaMetrics.java: Set<byte[]> families = new HashSet<byte[]>();
+(1) and (3) are mine and I will fix them (not yet committed). Quoting the exact reference from (2) below :
+ @Override                                                                     
+  public GetStoreFileResponse getStoreFile(final RpcController controller,          
+      final GetStoreFileRequest request) throws ServiceException {              
+    try {                                                                       
+      HRegion region = getRegion(request.getRegion());                          
+      requestCount.incrementAndGet();                                           
+      Set<byte[]> columnFamilies = null;                                        
+      if (request.getFamilyCount() == 0) {                                      
+        columnFamilies = region.getStores().keySet();                           
+      } else {                                                                  
+        columnFamilies = new HashSet<byte[]>();                                 
+        for (ByteString cf: request.getFamilyList()) {                          
+          columnFamilies.add(cf.toByteArray());                                 
+        }                                                                       
+      }  
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nick Dimiduk
+Reporter:
+Shrijeet Paliwal
+Create date:
+01/Aug/12 22:42
+Update date:
+23/Sep/13 18:45
+Resolved date:
+21/Feb/13 19:26

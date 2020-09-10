@@ -1,0 +1,34 @@
+Summary:
+rolling-restart.sh shouldn't rely on zoo.cfg
+Description:
+I tried the rolling-restart script on our dev environment, which is configured with zoo.cfg for zookeeper, and it worked pretty well. Then I tried it on our MR cluster, which doesn't have a zoo.cfg, and we suffered some downtime (no biggie tho, nothing critical was running). When the script calls this line:
+bin/hbase zkcli stat $zmaster
+It directly runs a ZooKeeperMain which isn't modified to read from the HBase configuration files. What happens next if ZK isn't running on the master node is that it receives a ConnectionRefused, ignores it, procedes to restart the master (which waits on the znode), and the starts restarting the region servers. They can't shutdown properly under 60 seconds, since they need a master, so they get killed. What follows is pretty ugly and pretty much requires a whole restart.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Jean-Daniel Cryans
+Create date:
+14/Sep/10 21:53
+Update date:
+20/Nov/15 12:42
+Resolved date:
+22/Oct/10 19:56

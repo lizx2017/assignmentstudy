@@ -1,0 +1,101 @@
+Summary:
+High CPU load and OutOfMemoryError when rendering shading
+Description:
+By Frank D. from the mailing list:
+When we try to convert the attached pdf, the CPU load of tomcat is raising and it seems, that the process hangs. The tomcat process is no more responsive and after a long while, we get an memory overflow. Also the server load is very high meanwhile.
+Some debugging at 50 dpi:
+PDFOperator{cs}: [COSName{CS0}]
+PDFOperator{scn}: [COSName{P0}]
+PDFOperator{gs}: [COSName{GS0}]
+PDFOperator{m}: [COSFloat{-10551.00391}, COSFloat{667.6051}]
+PDFOperator{l}: [COSFloat{-10551.00391}, COSFloat{1447.09143}]
+PDFOperator{l}: [COSFloat{9338.57129}, COSFloat{1447.09143}]
+PDFOperator{l}: [COSFloat{9338.57129}, COSFloat{667.6051}]
+PDFOperator{f}: []
+
+f = Fill path using non zero winding rule
+
+(...wait...)
+
+PDFOperator{cs}: [COSName{CS0}]
+PDFOperator{scn}: [COSName{P0}]
+PDFOperator{gs}: [COSName{GS0}]
+PDFOperator{m}: [COSFloat{-18801.79492}, COSFloat{667.6051}]
+PDFOperator{l}: [COSFloat{-18801.79492}, COSFloat{1447.09143}]
+PDFOperator{l}: [COSFloat{1087.7804}, COSFloat{1447.09143}]
+PDFOperator{l}: [COSFloat{1087.7804}, COSFloat{667.6051}]
+PDFOperator{f}: []
+
+(...wait...)
+
+PDFOperator{cs}: [COSName{CS0}]
+PDFOperator{scn}: [COSName{P0}]
+PDFOperator{gs}: [COSName{GS0}]
+PDFOperator{m}: [COSFloat{-18801.79492}, COSFloat{11.15869}]
+PDFOperator{l}: [COSFloat{-18801.79492}, COSFloat{790.64502}]
+PDFOperator{l}: [COSFloat{1087.7804}, COSFloat{790.64502}]
+PDFOperator{l}: [COSFloat{1087.7804}, COSFloat{11.15869}]
+PDFOperator{f}: []
+
+(...wait...)
+(...wait...)
+(...wait...)
+
+PDFOperator{cs}: [COSName{CS0}]
+PDFOperator{scn}: [COSName{P0}]
+PDFOperator{gs}: [COSName{GS0}]
+PDFOperator{m}: [COSFloat{-10551.00391}, COSFloat{667.6051}]
+PDFOperator{l}: [COSFloat{-10551.00391}, COSFloat{1447.09143}]
+PDFOperator{l}: [COSFloat{9338.57129}, COSFloat{1447.09143}]
+PDFOperator{l}: [COSFloat{9338.57129}, COSFloat{667.6051}]
+PDFOperator{f}: []
+
+Exception in thread "main" java.lang.OutOfMemoryError: GC overhead limit exceeded
+        at sun.java2d.cmm.kcms.CMMImageLayout.<init>(Unknown Source)
+        at sun.java2d.cmm.kcms.ICC_Transform.colorConvert(Unknown Source)
+        at java.awt.color.ICC_ColorSpace.toRGB(Unknown Source)
+        at org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB.toRGB(PDDeviceRGB.java:82)
+        at org.apache.pdfbox.pdmodel.graphics.shading.ShadingContext.convertToRGB(ShadingContext.java:142)
+        at org.apache.pdfbox.pdmodel.graphics.shading.TriangleBasedShadingContext.evalFunctionAndConvertToRGB(TriangleBasedShadingContext.java:167)
+        at org.apache.pdfbox.pdmodel.graphics.shading.TriangleBasedShadingContext.calcPixelTable(TriangleBasedShadingContext.java:121)
+        at org.apache.pdfbox.pdmodel.graphics.shading.GouraudShadingContext.calcPixelTable(GouraudShadingContext.java:111)
+        at org.apache.pdfbox.pdmodel.graphics.shading.TriangleBasedShadingContext.createPixelTable(TriangleBasedShadingContext.java:80)
+        at org.apache.pdfbox.pdmodel.graphics.shading.Type4ShadingContext.<init>(Type4ShadingContext.java:65)
+        at org.apache.pdfbox.pdmodel.graphics.shading.Type4ShadingPaint.createContext(Type4ShadingPaint.java:66)
+        at sun.java2d.pipe.AlphaPaintPipe.startSequence(Unknown Source)
+        at sun.java2d.pipe.SpanShapeRenderer$Composite.startSequence(Unknown Source)
+        at sun.java2d.pipe.SpanShapeRenderer.renderSpans(Unknown Source)
+        at sun.java2d.pipe.SpanShapeRenderer.fill(Unknown Source)
+        at sun.java2d.pipe.ValidatePipe.fill(Unknown Source)
+        at sun.java2d.SunGraphics2D.fill(Unknown Source)
+        at org.apache.pdfbox.rendering.PageDrawer.fillPath(PageDrawer.java:611)
+The problem is that a type 4 shading ("gouraud shading") is called with huge triangles (not shown here but I saw it in debugging) and huge device bounds (e.g. x=-10551.004,y=667.6051,w=19889.574,h=779.4863). The shading routines of types 4-7 create a mapping table for the color of every point in a shading triangle. Because these triangles and the device bounds are so huge, the table is huge and takes a long time to be calculated, uses a lot of memory, with the result above.
+IMHO it is a java bug, it should consider the clipping when calculating the device bounds when calling Paint.createContext() and not pass device bounds outside of the clipping region. The solution will be (once again ) to do ourselves what java doesn't.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.9, 1.8.10, 1.8.11, 2.0.0
+Fix_version:
+1.8.11, 2.0.0
+Component:
+Rendering
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+22/Jul/15 16:21
+Update date:
+02/Nov/16 10:35
+Resolved date:
+22/Jul/15 18:58

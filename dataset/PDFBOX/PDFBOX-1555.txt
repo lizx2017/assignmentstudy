@@ -1,0 +1,55 @@
+Summary:
+Javascript after %%EOF fails parsing
+Description:
+Hi
+I was investigating a failure to parse and debugging the pdfbox code when I noticed in the PDF document that I can't forward at the end of the file this:
+%%EOF^M
+^M
+^M
+<script type="text/javascript">^M
+var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");^M
+document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));^M
+</script>^M
+<script type="text/javascript">^M
+try {^M
+var pageTracker = _gat._getTracker("UA-7429935-1");^M
+pageTracker._trackPageview();^M
+} catch(err) {}</script>^M
+^M
+^M
+So the document ends.. but there is more content.. basically some javascript. What the parser does is it gets to
+line 492 in org.apache.pdfbox.pdfparser.PDFParser
+isEndOfFile get's set to true, but because it's not the end of the actual stream.. it continues this was a fix in PDFBOX-979.
+Next time around in the loop it reads
+<script type="text/javascript">
+which I think it ignores.. then trys to read
+var
+twice as a number. Then blows up.. so I've playing around thinking of sensible thing to do. But worried that I might introduce some other issue. I assume this is legal structure for a PDFDocument. It opens fine in a viewer.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+1.8.0
+Fix_version:
+None
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Jinder Aujla
+Create date:
+28/Mar/13 22:37
+Update date:
+12/Feb/15 18:06
+Resolved date:
+12/Feb/15 18:06

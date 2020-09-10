@@ -1,0 +1,58 @@
+Summary:
+Recursive calls resulting in memory leak in updateDisplayList function
+Description:
+Steps to reproduce:
+1. Add an ADG in to a VBox container. Set a XMLListCollection as its DP. ADG occupies 100% of the screen width.
+2. The scroll policy of ADG is set to auto. Populate data in data provider so the horizontal and vertical scrollbars appear.
+3. On a button click set the percent height of VBox to 0 so the ADG is not visible.
+4. On clicking a button again, set the percent height above 0 so the ADG is visible again.
+5. This results in memory leak.
+Actual Results:
+The updateDisplayList(unscaledWidth:Number,unscaledHeight:Number) call from AdvancedDataGrid.as executes and it calls configureScrollBars() function of AdvancedDataGridBaseEx.as. This calls setScrollBarProperties() function of ScrollControlBase.as. At the end of this function it again calls the updateDisplayList() function whcih results in recursive infinite calls.
+The application hangs and crashes.
+Expected Results:
+Workaround (if any):
+Extend AdvancedDataGrid component and override updateDisplayList.
+Declare a local variable to store previous height of the component.
+private var oldHeight : Number = 0;
+protected override function updateDisplayList(unscaledWidth:Number, unscaledHeight:Number):void
+{
+//if( scrollAreaChanged && !itemsSizeChanged && (oldHeight == unscaledHeight) )
+if(verticalScrollBar &&
+horizontalScrollBar &&
+!verticalScrollBar.visible &&
+!horizontalScrollBar.visible &&
+!itemsSizeChanged
+&& (oldHeight == unscaledHeight) )
+{ // do nothing }
+else
+{ oldHeight = unscaledHeight; super.updateDisplayList(unscaledWidth,unscaledHeight); }
+}
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+15/Apr/09 07:18
+Update date:
+29/Jun/11 22:58
+Resolved date:
+15/Mar/11 02:35

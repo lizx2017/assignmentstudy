@@ -1,0 +1,72 @@
+Summary:
+Saving merged documents causes IOException
+Description:
+When some documents are used within a merge, it is not more possible to save the resulting PDDocument, calling method PDDocument.save() throws "java.io.IOException: COSStream has been closed and cannot be read. Perhaps its enclosing PDDocument has been closed?"
+Exception in thread "main" java.io.IOException: COSStream has been closed and cannot be read. Perhaps its enclosing PDDocument has been closed?
+ at org.apache.pdfbox.cos.COSStream.getFilteredStream(COSStream.java:163)
+ at org.apache.pdfbox.pdfwriter.COSWriter.visitFromStream(COSWriter.java:1147)
+ at org.apache.pdfbox.cos.COSStream.accept(COSStream.java:280)
+ at org.apache.pdfbox.cos.COSObject.accept(COSObject.java:158)
+ at org.apache.pdfbox.pdfwriter.COSWriter.doWriteObject(COSWriter.java:538)
+ at org.apache.pdfbox.pdfwriter.COSWriter.doWriteBody(COSWriter.java:450)
+ at org.apache.pdfbox.pdfwriter.COSWriter.visitFromDocument(COSWriter.java:1031)
+ at org.apache.pdfbox.cos.COSDocument.accept(COSDocument.java:464)
+ at org.apache.pdfbox.pdfwriter.COSWriter.write(COSWriter.java:1307)
+ at org.apache.pdfbox.pdfwriter.COSWriter.write(COSWriter.java:1215)
+ at org.apache.pdfbox.pdmodel.PDDocument.save(PDDocument.java:944)
+ at ch.ge.afc.ael.commun.piecejointe.Test.main(Test.java:37)
+For instance, problem occures with testPopupAnnotation.pdf when I try to merge it to testPDF.pdf (see http://svn.apache.org/repos/asf/tika/trunk/tika-parsers/src/test/resources/test-documents/ for these 2 documents)
+Test.java
+public static void main(String[] args) throws Exception {
+ File dir = new File("D:/temp/b");
+
+ PDFMergerUtility pdfMerge = new PDFMergerUtility();
+ PDDocument targetDocument = new PDDocument();
+
+
+ PDFParser ns = new PDFParser(new File(dir, "testPDF.pdf"));
+ ns.parse();
+ PDDocument pddDocument1 = ns.getPDDocument();
+ pdfMerge.appendDocument(targetDocument, pddDocument1);
+ pddDocument1.close();
+
+ ns = new PDFParser(new File(dir, "testPopupAnnotation.pdf"));
+ ns.parse();
+ PDDocument pddDocument2 = ns.getPDDocument();
+ pdfMerge.appendDocument(targetDocument, pddDocument2);
+ pddDocument2.close();
+
+ pdfMerge.mergeDocuments();
+
+ FileOutputStream fout = new FileOutputStream(new File(dir, "targetDocument.pdf"));
+ targetDocument.save(fout);
+
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+Writing
+Label:
+None
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+jerome girardini
+Create date:
+01/Apr/15 07:30
+Update date:
+17/Mar/16 19:06
+Resolved date:
+01/Apr/15 16:36

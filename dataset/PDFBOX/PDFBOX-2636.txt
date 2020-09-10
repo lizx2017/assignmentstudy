@@ -1,0 +1,49 @@
+Summary:
+Colorspaces of annotations not treated correctly
+Description:
+I get this exception with preflight
+java.lang.ArrayIndexOutOfBoundsException: -1
+ at java.util.ArrayList.elementData(Unknown Source)
+ at java.util.ArrayList.get(Unknown Source)
+ at org.apache.pdfbox.cos.COSArray.get(COSArray.java:210)
+ at org.apache.pdfbox.pdmodel.graphics.color.PDColor.<init>(PDColor.java:48)
+ at org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation.getColor(PDAnnotation.java:647)
+ at org.apache.pdfbox.preflight.annotation.AnnotationValidator.checkColors(AnnotationValidator.java:133)
+at first, it looks like a regression by PDFBOX-2629 but the code was never correct even before: the "C" (and IC, BC, BG) property of annotations can have different colorspaces or none:
+An array of numbers in the range 0.0 to 1.0, representing a colour used for the following purposes: (...)
+The number of array elements determines the colour space in which the colour shall be defined:
+0 No colour; transparent
+1 DeviceGray
+3 DeviceRGB
+4 DeviceCMYK
+The same problem exists for the IC and BC items of an annotation.
+Maruan Sahyoun - could you please look whether PDF/A-1b has a requirement that only RGB is allowed for annotations? In ordinary PDF, Gray, RGB, CMYK or None are allowed, but currently PDFBox Preflight forbids CMYK or Gray, instead of checking that the output intent matches the color space. I've also read that DeviceGray accepts an RGB or CMYK icc profile.
+http://www.pdfa.org/2011/09/pdfa-und-farbe/?lang=de#zugelassene_farbraeume
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+Parsing, Preflight
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+28/Jan/15 17:16
+Update date:
+17/Mar/16 19:07
+Resolved date:
+31/Jan/15 18:24

@@ -1,0 +1,39 @@
+Summary:
+Region of a disabling or disabled table could be stuck in transition state when RS dies during Master initialization
+Description:
+The issue happens when a RS dies during a master starts up. After the RS reports open to the new master instance and dies immediately thereafter, the RITs of disabling tables(or disabled table) on the died RS will be in RIT state forever.
+I attached a patch to simulate the situation and you can run the following command to reproduce the issue:
+mvn test -PlocalTests -Dtest=TestMasterFailover#testMasterFailoverWithMockedRITOnDeadRS
+Basically, we skip regions of a dead server inside AM.processDeadServersAndRecoverLostRegions as the following code and relies on SSH to process those skipped regions:
+          for (Pair<HRegionInfo, Result> deadRegion : deadServer.getValue()) {
+            nodes.remove(deadRegion.getFirst().getEncodedName());
+          }
+While in SSH, we skip regions of disabling(or disabled table) again by function processDeadRegion. Finally comes to the issue that RITs of disabling(or disabled table) stuck there forever.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.5
+Fix_version:
+0.94.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+Jeffrey Zhong
+Create date:
+16/Mar/13 23:21
+Update date:
+27/Apr/13 15:55
+Resolved date:
+05/Apr/13 03:30

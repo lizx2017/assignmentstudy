@@ -1,0 +1,94 @@
+Summary:
+region can't be opened for a long time. Because the creating File failed.
+Description:
+Scenario:
+------------
+1. File is created
+2. But while writing data, all datanodes might have crashed. So writing data will fail.
+3. Now even if close is called in finally block, close also will fail and throw the Exception because writing data failed.
+4. After this if RS try to create the same file again, then AlreadyBeingCreatedException will come.
+Suggestion to handle this scenario.
+---------------------------
+1. Check for the existence of the file, if exists delete the file and create new file.
+Here delete call for the file will not check whether the file is open or closed.
+Overwrite Option:
+----------------
+1. Overwrite option will be applicable if you are trying to overwrite a closed file.
+2. If the file is not closed, then even with overwrite option Same AlreadyBeingCreatedException will be thrown.
+This is the expected behaviour to avoid the Multiple clients writing to same file.
+Region server logs:
+org.apache.hadoop.ipc.RemoteException: org.apache.hadoop.hdfs.protocol.AlreadyBeingCreatedException: failed to create file /hbase/test1/12c01902324218d14b17a5880f24f64b/.tmp/.regioninfo for DFSClient_hb_rs_158-1-131-48,20020,1331107668635_1331107669061_-252463556_25 on client 158.1.132.19 because current leaseholder is trying to recreate file.
+at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.recoverLeaseInternal(FSNamesystem.java:1570)
+at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.startFileInternal(FSNamesystem.java:1440)
+at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.startFile(FSNamesystem.java:1382)
+at org.apache.hadoop.hdfs.server.namenode.NameNode.create(NameNode.java:658)
+at sun.reflect.GeneratedMethodAccessor9.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:547)
+at org.apache.hadoop.ipc.Server$Handler$1.run(Server.java:1137)
+at org.apache.hadoop.ipc.Server$Handler$1.run(Server.java:1133)
+at java.security.AccessController.doPrivileged(Native Method)
+at javax.security.auth.Subject.doAs(Subject.java:396)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:1131)
+at org.apache.hadoop.ipc.Client.call(Client.java:961)
+at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:245)
+at $Proxy6.create(Unknown Source)
+at sun.reflect.GeneratedMethodAccessor14.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at $Proxy6.create(Unknown Source)
+at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.<init>(DFSClient.java:3643)
+at org.apache.hadoop.hdfs.DFSClient.create(DFSClient.java:778)
+at org.apache.hadoop.hdfs.DistributedFileSystem.create(DistributedFileSystem.java:364)
+at org.apache.hadoop.fs.FileSystem.create(FileSystem.java:630)
+at org.apache.hadoop.fs.FileSystem.create(FileSystem.java:611)
+at org.apache.hadoop.fs.FileSystem.create(FileSystem.java:518)
+at org.apache.hadoop.hbase.regionserver.HRegion.checkRegioninfoOnFilesystem(HRegion.java:424)
+at org.apache.hadoop.hbase.regionserver.HRegion.initialize(HRegion.java:340)
+at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:2672)
+at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:2658)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.openRegion(OpenRegionHandler.java:330)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:116)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:158)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+[2012-03-07 20:51:45,858] [WARN ] [RS_OPEN_REGION-158-1-131-48,20020,1331107668635-23] [com.huawei.isap.ump.ha.client.RPCRetryAndSwitchInvoker 131] Retrying the method call: public abstract void org.apache.hadoop.hdfs.protocol.ClientProtocol.create(java.lang.String,org.apache.hadoop.fs.permission.FsPermission,java.lang.String,boolean,boolean,short,long) throws java.io.IOException with arguments of length: 7. The exisiting ActiveServerConnection is:
+ActiveServerConnectionInfo:
+Metadata:158-1-131-48/158.1.132.19:9000
+Version:145720623220907
+[2012-03-07 20:51:45,872] [DEBUG] [RS_OPEN_REGION-158-1-131-48,20020,1331107668635-20] [org.apache.hadoop.hbase.zookeeper.ZKAssign 849] regionserver:20020-0x135ec32b39e0002-0x135ec32b39e0002 Successfully transitioned node 91bf3e6f8adb2e4b335f061036353126 from M_ZK_REGION_OFFLINE to RS_ZK_REGION_OPENING
+[2012-03-07 20:51:45,873] [DEBUG] [RS_OPEN_REGION-158-1-131-48,20020,1331107668635-20] [org.apache.hadoop.hbase.regionserver.HRegion 2649] Opening region: REGION => {NAME => 'test1,00088613810,1331112369360.91bf3e6f8adb2e4b335f061036353126.', STARTKEY => '00088613810', ENDKEY => '00088613815', ENCODED => 91bf3e6f8adb2e4b335f061036353126, TABLE => {{NAME => 'test1', FAMILIES => [
+{NAME => 'value', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'GZ', TTL => '86400', BLOCKSIZE => '655360', IN_MEMORY => 'false', BLOCKCACHE => 'true'}
+]}}
+[2012-03-07 20:51:45,873] [DEBUG] [RS_OPEN_REGION-158-1-131-48,20020,1331107668635-20] [org.apache.hadoop.hbase.regionserver.HRegion 316] Instantiated test1,00088613810,1331112369360.91bf3e6f8adb2e4b335f061036353126.
+[2012-03-07 20:51:45,874] [ERROR] [RS_OPEN_REGION-158-1-131-48,20020,1331107668635-20] [
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.6
+Fix_version:
+0.90.7, (2)
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+gaojinchao
+Create date:
+09/Mar/12 02:17
+Update date:
+12/Oct/12 05:35
+Resolved date:
+18/Apr/12 20:55

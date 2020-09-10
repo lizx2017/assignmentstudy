@@ -1,0 +1,56 @@
+Summary:
+Punt on the timeout doesn't work in BulkEnabler#waitUntilDone (master's EnableTableHandler)
+Description:
+please take a look at the code below in EnableTableHandler(hbase master):
+EnableTableHandler.java
+    protected boolean waitUntilDone(long timeout)
+    throws InterruptedException {
+    
+      .....
+      int lastNumberOfRegions = this.countOfRegionsInTable;
+
+      while (!server.isStopped() && remaining > 0) {
+        Thread.sleep(waitingTimeForEvents);
+        regions = assignmentManager.getRegionsOfTable(tableName);
+        if (isDone(regions)) break;
+
+        // Punt on the timeout as long we make progress
+        if (regions.size() > lastNumberOfRegions) {
+          lastNumberOfRegions = regions.size();
+          timeout += waitingTimeForEvents;
+        }
+        remaining = timeout - (System.currentTimeMillis() - startTime);
+    ....
+    }
+    private boolean isDone(final List<HRegionInfo> regions) {
+      return regions != null && regions.size() >= this.countOfRegionsInTable;
+    }
+We can easily find out if we let lastNumberOfRegions = this.countOfRegionsInTable , the function of punt on timeout code will never be executed. I think initlize lastNumberOfRegions = 0 can make it work.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.5, 0.92.0
+Fix_version:
+0.94.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+terry zhang
+Reporter:
+terry zhang
+Create date:
+17/Feb/12 06:55
+Update date:
+12/Oct/12 05:34
+Resolved date:
+17/Feb/12 17:29

@@ -1,0 +1,87 @@
+Summary:
+UDT with null/missing attributes
+Description:
+I have experienced problem with queriing UDTs stored with some not filled attributes through new java driver 2.1. I tried to query them in cqlsh too and it failed. I tried to simulate it again with fresh C* directly in cqlsh and it seems it has problems in some cases. I have tested it with UDT defined as (a ascii, b ascii, c ascii, d ascii, e ascii, f ascii, g ascii).
+Few observations:
+Store {a:'a'} is ok, it returns {a: 'a', b: '', c: '', d: '', e: '', f: '', g: ''}
+Store {a:'a', b:'b', c:'c', d:'d', e:'e', f:'f', g:'g'} is ok, returns all filled.
+Store {a:'a',  g:'g'} fills a only.
+Store {a:'a', b:'b', d:'d', e:'e', f:'f', g:'g'} (missing c) failed on load.
+Store {a:'a', f:'f', g:'g'} fills just a. 
+Store {f:'f',g:'g'} nothing filled
+Store {e:'e',f:'f',g:'g'} failed on load.
+....
+you can reproduce it with:
+./cqlsh
+Connected to WOC at 127.0.0.1:9042.
+[cqlsh 5.0.1 | Cassandra 2.1.0-rc4 | CQL spec 3.2.0 | Native protocol v3]
+Use HELP for help.
+cqlsh> create keyspace testks WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1};
+cqlsh> use testks;
+cqlsh:testks> CREATE TYPE IF NOT EXISTS data (a ascii, b ascii, c ascii, d ascii, e ascii, f ascii, g ascii);
+cqlsh:testks> CREATE TABLE IF NOT EXISTS bbb (a ascii primary key, b data);
+cqlsh:testks> insert into testks.bbb (a,b) values ('a', {a:'a'});
+cqlsh:testks> select * from bbb;
+
+ a | b
+---+----------------------------------------------------
+ a | {a: 'a', b: '', c: '', d: '', e: '', f: '', g: ''}
+
+(1 rows)
+
+cqlsh:testks> insert into testks.bbb (a,b) values ('a', {a:'a', b:'b', c:'c', d:'d', e:'e', f:'f', g:'g'});
+cqlsh:testks> select * from bbb;
+
+ a | b
+---+----------------------------------------------------------
+ a | {a: 'a', b: 'b', c: 'c', d: 'd', e: 'e', f: 'f', g: 'g'}
+
+(1 rows)
+
+cqlsh> insert into testks.bbb (a,b) values ('a', {a:'a',  g:'g'});
+cqlsh> select * from testks.bbb;
+
+ a | b
+---+----------------------------------------------------
+ a | {a: 'a', b: '', c: '', d: '', e: '', f: '', g: ''}
+
+(1 rows)
+
+cqlsh:testks> insert into testks.bbb (a,b) values ('a', {a:'a', b:'b', d:'d', e:'e', f:'f', g:'g'});
+cqlsh:testks> select * from bbb;
+Traceback (most recent call last):
+  File "./cqlsh", line 901, in perform_simple_statement
+    rows = self.session.execute(statement, trace=self.tracing_enabled)
+  File "/srv/apache-cassandra-2.1.0-rc4/bin/../lib/cassandra-driver-internal-only-2.1.0b1.post.zip/cassandra-driver-2.1.0b1.post/cassandra/cluster.py", line 1186, in execute
+    result = future.result(timeout)
+  File "/srv/apache-cassandra-2.1.0-rc4/bin/../lib/cassandra-driver-internal-only-2.1.0b1.post.zip/cassandra-driver-2.1.0b1.post/cassandra/cluster.py", line 2610, in result
+    raise self._final_exception
+error: unpack requires a string argument of length 4
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc5
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Jaroslav Kamenik
+Create date:
+31/Jul/14 12:52
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Aug/14 23:10

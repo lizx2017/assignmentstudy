@@ -1,0 +1,60 @@
+Summary:
+AssertionError when adding a node and doing repair, repair hangs
+Description:
+Hi again,
+I was playing aroung with Cassandra 1.0.0-rc2 and got an AssertionError. The cluster I set up was two cassandra nodes on one laptop using different 127.0.0.* loopback devices. Both nodes have separate folders on the harddisk.
+Here is what I did:
+1. Started node1 and inserted some data into it using a simple singlethreaded testprogram (uses hector 0.8.0-2):
+127.0.0.1 datacenter1 rack1 Up Normal 583.55 MB 100.00% Token(bytes[63e5b6995466cd3221cba16646ae19ed])
+2. I started another node, node 2 = 127.0.0.2:
+127.0.0.2 datacenter1 rack1 Up Normal 147.57 KB 50.00% Token(bytes[4d6ccfeaa8bb59551751a2816fde9343])
+127.0.0.1 datacenter1 rack1 Up Normal 583.55 MB 50.00% Token(bytes[63e5b6995466cd3221cba16646ae19ed])
+3. I triggered a "nodetool -h 127.0.0.1 repair" on the first node that had the data from my test.
+This repair does not seem to ever end. The nodetool is hanging now but my computer is idle. I get an AssertionError on the first node:
+java.lang.AssertionError
+at org.apache.cassandra.service.AntiEntropyService$Validator.prepare(AntiEntropyService.java:283)
+at org.apache.cassandra.db.compaction.CompactionManager.doValidationCompaction(CompactionManager.java:825)
+at org.apache.cassandra.db.compaction.CompactionManager.access$600(CompactionManager.java:63)
+at org.apache.cassandra.db.compaction.CompactionManager$6.call(CompactionManager.java:432)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Update: I dont know if it is important but here is the schema of my test:
+create keyspace Test with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy' and strategy_options =
+{replication_factor:2}
+;
+CREATE COLUMN FAMILY Response WITH key_validation_class=BytesType AND compression_options=
+{sstable_compression:DeflateCompressor}
+;
+kind regards,
+Christian
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.8, 1.0.1
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Christian Spriegel
+Create date:
+16/Oct/11 16:35
+Update date:
+16/Apr/19 09:32
+Resolved date:
+21/Oct/11 13:33

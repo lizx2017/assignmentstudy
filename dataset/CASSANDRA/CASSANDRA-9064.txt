@@ -1,0 +1,71 @@
+Summary:
+[LeveledCompactionStrategy] cqlsh can't run cql produced by its own describe table statement
+Description:
+Here's how to reproduce:
+1) Create a table with LeveledCompactionStrategy
+CREATE keyspace foo WITH REPLICATION =
+{'class': 'SimpleStrategy', 'replication_factor' : 3}
+;
+CREATE TABLE foo.bar (
+spam text PRIMARY KEY
+) WITH compaction =
+{'class': 'LeveledCompactionStrategy'}
+;
+2) Describe the table and save the output
+cqlsh -e "describe table foo.bar"
+Output should be something like
+CREATE TABLE foo.bar (
+spam text PRIMARY KEY
+) WITH bloom_filter_fp_chance = 0.1
+AND caching = '
+{"keys":"ALL", "rows_per_partition":"NONE"}
+'
+AND comment = ''
+AND compaction =
+{'min_threshold': '4', 'class': 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy', 'max_threshold': '32'}
+AND compression =
+{'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+AND dclocal_read_repair_chance = 0.1
+AND default_time_to_live = 0
+AND gc_grace_seconds = 864000
+AND max_index_interval = 2048
+AND memtable_flush_period_in_ms = 0
+AND min_index_interval = 128
+AND read_repair_chance = 0.0
+AND speculative_retry = '99.0PERCENTILE';
+3) Save the output to repro.cql
+4) Drop the table foo.bar
+cqlsh -e "drop table foo.bar"
+5) Run the create table statement we saved
+cqlsh -f "repro.cql"
+6) Expected: normal execution without an error
+7) Reality:
+ConfigurationException: <ErrorMessage code=2300 [Query invalid because of configuration issue] message="Properties specified [min_threshold, max_threshold] are not understood by LeveledCompactionStrategy">
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.8, 2.2.0 rc2
+Component:
+Legacy/CQL
+Label:
+cqlsh
+Environment:
+mac os x
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Sujeet Gholap
+Create date:
+27/Mar/15 21:12
+Update date:
+16/Apr/19 09:31
+Resolved date:
+30/Jun/15 13:26

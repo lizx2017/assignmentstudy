@@ -1,0 +1,49 @@
+Summary:
+desc table output shows key-only index ambiguously
+Description:
+When creating a secondary index on a map type, for keys, the DESC TABLE output does not create correct DDL (it omits the keys part). So if someone uses describe to recreate a schema they could end up with a values index instead of a keys index.
+First, create a table and add an index:
+CREATE TABLE test.foo (
+    id1 text,
+    id2 text,
+    categories map<text, text>,
+    PRIMARY KEY (id1, id2));
+
+create index on foo(keys(categories));|
+Now DESC TABLE and you'll see the incomplete index DDL:
+CREATE TABLE test.foo (
+    id1 text,
+    id2 text,
+    categories map<text, text>,
+    PRIMARY KEY (id1, id2)
+) WITH CLUSTERING ORDER BY (id2 ASC)
+.......................snip..............................................
+CREATE INDEX foo_categories_idx ON test.foo (categories);
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+None
+Label:
+cqlsh
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Russ Hatch
+Create date:
+20/Oct/14 21:28
+Update date:
+16/Apr/19 09:31
+Resolved date:
+10/Feb/15 18:58

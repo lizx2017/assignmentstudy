@@ -1,0 +1,71 @@
+Summary:
+Images are rendered blank
+Description:
+We are not processing the following segment correctly.. I have added the -> and command for clarity
+q -> GSave
+Q -> QRestore
+q -> GSave
+W -> ClipNonZeroRule
+0 0 m -> MoveTo
+612 0 l -> LineTo
+612 792 l -> LineTo
+0 792 l -> LineTo
+h -> ClosePath
+n -> EndPath
+q -> GSave
+612 0 0 792 0 0 cm ->Concatenate
+/I13 Do -> Invoke
+Q -> QRestore
+Q -> QRestore
+The problem is 'W' or ClipNonZeroRule. According to the spec 8.5.4
+Although the clipping path operator appears before the painting operator, it shall not alter the clipping path at the point where it appears. Rather, it shall modify the effect of the succeeding painting operator. After the path has been painted, the clipping path in the graphics state shall be set to the intersection of the current clipping path and the newly constructed path.
+About the n (EndPath) operator
+The n operator (see Table 60) is a no-op path-painting operator; it shall cause no marks to be placed on the page, but can be used with a clipping path operator to establish a new clipping path. That is, after a path has been constructed, the sequence W n shall intersect that path with the current clipping path and shall establish a new clipping path.
+Currently in ClipNonZeroRule.java and ClipEvenOddRule.java we do
+drawer.setClippingPath(GeneralPath.WIND_NON_ZERO);
+This applies the current path and resets.
+I believe we should ...
+drawer.setCurrentWindingRule(GeneralPath.WIND_NON_ZERO);
+and
+drawer.setCurrentWindingRule(GeneralPath.WIND_NON_ZERO);
+and in PageDrawer.java add
+int currentWindingRule = -1;
+public void setCurrentWindingRule(int windingRule)
+{ currentWindingRule=windingRule; }
+public void setClippingWindingRule()
+{
+if(currentWindingRule == -1)
+{ return; }
+setClippingPath(currentWindingRule);
+currentWindingRule=-1;
+}
+Then in EndPath.java
+drawer.setClippingWindingRule();
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+1.8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Dave Smith
+Create date:
+09/Nov/12 14:26
+Update date:
+23/Mar/13 12:56
+Resolved date:
+10/Nov/12 17:50

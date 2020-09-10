@@ -1,0 +1,116 @@
+Summary:
+Get wrong image location
+Description:
+I'm using below code to extract images to an XML file.
+public class ImageExtractor extends PDFStreamEngine {
+    private List<Image> images = new ArrayList<>();
+
+    public ImageExtractor() {
+        addOperator(new Concatenate());
+        addOperator(new DrawObject());
+        addOperator(new SetGraphicsStateParameters());
+        addOperator(new Save());
+        addOperator(new Restore());
+        addOperator(new SetMatrix());
+    }
+
+    /**
+     * This is used to handle an operation.
+     *
+     * @param operator The operation to perform.
+     * @param operands The list of arguments.
+     * @throws IOException If there is an error processing the operation.
+     */
+    @Override
+    protected void processOperator(Operator operator, List<COSBase> operands) throws IOException {
+        String operation = operator.getName();
+        if ("Do".equals(operation)) {
+            COSName objectName = (COSName) operands.get(0);
+            PDXObject xobject = getResources().getXObject(objectName);
+            if (xobject instanceof PDImageXObject) {
+                PDImageXObject image = (PDImageXObject) xobject;
+                String name = objectName.getName();
+                String format = image.getSuffix();
+                Matrix ctmNew = getGraphicsState().getCurrentTransformationMatrix();
+                float imageWidth = ctmNew.getScalingFactorX();
+                float imageHeight = ctmNew.getScalingFactorY();
+                // position in user space units. 1 unit = 1/72 inch at 72 dpi
+                float x = ctmNew.getTranslateX();
+                float y = ctmNew.getTranslateY();
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                BufferedImage bufferedImage = image.getOpaqueImage();
+                ImageIO.write(bufferedImage, format, bos);
+                images.add(new Image(x, y, imageWidth, imageHeight, name, format, bos.toByteArray()));
+            }
+        } else {
+            super.processOperator(operator, operands);
+        }
+    }
+
+    public byte[] toZipFile(PDDocument doc) throws IOException {
+        int pageNum = 0;
+        StringBuilder builder = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<document>\n");
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ZipOutputStream zipOut = new ZipOutputStream(bos);
+        try {
+            for (PDPage page : doc.getPages()) {
+                builder.append(String.format("<page width=\"%f\" height=\"%f\">\n", page.getBBox().getWidth(), page.getBBox().getHeight()));
+                pageNum++;
+                this.processPage(page);
+                for (Image image : images) {
+                    byte[] data = image.getData();
+                    ZipEntry zipEntry = new ZipEntry(image.getName() + "." + image.getFormat());
+                    zipOut.putNextEntry(zipEntry);
+                    zipOut.write(data);
+
+                    builder.append(String.format("<image x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" name=\"%s\" format=\"%s\"></image>\n", image.getX(), image.getY(), image.getWidth(), image.getHeight(), image.getName(), image.getFormat()));
+                }
+                builder.append("</page>\n");
+            }
+            builder.append("</document>");
+            System.out.println(builder);
+            ZipEntry xmlFile = new ZipEntry("images.xml");
+            zipOut.putNextEntry(xmlFile);
+            zipOut.write(builder.toString().getBytes(Charset.defaultCharset()));
+        } finally {
+            zipOut.close();
+        }
+        return bos.toByteArray();
+    }
+}
+Output is below. the y location is wrong. it should be 434.
+<document>
+<page width="595.000000" height="842.000000">
+<image x="48.000000" y="108.000000" width="315.000000" height="300.000000" name="Im12" format="jpg"></image>
+</page>
+</document>
+I got the right output with poppler.
+<image top="434" left="48" width="315" height="300" src="src-1_1.jpg"/>  
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+2.0.7
+Fix_version:
+None
+Component:
+Rendering
+Label:
+how-to
+Environment:
+mac os x, java 1.8
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Sun Peter
+Create date:
+02/Aug/17 09:42
+Update date:
+03/Aug/17 06:06
+Resolved date:
+02/Aug/17 10:25

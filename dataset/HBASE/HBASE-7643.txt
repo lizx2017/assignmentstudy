@@ -1,0 +1,72 @@
+Summary:
+HFileArchiver.resolveAndArchive() race condition may lead to snapshot data loss
+Description:
+The master have an hfile cleaner thread (that is responsible for cleaning the /hbase/.archive dir)
+/hbase/.archive/table/region/family/hfile
+if the family/region/family directory is empty the cleaner removes it
+The master can archive files (from another thread, e.g. DeleteTableHandler)
+The region can archive files (from another server/process, e.g. compaction)
+The simplified file archiving code looks like this:
+HFileArchiver.resolveAndArchive(...) {
+  // ensure that the archive dir exists
+  fs.mkdir(archiveDir);
+
+  // move the file to the archiver
+  success = fs.rename(originalPath/fileName, archiveDir/fileName)
+
+  // if the rename is failed, delete the file without archiving
+  if (!success) fs.delete(originalPath/fileName);
+}
+Since there's no synchronization between HFileArchiver.resolveAndArchive() and the cleaner run (different process, thread, ...) you can end up in the situation where you are moving something in a directory that doesn't exists.
+fs.mkdir(archiveDir);
+
+// HFileCleaner chore starts at this point
+// and the archiveDirectory that we just ensured to be present gets removed.
+
+// The rename at this point will fail since the parent directory is missing.
+success = fs.rename(originalPath/fileName, archiveDir/fileName)
+The bad thing of deleting the file without archiving is that if you've a snapshot that relies on the file to be present, or you've a clone table that relies on that file is that you're losing data.
+Possible solutions
+Create a ZooKeeper lock, to notify the master ("Hey I'm archiving something, wait a bit")
+Add a RS -> Master call to let the master removes files and avoid this kind of situations
+Avoid to remove empty directories from the archive if the table exists or is not disabled
+Add a try catch around the fs.rename
+The last one, the easiest one, looks like:
+for (int i = 0; i < retries; ++i) {
+  // ensure archive directory to be present
+  fs.mkdir(archiveDir);
+
+  // ----> possible race <-----
+
+  // try to archive file
+  success = fs.rename(originalPath/fileName, archiveDir/fileName);
+  if (success) break;
+}
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+hbase-6055, 0.95.2
+Fix_version:
+0.94.5, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Matteo Bertozzi
+Reporter:
+Matteo Bertozzi
+Create date:
+22/Jan/13 00:31
+Update date:
+26/Feb/13 08:27
+Resolved date:
+26/Jan/13 21:59

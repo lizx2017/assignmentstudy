@@ -1,0 +1,49 @@
+Summary:
+EnableTableHandler races with itself
+Description:
+Very often when we try to enable a big table we get something like:
+2011-09-02 12:21:56,619 FATAL org.apache.hadoop.hbase.master.HMaster: Unexpected state trying to OFFLINE; huge_ass_region_name state=PENDING_OPEN, ts=1314991316616
+java.lang.IllegalStateException
+at org.apache.hadoop.hbase.master.AssignmentManager.setOfflineInZooKeeper(AssignmentManager.java:1074)
+at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1030)
+at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:858)
+at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:838)
+at org.apache.hadoop.hbase.master.handler.EnableTableHandler$BulkEnabler$1.run(EnableTableHandler.java:154)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+2011-09-02 12:21:56,620 INFO org.apache.hadoop.hbase.master.HMaster: Aborting
+The issue is that EnableTableHandler calls multiple BulkEnabler and it's possible that by the time it calls it a second time, using a stale list of still-not-enabled regions, that it tries to set one region offline in ZK but just after its state changed. Case in point:
+2011-09-02 12:21:56,616 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region huge_ass_region_name to sv4r23s16,60020,1314880035029
+2011-09-02 12:21:56,619 FATAL org.apache.hadoop.hbase.master.HMaster: Unexpected state trying to OFFLINE; huge_ass_region_name state=PENDING_OPEN, ts=1314991316616
+Here the first line is the first assign done in the first thread, and the second line is the second thread that got to process the same region around the same time. 3ms difference in time. After that, the master dies, and it's pretty sad when it restarts because it failovers an enabling table and it's ungodly slow.
+I'm pretty sure there's a window where double assignment are possible.
+Talking with Stack, it doesn't really make sense to call multiple enables since the list of regions is static (the table is disabled!). We should just call it and wait. Also there's a lot of cleanup to do in EnableTableHandler since it refers to disabling the table (copy pasta I guess).
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+13/Sep/11 21:47
+Update date:
+20/Nov/15 11:56
+Resolved date:
+15/Sep/11 23:52

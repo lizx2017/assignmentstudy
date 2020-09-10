@@ -1,0 +1,135 @@
+Summary:
+IndexOutOfBoundsException comparing incompatible reversed types in DynamicCompositeType
+Description:
+In the following setup, an IndexOutOfBoundsException is often observed:
+A DynamicCompositeType value is used in a column name (e.g. in a CQL3 cluster key)
+Two incompatible types (e.g. Int32Type and DoubleType) are used in the dynamic composite value in their reversed form (e.g. ReversedType(Int32Type) and ReversedType(DoubleType)
+Values for the incompatible types are inserted
+One of various scenarios occurs that trigger comparison of the column names
+The exception can be variously observed (sometimes not immediately) during query execution, memtable flushing, commit log replay etc. In some cases this can prevent Cassandra server startup (e.g. during commit log replay).
+Typical stack traces follow:
+java.lang.RuntimeException: java.lang.IndexOutOfBoundsException
+ at org.apache.cassandra.service.StorageProxy$LocalMutationRunnable.run(StorageProxy.java:1968)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:745)
+Caused by: java.lang.IndexOutOfBoundsException
+ at java.nio.Buffer.checkIndex(Buffer.java:538)
+ at java.nio.HeapByteBuffer.getDouble(HeapByteBuffer.java:512)
+ at org.apache.cassandra.utils.ByteBufferUtil.toDouble(ByteBufferUtil.java:431)
+ at org.apache.cassandra.serializers.DoubleSerializer.deserialize(DoubleSerializer.java:33)
+ at org.apache.cassandra.serializers.DoubleSerializer.deserialize(DoubleSerializer.java:25)
+ at org.apache.cassandra.db.marshal.AbstractType.compose(AbstractType.java:142)
+ at org.apache.cassandra.db.marshal.DoubleType.compare(DoubleType.java:45)
+ at org.apache.cassandra.db.marshal.DoubleType.compare(DoubleType.java:28)
+ at org.apache.cassandra.db.marshal.ReversedType.compare(ReversedType.java:73)
+ at org.apache.cassandra.db.marshal.ReversedType.compare(ReversedType.java:30)
+ at org.apache.cassandra.db.marshal.AbstractType.compareCollectionMembers(AbstractType.java:279)
+ at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:64)
+ at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:36)
+ at org.apache.cassandra.db.marshal.AbstractType.compareCollectionMembers(AbstractType.java:279)
+ at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:64)
+ at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:36)
+ at edu.stanford.ppl.concurrent.SnapTreeMap$1.compareTo(SnapTreeMap.java:538)
+ at edu.stanford.ppl.concurrent.SnapTreeMap.attemptUpdate(SnapTreeMap.java:1108)
+ at edu.stanford.ppl.concurrent.SnapTreeMap.attemptUpdate(SnapTreeMap.java:1192)
+ at edu.stanford.ppl.concurrent.SnapTreeMap.attemptUpdate(SnapTreeMap.java:1192)
+ at edu.stanford.ppl.concurrent.SnapTreeMap.attemptUpdate(SnapTreeMap.java:1192)
+ at edu.stanford.ppl.concurrent.SnapTreeMap.updateUnderRoot(SnapTreeMap.java:1059)
+ at edu.stanford.ppl.concurrent.SnapTreeMap.update(SnapTreeMap.java:1023)
+ at edu.stanford.ppl.concurrent.SnapTreeMap.putIfAbsent(SnapTreeMap.java:985)
+ at org.apache.cassandra.db.AtomicSortedColumns$Holder.addColumn(AtomicSortedColumns.java:319)
+ at org.apache.cassandra.db.AtomicSortedColumns.addAllWithSizeDelta(AtomicSortedColumns.java:191)
+ at org.apache.cassandra.db.Memtable.resolve(Memtable.java:226)
+ at org.apache.cassandra.db.Memtable.put(Memtable.java:173)
+ at org.apache.cassandra.db.ColumnFamilyStore.apply(ColumnFamilyStore.java:900)
+ at org.apache.cassandra.db.Keyspace.apply(Keyspace.java:374)
+ at org.apache.cassandra.db.Keyspace.apply(Keyspace.java:339)
+ at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:211)
+ at org.apache.cassandra.service.StorageProxy$7.runMayThrow(StorageProxy.java:952)
+ at org.apache.cassandra.service.StorageProxy$LocalMutationRunnable.run(StorageProxy.java:1964)
+java.lang.IndexOutOfBoundsException
+        at java.nio.Buffer.checkIndex(Buffer.java:538)
+        at java.nio.HeapByteBuffer.getDouble(HeapByteBuffer.java:512)
+        at org.apache.cassandra.utils.ByteBufferUtil.toDouble(ByteBufferUtil.java:431)
+        at org.apache.cassandra.serializers.DoubleSerializer.deserialize(DoubleSerializer.java:33)
+        at org.apache.cassandra.serializers.DoubleSerializer.deserialize(DoubleSerializer.java:25)
+        at org.apache.cassandra.db.marshal.AbstractType.compose(AbstractType.java:142)
+        at org.apache.cassandra.db.marshal.DoubleType.compare(DoubleType.java:45)
+        at org.apache.cassandra.db.marshal.DoubleType.compare(DoubleType.java:28)
+        at org.apache.cassandra.db.marshal.ReversedType.compare(ReversedType.java:73)
+        at org.apache.cassandra.db.marshal.ReversedType.compare(ReversedType.java:30)
+        at org.apache.cassandra.db.marshal.AbstractType.compareCollectionMembers(AbstractType.java:279)
+        at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:64)
+        at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:36)
+        at org.apache.cassandra.io.sstable.ColumnNameHelper.max(ColumnNameHelper.java:159)
+        at org.apache.cassandra.io.sstable.ColumnNameHelper.mergeMax(ColumnNameHelper.java:245)
+        at org.apache.cassandra.io.sstable.SSTableMetadata$Collector.updateMaxColumnNames(SSTableMetadata.java:346)
+        at org.apache.cassandra.io.sstable.SSTableMetadata$Collector.update(SSTableMetadata.java:327)
+        at org.apache.cassandra.io.sstable.SSTableWriter.append(SSTableWriter.java:194)
+        at org.apache.cassandra.db.Memtable$FlushRunnable.writeSortedContents(Memtable.java:397)
+        at org.apache.cassandra.db.Memtable$FlushRunnable.runWith(Memtable.java:350)
+        at org.apache.cassandra.io.util.DiskAwareRunnable.runMayThrow(DiskAwareRunnable.java:48)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:745)
+java.lang.RuntimeException: java.lang.IndexOutOfBoundsException
+        at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1931)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:745)
+Caused by: java.lang.IndexOutOfBoundsException
+        at java.nio.Buffer.checkIndex(Buffer.java:538)
+        at java.nio.HeapByteBuffer.getDouble(HeapByteBuffer.java:512)
+        at org.apache.cassandra.utils.ByteBufferUtil.toDouble(ByteBufferUtil.java:431)
+        at org.apache.cassandra.serializers.DoubleSerializer.deserialize(DoubleSerializer.java:33)
+        at org.apache.cassandra.serializers.DoubleSerializer.deserialize(DoubleSerializer.java:25)
+        at org.apache.cassandra.db.marshal.AbstractType.compose(AbstractType.java:142)
+        at org.apache.cassandra.db.marshal.DoubleType.compare(DoubleType.java:45)
+        at org.apache.cassandra.db.marshal.DoubleType.compare(DoubleType.java:28)
+        at org.apache.cassandra.db.marshal.ReversedType.compare(ReversedType.java:73)
+        at org.apache.cassandra.db.marshal.ReversedType.compare(ReversedType.java:30)
+        at org.apache.cassandra.db.marshal.AbstractType.compareCollectionMembers(AbstractType.java:279)
+        at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:64)
+        at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:36)
+        at org.apache.cassandra.db.marshal.CompositeType.compare(CompositeType.java:310)
+        at org.apache.cassandra.db.marshal.CompositeType.intersects(CompositeType.java:275)
+        at org.apache.cassandra.db.filter.SliceQueryFilter.shouldInclude(SliceQueryFilter.java:342)
+        at org.apache.cassandra.db.filter.QueryFilter.shouldInclude(QueryFilter.java:234)
+        at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:236)
+        at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:53)
+        at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1547)
+        at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1376)
+        at org.apache.cassandra.db.Keyspace.getRow(Keyspace.java:333)
+        at org.apache.cassandra.db.SliceFromReadCommand.getRow(SliceFromReadCommand.java:65)
+        at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:1363)
+        at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1927)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.11
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tim Whittington
+Reporter:
+Tim Whittington
+Create date:
+08/Sep/14 10:04
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Oct/14 09:22

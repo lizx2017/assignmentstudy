@@ -1,0 +1,40 @@
+Summary:
+Keys get lost in bootstrap
+Description:
+When bootstrapping a new node, the key at the upper end of the new node's range can get lost. To reproduce:
+Set up one cassandra node, create a keyspace and column family and perform some inserts
+Read every row back
+Bootstrap a second node
+Read every row back
+You find one row is missing, whose row key is exactly equal to the token the new node gets (for OPP - for RP it's the key whose hash is equal to the token). If you don't do the reads after the inserts, the key is not lost. I tracked the problem down to o.a.c.io.sstable.SSTableReader in getPosition. The problem is that the cached position is used if it is there (so only if the reads were performed). But this is incorrect because the cached position is the start of the row, not the end. This means the end row itself is not transferred. This causes the last key in the range to get lost.
+Although I haven't seen it, this may occur during antientropy repairs too.
+The attached patch (against the 0.7 branch) fixes it by not using the cache for Operator.GT. I haven't tested with 0.8 but from looking at the code I think the problem is present.
+This might be related to CASSANDRA-1992
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.6, 0.8.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Richard Low
+Reporter:
+Richard Low
+Create date:
+11/May/11 10:36
+Update date:
+16/Apr/19 09:32
+Resolved date:
+11/May/11 20:55

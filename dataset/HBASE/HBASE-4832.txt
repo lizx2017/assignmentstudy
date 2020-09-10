@@ -1,0 +1,91 @@
+Summary:
+TestRegionServerCoprocessorExceptionWithAbort fails if the region server stops too fast
+Description:
+The current implementation of HRegionServer#stop is
+  public void stop(final String msg) {
+    this.stopped = true;
+    LOG.info("STOPPED: " + msg);
+    synchronized (this) {
+      // Wakes run() if it is sleeping
+      notifyAll(); // FindBugs NN_NAKED_NOTIFY
+    }
+  }
+The notification is sent on the wrong object and does nothing. As a consequence, the region server continues to sleep instead of waking up and stopping immediately. A correct implementation is:
+  public void stop(final String msg) {
+    this.stopped = true;
+    LOG.info("STOPPED: " + msg);
+    // Wakes run() if it is sleeping
+    sleeper.skipSleepCycle();
+  }
+Then the region server stops immediately. This makes the region server stops 0,5s faster on average, which is quite useful for unit tests.
+However, with this fix, TestRegionServerCoprocessorExceptionWithAbort does not work.
+It likely because the code does no expect the region server to stop that fast.
+The exception is:
+testExceptionFromCoprocessorDuringPut(org.apache.hadoop.hbase.coprocessor.TestRegionServerCoprocessorExceptionWithAbort)  Time elapsed: 30.06 sec  <<< ERROR!
+java.lang.Exception: test timed out after 30000 milliseconds
+ at java.lang.Throwable.fillInStackTrace(Native Method)
+ at java.lang.Throwable.<init>(Throwable.java:196)
+ at java.lang.Exception.<init>(Exception.java:41)
+ at java.lang.InterruptedException.<init>(InterruptedException.java:48)
+ at java.lang.Thread.sleep(Native Method)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:1019)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:804)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.relocateRegion(HConnectionManager.java:778)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getRegionLocation(HConnectionManager.java:697)
+ at org.apache.hadoop.hbase.client.ServerCallable.connect(ServerCallable.java:75)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getRegionServerWithRetries(HConnectionManager.java:1280)
+ at org.apache.hadoop.hbase.client.HTable.getRowOrBefore(HTable.java:585)
+ at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:154)
+ at org.apache.hadoop.hbase.client.MetaScanner.access$000(MetaScanner.java:52)
+ at org.apache.hadoop.hbase.client.MetaScanner$1.connect(MetaScanner.java:130)
+ at org.apache.hadoop.hbase.client.MetaScanner$1.connect(MetaScanner.java:127)
+ at org.apache.hadoop.hbase.client.HConnectionManager.execute(HConnectionManager.java:357)
+ at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:127)
+ at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:103)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.prefetchRegionCache(HConnectionManager.java:866)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:920)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:808)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.processBatchCallback(HConnectionManager.java:1469)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.processBatch(HConnectionManager.java:1354)
+ at org.apache.hadoop.hbase.client.HTable.flushCommits(HTable.java:892)
+ at org.apache.hadoop.hbase.client.HTable.doPut(HTable.java:750)
+ at org.apache.hadoop.hbase.client.HTable.put(HTable.java:725)
+ at org.apache.hadoop.hbase.coprocessor.TestRegionServerCoprocessorExceptionWithAbort.testExceptionFromCoprocessorDuringPut(TestRegionServerCoprocessorExceptionWithAbort.java:84)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:45)
+ at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:15)
+ at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:42)
+ at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:20)
+ at org.junit.internal.runners.statements.FailOnTimeout$StatementThread.run(FailOnTimeout.java:62)
+We have this exception because we entered a loop of retries.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.0
+Fix_version:
+0.94.0
+Component:
+Coprocessors, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Eugene Koontz
+Reporter:
+Nicolas Liochon
+Create date:
+20/Nov/11 08:30
+Update date:
+02/May/13 02:29
+Resolved date:
+26/Nov/11 15:50

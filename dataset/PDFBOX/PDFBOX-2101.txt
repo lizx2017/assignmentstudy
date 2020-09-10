@@ -1,0 +1,82 @@
+Summary:
+Surprising memory consumption when extracting images
+Description:
+ExtractImages seems to fail to release memory resources on some files in both PDFBox 1.8.5 and trunk.
+On this file 4MB file http://digitalcorpora.org/corp/nps/files/govdocs1/239/239665.pdf, if extracting every image on every page (and there are many, many duplicate images), there is an OOM with -Xmx1g. If there is no Xmx and there is > 2.5g available, ExtractImages will work.
+With some experimentation, the triggers seem to be JPEG images that have masks. I'm not sure, though, whether the issue is with PDFBox or Java.
+Commandlines:
+1.8.5:
+java -Xmx1g -cp pdfbox-app-1.8.5.jar org.apache.pdfbox.ExtractImages 239665.pdf
+2.0_SNAPSHOT:
+java -Xmx1g -cp pdfbox-app-2.0.0-SNAPSHOT.jar org.apache.pdfbox.tools.ExtractImages -addkey 239665.pdf
+Results:
+1.8.5: 906 files before OOM
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+        at java.util.Arrays.copyOf(Arrays.java:2271)
+        at java.io.ByteArrayOutputStream.grow(ByteArrayOutputStream.java:113)
+        at java.io.ByteArrayOutputStream.ensureCapacity(ByteArrayOutputStream.ja
+va:93)
+        at java.io.ByteArrayOutputStream.write(ByteArrayOutputStream.java:140)
+        at org.apache.pdfbox.pdmodel.common.PDStream.getByteArray(PDStream.java:
+514)
+        at org.apache.pdfbox.pdmodel.graphics.xobject.PDPixelMap.getRGBImage(PDP
+ixelMap.java:217)
+        at org.apache.pdfbox.pdmodel.graphics.xobject.PDPixelMap.write2OutputStr
+eam(PDPixelMap.java:363)
+        at org.apache.pdfbox.pdmodel.graphics.xobject.PDXObjectImage.write2file(
+PDXObjectImage.java:254)
+        at org.apache.pdfbox.ExtractImages.processResources(ExtractImages.java:2
+02)
+        at org.apache.pdfbox.ExtractImages.extractImages(ExtractImages.java:160)
+
+        at org.apache.pdfbox.ExtractImages.main(ExtractImages.java:65)
+2.0_SNAPSHOT: 428 files before OOM
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+        at java.util.Arrays.copyOf(Arrays.java:2271)
+        at java.io.ByteArrayOutputStream.grow(ByteArrayOutputStream.java:113)
+        at java.io.ByteArrayOutputStream.ensureCapacity(ByteArrayOutputStream.ja
+va:93)
+        at java.io.ByteArrayOutputStream.write(ByteArrayOutputStream.java:140)
+        at org.apache.pdfbox.io.IOUtils.copy(IOUtils.java:70)
+        at org.apache.pdfbox.io.IOUtils.toByteArray(IOUtils.java:52)
+        at org.apache.pdfbox.pdmodel.graphics.image.SampledImageReader.from8bit(
+SampledImageReader.java:171)
+        at org.apache.pdfbox.pdmodel.graphics.image.SampledImageReader.getRGBIma
+ge(SampledImageReader.java:154)
+        at org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject.getImage(PDIm
+ageXObject.java:171)
+        at org.apache.pdfbox.tools.ExtractImages.write2file(ExtractImages.java:2
+31)
+        at org.apache.pdfbox.tools.ExtractImages.processResources(ExtractImages.
+java:206)
+        at org.apache.pdfbox.tools.ExtractImages.extractImages(ExtractImages.jav
+a:164)
+        at org.apache.pdfbox.tools.ExtractImages.main(ExtractImages.java:69)
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+1.8.5
+Fix_version:
+1.8.6, 2.0.0
+Component:
+Utilities
+Label:
+None
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Tim Allison
+Create date:
+28/May/14 16:07
+Update date:
+07/Sep/14 08:19
+Resolved date:
+15/Jun/14 11:34

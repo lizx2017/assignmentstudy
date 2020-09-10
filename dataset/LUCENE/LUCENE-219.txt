@@ -1,0 +1,167 @@
+Summary:
+PhraseQuery AND TermQuery differs from SpanNearQuery AND TermQuery
+Description:
+It appears that PhraseQuery may be broken when used with And in Lucene-1.4-RC2.
+This is demonstrated by the fact that equivalent PhraseQuery and SpanNearQuery
+s return different results combined with single TermQuery s using BooleanQuery
+in AND mode return different results. This can be demonstrated by creating a
+simple index using the provided demo code with a minor modification.
+Index the following 3 documents using the Lucene-1.4-rc2 demo file IndexFiles.java
+File 1
+XIE20000518.0115
+– The Clinton administration's drive to normalize trade
+relations with China cleared important congressional hurdles
+Wednesday with surprising ease as the measure appeared to pick up
+momentum in advance of next week's crucial House vote.
+– Sierra Leone's pro-government troops captured rebel leader
+Foday Sankoh Wednesday, triggering jubilant celebrations in the
+capital by residents who have long despised Sankoh and his
+Revolutionary United Front's brutality against civilians during
+the West African nation's eight-year civil war.
+The New York Times:
+– Calling trade relations with China the work of "13 years and
+three administrations," Governor George W. Bush of Texas urged
+Wednesday Congressional Republicans and Democrats alike to support
+President Clinton and vote next week to grant China permanent
+trade rights.
+– Embracing a strikingly broad concept of national security,
+President Bill Clinton on Wednesday told the graduating class of
+the United states Coast Guard Academy that the world was becoming
+more dangerous with new threats from disease, terrorism and even
+global warming.
+The Wall Street Journal:
+– A dog debt negotiator well known in Western financial
+circles, Mikhail Kasyanov won easy confirmation as prime minister
+from Russia's parliament after a speech mixing promises of reform
+with populist pledges to avoid measures that could hurt ordinary
+Russians.
+– The U.S. Justice Department reiterated Wednesday that its
+plan to break up Microsoft Corp. is the only practical solution to
+addressing the software company's pattern of anticompetitive
+behavior, without unduly burdening the technology industry and
+damaging the New Economy.
+File 2
+XIE20000701.0187
+Clinton E-Signs Electronic Signature Bill
+WASHINGTON, June 30 (Xinhua) – Using a smart card and his
+dog's name as password, U.S. President Bill Clinton Friday e-
+signed into law a bill that gives electronic signatures the same
+status as their ink-and-paper counterparts.
+The president inserted the smart card into a computer and typed
+in his dog's name, Buddy, as the password. After a while, the
+computer screen said: "The Electronic Signatures in Global and
+National Commerce Act is now a law." The signing ceremony took
+place in Congress Hall of Philadelphia.
+"It works," Clinton told the audience of about 100 local
+college students.
+He said Americans will soon be able to use the cards "for
+everything from hiring a lawyer to closing a mortgage."
+Supporters said the electronic signature bill, passed in mid
+June by Congress, will make it easier for both companies and
+consumers to do business online.
+For instance, computer users would be able to take out
+mortgages, buy insurance, even enter a binding contract with their
+roofer without ever leaving their home, signing a piece of paper
+or waiting for back-and-forth of mailed paperwork.
+And business negotiating contracts with each other could enter
+binding agreements without having to send paper documents
+overnight.
+The bill could revolutionize banking by letting buyers close
+mortgages and car loans 24 hours a day, said Jerry Buckley of the
+Electronic Financial Services Council, a lobbying group.
+Michael Hogan, senior vice president of online brokerage DLJ
+Direct said his company will let clients open accounts and receive
+statements online.
+The technology to allow for secure e-signatures is still being
+developed, however. Among the approaches are encrypted numeric
+coding devices and fingerprint or iris scans attached to computers
+that verify a person's identity.
+File 3
+XIE19990818.0210
+Major News Items in Leading Israeli Newspapers
+JERUSALEM, August 18 (Xinhua) – The following are major news
+items in leading Israeli newspapers Wednesday.
+The Jerusalem Post:
+– U.S. President Bill Clinton wrote a letter to Palestinian
+National Authority Chairman Yasser Arafat Tuesday, promising that
+Washington is ready to do everything necessary to get the peace
+process back on track.
+Palestinian officials said the letter showed that the U.S. is
+deeply involved in the peace process and keen to see the Wye
+agreement back on track. Israeli Prime Minister Ehud Barak also
+received a letter from Clinton this week, the contents of which
+were not disclosed.
+Haaretz:
+– Israel sent a 120-person rescue mission to Turkey Tuesday to
+help rescue survivors of a devastating earthquake. The group
+included a search and rescue team with specially trained sniffer
+dog. Israeli President Ezer Weizman called up his Turkish
+counterpart Suleyman Demirel after the quake to express deep
+condolence for the victims of the disaster.
+Ma'ariv:
+– Two Israeli soldiers, First Sergeant Eyal Guetta and
+Sergeant Doron Hershkowitz, were killed and seven others wounded
+Tuesday in fierce clashes with Hezbollah guerrillas in southern
+Lebanon, one day after a senior Hezbollah official was killed by
+roadside bombs in Lebanon. Israel has denied any involvement in
+the bombing attack.
+Yediot Ahronot:
+– The Health Ministry has decided to reveal the names of HIV
+carriers because they are engaging in unsafe sex. Israelis
+suspected of being infected have already received notification
+that their names may be revealed in media in the future.
+All of these files contain "Bill Clinton" and "dog"
+If you modify the Lucene-1.4-rc2 demo file SearchFiles.java to run the following
+2 test cases, you will see they return different results – the PhraseQuery
+version misses a valid Hit
+Query query = null;
+if(args.length == 1 && args[0].equals("-t1"))
+{ Term bill = new Term("contents", "bill"); Term clinton = new Term("contents", "clinton"); PhraseQuery billClinton = new PhraseQuery(); billClinton.add(bill); billClinton.add(clinton); TermQuery dog = new TermQuery(new Term("contents", "dog")); BooleanQuery billClintonANDdog = new BooleanQuery(); billClintonANDdog.add(billClinton, true, false); billClintonANDdog.add(dog, true, false); query = billClintonANDdog; }
+else
+if(args.length == 1 && args[0].equals("-t2"))
+{
+SpanTermQuery bill = new SpanTermQuery(new Term("contents", "bill"));
+SpanTermQuery clinton = new SpanTermQuery(new Term("contents",
+"clinton"));
+SpanNearQuery billClinton = new SpanNearQuery(new
+SpanQuery[]
+{bill,clinton}
+, 0, true);
+TermQuery dog = new TermQuery(new Term("contents", "dog"));
+BooleanQuery billClintonANDdog = new BooleanQuery();
+billClintonANDdog.add(billClinton, true, false);
+billClintonANDdog.add(dog, true, false);
+query = billClintonANDdog;
+}
+else
+{ System.out.println("usage: java SearchFiles -t1|-t2"); return; }
+This seems to be a bug related to at least PhraseQuery introduced since Lucene
+1.3 final.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Luke
+Create date:
+28/Apr/04 04:49
+Update date:
+02/Jun/11 22:04
+Resolved date:
+27/May/06 01:37

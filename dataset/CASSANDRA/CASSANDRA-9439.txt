@@ -1,0 +1,100 @@
+Summary:
+'list index out of range' when selecting counter column
+Description:
+Trying to 'select' a counter column results in "list index out of range".
+cqlsh:xxxxdb> select * from my_table limit 5;
+
+ bucket_type | type | account_id               | location_id              | bucket   | type_id       | count
+-------------+------+--------------------------+--------------------------+----------+---------------+-------
+        week | xxxx | aaaaaaaaaaaaaaaaaaaaaaaa | bbbbbbbbbbbbbbbbbbbbbbbb | 20141130 | uncategorized |     1
+        week | xxxx | aaaaaaaaaaaaaaaaaaaaaaaa | bbbbbbbbbbbbbbbbbbbbbbbb | 20140608 | uncategorized |     1
+        week | xxxx | aaaaaaaaaaaaaaaaaaaaaaaa | bbbbbbbbbbbbbbbbbbbbbbbb | 20140525 | uncategorized |     1
+        week | xxxx | aaaaaaaaaaaaaaaaaaaaaaaa | bbbbbbbbbbbbbbbbbbbbbbbb | 20140413 | uncategorized |     1
+        week | xxxx | aaaaaaaaaaaaaaaaaaaaaaaa | bbbbbbbbbbbbbbbbbbbbbbbb | 20140209 | uncategorized |     1
+
+(5 rows)
+cqlsh:xxxxdb> select bucket_type from my_table limit 5;
+
+ bucket_type
+-------------
+        week
+        week
+        week
+        week
+        week
+
+(5 rows)
+cqlsh:xxxxdb> select count from my_table;
+list index out of range
+
+cqlsh:xxxxdb> DESCRIBE TABLE my_table
+
+CREATE TABLE loopdb.my_table (
+    bucket_type text,
+    type text,
+    account_id text,
+    location_id text,
+    bucket int,
+    type_id text,
+    "count" counter,
+    PRIMARY KEY ((bucket_type, type, account_id, location_id), bucket, type_id)
+) WITH CLUSTERING ORDER BY (bucket DESC, type_id ASC)
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'min_threshold': '4', 'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99.0PERCENTILE';
+Works on '[cqlsh 4.1.1 | Cassandra 2.0.6 | CQL spec 3.1.1 | Thrift protocol 19.39.0]'.
+Broken on '[cqlsh 5.0.1 | Cassandra 2.1.1 | CQL spec 3.2.0 | Native protocol v3]'.
+With --debug:
+cqlsh:xxxxdb> select count from my_table limit 5;
+Traceback (most recent call last):
+  File "/usr/bin/cqlsh", line 861, in onecmd
+    self.handle_statement(st, statementtext)
+  File "/usr/bin/cqlsh", line 901, in handle_statement
+    return self.handle_parse_error(cmdword, tokens, parsed, srcstr)
+  File "/usr/bin/cqlsh", line 910, in handle_parse_error
+    return self.perform_statement(cqlruleset.cql_extract_orig(tokens, srcstr))
+  File "/usr/bin/cqlsh", line 935, in perform_statement
+    result = self.perform_simple_statement(stmt)
+  File "/usr/bin/cqlsh", line 968, in perform_simple_statement
+    self.print_result(rows, self.parse_for_table_meta(statement.query_string))
+  File "/usr/bin/cqlsh", line 946, in parse_for_table_meta
+    parsed = cqlruleset.cql_parse(query_string)[1]
+IndexError: list index out of range
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+cqlsh, cql
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Jason Walton
+Create date:
+20/May/15 15:02
+Update date:
+16/Apr/19 09:31
+Resolved date:
+20/May/15 16:35

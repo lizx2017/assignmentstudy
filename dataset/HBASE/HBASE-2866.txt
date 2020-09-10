@@ -1,0 +1,100 @@
+Summary:
+Region permanently offlined
+Description:
+After split, master attempts to reassign a region to a region server. Occasionally, such a region can get permanently offlined.
+Master:
+---------
+2010-07-22 01:26:00,914 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_SPLIT_INCLUDES_DAUGHTERS: test1,6512200000,1279784117114.6466481aa931f8c1fa87622735487a72.: Daughters; test1,6512200000,1279787158624.6ead25ae677116cc88fc5420bb39d52e., test1,6531790000,1279787\
+158624.8d5490bfc166c687657cb09203bd7d44. from test024.test.xyz.com,60020,1279780567744; 1 of 1                                                                                                                                                                                                     
+2010-07-22 01:26:00,935 DEBUG org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper: Creating UNASSIGNED region 8d5490bfc166c687657cb09203bd7d44 in state = M2ZK_REGION_OFFLINE
+
+2010-07-22 01:26:00,935 DEBUG org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper: Creating UNASSIGNED region 8d5490bfc166c687657cb09203bd7d44 in state = M2ZK_REGION_OFFLINE
+
+2010-07-22 01:26:00,945 INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region test1,6531790000,1279787158624.8d5490bfc166c687657cb09203bd7d44. to test024.test.xyz.com,60020,1279780567744
+
+2010-07-22 01:26:00,949 DEBUG org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper: While updating UNASSIGNED region 8d5490bfc166c687657cb09203bd7d44 exists, state = M2ZK_REGION_OFFLINE
+
+2010-07-22 01:26:00,954 DEBUG org.apache.hadoop.hbase.master.RegionManager: Created UNASSIGNED zNode test1,6531790000,1279787158624.8d5490bfc166c687657cb09203bd7d44. in state M2ZK_REGION_OFFLINE
+-------------------
+Region Server:
+2010-07-22 01:26:00,947 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: MSG_REGION_OPEN: test1,6531790000,1279787158624.8d5490bfc166c687657cb09203bd7d44.
+2010-07-22 01:26:00,947 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: MSG_REGION_OPEN: test1,6512200000,1279787158624.6ead25ae677116cc88fc5420bb39d52e.
+2010-07-22 01:26:00,947 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Worker: MSG_REGION_OPEN: test1,6531790000,1279787158624.8d5490bfc166c687657cb09203bd7d44.
+2010-07-22 01:26:00,948 DEBUG org.apache.hadoop.hbase.regionserver.RSZookeeperUpdater: Updating ZNode /hbase/UNASSIGNED/8d5490bfc166c687657cb09203bd7d44 with [RS2ZK_REGION_OPENING] expected version = 0
+2010-07-22 01:26:00,952 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Got ZooKeeper event, state: SyncConnected, type: NodeDataChanged, path: /hbase/UNASSIGNED/8d5490bfc166c687657cb09203bd7d44
+2010-07-22 01:26:00,974 WARN org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper: <msgstorectrl001.test.xyz.com,msgstorectrl021.test.xyz.com,msgstorectrl041.test.xyz.com,msgstorectrl061.test.xyz.com,msgstorectrl081.ash2.facebook\
+.com:/hbase,test024.test.xyz.com,60020,1279780567744>Failed to write data to ZooKeeper
+org.apache.zookeeper.KeeperException$BadVersionException: KeeperErrorCode = BadVersion for /hbase/UNASSIGNED/8d5490bfc166c687657cb09203bd7d44
+        at org.apache.zookeeper.KeeperException.create(KeeperException.java:106)
+        at org.apache.zookeeper.KeeperException.create(KeeperException.java:42)
+        at org.apache.zookeeper.ZooKeeper.setData(ZooKeeper.java:1038)
+        at org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper.writeZNode(ZooKeeperWrapper.java:1062)
+        at org.apache.hadoop.hbase.regionserver.RSZookeeperUpdater.updateZKWithEventData(RSZookeeperUpdater.java:161)
+        at org.apache.hadoop.hbase.regionserver.RSZookeeperUpdater.startRegionOpenEvent(RSZookeeperUpdater.java:115)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.openRegion(HRegionServer.java:1428)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer$Worker.run(HRegionServer.java:1337)
+        at java.lang.Thread.run(Thread.java:619)
+2010-07-22 01:26:00,975 ERROR org.apache.hadoop.hbase.regionserver.HRegionServer: Error opening test1,6531790000,1279787158624.8d5490bfc166c687657cb09203bd7d44.
+java.io.IOException: org.apache.zookeeper.KeeperException$BadVersionException: KeeperErrorCode = BadVersion for /hbase/UNASSIGNED/8d5490bfc166c687657cb09203bd7d44
+        at org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper.writeZNode(ZooKeeperWrapper.java:1072)
+Meta:
+Relevant section of META.
+Note that these are the only two entries for the problem region. The first one is the parent region (and this problem
+region is its splitB). For the next one, note that there is no "info:server" and "info:serverstartcode" columns.
+ test1,6512200000,12797841 column=info:splitB, timestamp=1279787160693, value=\x00\x0A6551820000\x00
+ 17114.6466481aa931f8c1fa8 \x00\x00\x01)\xF9BL`@test1,6531790000,1279787158624.8d5490bfc166c687657cb
+ 7622735487a72.            09203bd7d44.\x00\x0A6531790000\x00\x00\x00\x05\x05test1\x00\x00\x00\x00\x
+                           00\x02\x00\x00\x00\x07IS_ROOT\x00\x00\x00\x05false\x00\x00\x00\x07IS_META
+                           \x00\x00\x00\x05false\x00\x00\x00\x01\x08\x07actions\x00\x00\x00\x08\x00\
+                           x00\x00\x0BBLOOMFILTER\x00\x00\x00\x04NONE\x00\x00\x00\x11REPLICATION_SCO
+                           PE\x00\x00\x00\x010\x00\x00\x00\x0BCOMPRESSION\x00\x00\x00\x04NONE\x00\x0
+                           0\x00\x08VERSIONS\x00\x00\x00\x013\x00\x00\x00\x03TTL\x00\x00\x00\x0A2147
+                           483647\x00\x00\x00\x09BLOCKSIZE\x00\x00\x00\x0565536\x00\x00\x00\x09IN_ME
+                           MORY\x00\x00\x00\x05false\x00\x00\x00\x0ABLOCKCACHE\x00\x00\x00\x04true\x
+                           FE\xA0\xFD\xC5
+
+ ..
+
+ test1,6531790000,12797871 column=info:regioninfo, timestamp=1279787160782, value=REGION => {NAME =>
+ 58624.8d5490bfc166c687657  'test1,6531790000,1279787158624.8d5490bfc166c687657cb09203bd7d44.', STAR
+ cb09203bd7d44.            TKEY => '6531790000', ENDKEY => '6551820000', ENCODED => 8d5490bfc166c687
+                           657cb09203bd7d44, TABLE => {{NAME => 'test1', FAMILIES => [{NAME => 'acti
+                           ons', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', C
+                           OMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMOR
+                           Y => 'false', BLOCKCACHE => 'true'}]}}
+I think Karthik has a handle on the first part (i.e. why the RS ran into the version mismatch, and aborted opening the region). He'll add details to the JIRA. But what we aren't clear about at this stage is why the base scanner didn't kick in and try to reassign the region.
+BTW, HBase "hbck" reported this as well (which was good!):
+Number of Tables: 5
+Number of live region servers:92
+Number of dead region servers:0
+.........
+ERROR: Region test1,6512200000,1279784117114.6466481aa931f8c1fa87622735487a72. is not served by any region server  but is listed in META to be on server null
+ERROR: Region test1,6531790000,1279787158624.8d5490bfc166c687657cb09203bd7d44. is not served by any region server  but is listed in META to be on server null
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Karthik Ranganathan
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+22/Jul/10 20:20
+Update date:
+20/Nov/15 12:42
+Resolved date:
+23/Jul/10 22:45

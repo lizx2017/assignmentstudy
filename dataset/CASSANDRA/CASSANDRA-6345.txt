@@ -1,0 +1,51 @@
+Summary:
+Endpoint cache invalidation causes CPU spike (on vnode rings?)
+Description:
+We've observed that events which cause invalidation of the endpoint cache (update keyspace, add/remove nodes, etc) in AbstractReplicationStrategy result in several seconds of thundering herd behavior on the entire cluster.
+A thread dump shows over a hundred threads (I stopped counting at that point) with a backtrace like this:
+at java.net.Inet4Address.getAddress(Inet4Address.java:288)
+at org.apache.cassandra.locator.TokenMetadata$1.compare(TokenMetadata.java:106)
+at org.apache.cassandra.locator.TokenMetadata$1.compare(TokenMetadata.java:103)
+at java.util.TreeMap.getEntryUsingComparator(TreeMap.java:351)
+at java.util.TreeMap.getEntry(TreeMap.java:322)
+at java.util.TreeMap.get(TreeMap.java:255)
+at com.google.common.collect.AbstractMultimap.put(AbstractMultimap.java:200)
+at com.google.common.collect.AbstractSetMultimap.put(AbstractSetMultimap.java:117)
+at com.google.common.collect.TreeMultimap.put(TreeMultimap.java:74)
+at com.google.common.collect.AbstractMultimap.putAll(AbstractMultimap.java:273)
+at com.google.common.collect.TreeMultimap.putAll(TreeMultimap.java:74)
+at org.apache.cassandra.utils.SortedBiMultiValMap.create(SortedBiMultiValMap.java:60)
+at org.apache.cassandra.locator.TokenMetadata.cloneOnlyTokenMap(TokenMetadata.java:598)
+at org.apache.cassandra.locator.AbstractReplicationStrategy.getNaturalEndpoints(AbstractReplicationStrategy.java:104)
+at org.apache.cassandra.service.StorageService.getNaturalEndpoints(StorageService.java:2671)
+at org.apache.cassandra.service.StorageProxy.performWrite(StorageProxy.java:375)
+It looks like there's a large amount of cost in the TokenMetadata.cloneOnlyTokenMap that AbstractReplicationStrategy.getNaturalEndpoints is calling each time there is a cache miss for an endpoint. It seems as if this would only impact clusters with large numbers of tokens, so it's probably a vnodes-only issue.
+Proposal: In AbstractReplicationStrategy.getNaturalEndpoints(), cache the cloned TokenMetadata instance returned by TokenMetadata.cloneOnlyTokenMap(), wrapping it with a lock to prevent stampedes, and clearing it in clearEndpointCache(). Thoughts?
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.13, 2.0.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Rick Branson
+Create date:
+13/Nov/13 16:06
+Update date:
+16/Apr/19 09:32
+Resolved date:
+26/Nov/13 20:11

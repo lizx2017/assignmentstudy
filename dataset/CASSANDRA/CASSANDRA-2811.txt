@@ -1,0 +1,38 @@
+Summary:
+Repair doesn't stagger flushes
+Description:
+When you do a nodetool repair (with no options), the following things occured:
+For each keyspace, a call to SS.forceTableRepair is issued
+In each of those calls: for each token range the node is responsible for, a repair session is created and started
+Each of these session will request one merkle tree by column family (to each node for which it makes sense, which includes the node the repair is started on)
+All those merkle tree requests are done basically at the same time. And now that compaction is multi-threaded, this means that usually more than one validation compaction will be started at the same time. The problem is that a validation compaction starts by a flush. Given that by default the flush_queue_size is 4 and the number of compaction thread is the number of processors and given that on any recent machine the number of core will be >= 4, this means that this will easily end up blocking write for some period of time.
+It turns out to also have a more subtle problem for repair itself. If two validation compaction for the same column family (but different range) are started in a very short time interval, the first validation will block on the flush, but the second one may not block at all if the memtable is clean when it request it's own flush. In which case that second validation will be executed on data older than it should.
+I think the simpler fix is to make sure we only ever do one validation compaction at a time. It's probably a better use of resources anyway.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+0.8.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+22/Jun/11 15:08
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Jun/11 14:04

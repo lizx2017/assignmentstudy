@@ -1,0 +1,51 @@
+Summary:
+TestColumnSeeking is mathematically bound to fail
+Description:
+First I'd like to say that TestColumnSeeking is a bad test. It's not documented, it's non-deterministic, it's 2 methods with almost the same code.
+So in each test it populates column lists this way:
+    for (int i = 0; i < numberOfTests; i++) {
+      kvMaps[i] = new HashMap<String, KeyValue>();
+      columnLists[i] = new ArrayList<String>();
+      for (String column : allColumns) {
+        if (Math.random() < selectPercent) {
+          columnLists[i].add(column);
+        }
+      }
+    }
+Since selectPercent is 50% and there are 10 columns, there's something like a 1/1024 chance that one of the column list ends up with 0 column. This is later mismanaged in the checks. First something like this will be printed out:
+2013-01-28 11:50:02,200 INFO [pool-1-thread-1] regionserver.TestColumnSeeking(140): Columns: 0 Keys: 0
+Like it says, there's 0 columns so it couldn't add data. But then it still makes sure later that the data is there with this check:
+assertEquals(kvSet.size(), results.size());
+Do notice that the parameters are reversed, and here the results.size() will be 0 since there are 0 columns for this test.
+I see multiple ways to fix this:
+Skip tests that have 0 columns
+Change the randomness to at least have 1 column (like select 1 + 0..9 columns)
+Redo the whole unit test to not rely on randomness
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.6, 0.95.0
+Fix_version:
+0.98.0, 0.94.6, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+28/Jan/13 23:10
+Update date:
+23/Mar/13 04:53
+Resolved date:
+28/Feb/13 23:05

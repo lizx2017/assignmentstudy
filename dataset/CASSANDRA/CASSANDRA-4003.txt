@@ -1,0 +1,58 @@
+Summary:
+cqlsh still failing to handle decode errors in some column names
+Description:
+Columns which are expected to be text, but which are not valid utf8, cause cqlsh to display an error and not show any output:
+cqlsh:ks> CREATE COLUMNFAMILY test (a text PRIMARY KEY) WITH comparator = timestamp;
+cqlsh:ks> INSERT INTO test (a, '2012-03-05') VALUES ('val1', 'val2');
+cqlsh:ks> ASSUME test NAMES ARE text;
+cqlsh:ks> select * from test;
+'utf8' codec can't decode byte 0xe1 in position 4: invalid continuation byte
+the traceback with cqlsh --debug:
+Traceback (most recent call last):
+  File "bin/cqlsh", line 581, in onecmd
+    self.handle_statement(st)
+  File "bin/cqlsh", line 606, in handle_statement
+    return custom_handler(parsed)
+  File "bin/cqlsh", line 663, in do_select
+    self.perform_statement_as_tokens(parsed.matched, decoder=decoder)
+  File "bin/cqlsh", line 666, in perform_statement_as_tokens
+    return self.perform_statement(cqlhandling.cql_detokenize(tokens), decoder=decoder)
+  File "bin/cqlsh", line 693, in perform_statement
+    self.print_result(self.cursor)
+  File "bin/cqlsh", line 728, in print_result
+    self.print_static_result(cursor)
+  File "bin/cqlsh", line 742, in print_static_result
+    formatted_names = map(self.myformat_colname, colnames)
+  File "bin/cqlsh", line 413, in myformat_colname
+    wcwidth.wcswidth(name.decode(self.output_codec.name)))
+  File "/usr/local/Cellar/python/2.7.2/lib/python2.7/encodings/utf_8.py", line 16, in decode
+    return codecs.utf_8_decode(input, errors, True)
+UnicodeDecodeError: 'utf8' codec can't decode byte 0xe1 in position 4: invalid continuation byte
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.9, 1.1.0
+Component:
+Legacy/Tools
+Label:
+cqlsh
+Environment:
+
+Attachment number:
+0
+Assignee:
+paul cannon
+Reporter:
+paul cannon
+Create date:
+06/Mar/12 04:55
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Mar/12 19:31

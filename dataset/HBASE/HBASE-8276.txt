@@ -1,0 +1,44 @@
+Summary:
+Backport hbase-6738 to 0.94 "Too aggressive task resubmission from the distributed log manager"
+Description:
+In recent tests, we found situations that when some data nodes are down and file operations are slow depending on underlying hdfs timeout(normally 30 secs and socket connection timeout maybe around 1 min). While split log task heart beat time out is only 25 secs, a split log task will be preempted by SplitLogManager and assign to someone else after the 25 secs. On a small cluster, you'll see the same task is keeping bounced back & force for a while. I pasted a snippet of related logs below. You can search "preempted from" to see a task is preempted.
+2013-04-01 21:22:08,599 INFO org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: Splitting hlog: hdfs://ip-10-137-16-140.ec2.internal:8020/apps/hbase/data/.logs/ip-10-137-20-188.ec2.internal,60020,1364849530779-splitting/ip-10-137-20-188.ec2.internal%2C60020%2C1364849530779.1364865506159, length=127639653
+2013-04-01 21:22:08,599 INFO org.apache.hadoop.hbase.util.FSHDFSUtils: Recovering file hdfs://ip-10-137-16-140.ec2.internal:8020/apps/hbase/data/.logs/ip-10-137-20-188.ec2.internal,60020,1364849530779-splitting/ip-10-137-20-188.ec2.internal%2C60020%2C1364849530779.1364865506159
+2013-04-01 21:22:09,603 INFO org.apache.hadoop.hbase.util.FSHDFSUtils: Finished lease recover attempt for hdfs://ip-10-137-16-140.ec2.internal:8020/apps/hbase/data/.logs/ip-10-137-20-188.ec2.internal,60020,1364849530779-splitting/ip-10-137-20-188.ec2.internal%2C60020%2C1364849530779.1364865506159
+2013-04-01 21:22:09,629 WARN org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: Found existing old edits file. It could be the result of a previous failed split attempt. Deleting hdfs://ip-10-137-16-140.ec2.internal:8020/apps/hbase/data/IntegrationTestLoadAndVerify/73387f8d327a45bacf069bd631d70b3b/recovered.edits/0000000000003703447.temp, length=0
+2013-04-01 21:22:09,629 WARN org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: Found existing old edits file. It could be the result of a previous failed split attempt. Deleting hdfs://ip-10-137-16-140.ec2.internal:8020/apps/hbase/data/IntegrationTestLoadAndVerify/b749cbceaaf037c97f70cc2a6f48f2b8/recovered.edits/0000000000003703446.temp, length=0
+2013-04-01 21:22:09,630 WARN org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: Found existing old edits file. It could be the result of a previous failed split attempt. Deleting hdfs://ip-10-137-16-140.ec2.internal:8020/apps/hbase/data/IntegrationTestLoadAndVerify/c26b9d4a042d42c1194a8c2f389d33c8/recovered.edits/0000000000003703448.temp, length=0
+2013-04-01 21:22:09,666 WARN org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: Found existing old edits file. It could be the result of a previous failed split attempt. Deleting hdfs://ip-10-137-16-140.ec2.internal:8020/apps/hbase/data/IntegrationTestLoadAndVerify/adabdb40ccd52140f09f953ff41fd829/recovered.edits/0000000000003703451.temp, length=0
+2013-04-01 21:22:09,722 WARN org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: Found existing old edits file. It could be the result of a previous failed split attempt. Deleting hdfs://ip-10-137-16-140.ec2.internal:8020/apps/hbase/data/IntegrationTestLoadAndVerify/19f463fe74f4365e7df3e5fdb13aecad/recovered.edits/0000000000003703468.temp, length=0
+2013-04-01 21:22:09,734 WARN org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: Found existing old edits file. It could be the result of a previous failed split attempt. Deleting hdfs://ip-10-137-16-140.ec2.internal:8020/apps/hbase/data/IntegrationTestLoadAndVerify/b3e759a3fc9c4e83064961cc3cd4a911/recovered.edits/0000000000003703459.temp, length=0
+2013-04-01 21:22:09,770 WARN org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: Found existing old edits file. It could be the result of a previous failed split attempt. Deleting hdfs://ip-10-137-16-140.ec2.internal:8020/apps/hbase/data/IntegrationTestLoadAndVerify/6f078553be50897a986734ae043a5889/recovered.edits/0000000000003703454.temp, length=0
+2013-04-01 21:22:34,985 INFO org.apache.hadoop.hbase.regionserver.SplitLogWorker: task /hbase/splitlog/hdfs%3A%2F%2Fip-10-137-16-140.ec2.internal%3A8020%2Fapps%2Fhbase%2Fdata%2F.logs%2Fip-10-137-20-188.ec2.internal%2C60020%2C1364849530779-splitting%2Fip-10-137-20-188.ec2.internal%252C60020%252C1364849530779.1364865506159 preempted from ip-10-151-29-196.ec2.internal,60020,1364849530671, current task state and owner=unassigned ip-10-137-16-140.ec2.internal,60000,1364849528428
+The exact same issue is fixed by hbase-6738 in trunk so here comes the backport.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeffrey Zhong
+Reporter:
+Jeffrey Zhong
+Create date:
+05/Apr/13 00:34
+Update date:
+27/Apr/13 15:55
+Resolved date:
+06/Apr/13 03:23

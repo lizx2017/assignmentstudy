@@ -1,0 +1,98 @@
+Summary:
+PerformanceEvaluation does not properly honor specified table name parameter
+Description:
+Expected behavior:
+A user should be able to specify a given table for PerformanceEvaluation and have that table be used. That table does not need to exist. If it doesn't exist, PE will create it.
+Observed behavior:
+In creating the job, PE will use the new table name. However, the map tasks will fail because they are still looking for TestTable, which is not there.
+Potential causes:
+In the PE code, we see that the table's is not argument to MR:
+https://github.com/apache/hbase/blob/trunk/hbase-server/src/test/java/org/apache/hadoop/hbase/PerformanceEvaluation.java#L723
+Command:
+ hbase org.apache.hadoop.hbase.PerformanceEvaluation --table=t2 sequentialWrite 2
+Output:
+initiating session
+13/09/26 00:36:02 INFO zookeeper.ClientCnxn: Session establishment complete on server <REDACTED>/10.20.187.137:2181, sessionid = 0x14159256f9b0031, negotiated timeout = 180000
+13/09/26 00:36:02 DEBUG client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@c8d427c; serverName=<REDACTED>,60020,1380180157520
+13/09/26 00:36:02 DEBUG client.HConnectionManager$HConnectionImplementation: Cached location for .META.,,1.1028785192 is <REDACTED>:60020
+13/09/26 00:36:02 DEBUG client.ClientScanner: Creating scanner over .META. starting at key 't2,,'
+13/09/26 00:36:02 DEBUG client.ClientScanner: Advancing internal scanner to startKey at 't2,,'
+13/09/26 00:36:02 DEBUG catalog.CatalogTracker: Stopping catalog tracker org.apache.hadoop.hbase.catalog.CatalogTracker@466e06d7
+13/09/26 00:36:02 INFO zookeeper.ZooKeeper: Session: 0x14159256f9b0031 closed
+13/09/26 00:36:02 INFO zookeeper.ClientCnxn: EventThread shut down
+13/09/26 00:36:02 INFO zookeeper.ZooKeeper: Initiating client connection, connectString=<REDACTED>:2181 sessionTimeout=180000 watcher=catalogtracker-on-org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@c8d427c
+13/09/26 00:36:02 INFO zookeeper.RecoverableZooKeeper: The identifier of this process is 10390@<REDACTED>
+13/09/26 00:36:02 DEBUG catalog.CatalogTracker: Starting catalog tracker org.apache.hadoop.hbase.catalog.CatalogTracker@5152cfbb
+13/09/26 00:36:02 INFO zookeeper.ClientCnxn: Opening socket connection to server <REDACTED>/10.20.187.137:2181. Will not attempt to authenticate using SASL (unknown error)
+13/09/26 00:36:02 INFO zookeeper.ClientCnxn: Socket connection established to <REDACTED>/10.20.187.137:2181, initiating session
+13/09/26 00:36:02 INFO zookeeper.ClientCnxn: Session establishment complete on server <REDACTED>/10.20.187.137:2181, sessionid = 0x14159256f9b0032, negotiated timeout = 180000
+13/09/26 00:36:02 DEBUG client.ClientScanner: Creating scanner over .META. starting at key 't2,,'
+13/09/26 00:36:02 DEBUG client.ClientScanner: Advancing internal scanner to startKey at 't2,,'
+13/09/26 00:36:02 DEBUG catalog.CatalogTracker: Stopping catalog tracker org.apache.hadoop.hbase.catalog.CatalogTracker@5152cfbb
+13/09/26 00:36:03 INFO zookeeper.ZooKeeper: Session: 0x14159256f9b0032 closed
+13/09/26 00:36:03 INFO zookeeper.ClientCnxn: EventThread shut down
+13/09/26 00:36:04 WARN mapred.JobClient: Use GenericOptionsParser for parsing the arguments. Applications should implement Tool for the same.
+13/09/26 00:36:06 INFO input.FileInputFormat: Total input paths to process : 1
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[0]  startRow=1363147 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[1]  startRow=1468004 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[2]  startRow=1887432 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[3]  startRow=209714 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[4]  startRow=524285 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[5]  startRow=1048576 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[6]  startRow=1572861 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[7]  startRow=943713 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[8]  startRow=314571 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[9]  startRow=419428 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[10]  startRow=1258290 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[11]  startRow=1677718 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[12]  startRow=1992289 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[13]  startRow=104857 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[14]  startRow=629142 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[15]  startRow=0 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[16]  startRow=838856 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[17]  startRow=1782575 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[18]  startRow=1153433 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 DEBUG hbase.PerformanceEvaluation: split[19]  startRow=733999 rows=104857 totalRows=2097152 clients=2 flushCommits=true writeToWAL=true
+13/09/26 00:36:06 INFO hbase.PerformanceEvaluation: Total # of splits: 20
+13/09/26 00:36:07 INFO mapred.JobClient: Running job: job_201309260021_0007
+13/09/26 00:36:08 INFO mapred.JobClient:  map 0% reduce 0%
+13/09/26 00:36:23 INFO mapred.JobClient: Task Id : attempt_201309260021_0007_m_000000_0, Status : FAILED
+org.apache.hadoop.hbase.TableNotFoundException: TestTable
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:1024)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:889)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:846)
+ at org.apache.hadoop.hbase.client.HTable.finishSetup(HTable.java:271)
+ at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:211)
+ at org.apache.hadoop.hbase.PerformanceEvaluation$Test.testSetup(PerformanceEvaluation.java:801)
+ at org.apache.hadoop.hbase.PerformanceEvaluation$Test.test(PerformanceEvaluation.java:820)
+ at org.apache.hadoop.hbase.PerformanceEvaluation.runOneClient(PerformanceEvaluation.java:1169)
+ at org.apache.hadoop.hbase.PerformanceEvaluation$EvaluationMapTask.map(PerformanceEvaluation.java:452)
+ at org.apache.hadoop.hbase.PerformanceEvaluation$EvaluationMapTask
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.96.0
+Fix_version:
+0.98.0, 0.96.0
+Component:
+Client, test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Matteo Bertozzi
+Reporter:
+Aleksandr Shulman
+Create date:
+26/Sep/13 17:32
+Update date:
+20/Nov/15 11:54
+Resolved date:
+30/Sep/13 22:57

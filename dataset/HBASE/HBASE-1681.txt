@@ -1,0 +1,142 @@
+Summary:
+NSRE due to duplicate assignment to the same region server
+Description:
+Reproduce:
+1. populate hbase with 100 m records: bin/hadop jar hbase-dev-test.jar --rows=1000000 sequtialWrite 100
+2. populate hbase with 10 m records (random writes): bin/hadoop jar hbase-dev-test.jar --rows=1000000 randomWrite 10
+3. scan 10 m records: bin/hadoop jar hbase-dev-test.jar --rows=1000000 scan 10
+2 scan mapper task failed with NSRE exception for one region:
+org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: TestTable,0001724032,1248204794507
+at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:2251)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.openScanner(HRegionServer.java:1862)
+at sun.reflect.GeneratedMethodAccessor6.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:650)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:913)
+Grep master log for TestTable,0001724032,1248204794507:
+2009-07-21 12:33:18,275 INFO org.apache.hadoop.hbase.master.ServerManager: Recei
+ved MSG_REPORT_SPLIT: TestTable,0001724032,1248141721258: Daughters; TestTable,0
+001724032,1248204794507, TestTable,0001780000,1248204794507 from snv-it-lin-010.
+projectrialto.com,60020,1248115451722; 1 of 3
+2009-07-21 12:33:19,169 INFO org.apache.hadoop.hbase.master.RegionManager: Assig
+ning region TestTable,0001724032,1248204794507 to snv-it-lin-011.projectrialto.c
+om,60020,1248115452051
+2009-07-21 12:33:21,464 DEBUG org.apache.hadoop.hbase.master.BaseScanner: Curren
+t assignment of TestTable,0001724032,1248204794507 is not valid; Server '' star
+tCode: 0 unknown.
+2009-07-21 12:33:22,207 INFO org.apache.hadoop.hbase.master.ServerManager: Recei
+ved MSG_REPORT_PROCESS_OPEN: TestTable,0001724032,1248204794507 from snv-it-lin-
+011.projectrialto.com,60020,1248115452051; 1 of 1
+2009-07-21 12:33:22,208 INFO org.apache.hadoop.hbase.master.RegionManager: Assig
+ning region TestTable,0001724032,1248204794507 to snv-it-lin-011.projectrialto.c
+om,60020,1248115452051
+2009-07-21 12:33:25,245 INFO org.apache.hadoop.hbase.master.ServerManager: Recei
+ved MSG_REPORT_PROCESS_OPEN: TestTable,0001724032,1248204794507 from snv-it-lin-
+011.projectrialto.com,60020,1248115452051; 1 of 3
+2009-07-21 12:33:25,245 INFO org.apache.hadoop.hbase.master.ServerManager: Recei
+ved MSG_REPORT_PROCESS_OPEN: TestTable,0001724032,1248204794507 from snv-it-lin-
+011.projectrialto.com,60020,1248115452051; 3 of 3
+2009-07-21 12:33:28,283 INFO org.apache.hadoop.hbase.master.ServerManager: Recei
+ved MSG_REPORT_PROCESS_OPEN: TestTable,0001724032,1248204794507 from snv-it-lin-
+011.projectrialto.com,60020,1248115452051; 1 of 7
+2009-07-21 12:33:28,283 INFO org.apache.hadoop.hbase.master.ServerManager: Recei
+ved MSG_REPORT_PROCESS_OPEN: TestTable,0001724032,1248204794507 from snv-it-lin-
+011.projectrialto.com,60020,1248115452051; 3 of 7
+2009-07-21 12:33:28,283 INFO org.apache.hadoop.hbase.master.ServerManager: Recei
+ved MSG_REPORT_OPEN: TestTable,0001724032,1248204794507 from snv-it-lin-011.proj
+ectrialto.com,60020,1248115452051; 5 of 7
+2009-07-21 12:33:28,284 INFO org.apache.hadoop.hbase.master.ServerManager: Received MSG_REPORT_OPEN: TestTable,0001724032,1248204794507 from snv-it-lin-011.proj
+ectrialto.com,60020,1248115452051; 5 of 7
+2009-07-21 12:33:28,284 INFO org.apache.hadoop.hbase.master.ServerManager: Recei
+ved MSG_REPORT_OPEN: TestTable,0001724032,1248204794507 from snv-it-lin-011.proj
+ectrialto.com,60020,1248115452051; 7 of 7
+2009-07-21 12:33:28,284 DEBUG org.apache.hadoop.hbase.master.ServerManager: regi
+on server 10.10.30.105:60020 should not have opened region TestTable,0001724032,
+1248204794507
+2009-07-21 12:33:28,289 INFO org.apache.hadoop.hbase.master.RegionServerOperatio
+n: TestTable,0001724032,1248204794507 open on 10.10.30.105:60020
+2009-07-21 12:33:28,289 INFO org.apache.hadoop.hbase.master.RegionServerOperatio
+n: updating row TestTable,0001724032,1248204794507 in region .META.,,1 with star
+tcode 1248115452051 and server 10.10.30.105:60020
+Grep region server log for TestTable,0001724032,1248204794507:
+2009-07-21 12:33:19,163 INFO org.apache.hadoop.hbase.regionserver.HRegionServer:
+MSG_REGION_OPEN: TestTable,0001724032,1248204794507
+2009-07-21 12:33:22,202 INFO org.apache.hadoop.hbase.regionserver.HRegionServer:
+MSG_REGION_OPEN: TestTable,0001724032,1248204794507
+2009-07-21 12:33:26,183 INFO org.apache.hadoop.hbase.regionserver.HRegionServer:
+Worker: MSG_REGION_OPEN: TestTable,0001724032,1248204794507
+2009-07-21 12:33:26,184 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Open
+ing region TestTable,0001724032,1248204794507, encoded=3313355
+2009-07-21 12:33:26,204 INFO org.apache.hadoop.hbase.regionserver.HRegion: regio
+n TestTable,0001724032,1248204794507/3313355 available; sequence id is 45707088
+2009-07-21 12:33:26,204 DEBUG org.apache.hadoop.hbase.regionserver.CompactSplitT
+hread: Compaction requested for region TestTable,0001724032,1248204794507/331335
+5 because: Region has references on open
+2009-07-21 12:33:26,204 INFO org.apache.hadoop.hbase.regionserver.HRegionServer:
+Worker: MSG_REGION_OPEN: TestTable,0001724032,1248204794507
+2009-07-21 12:33:28,278 INFO org.apache.hadoop.hbase.regionserver.HRegionServer:
+MSG_REGION_CLOSE_WITHOUT_REPORT: TestTable,0001724032,1248204794507: Duplicate
+assignment
+2009-07-21 12:33:28,279 INFO org.apache.hadoop.hbase.regionserver.HRegionServer:
+Worker: MSG_REGION_CLOSE_WITHOUT_REPORT: TestTable,0001724032,1248204794507: Du
+plicate assignment
+2009-07-21 12:33:28,279 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Clos
+ing TestTable,0001724032,1248204794507: compactions & flushes disabled
+2009-07-21 12:33:28,279 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Upda
+tes disabled for region, no outstanding scanners on TestTable,0001724032,1248204
+794507
+2009-07-21 12:33:28,279 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: No m
+ore row locks outstanding on region TestTable,0001724032,1248204794507
+2009-07-21 12:33:28,279 INFO org.apache.hadoop.hbase.regionserver.HRegion: Close
+d TestTable,0001724032,1248204794507
+2009-07-21 12:34:45,728 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Skip
+ping compaction on TestTable,0001724032,1248204794507 because closing/closed
+org.apache.hadoop.hbase.NotServingRegionException: TestTable,0001724032,12482047
+94507
+2009-07-21 13:24:35,902 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handl
+er 27 on 60020, call openScanner([B@1756ef1, startRow=0001700000, stopRow=, maxV
+ersions=1, timeRange=[0,9223372036854775807), families={(family=info, columns={d
+ata}}) from 10.10.30.105:50797: error: org.apache.hadoop.hbase.NotServingRegionE
+xception: TestTable,0001724032,1248204794507
+org.apache.hadoop.hbase.NotServingRegionException: TestTable,0001724032,12482047
+94507
+org.apache.hadoop.hbase.NotServingRegionException: TestTable,0001724032,12482047
+94507
+2009-07-21 13:24:37,908 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handl
+er 19 on 60020, call openScanner([B@25b414, startRow=0001700000, stopRow=, maxVe
+rsions=1, timeRange=[0,9223372036854775807), families={(family=info, columns={da
+ta}}) from 10.10.30.105:50797: error: org.apache.hadoop.hbase.NotServingRegionEx
+ception: TestTable,0001724032,1248204794507
+org.apache.hadoop.hbase.NotServingRegionException: TestTable,0001724032,12482047
+94507
+org.apache.hadoop.hbase.NotServingRegionException: TestTable,0001724032,12482047
+94507
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+0.20.0
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Haijun Cao
+Create date:
+21/Jul/09 22:31
+Update date:
+07/Dec/10 21:07
+Resolved date:
+07/Dec/10 21:07

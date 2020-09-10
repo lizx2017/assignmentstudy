@@ -1,0 +1,53 @@
+Summary:
+Fix validation of indexes on composite column components of COMPACT tables
+Description:
+CASSANDRA-5125 added support of indexes on composite column components for non-compact tables (see CASSANDRA-5125 comments for additional information).
+This is a follow up for compact tables.
+Using compact tables it is possible to CREATE INDEX on composite primary key columns, but queries returns no results for the tests below.
+CREATE TABLE users2 (
+   userID uuid,
+   fname text,
+   zip int,
+   state text,
+  PRIMARY KEY ((userID, fname))
+) WITH COMPACT STORAGE;
+
+CREATE INDEX ON users2 (userID);
+CREATE INDEX ON users2 (fname);
+
+INSERT INTO users2 (userID, fname, zip, state) VALUES (b3e3bc33-b237-4b55-9337-3d41de9a5649, 'John', 10007, 'NY');
+
+-- the following queries returns 0 rows, instead of 1 expected
+SELECT * FROM users2 WHERE fname='John'; 
+SELECT * FROM users2 WHERE userid=b3e3bc33-b237-4b55-9337-3d41de9a5649;
+SELECT * FROM users2 WHERE userid=b3e3bc33-b237-4b55-9337-3d41de9a5649 AND fname='John';
+
+-- dropping 2ndary indexes restore normal behavior
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.12
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Denis Angilella
+Create date:
+21/Oct/14 11:02
+Update date:
+16/Apr/19 09:31
+Resolved date:
+16/Dec/14 19:38

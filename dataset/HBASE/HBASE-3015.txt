@@ -1,0 +1,46 @@
+Summary:
+recovered.edits files not deleted if it only contain edits that have already been flushed; hurts perf for all future opens of the region
+Description:
+On RS crash, master processes the RS's logs, splits them into per region log files, and puts them in recovered.edits sub-directory of the region.
+It may be the case the some of these files contain only old edits that have already been flushed, and don't need to be reapplied again. However, in this case the file is not deleted, and stays in recovered.edits for ever. This will slow down every future "open" of this region, as the region will unnecessarily spend time processing this file.
+In HRegion.java:replaceRecoveredEditsIfAny(), the code below checks if the file we just processed contain any edits that were applied, and in that case flushes the memstore into which things were being recovered.
+  if (seqid > minSeqId) {
+      // Then we added some edits to memory. Flush and cleanup split edit files.
+      internalFlushcache(null, seqid);
+      for (Path file: files) {
+        if (!this.fs.delete(file, false)) {
+          LOG.error("Failed delete of " + file);
+        } else {
+          LOG.debug("Deleted recovered.edits file=" + file);
+        }
+      }
+    }
+But it is not clear why the 'for' loop to clean up the recovered.edits file is inside the if check.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+18/Sep/10 02:46
+Update date:
+20/Nov/15 12:42
+Resolved date:
+20/Sep/10 18:43

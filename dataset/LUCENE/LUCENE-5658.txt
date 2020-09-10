@@ -1,0 +1,54 @@
+Summary:
+IllegalArgumentException from ByteBufferIndexInput.buildSlice
+Description:
+I've received an email with the following stacktrace:
+Exception in thread "Lucene Merge Thread #73" org.apache.lucene.index.MergePolicy$MergeException: java.lang.IllegalArgumentException
+ at org.apache.lucene.index.ConcurrentMergeScheduler.handleMergeException(ConcurrentMergeScheduler.java:545)
+ at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:518)
+Caused by: java.lang.IllegalArgumentException
+ at java.nio.Buffer.limit(Buffer.java:278)
+ at org.apache.lucene.store.ByteBufferIndexInput.buildSlice(ByteBufferIndexInput.java:259)
+ at org.apache.lucene.store.ByteBufferIndexInput.buildSlice(ByteBufferIndexInput.java:230)
+ at org.apache.lucene.store.ByteBufferIndexInput.clone(ByteBufferIndexInput.java:187)
+ at org.apache.lucene.store.MMapDirectory$1.openFullSlice(MMapDirectory.java:211)
+ at org.apache.lucene.store.CompoundFileDirectory.readEntries(CompoundFileDirectory.java:138)
+ at org.apache.lucene.store.CompoundFileDirectory.<init>(CompoundFileDirectory.java:105)
+ at org.apache.lucene.index.SegmentReader.readFieldInfos(SegmentReader.java:209)
+ at org.apache.lucene.index.SegmentReader.<init>(SegmentReader.java:99)
+ at org.apache.lucene.index.ReadersAndUpdates.getReader(ReadersAndUpdates.java:142)
+ at org.apache.lucene.index.ReadersAndUpdates.getReaderForMerge(ReadersAndUpdates.java:624)
+ at org.apache.lucene.index.IndexWriter.mergeMiddle(IndexWriter.java:4068)
+ at org.apache.lucene.index.IndexWriter.merge(IndexWriter.java:3728)
+ at org.apache.lucene.index.ConcurrentMergeScheduler.doMerge(ConcurrentMergeScheduler.java:405)
+ at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:482)
+According to the email, it happens randomly while indexing Wikipedia, on 4.8.0. As far as I understood, the indexer creates 4 indexes in parallel, by a total of 48 threads. Each index is created in a separate directory, and there's no sharing of MP or MS instances between the writers (in fact, default settings are used). This could explain the Lucene Merge Thread #73. The indexing process ends w/ a forceMerge(1). If that call is omitted, the exception doesn't reproduce. Also, since it doesn't happen always, there's no simple testcase which reproduces.
+I've asked the reporter to add more info to the issue, but opening the issue now so we could check and hopefully fix before 4.8.1.
+I checked the stacktrace against trunk, but not all the lines align (e.g. at org.apache.lucene.store.MMapDirectory$1.openFullSlice(MMapDirectory.java:211) is only in 4.8), but I haven't dug deeper yet...
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+4.8
+Fix_version:
+None
+Component:
+core/store
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Shai Erera
+Create date:
+08/May/14 20:37
+Update date:
+01/Jun/14 22:39
+Resolved date:
+

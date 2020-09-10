@@ -1,0 +1,45 @@
+Summary:
+OfflineSorter.sort shouldn't remove the output Path up front
+Description:
+The new BKD tree classes, and NumericRangeTree (just a 1D BKD tree),
+make heavy use of OfflineSorter to build their data structures at
+indexing time when the number of indexed documents is biggish.
+But when I was first building them (LUCENE-6477), I hit a thread
+safety issue in OfflineSorter, and at that time I just worked around
+it by creating my own private temp directory each time I need to write
+a BKD tree.
+This workaround is sort of messy, and it causes problems with "pending
+delete" files on Windows when we try to remove that temp directory,
+causing test failures like http://jenkins.thetaphi.de/job/Lucene-Solr-5.x-Windows/5149/
+I think instead we should fix the root cause ... i.e. make
+OfflineSorter thread safe. It looks like it's simple...
+Separately I'd like to somehow fix these BKD tests to catch any leaked
+file handles ... I'm not sure they are today.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.4, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+23/Sep/15 10:29
+Update date:
+09/May/16 18:33
+Resolved date:
+24/Sep/15 21:49

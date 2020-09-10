@@ -1,0 +1,64 @@
+Summary:
+FontProvider not thread safe
+Description:
+I understand that PDFBox is not yet thread-safe, however, from reading this comment on a similar ticket, it seems like the fonts should be thread safe and is something that we want to fix. However, I am experiencing an intermittent NullPointerException when running multi-threaded unit tests that attempt to read several PDFs at once (see details here.
+Inside FontMapperImpl.java the getProvider and setProvider methods are synchronised:
+    public synchronized void setProvider(FontProvider fontProvider)
+    {
+        this.fontProvider = fontProvider;
+        fontInfoByName = createFontInfoByName(fontProvider.getFontInfo());
+    }
+
+    /**
+     * Returns the font service provider. Defaults to using FileSystemFontProvider.
+     */
+    public synchronized FontProvider getProvider()
+    {
+        if (fontProvider == null)
+        {
+            setProvider(DefaultFontProvider.INSTANCE);
+        }
+        return fontProvider;
+    }
+However, the calling code from the findFont() method is not synchronised:
+        // make sure the font provider is initialized
+        if (fontProvider == null)
+        {
+            getProvider();
+        }
+
+        // first try to match the PostScript name
+        FontInfo info = getFont(format, postScriptName);
+        if (info != null)
+        {
+            return info.getFont();
+        }
+As a result, if multiple threads attempt to access this at once, thread A may be in the setProvider method and have set fontProvider, but still processing the creation of fontInfoByName - so thread B could attempt to access before initialised.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+2.0.3, 3.0.0 PDFBox
+Fix_version:
+2.0.4, 3.0.0 PDFBox
+Component:
+PDModel
+Label:
+concurrency
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+rob hinds
+Create date:
+03/Oct/16 13:33
+Update date:
+25/Mar/17 18:13
+Resolved date:
+08/Oct/16 18:51

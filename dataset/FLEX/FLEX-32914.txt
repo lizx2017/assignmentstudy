@@ -1,0 +1,87 @@
+Summary:
+GroupingCollection2 always throws #1009 after an ItemPendingError
+Description:
+Steps to reproduce:
+1. Bind a source that throws ItemPendingError to a GroupingCollection2 and use it as a data provider for an ADG
+<mx:AdvancedDataGrid id="persons" width="100%" height="100%"
+liveScrolling="false"
+initialize="gc.refresh(true)"
+change="dispatchEvent(new TideUIEvent('selectPerson', persons.selectedItem));">
+<mx:dataProvider>
+<mx:GroupingCollection2 id="gc" source="
+{people}
+">
+<mx:Grouping>
+<mx:GroupingField name="lastName">
+<mx:SummaryRow>
+<mx:SummaryField2 dataField="firstName" summaryOperation="COUNT"/>
+</mx:SummaryRow>
+</mx:GroupingField>
+</mx:Grouping>
+</mx:GroupingCollection2>
+</mx:dataProvider>
+<mx:columns>
+<mx:AdvancedDataGridColumn dataField="lastName" headerText="Last name"/>
+<mx:AdvancedDataGridColumn dataField="firstName" headerText="First name"/>
+</mx:columns>
+</mx:AdvancedDataGrid>
+2. Run the application
+Actual Results:
+The ADG starts to fill with grouped data until the underlying source throws and ItemPendingError, then an error #1009 is throws by GroupingCollection2 and kills the application.
+Expected Results:
+GroupingCollection2 should wait for the results of the IPE and continue the grouping process.
+Workaround (if any):
+The problem seems to be around line 1323 of GroupingCollection2 :
+private function buildGroups():Boolean
+{
+...
+flatCursor.seek(currentPosition);
+while(!flatCursor.afterLast && currentPosition != CursorBookmark.LAST)
+{
+...
+try
+{ flatCursor.moveNext(); currentPosition = flatCursor.bookmark; // return in case of async refresh if (async) return false; }
+catch (e:ItemPendingError)
+{
+cleanUp();
+e.addResponder(new ItemResponder(
+function(data:Object, token:Object=null):void
+{ makeGroupedCollection(); }
+,
+function(info:Object, token:Object=null):void
+{ //no-op }
+));
+}
+}
+...
+}
+In the catch of ItemPendingError, the call to cleanUp() resets flatCursor variable to null, so the next loop fails with #1009 because of if (!flatCursor.afterLast && ...) .
+Probably the loop test should be if (flatCursor && !flatCursor.afterLast && ...).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+Adobe Flex SDK 4.1 (
+Fix_version:
+None
+Component:
+ADG:Grouping/TDG
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+25/Dec/10 15:03
+Update date:
+19/Feb/11 01:01
+Resolved date:
+19/Feb/11 01:01

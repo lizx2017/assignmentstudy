@@ -1,0 +1,141 @@
+Summary:
+regionserver goes down on system suspend and does not start back.
+Description:
+when i suspend my system and resume it ... regionserver does not start back. looks like it actually shuts down completely. but the master and the zookeeper resume properly.
+i cannot stop-hbase.sh also properly. it goes on for a long time without doing anything. i have kill the master and zookeeper processes manually and do to "start-hbase.sh" to get back to the normal state.
+irfan@damascus:~/qw/sandbox_7/qws$ stop-hbase.sh
+stopping master....................................................................................................
+irfan@damascus:~$ jps
+956
+11871 JobTracker
+1816 HMaster
+5908 Launcher
+1742 HQuorumPeer
+11790 SecondaryNameNode
+3352
+32390 RunJar
+11974 TaskTracker
+4656 Child
+11673 DataNode
+6121 Jps
+4669 Child
+11568 NameNode
+12770 PluginMain
+irfan@damascus:~/apps/hbase-latest/logs$ tail -1000f hbase-irfan-regionserver-damascus.log
+...
+...
+...
+2009-07-19 11:48:59,538 INFO org.apache.hadoop.hbase.regionserver.HRegion: region site,,1247899770208/471872655 available; sequence id is 0
+2009-07-19 11:48:59,539 INFO org.apache.hadoop.hbase.regionserver.HRegion: Starting compaction on region site,,1247899770208
+2009-07-19 11:48:59,542 INFO org.apache.hadoop.hbase.regionserver.HRegion: compaction completed on region site,,1247899770208 in 0sec
+2009-07-19 11:58:09,369 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: compactions no longer limited
+2009-07-19 12:47:59,493 INFO org.apache.hadoop.hbase.regionserver.HLog: Roll /hbase/.logs/damascus,60020,1247984279075/hlog.dat.1247984279311, entries=109890, calcsize=18397518, filesize=12396338. New hlog /hbase/.logs/damascus,60020,1247984279075/hlog.dat.1247987879487
+2009-07-19 15:37:42,291 WARN org.apache.zookeeper.ClientCnxn: Exception closing session 0x12291a8d2be0001 to sun.nio.ch.SelectionKeyImpl@1542a75
+java.io.IOException: TIMED OUT
+at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:858)
+2009-07-19 15:37:42,292 WARN org.apache.hadoop.hbase.util.Sleeper: We slept 7207717ms, ten times longer than scheduled: 3000
+2009-07-19 15:37:42,292 WARN org.apache.hadoop.hbase.regionserver.HRegionServer: unable to report to master for 7207717 milliseconds - retrying
+2009-07-19 15:37:42,294 WARN org.apache.hadoop.hbase.util.Sleeper: We slept 7212721ms, ten times longer than scheduled: 10000
+2009-07-19 15:37:42,295 WARN org.apache.zookeeper.ClientCnxn: Exception closing session 0x12291a8d2be0005 to sun.nio.ch.SelectionKeyImpl@628704
+java.io.IOException: TIMED OUT
+at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:858)
+2009-07-19 15:37:42,296 WARN org.apache.hadoop.hdfs.DFSClient: DFSOutputStream ResponseProcessor exception for block blk_5565548861312875890_4766java.net.SocketTimeoutException: 63000 millis timeout while waiting for channel to be ready for read. ch : java.nio.channels.SocketChannel[connected local=/127.0.0.1:15928 remote=/127.0.0.1:50010]
+at org.apache.hadoop.net.SocketIOWithTimeout.doIO(SocketIOWithTimeout.java:164)
+at org.apache.hadoop.net.SocketInputStream.read(SocketInputStream.java:155)
+at org.apache.hadoop.net.SocketInputStream.read(SocketInputStream.java:128)
+at java.io.DataInputStream.readFully(DataInputStream.java:178)
+at java.io.DataInputStream.readLong(DataInputStream.java:399)
+at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream$ResponseProcessor.run(DFSClient.java:2369)
+2009-07-19 15:37:42,297 WARN org.apache.hadoop.hdfs.DFSClient: Error Recovery for block blk_5565548861312875890_4766 bad datanode[0] 127.0.0.1:50010
+2009-07-19 15:37:42,298 FATAL org.apache.hadoop.hbase.regionserver.LogRoller: Log rolling failed with ioe:
+java.io.IOException: All datanodes 127.0.0.1:50010 are bad. Aborting...
+at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.processDatanodeError(DFSClient.java:2495)
+at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.access$1600(DFSClient.java:2048)
+at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:2211)
+2009-07-19 15:37:42,300 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Dump of metrics: request=0.0, regions=3, stores=6, storefiles=4, storefileIndexSize=0, memstoreSize=0, usedHeap=29, maxHeap=996, blockCacheSize=1961680, blockCacheFree=416131792, blockCacheCount=2, blockCacheHitRatio=99
+2009-07-19 15:37:42,300 INFO org.apache.hadoop.hbase.regionserver.LogRoller: LogRoller exiting.
+2009-07-19 15:37:42,300 INFO org.apache.hadoop.hbase.regionserver.LogFlusher: regionserver/127.0.1.1:60020.logFlusher exiting
+2009-07-19 15:37:42,392 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Got ZooKeeper event, state: Disconnected, type: None, path: null
+2009-07-19 15:37:44,192 INFO org.apache.zookeeper.ClientCnxn: Attempting connection to server localhost/127.0.0.1:2181
+2009-07-19 15:37:44,193 INFO org.apache.zookeeper.ClientCnxn: Priming connection to java.nio.channels.SocketChannel[connected local=/127.0.0.1:55018 remote=localhost/127.0.0.1:2181]
+2009-07-19 15:37:44,193 INFO org.apache.zookeeper.ClientCnxn: Server connection successful
+2009-07-19 15:37:44,197 WARN org.apache.zookeeper.ClientCnxn: Exception closing session 0x12291a8d2be0005 to sun.nio.ch.SelectionKeyImpl@118cb72
+java.io.IOException: Session Expired
+at org.apache.zookeeper.ClientCnxn$SendThread.readConnectResult(ClientCnxn.java:548)
+at org.apache.zookeeper.ClientCnxn$SendThread.doIO(ClientCnxn.java:661)
+at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:897)
+2009-07-19 15:37:44,198 INFO org.apache.zookeeper.ZooKeeper: Closing session: 0x12291a8d2be0005
+2009-07-19 15:37:44,199 INFO org.apache.zookeeper.ClientCnxn: Closing ClientCnxn for session: 0x12291a8d2be0005
+2009-07-19 15:37:44,199 INFO org.apache.zookeeper.ClientCnxn: Disconnecting ClientCnxn for session: 0x12291a8d2be0005
+2009-07-19 15:37:44,199 INFO org.apache.zookeeper.ZooKeeper: Session: 0x12291a8d2be0005 closed
+2009-07-19 15:37:44,200 INFO org.apache.zookeeper.ClientCnxn: EventThread shut down
+2009-07-19 15:37:44,297 INFO org.apache.zookeeper.ClientCnxn: Attempting connection to server localhost/127.0.0.1:2181
+2009-07-19 15:37:44,297 INFO org.apache.zookeeper.ClientCnxn: Priming connection to java.nio.channels.SocketChannel[connected local=/127.0.0.1:55020 remote=localhost/127.0.0.1:2181]
+2009-07-19 15:37:44,297 INFO org.apache.zookeeper.ClientCnxn: Server connection successful
+2009-07-19 15:37:44,298 WARN org.apache.zookeeper.ClientCnxn: Exception closing session 0x12291a8d2be0001 to sun.nio.ch.SelectionKeyImpl@d4b411
+java.io.IOException: Session Expired
+at org.apache.zookeeper.ClientCnxn$SendThread.readConnectResult(ClientCnxn.java:548)
+at org.apache.zookeeper.ClientCnxn$SendThread.doIO(ClientCnxn.java:661)
+at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:897)
+2009-07-19 15:37:44,299 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Got ZooKeeper event, state: Expired, type: None, path: null
+2009-07-19 15:37:45,302 INFO org.apache.hadoop.ipc.HBaseServer: Stopping server on 60020
+2009-07-19 15:37:45,303 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 4 on 60020: exiting
+2009-07-19 15:37:45,303 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Stopping infoServer
+2009-07-19 15:37:45,314 INFO org.apache.hadoop.ipc.HBaseServer: Stopping IPC Server Responder
+2009-07-19 15:37:45,352 INFO org.apache.hadoop.hbase.regionserver.MemStoreFlusher: regionserver/127.0.1.1:60020.cacheFlusher exiting
+2009-07-19 15:37:45,353 INFO org.apache.hadoop.hbase.regionserver.CompactSplitThread: regionserver/127.0.1.1:60020.compactor exiting
+2009-07-19 15:37:45,353 INFO org.apache.hadoop.hbase.regionserver.HRegionServer$MajorCompactionChecker: regionserver/127.0.1.1:60020.majorCompactionChecker exiting
+2009-07-19 15:37:45,353 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: On abort, closed hlog
+2009-07-19 15:37:45,354 INFO org.apache.hadoop.hbase.regionserver.HRegion: Closed .META.,,1
+2009-07-19 15:37:45,354 INFO org.apache.hadoop.hbase.regionserver.HRegion: Closed site,,1247899770208
+2009-07-19 15:37:45,354 INFO org.apache.hadoop.hbase.regionserver.HRegion: Closed ROOT,,0
+2009-07-19 15:37:45,354 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: aborting server at: 127.0.1.1:60020
+2009-07-19 15:37:45,362 INFO org.apache.hadoop.ipc.HBaseServer: Stopping IPC Server listener on 60020
+2009-07-19 15:37:45,372 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 3 on 60020: exiting
+2009-07-19 15:37:45,372 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 2 on 60020: exiting
+2009-07-19 15:37:45,372 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 0 on 60020: exiting
+2009-07-19 15:37:45,372 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 9 on 60020: exiting
+2009-07-19 15:37:45,372 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 8 on 60020: exiting
+2009-07-19 15:37:45,372 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 7 on 60020: exiting
+2009-07-19 15:37:45,372 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 6 on 60020: exiting
+2009-07-19 15:37:45,373 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 5 on 60020: exiting
+2009-07-19 15:37:45,373 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 1 on 60020: exiting
+2009-07-19 15:37:52,295 INFO org.apache.hadoop.hbase.Leases: regionserver/127.0.1.1:60020.leaseChecker closing leases
+2009-07-19 15:37:52,295 INFO org.apache.hadoop.hbase.Leases: regionserver/127.0.1.1:60020.leaseChecker closed leases
+2009-07-19 15:37:52,295 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: worker thread exiting
+2009-07-19 15:37:52,295 INFO org.apache.zookeeper.ZooKeeper: Closing session: 0x12291a8d2be0001
+2009-07-19 15:37:52,295 INFO org.apache.zookeeper.ClientCnxn: Closing ClientCnxn for session: 0x12291a8d2be0001
+2009-07-19 15:37:52,296 INFO org.apache.zookeeper.ClientCnxn: Disconnecting ClientCnxn for session: 0x12291a8d2be0001
+2009-07-19 15:37:52,296 INFO org.apache.zookeeper.ZooKeeper: Session: 0x12291a8d2be0001 closed
+2009-07-19 15:37:52,296 INFO org.apache.zookeeper.ClientCnxn: EventThread shut down
+2009-07-19 15:37:52,398 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: regionserver/127.0.1.1:60020 exiting
+2009-07-19 15:37:52,399 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Starting shutdown thread.
+2009-07-19 15:37:52,400 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Shutdown thread complete
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.20.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Irfan Mohammed
+Create date:
+19/Jul/09 12:57
+Update date:
+20/Jul/09 02:23
+Resolved date:
+19/Jul/09 18:22

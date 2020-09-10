@@ -1,0 +1,99 @@
+Summary:
+NumericAxis buildLabelCache method loops infinitely for specific data values
+Description:
+Steps to reproduce:
+test this app, it will hang after clicking either "show small numbers" or "show big numbers".
+This code is based on http://forums.adobe.com/message/168089#168089 by beckerb4.
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+<fx:Declarations>
+<!-- Place non-visual elements (e.g., services, value objects) here -->
+</fx:Declarations>
+<fx:Script>
+<![CDATA[
+import mx.charts.*;
+import mx.collections.*;
+import mx.formatters.NumberFormatter;
+[Bindable]
+private var expenses:ArrayCollection;
+private var bigNumbers:ArrayCollection = new ArrayCollection([
+{Month: "Jan", Profit: 240, Expenses: 100000250007087990, Amount: 1450}
+,
+{Month: "Feb", Profit: 160, Expenses: 100000250007087980, Amount: 1600}
+,
+{Month: "Mar", Profit: 90, Expenses: 100000250007087970, Amount: 2700}
+]);
+private var smallNumbers:ArrayCollection = new ArrayCollection([
+{Month: "Jan", Profit: 2400, Expenses: 1.00000000000250007087980, Amount: 1450}
+,
+{Month: "Feb", Profit: 1600, Expenses: 1.000000000001600098798, Amount: 1600}
+,
+{Month: "Mar", Profit: 1900, Expenses: 1.0000000000020009987987, Amount: 2700}
+]);
+]]
+>
+</fx:Script>
+<s:VGroup height="100%" width="100%">
+<s:HGroup width="100%">
+<s:Button click="expenses = smallNumbers;" label="show small numbers"/>
+<s:Button click="expenses = bigNumbers;" label="show big numbers"/>
+</s:HGroup>
+<mx:BubbleChart id="scatter2" paddingLeft="5" height="100%" width="100%"
+paddingRight="5" dataProvider="
+{expenses}
+" showDataTips="true">
+<mx:horizontalAxis>
+<mx:LinearAxis baseAtZero="false" title="Profit" />
+</mx:horizontalAxis>
+<mx:verticalAxis>
+<mx:LinearAxis baseAtZero="false" title="Expenses"/>
+</mx:verticalAxis>
+<mx:series>
+<fx:Array>
+<mx:PlotSeries xField="Expenses" yField="Profit" name="Expenses/Profit" displayName="Profit2" />
+</fx:Array>
+</mx:series>
+</mx:BubbleChart>
+</s:VGroup>
+</s:Application>
+Actual Results:
+Application hang (timeout in a browser, lockup in AIR)
+Expected Results:
+A chart
+Workaround (if any):
+Transform the data values by removing common component.
+The actual loop that locks things up is in LinearAxis at line 491:
+for (i = labelBase; i <= labelTop; i += computedInterval)
+{ roundedValue = Math.round(i * roundBase) / roundBase; if(direction == "inverted") roundedValue = -roundedValue; labelCache.push(new AxisLabel( (i - computedMinimum) / r, i, roundedValue.toString())); }
+where for labelTop and labelBase close to Number precision limit and computedInterval
+small enough, the iteration does not occur (i += computedInterval is left unchanged)
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.0 (
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+22/Sep/10 01:47
+Update date:
+22/Sep/10 01:47
+Resolved date:
+

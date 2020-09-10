@@ -1,0 +1,97 @@
+Summary:
+CFs should have globally and temporally unique CF IDs to prevent "reusing" data from earlier incarnation of same CF name
+Description:
+Attached is a driver that sequentially:
+1. Drops keyspace
+2. Creates keyspace
+4. Creates 2 column families
+5. Seeds 1M rows with 100 columns
+6. Queries these 2 column families
+The above steps are repeated 1000 times.
+The following exception is observed at random (race - SEDA?):
+ERROR [ReadStage:55] 2013-01-29 19:24:52,676 AbstractCassandraDaemon.java (line 135) Exception in thread Thread[ReadStage:55,5,main]
+java.lang.AssertionError: DecoratedKey(-1, ) != DecoratedKey(62819832764241410631599989027761269388, 313a31) in C:\var\lib\cassandra\data\user_role_reverse_index\business_entity_role\user_role_reverse_index-business_entity_role-hf-1-Data.db
+at org.apache.cassandra.db.columniterator.SSTableSliceIterator.<init>(SSTableSliceIterator.java:60)
+at org.apache.cassandra.db.filter.SliceQueryFilter.getSSTableColumnIterator(SliceQueryFilter.java:67)
+at org.apache.cassandra.db.filter.QueryFilter.getSSTableColumnIterator(QueryFilter.java:79)
+at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:256)
+at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:64)
+at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1367)
+at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1229)
+at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1164)
+at org.apache.cassandra.db.Table.getRow(Table.java:378)
+at org.apache.cassandra.db.SliceFromReadCommand.getRow(SliceFromReadCommand.java:69)
+at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:822)
+at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1271)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+This exception appears in the server at the time of client submitting a query request (row slice) and not at the time data is seeded. The client times out and this data can no longer be queried as the same exception would always occur from there on.
+Also on iteration 201, it appears that dropping column families failed and as a result their recreation failed with unique column family name violation (see exception below). Note that the data files are actually gone, so it appears that the server runtime responsible for creating column family was out of sync with the piece that dropped them:
+Starting dropping column families
+Dropped column families
+Starting dropping keyspace
+Dropped keyspace
+Starting creating column families
+Created column families
+Starting seeding data
+Total rows inserted: 1000000 in 5105 ms
+Iteration: 200; Total running time for 1000 queries is 232; Average running time of 1000 queries is 0 ms
+Starting dropping column families
+Dropped column families
+Starting dropping keyspace
+Dropped keyspace
+Starting creating column families
+Created column families
+Starting seeding data
+Total rows inserted: 1000000 in 5361 ms
+Iteration: 201; Total running time for 1000 queries is 222; Average running time of 1000 queries is 0 ms
+Starting dropping column families
+Starting creating column families
+Exception in thread "main" com.netflix.astyanax.connectionpool.exceptions.BadRequestException: BadRequestException: [host=127.0.0.1(127.0.0.1):9160, latency=2468(2469), attempts=1]InvalidRequestException(why:Keyspace names must be case-insensitively unique ("user_role_reverse_index" conflicts with "user_role_reverse_index"))
+at com.netflix.astyanax.thrift.ThriftConverter.ToConnectionPoolException(ThriftConverter.java:159)
+at com.netflix.astyanax.thrift.AbstractOperationImpl.execute(AbstractOperationImpl.java:60)
+at com.netflix.astyanax.thrift.AbstractOperationImpl.execute(AbstractOperationImpl.java:27)
+at com.netflix.astyanax.thrift.ThriftSyncConnectionFactoryImpl$1.execute(ThriftSyncConnectionFactoryImpl.java:140)
+at com.netflix.astyanax.connectionpool.impl.AbstractExecuteWithFailoverImpl.tryOperation(AbstractExecuteWithFailoverImpl.java:69)
+at com.netflix.astyanax.connectionpool.impl.AbstractHostPartitionConnectionPool.executeWithFailover(AbstractHostPartitionConnectionPool.java:255)
+at com.netflix.astyanax.thrift.ThriftKeyspaceImpl.createKeyspace(ThriftKeyspaceImpl.java:569)
+at com.nuance.mca.astyanax.App.recreateKeyspaceSchema(App.java:139)
+at com.nuance.mca.astyanax.App.main(App.java:88)
+Caused by: InvalidRequestException(why:Keyspace names must be case-insensitively unique ("user_role_reverse_index" conflicts with "user_role_reverse_index"))
+at org.apache.cassandra.thrift.Cassandra$system_add_keyspace_result.read(Cassandra.java:30010)
+at org.apache.thrift.TServiceClient.receiveBase(TServiceClient.java:78)
+at org.apache.cassandra.thrift.Cassandra$Client.recv_system_add_keyspace(Cassandra.java:1285)
+at org.apache.cassandra.thrift.Cassandra$Client.system_add_keyspace(Cassandra.java:1272)
+at com.netflix.astyanax.thrift.ThriftKeyspaceImpl$14.internalExecute(ThriftKeyspaceImpl.java:584)
+at com.netflix.astyanax.thrift.ThriftKeyspaceImpl$14.internalExecute(ThriftKeyspaceImpl.java:572)
+at com.netflix.astyanax.thrift.AbstractOperationImpl.execute(AbstractOperationImpl.java:55)
+... 7 more
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 beta1
+Component:
+None
+Label:
+qa-resolved test
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Marat Bedretdinov
+Create date:
+30/Jan/13 17:17
+Update date:
+16/Apr/19 09:32
+Resolved date:
+15/Jan/14 03:13

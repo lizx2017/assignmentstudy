@@ -1,0 +1,53 @@
+Summary:
+DistributedLogSplitter failing to split file because it has edits for lots of regions
+Description:
+Testing 0.92.0RC, ran into interesting issue where a log file had edits for many regions and just opening the file per region was taking so long, we were never updating our progress and so the split of the log just kept failing; in this case, the first 40 edits in a file required our opening 35 files – opening 35 files took longer than the hard-coded 25 seconds its supposed to take "acquiring" the task.
+First, here is master's view:
+2011-12-20 17:54:09,184 DEBUG org.apache.hadoop.hbase.master.SplitLogManager: task not yet acquired /hbase/splitlog/hdfs%3A%2F%2Fsv4r11s38%3A7000%2Fhbase%2F.logs%2Fsv4r31s44%2C7003%2C1324365396770-splitting%2Fsv4r31s44%252C7003%252C1324365396770.1324403487679 ver = 0
+...
+2011-12-20 17:54:09,233 INFO org.apache.hadoop.hbase.master.SplitLogManager: task /hbase/splitlog/hdfs%3A%2F%2Fsv4r11s38%3A7000%2Fhbase%2F.logs%2Fsv4r31s44%2C7003%2C1324365396770-splitting%2Fsv4r31s44%252C7003%252C1324365396770.1324403487679 acquired by sv4r27s44,7003,1324365396664
+...
+2011-12-20 17:54:35,475 DEBUG org.apache.hadoop.hbase.master.SplitLogManager: task not yet acquired /hbase/splitlog/hdfs%3A%2F%2Fsv4r11s38%3A7000%2Fhbase%2F.logs%2Fsv4r31s44%2C7003%2C1324365396770-splitting%2Fsv4r31s44%252C7003%252C1324365396770.1324403573033 ver = 3
+Master then gives it elsewhere.
+Over on the regionserver we see:
+2011-12-20 17:54:09,233 INFO org.apache.hadoop.hbase.regionserver.SplitLogWorker: worker sv4r27s44,7003,1324365396664 acquired task /hbase/splitlog/hdfs%3A%2F%2Fsv4r11s38%3A7000%2Fhbase%2F.logs%2Fsv4r31s44%2C7003%2C1324365396770-splitting%2Fsv4r31s44%252C7003%252C1324365396770.1324403487679
+....
+2011-12-20 17:54:10,714 DEBUG org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogWriter: Path=hdfs://sv4r11s38:7000/hbase/splitlog/sv4r27s44,7003,1324365396664_hdfs%3A%2F%2Fsv4r11s38%3A7000%2Fhbase%2F.logs%2Fsv4r31s44%2C7003%2C1324365396770-splitting%2Fsv4r31s44%252C7003%252C1324365396770.1324403487679/TestTable/6b6bfc2716dff952435ab26f018648b2/recovered.ed
+its/0000000000000278862.temp, syncFs=true, hflush=false
+....
+.... and so on till:
+2011-12-20 17:54:36,876 INFO org.apache.hadoop.hbase.regionserver.SplitLogWorker: task /hbase/splitlog/hdfs%3A%2F%2Fsv4r11s38%3A7000%2Fhbase%2F.logs%2Fsv4r31s44%2C7003%2C1324365396770-splitting%2Fsv4r31s44%252C7003%252C1324365396770.1324403487679 preempted from sv4r27s44,7003,1324365396664, current task state and owner=owned sv4r28s44,7003,1324365396678
+
+....
+
+2011-12-20 17:54:37,112 WARN org.apache.hadoop.hbase.regionserver.SplitLogWorker: Failed to heartbeat the task/hbase/splitlog/hdfs%3A%2F%2Fsv4r11s38%3A7000%2Fhbase%2F.logs%2Fsv4r31s44%2C7003%2C1324365396770-splitting%2Fsv4r31s44%252C7003%252C1324365396770.1324403487679
+....
+When above happened, we'd only processed 40 edits. As written, we only heatbeat every 1024 edits.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+20/Dec/11 22:01
+Update date:
+20/Nov/15 11:54
+Resolved date:
+21/Dec/11 04:02

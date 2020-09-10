@@ -1,0 +1,69 @@
+Summary:
+Corrupt HFile cause resource leak leading to Region Server OOM
+Description:
+One of our customer was recently hit with OOM error on almost all of the region servers.
+Postmortem of the issue reveled that a corrupt HFile had made its way into one of the regions which resulted into the region brought offline immediately which is as per design.
+What happened next reveals two issues:
+
+As soon as the region was offlined, Master noticed this and tried to assign the region to another region server which of course failed (again due to the corrupt HFile) and then Master tried to assign this to another and so on. So this region kept bouncing from one server to another and this went unnoticed for few hours and all region servers log were filled with thousands of this message:
+org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Failed open of
+region=userdata,50743646010,1378139055806.318c533716869574f10615703269497f.,
+starting to roll back the global memstore size.
+java.io.IOException: java.io.IOException:
+org.apache.hadoop.hbase.io.hfile.CorruptHFileException: Problem reading HFile
+Trailer from file
+/hbase/userdata/318c533716869574f10615703269497f/data/a3e2ae39f71441ac92a6563479fb976e
+        at org.apache.hadoop.hbase.regionserver.HRegion.initializeRegionInternals(HRegion.java:550)
+        at org.apache.hadoop.hbase.regionserver.HRegion.initialize(HRegion.java:463)
+        at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:3835)
+        at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:3783)
+        at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.openRegion(OpenRegionHandler.java:332)
+        at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:108)
+        at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:169)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+Caused by: java.io.IOException:
+org.apache.hadoop.hbase.io.hfile.CorruptHFileException: Problem reading HFile
+Trailer from file
+/hbase/userdata/318c533716869574f10615703269497f/data/a3e2ae39f71441ac92a6563479fb976e
+        at org.apache.hadoop.hbase.regionserver.Store.loadStoreFiles(Store.java:404)
+        at org.apache.hadoop.hbase.regionserver.Store.<init>(Store.java:257)
+        at org.apache.hadoop.hbase.regionserver.HRegion.instantiateHStore(HRegion.java:3017)
+        at org.apache.hadoop.hbase.regionserver.HRegion$1.call(HRegion.java:525)
+        at org.apache.hadoop.hbase.regionserver.HRegion$1.call(HRegion.java:523)
+        at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+        at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+For situation like this, the region should be marked "offlined_with_error" or something similar so that Master does not try to assign it to another server without user fixing the issue. I will create a separate JIRA for that.
+The second problem and the scope of this JIRA is that the function org.apache.hadoop.hbase.io.hfile.HFile.pickReaderVersion() throws exception without closing the FSDataInputStream objects even if closeIStream is set to true. This lead to orphan filesystem streams accumulating in region server and it eventually died of OOM.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.12
+Fix_version:
+0.98.0, 0.94.13, 0.96.1
+Component:
+HFile
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aditya Kishore
+Reporter:
+Aditya Kishore
+Create date:
+09/Oct/13 21:54
+Update date:
+18/Dec/13 00:50
+Resolved date:
+22/Oct/13 23:47

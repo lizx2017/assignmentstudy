@@ -1,0 +1,74 @@
+Summary:
+BulkLoader fails with NoSuchElementException
+Description:
+When using BulkLoader tool (sstableloader command) to transfer data from a cluster to another,
+a java.util.NoSuchElementException is thrown whenever the directory contains a "snapshot" sub directory,
+and the bulk load fails.
+The fix should be quite simple:
+Catch any NoSuchElementException thrown in SSTableLoader#openSSTables()
+The directory structure:
+user@cassandrasrv01:~$ ls /var/lib/cassandra/data/Keyspace1/CF1/
+Keyspace1-CF1-ib-1872-CompressionInfo.db
+Keyspace1-CF1-ib-1872-Data.db
+Keyspace1-CF1-ib-1872-Filter.db
+Keyspace1-CF1-ib-1872-Index.db
+Keyspace1-CF1-ib-1872-Statistics.db
+Keyspace1-CF1-ib-1872-Summary.db
+Keyspace1-CF1-ib-1872-TOC.txt
+Keyspace1-CF1-ib-2166-CompressionInfo.db
+Keyspace1-CF1-ib-2166-Data.db
+Keyspace1-CF1-ib-2166-Filter.db
+Keyspace1-CF1-ib-2166-Index.db
+Keyspace1-CF1-ib-2166-Statistics.db
+Keyspace1-CF1-ib-2166-Summary.db
+Keyspace1-CF1-ib-2166-TOC.txt
+Keyspace1-CF1-ib-5-CompressionInfo.db
+Keyspace1-CF1-ib-5-Data.db
+Keyspace1-CF1-ib-5-Filter.db
+Keyspace1-CF1-ib-5-Index.db
+Keyspace1-CF1-ib-5-Statistics.db
+Keyspace1-CF1-ib-5-Summary.db
+Keyspace1-CF1-ib-5-TOC.txt
+...
+snapshots
+The stacktrace:
+user@cassandrasrv01:~$ ./cassandra/bin/sstableloader -v --debug -d cassandrabck01 /var/lib/cassandra/data/Keyspace1/CF1/
+null
+java.util.NoSuchElementException
+        at java.util.StringTokenizer.nextToken(StringTokenizer.java:349)
+        at org.apache.cassandra.io.sstable.Descriptor.fromFilename(Descriptor.java:265)
+        at org.apache.cassandra.io.sstable.Component.fromFilename(Component.java:122)
+        at org.apache.cassandra.io.sstable.SSTable.tryComponentFromFilename(SSTable.java:194)
+        at org.apache.cassandra.io.sstable.SSTableLoader$1.accept(SSTableLoader.java:71)
+        at java.io.File.list(File.java:1087)
+        at org.apache.cassandra.io.sstable.SSTableLoader.openSSTables(SSTableLoader.java:67)
+        at org.apache.cassandra.io.sstable.SSTableLoader.stream(SSTableLoader.java:119)
+        at org.apache.cassandra.tools.BulkLoader.main(BulkLoader.java:67)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.6
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Julien Aymé
+Reporter:
+Julien Aymé
+Create date:
+22/May/13 05:49
+Update date:
+16/Apr/19 09:32
+Resolved date:
+02/Jun/13 03:46

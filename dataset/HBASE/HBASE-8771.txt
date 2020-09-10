@@ -1,0 +1,51 @@
+Summary:
+ensure replication_scope's value is either local(0) or global(1)
+Description:
+For replication_scope, only two values are meaningful:
+ 
+  public static final int REPLICATION_SCOPE_LOCAL = 0;
+  public static final int REPLICATION_SCOPE_GLOBAL = 1;
+However, there is no checking for that, so currently user can set it to any integer value. And all non-zero value will be treated as 1(GLOBAL).
+This jira is to add a checking in HColumnDescriptor#setScope() so that only 0 and 1 will be accept during create_table or alter_table.
+In the future, we can leverage replication_scope to store for info. For example:
+-1: A columnfam is replicated from another cluster in MASTER_SLAVE setup (i.e readonly)
+2 : A columnfam is set MASTER_MASTER
+Probably a major improve JIRA is needed for the future usage. It will be good to ensure the scope value at this moment.
+Testing
+hbase(main):002:0> create 't1_dn',{NAME=>'cf1',REPLICATION_SCOPE=>2}
+
+ERROR: java.lang.IllegalArgumentException: Replication Scope must be either 0(local) or 1(global)
+...
+
+hbase(main):004:0> alter 't1_dn',{NAME=>'cf1',REPLICATION_SCOPE=>-1}
+
+ERROR: java.lang.IllegalArgumentException: Replication Scope must be either 0(local) or 1(global)
+...
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+0.94.8
+Fix_version:
+None
+Component:
+Replication
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Demai Ni
+Reporter:
+Demai Ni
+Create date:
+19/Jun/13 18:41
+Update date:
+02/Aug/13 04:08
+Resolved date:
+

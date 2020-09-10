@@ -1,0 +1,53 @@
+Summary:
+CQL 'set' returns incorrect value
+Description:
+CQL 'set' returns incorrect value after flush.
+Create the following table:
+CREATE KEYSPACE ks WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+USE ks;
+CREATE TABLE cf ( k int PRIMARY KEY , s set<int> );
+Insert data:
+INSERT INTO cf (k, s) VALUES (1, {1});
+INSERT INTO cf (k, s) VALUES (1, {2});
+This should return:
+cqlsh:ks> SELECT * FROM cf;
+
+ k | s
+---+--------
+ 1 | {2}
+and it does when no flush has happened.
+But when I do flush after each insert, it starts returning:
+cqlsh:ks> SELECT * FROM cf;
+
+ k | s
+---+--------
+ 1 | {1, 2}
+'system.local' table flushes every time it inserts(updates) tokens, and this behavior is causing 'nodetool move' to act weirdly.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0 rc1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Yuki Morishita
+Create date:
+25/Jul/13 17:40
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Jul/13 20:35

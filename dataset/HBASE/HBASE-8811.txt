@@ -1,0 +1,44 @@
+Summary:
+REST service ignores misspelled "check=" parameter, causing unexpected mutations
+Description:
+In rest.RowResource.update(), this code keeps executing a request if a misspelled check= parameter is provided.
+    if (CHECK_PUT.equalsIgnoreCase(check)) {
+      return checkAndPut(model);
+    } else if (CHECK_DELETE.equalsIgnoreCase(check)) {
+      return checkAndDelete(model);
+    } else if (check != null && check.length() > 0) {
+      LOG.warn("Unknown check value: " + check + ", ignored");
+    }
+By my reading of the code, this results in the provided cell value that was intended as a check instead being treated as a mutation, which is sure to destroy user data. Thus the priority of this bug, as it can cause corruption.
+I suggest that a better reaction than a warning would be, approximately:
+return Response.status(Response.Status.BAD_REQUEST)
+        .type(MIMETYPE_TEXT).entity("Invalid check value '" + check + "'")
+        .build();
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.95.2, 0.94.9
+Fix_version:
+0.98.0, 0.95.2, 0.94.10
+Component:
+REST
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Chip Salzenberg
+Reporter:
+Chip Salzenberg
+Create date:
+27/Jun/13 02:00
+Update date:
+24/Jul/13 19:08
+Resolved date:
+27/Jun/13 05:07

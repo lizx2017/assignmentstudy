@@ -1,0 +1,60 @@
+Summary:
+ArrayIndexOutOfBoundsException hit in lucene50.ForUtil.readBlock
+Description:
+We hit this on an autowarming query with a phrase on a particular shard, and it keeps happening with similar errors (and on other position-sensitive queries) post-restart on both that particular autowarming query and other queries. I'm guessing somehow a file in the index got written incorrectly with regard to positions.
+10:11:58 ERROR 04-06 17:52:06.360 org.apache.solr.handler.RequestHandlerBase (searcherExecutor-9-thread-1-processing-n:ourip:8983_solr x:collection_shardY_replica1 s:shardY c:collection) [s:Y ] java.lang.ArrayIndexOutOfBoundsException: -95
+        at org.apache.lucene.codecs.lucene50.ForUtil.readBlock(ForUtil.java:196)
+        at org.apache.lucene.codecs.lucene50.Lucene50PostingsReader$BlockPostingsEnum.refillPositions(Lucene50PostingsReader.java:638)
+        at org.apache.lucene.codecs.lucene50.Lucene50PostingsReader$BlockPostingsEnum.skipPositions(Lucene50PostingsReader.java:747)
+        at org.apache.lucene.codecs.lucene50.Lucene50PostingsReader$BlockPostingsEnum.nextPosition(Lucene50PostingsReader.java:768)
+        at org.apache.lucene.search.ExactPhraseScorer.phraseFreq(ExactPhraseScorer.java:128)
+        at org.apache.lucene.search.ExactPhraseScorer.access$000(ExactPhraseScorer.java:27)
+        at org.apache.lucene.search.ExactPhraseScorer$1.matches(ExactPhraseScorer.java:73)
+        at org.apache.lucene.search.Weight$DefaultBulkScorer.scoreAll(Weight.java:253)
+        at org.apache.lucene.search.Weight$DefaultBulkScorer.score(Weight.java:197)
+        at org.apache.lucene.search.BulkScorer.score(BulkScorer.java:39)
+        at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:668)
+        at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:472)
+        at org.apache.solr.search.SolrIndexSearcher.buildAndRunCollectorChain(SolrIndexSearcher.java:217)
+        at org.apache.solr.search.SolrIndexSearcher.getDocListNC(SolrIndexSearcher.java:1582)
+        at org.apache.solr.search.SolrIndexSearcher.getDocListC(SolrIndexSearcher.java:1399)
+        at org.apache.solr.search.SolrIndexSearcher.search(SolrIndexSearcher.java:566)
+        at org.apache.solr.handler.component.QueryComponent.process(QueryComponent.java:545)
+        at org.apache.solr.handler.component.SearchHandler.handleRequestBody(SearchHandler.java:296)
+        at org.apache.solr.handler.RequestHandlerBase.handleRequest(RequestHandlerBase.java:173)
+        at org.apache.solr.core.SolrCore.execute(SolrCore.java:2477)
+        at org.apache.solr.core.QuerySenderListener.newSearcher(QuerySenderListener.java:74)
+        at org.apache.solr.core.SolrCore.lambda$getSearcher$15(SolrCore.java:2249)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+        at org.apache.solr.common.util.ExecutorUtil$MDCAwareThreadPoolExecutor.lambda$execute$0(ExecutorUtil.java:229)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+        at java.lang.Thread.run(Thread.java:748)
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+6.6.2
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Michael Braun
+Create date:
+13/Apr/18 14:30
+Update date:
+13/Apr/18 16:17
+Resolved date:
+13/Apr/18 16:17

@@ -1,0 +1,97 @@
+Summary:
+CQL queries using LIMIT sometimes missing results
+Description:
+In certain conditions, CQL queries using LIMIT clauses are not being given all of the expected results (whether unset column values or missing rows).
+Here are the condition sets I've been able to identify:
+First mode: all rows are returned, but in the last row of results, all columns which are not part of the primary key receive no values, except for the first non-primary-key column. Conditions:
+Table has a multi-component primary key
+Table has more than one column which is not a component of the primary key
+The number of results which would be returned by a query is equal to or more than the specified LIMIT
+Second mode: result has fewer rows than it should, lower than both the LIMIT and the actual number of matching rows. Conditions:
+Table has a single-column primary key
+Table has more than one column which is not a component of the primary key
+The number of results which would be returned by a query is equal to or more than the specified LIMIT
+It would make sense to me that this would have started with CASSANDRA-4329, but bisecting indicates that this behavior started with commit 91bdf7fb4220b27e9566c6673bf5dbd14153017c, implementing CASSANDRA-3647.
+Test case for the first failure mode:
+DROP KEYSPACE test;
+
+CREATE KEYSPACE test
+    WITH strategy_class = 'SimpleStrategy'
+    AND strategy_options:replication_factor = 1;
+
+USE test;
+
+CREATE TABLE testcf (
+    a int,
+    b int,
+    c int,
+    d int,
+    e int,
+    PRIMARY KEY (a, b)
+);
+
+INSERT INTO testcf (a, b, c, d, e) VALUES (1, 11, 111, 1111, 11111);
+INSERT INTO testcf (a, b, c, d, e) VALUES (2, 22, 222, 2222, 22222);
+INSERT INTO testcf (a, b, c, d, e) VALUES (3, 33, 333, 3333, 33333);
+INSERT INTO testcf (a, b, c, d, e) VALUES (4, 44, 444, 4444, 44444);
+
+SELECT * FROM testcf;
+
+SELECT * FROM testcf LIMIT 1; -- columns d and e in result row are null
+SELECT * FROM testcf LIMIT 2; -- columns d and e in last result row are null
+SELECT * FROM testcf LIMIT 3; -- columns d and e in last result row are null
+SELECT * FROM testcf LIMIT 4; -- columns d and e in last result row are null
+SELECT * FROM testcf LIMIT 5; -- results are correct (4 rows returned)
+Test case for the second failure mode:
+CREATE KEYSPACE test
+    WITH strategy_class = 'SimpleStrategy'
+    AND strategy_options:replication_factor = 1;
+
+USE test;
+
+CREATE TABLE testcf (
+    a int primary key,
+    b int,
+    c int,
+);
+
+INSERT INTO testcf (a, b, c) VALUES (1, 11, 111);
+INSERT INTO testcf (a, b, c) VALUES (2, 22, 222);
+INSERT INTO testcf (a, b, c) VALUES (3, 33, 333);
+INSERT INTO testcf (a, b, c) VALUES (4, 44, 444);
+
+SELECT * FROM testcf;
+
+SELECT * FROM testcf LIMIT 1; -- gives 1 row
+SELECT * FROM testcf LIMIT 2; -- gives 1 row
+SELECT * FROM testcf LIMIT 3; -- gives 2 rows
+SELECT * FROM testcf LIMIT 4; -- gives 2 rows
+SELECT * FROM testcf LIMIT 5; -- gives 3 rows
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 1
+Component:
+None
+Label:
+cql cql3
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+paul cannon
+Create date:
+27/Aug/12 20:51
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/Sep/12 06:35

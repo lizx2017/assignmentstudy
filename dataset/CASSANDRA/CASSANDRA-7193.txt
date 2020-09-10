@@ -1,0 +1,49 @@
+Summary:
+rows_per_partition_to_cache is not reflected in table DESCRIBE
+Description:
+I can create a table with the new query cache from CASSANDRA-5357:
+CREATE TABLE status (user text, status_id timeuuid, status text, PRIMARY KEY (user, status_id)) WITH caching = '{"keys":"ALL", "rows_per_partition":"10"}';
+This method appears to work fine.
+However, that is not the syntax mentioned in that ticket. It says to use a rows_per_partition_to_cache setting instead, which does appear to work in cql:
+CREATE TABLE status2 (user text, status_id timeuuid, status text, PRIMARY KEY (user, status_id)) WITH rows_per_partition_to_cache = 200;
+But that setting is not reflected in the table description, instead it still shows NONE:
+cqlsh:test> DESCRIBE TABLE status2;
+
+CREATE TABLE test.status2 (
+    user text,
+    status_id timeuuid,
+    status text,
+    PRIMARY KEY (user, status_id)
+) WITH CLUSTERING ORDER BY (status_id ASC)
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    ...
+Similarly, alter table with that syntax, does not produce an error, but also does not seem to affect the setting :
+ALTER TABLE test.status WITH rows_per_partition_to_cache = 200;
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Ryan McGuire
+Create date:
+08/May/14 16:33
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Jun/14 05:49

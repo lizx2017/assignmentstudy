@@ -1,0 +1,102 @@
+Summary:
+cqlsh error for query against collection index - list index out of range
+Description:
+This worked in 2.1 RC1
+Connected to Test Cluster at 127.0.0.1:9042.
+[cqlsh 5.0.1 | Cassandra 2.1.0-rc1-SNAPSHOT | CQL spec 3.1.7 | Native protocol v3]
+Use HELP for help.
+cqlsh> use k1;
+cqlsh:k1> SELECT id, description FROM products WHERE categories CONTAINS 'hdtv';
+
+ id    | description
+-------+-----------------------------
+ 29412 |    32-inch LED HDTV (black)
+ 34134 | 120-inch 1080p 3D plasma TV
+
+(2 rows)
+But fails on 2.1:
+Connected to Test Cluster at 127.0.0.1:9042.
+[cqlsh 5.0.1 | Cassandra 2.1.0-rc4-SNAPSHOT | CQL spec 3.2.0 | Native protocol v3]
+Use HELP for help.
+cqlsh> use k1;
+cqlsh:k1> SELECT id, description FROM products WHERE categories CONTAINS 'hdtv';
+list index out of range
+cqlsh:k1>
+This is using the example from the blog post http://www.datastax.com/dev/blog/cql-in-2-1
+A more complete repro:
+cqlsh:k1>
+cqlsh:k1> CREATE KEYSPACE cat_index_test
+      ... WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+cqlsh:k1> USE cat_index_test;
+cqlsh:cat_index_test>
+cqlsh:cat_index_test>  CREATE TABLE IF NOT EXISTS products (
+                  ...       id int PRIMARY KEY,
+                  ...       description text,
+                  ...       price int,
+                  ...       categories set<text>,
+                  ...       features map<text, text>
+                  ...   );
+cqlsh:cat_index_test>
+cqlsh:cat_index_test>   CREATE INDEX IF NOT EXISTS cat_index ON products(categories);
+cqlsh:cat_index_test>   CREATE INDEX IF NOT EXISTS feat_index ON products(features);
+cqlsh:cat_index_test>
+cqlsh:cat_index_test>   INSERT INTO products(id, description, price, categories, features)
+                  ...        VALUES (34134,
+                  ...                '120-inch 1080p 3D plasma TV',
+                  ...                9999,
+                  ...                {'tv', '3D', 'hdtv'},
+                  ...                {'screen' : '120-inch', 'refresh-rate' : '400hz', 'techno' : 'plasma'});
+cqlsh:cat_index_test>
+cqlsh:cat_index_test>   INSERT INTO products(id, description, price, categories, features)
+                  ...        VALUES (29412,
+                  ...                '32-inch LED HDTV (black)',
+                  ...                929,
+                  ...                {'tv', 'hdtv'},
+                  ...                {'screen' : '32-inch', 'techno' : 'LED'});
+cqlsh:cat_index_test>
+cqlsh:cat_index_test>   INSERT INTO products(id, description, price, categories, features)
+                  ...        VALUES (38471,
+                  ...                '32-inch LCD TV',
+                  ...                110,
+                  ...                {'tv', 'used'},
+                  ...                {'screen' : '32-inch', 'techno' : 'LCD'});
+cqlsh:cat_index_test>   SELECT id, description FROM products WHERE categories CONTAINS 'hdtv';
+list index out of range
+cqlsh:cat_index_test>   SELECT id, description FROM products WHERE features CONTAINS '32-inch';
+list index out of range
+cqlsh:cat_index_test> DROP INDEX feat_index;
+cqlsh:cat_index_test> CREATE INDEX feat_key_index ON products(KEYS(features));
+cqlsh:cat_index_test>
+cqlsh:cat_index_test> SELECT id, description
+                  ... FROM products
+                  ... WHERE features CONTAINS KEY 'refresh-rate';
+list index out of range
+This appears to be a cqlsh issue, since these queries still work when executed using DevCenter.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.1
+Component:
+None
+Label:
+cqlsh
+Environment:
+
+Attachment number:
+0
+Assignee:
+Robert Stupp
+Reporter:
+dan jatnieks
+Create date:
+22/Jul/14 17:18
+Update date:
+16/Apr/19 09:31
+Resolved date:
+22/Jul/14 19:11

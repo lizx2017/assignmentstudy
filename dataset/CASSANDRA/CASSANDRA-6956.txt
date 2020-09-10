@@ -1,0 +1,60 @@
+Summary:
+SELECT ... LIMIT offset by 1 with static columns
+Description:
+First, repro case:
+cqlsh:test> create table test ( pk1 text, pk2 timeuuid, data1 text static, data2 text, PRIMARY KEY( pk1, pk2 ) );
+cqlsh:test> update test set data1 = 'data1', data2 = 'data2' where pk1 = 'pk1' and pk2 = now();
+cqlsh:test> update test set data1 = 'data1', data2 = 'data2' where pk1 = 'pk1' and pk2 = now();
+cqlsh:test> select * from test limit 1;
+
+ pk1 | pk2  | data1 | data2
+-----+------+-------+-------
+ pk1 | null | data1 |  null
+
+(1 rows)
+
+cqlsh:test> select * from test limit 2;
+
+ pk1 | pk2                                  | data1 | data2
+-----+--------------------------------------+-------+-------
+ pk1 | 9b068ee0-b8b0-11e3-a345-49baa9ac32e6 | data1 | data2
+
+(1 rows)
+
+cqlsh:test> select * from test limit 3;
+
+ pk1 | pk2                                  | data1 | data2
+-----+--------------------------------------+-------+-------
+ pk1 | 9b068ee0-b8b0-11e3-a345-49baa9ac32e6 | data1 | data2
+ pk1 | 0af67a40-b8ba-11e3-a345-49baa9ac32e6 | data1 | data2
+
+(2 rows)
+I think that: 1) if this is a static columns feature it should be documented so I can use it safely or 2) it should be fixed (return 2 rows with limit 2 for query above).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7
+Component:
+None
+Label:
+None
+Environment:
+cqlsh, cql
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Pavel Eremeev
+Create date:
+31/Mar/14 10:00
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Apr/14 09:31

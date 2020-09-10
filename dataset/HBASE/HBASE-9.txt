@@ -1,0 +1,50 @@
+Summary:
+Mysterious ArrayOutOfBoundsException in HTable.commit
+Description:
+I got this exception using a post-0.15.0 hbase trunk:
+Caused by: java.io.IOException: java.io.IOException: java.lang.ArrayIndexOutOfBoundsException
+at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+at sun.reflect.NativeConstructorAccessorImpl.newInstance(Unknown Source)
+at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(Unknown Source)
+at java.lang.reflect.Constructor.newInstance(Unknown Source)
+at org.apache.hadoop.hbase.RemoteExceptionHandler.decodeRemoteException(RemoteExceptionHandler.java:82)
+at org.apache.hadoop.hbase.HTable.commit(HTable.java:904)
+at org.apache.hadoop.hbase.HTable.commit(HTable.java:875)
+at xxx.PutHbase$HbaseUploader.writeHbaseNoRetry(PutHbase.java:107)
+Where writeHbaseNoRetry looks like:
+private void writeHbaseNoRetry(HTable table, String column, String row, File contents) throws IOException {
+long lockid = table.startUpdate(new Text(row));
+try
+{ table.put(lockid, new Text(column), FileUtil.readFile(contents)); table.commit(lockid); }
+finally
+{ table.abort(lockid); }
+}
+I found this in my error logs – it is rare, and I am not sure how to reproduce it. Contents could be 1kb-100kb long.
+Status:
+CLOSED
+Priority:
+Trivial
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Michael Bieniosek
+Create date:
+15/Jan/08 19:14
+Update date:
+01/May/12 07:14
+Resolved date:
+29/Feb/08 21:00

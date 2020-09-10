@@ -1,0 +1,38 @@
+Summary:
+KeyValue may return incorrect values after readFields()
+Description:
+When the same KeyValue object is used multiple times for deserialization using readFields, some methods may return incorrect values. Here is a sequence of operations that will reproduce the problem:
+A KeyValue is created whose key has length 10. The private field keyLength is initialized to 0.
+KeyValue.getKeyLength() is called. This reads the key length 10 from the backing array and caches it in keyLength.
+KeyValue.readFields() is called to deserialize a new value. The keyLength field is not cleared and keeps its value of 10, even though this value is probably incorrect.
+If getKeyLength() is called, the value 10 will be returned.
+For example, in a reducer with Iterable<KeyValue>, all values after the first one from the iterable are likely to return incorrect values from getKeyLength().
+The solution is to clear all memoized values in KeyValue.readFields(). I'll write a patch for this soon.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Dave Revell
+Reporter:
+Dave Revell
+Create date:
+09/Jul/12 22:00
+Update date:
+05/Aug/14 20:11
+Resolved date:
+03/Aug/12 15:20

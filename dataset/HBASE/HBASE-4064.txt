@@ -1,0 +1,95 @@
+Summary:
+Two concurrent unassigning of the same region caused the endless loop of "Region has been PENDING_CLOSE for too long..."
+Description:
+1. If there is a "rubbish" RegionState object with "PENDING_CLOSE" in regionsInTransition(The RegionState was remained by some exception which should be removed, that's why I called it as "rubbish" object), but the region is not currently assigned anywhere, TimeoutMonitor will fall into an endless loop:
+2011-06-27 10:32:21,326 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. state=PENDING_CLOSE, ts=1309141555301
+2011-06-27 10:32:21,326 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_CLOSE for too long, running forced unassign again on region=test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f.
+2011-06-27 10:32:21,438 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. (offlining)
+2011-06-27 10:32:21,441 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Attempted to unassign region test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. but it is not currently assigned anywhere
+2011-06-27 10:32:31,207 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. state=PENDING_CLOSE, ts=1309141555301
+2011-06-27 10:32:31,207 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_CLOSE for too long, running forced unassign again on region=test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f.
+2011-06-27 10:32:31,215 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. (offlining)
+2011-06-27 10:32:31,215 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Attempted to unassign region test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. but it is not currently assigned anywhere
+2011-06-27 10:32:41,164 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. state=PENDING_CLOSE, ts=1309141555301
+2011-06-27 10:32:41,164 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_CLOSE for too long, running forced unassign again on region=test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f.
+2011-06-27 10:32:41,172 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. (offlining)
+2011-06-27 10:32:41,172 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Attempted to unassign region test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. but it is not currently assigned anywhere
+.....
+2 In the following scenario, two concurrent unassigning call of the same region may lead to the above problem:
+the first unassign call send rpc call success, the master watched the event of "RS_ZK_REGION_CLOSED", process this event, will create a ClosedRegionHandler to remove the state of the region in master.eg.
+while ClosedRegionHandler is running in "hbase.master.executor.closeregion.threads" thread (A), another unassign call of same region run in another thread(B).
+while thread B run "if (!regions.containsKey(region))", this.regions have the region info, now cpu switch to thread A.
+The thread A will remove the region from the sets of "this.regions" and "regionsInTransition", then switch to thread B. the thread B run continue, will throw an exception with the msg of "Server null returned java.lang.NullPointerException: Passed server is null for 9a6e26d40293663a79523c58315b930f", but without removing the new-adding RegionState from "regionsInTransition",and it can not be removed for ever.
+public void unassign(HRegionInfo region, boolean force) {
+LOG.debug("Starting unassignment of region " +
+region.getRegionNameAsString() + " (offlining)");
+synchronized (this.regions) {
+// Check if this region is currently assigned
+if (!regions.containsKey(region))
+{ LOG.debug("Attempted to unassign region " + region.getRegionNameAsString() + " but it is not " + "currently assigned anywhere"); return; }
+}
+String encodedName = region.getEncodedName();
+// Grab the state of this region and synchronize on it
+RegionState state;
+long stamp = -1;
+synchronized (regionsInTransition) {
+state = regionsInTransition.get(encodedName);
+if (state == null)
+{ state = new RegionState(region, RegionState.State.PENDING_CLOSE); stamp =state.getStamp(); regionsInTransition.put(encodedName, state); }
+else if (force && state.isPendingClose())
+{ LOG.debug("Attempting to unassign region " + region.getRegionNameAsString() + " which is already pending close " + "but forcing an additional close"); state.update(RegionState.State.PENDING_CLOSE); }
+else
+{ LOG.debug("Attempting to unassign region " + region.getRegionNameAsString() + " but it is " + "already in transition (" + state.getState() + ")"); return; }
+}
+// Send CLOSE RPC
+HServerInfo server = null;
+synchronized (this.regions)
+{ server = regions.get(region); }
+}
+2011-06-27 10:20:59,583 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. (offlining)
+2011-06-27 10:20:59,585 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Sent CLOSE to serverName=158-1-91-101,20020,1308983865292, load=(requests=0, regions=0, usedHeap=0, maxHeap=0) for region test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f.
+2011-06-27 10:22:15,299 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling new unassigned node: /hbase/unassigned/9a6e26d40293663a79523c58315b930f (region=test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f., server=158-1-91-101,20020,1308983865292, state=RS_ZK_REGION_CLOSED)
+2011-06-27 10:22:15,299 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_CLOSED, server=158-1-91-101,20020,1308983865292, region=9a6e26d40293663a79523c58315b930f
+2011-06-27 10:25:22,636 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. state=CLOSED, ts=1309141335247
+2011-06-27 10:25:22,636 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region 9a6e26d40293663a79523c58315b930f has been CLOSED for too long, waiting on queued ClosedRegionHandler to run or server shutdown
+2011-06-27 10:25:55,022 DEBUG org.apache.hadoop.hbase.master.handler.ClosedRegionHandler: Handling CLOSED event for 9a6e26d40293663a79523c58315b930f
+2011-06-27 10:25:55,022 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Table being disabled so deleting ZK node and removing from regions in transition, skipping assignment of region test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f.
+2011-06-27 10:25:55,022 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:20000-0x230ba8b85230036 Deleting existing unassigned node for 9a6e26d40293663a79523c58315b930f that is in expected state RS_ZK_REGION_CLOSED
+2011-06-27 10:25:55,101 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:20000-0x230ba8b85230036 Successfully deleted unassigned node for region 9a6e26d40293663a79523c58315b930f in expected state RS_ZK_REGION_CLOSED
+2011-06-27 10:25:55,301 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. (offlining)
+2011-06-27 10:25:55,302 INFO org.apache.hadoop.hbase.master.AssignmentManager: Server null returned java.lang.NullPointerException: Passed server is null for 9a6e26d40293663a79523c58315b930f
+2011-06-27 10:32:21,326 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. state=PENDING_CLOSE, ts=1309141555301
+2011-06-27 10:32:21,326 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_CLOSE for too long, running forced unassign again on region=test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f.
+2011-06-27 10:32:21,438 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. (offlining)
+2011-06-27 10:32:21,441 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Attempted to unassign region test2,070712,1308971310309.9a6e26d40293663a79523c58315b930f. but it is not currently assigned anywhere
+3 The following scenario shows how the above problem 2 happened:
+(1)A table have a lot of regions, more than 70000 in my test.
+(2)Disable the table, if 'BulkDisabler.waitUntilDone' timeout, 'DisableTableHandler.process' will create another BulkDisabler object and start its thread pool. The region which was still online will call AssignmentManager.unassign again. so the same region "AssignmentManager.unassign" could be called concurrentlly more than 1.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.90.3
+Fix_version:
+0.90.7
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jieshan Bean
+Create date:
+06/Jul/11 03:38
+Update date:
+09/Feb/14 00:46
+Resolved date:
+09/Feb/14 00:46

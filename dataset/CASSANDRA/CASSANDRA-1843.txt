@@ -1,0 +1,55 @@
+Summary:
+Indexes: CF MBeans for automatic indexes are never unregistered when they are deleted.
+Description:
+Add, delete, and add the same index and you should get a stacktrace to this effect:
+java.lang.RuntimeException: javax.management.InstanceAlreadyExistsException: org.apache.cassandra.db:type=IndexColumnFamilies,keyspace=Keyspace1,columnfamily=Standard1.616765
+  at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:259)
+  at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:447)
+  at org.apache.cassandra.db.ColumnFamilyStore.addIndex(ColumnFamilyStore.java:304)
+  at org.apache.cassandra.db.ColumnFamilyStore.reload(ColumnFamilyStore.java:193)
+  at org.apache.cassandra.db.migration.UpdateColumnFamily.applyModels(UpdateColumnFamily.java:80)
+  at org.apache.cassandra.db.migration.Migration.apply(Migration.java:171)
+  at org.apache.cassandra.thrift.CassandraServer$2.call(CassandraServer.java:663)
+  at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+  at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+  at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+  at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+  at java.lang.Thread.run(Thread.java:662)
+Caused by: javax.management.InstanceAlreadyExistsException: org.apache.cassandra.db:type=IndexColumnFamilies,keyspace=Keyspace1,columnfamily=Standard1.616765
+  at com.sun.jmx.mbeanserver.Repository.addMBean(Repository.java:453)
+  at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.internal_addObject(DefaultMBeanServerInterceptor.java:1484)
+  at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.registerDynamicMBean(DefaultMBeanServerInterceptor.java:963)
+  at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.registerObject(DefaultMBeanServerInterceptor.java:917)
+  at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.registerMBean(DefaultMBeanServerInterceptor.java:312)
+  at com.sun.jmx.mbeanserver.JmxMBeanServer.registerMBean(JmxMBeanServer.java:482)
+  at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:255)
+  ... 11 more
+CFS.reload() manages index deletion, but never unregisters the MBeans it creates during initialization.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.0 rc 3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jon Hermes
+Reporter:
+Jon Hermes
+Create date:
+10/Dec/10 23:33
+Update date:
+16/Apr/19 09:33
+Resolved date:
+11/Dec/10 00:06

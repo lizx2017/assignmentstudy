@@ -1,0 +1,52 @@
+Summary:
+AssertionError when STOP:ing compactions
+Description:
+When we open compaction results early we clone the SSTableReader (ie create a new instance of it). Any compaction strategy that keeps track of its sstables will not be notified of that new sstable and keeps a reference to the old instance. The compaction strategy gets notified when the compaction is actually done.
+The problem is if the compaction is interrupted, then LCS will start a new compaction with those stale SSTableReader instances and trigger an assertion error:
+ERROR 14:27:06 Exception in thread Thread[CompactionExecutor:3,1,main]
+java.lang.AssertionError: Reference counter -1 for /var/lib/cassandra/data/Keyspace1/Standard1-0bf25ed0496711e4bf3f07871b385ea9/Keyspace1-Standard1-ka-15-Data.db
+ at org.apache.cassandra.io.sstable.SSTableReader.releaseReference(SSTableReader.java:1601) ~[Cassandra/:na]
+ at org.apache.cassandra.db.DataTracker.replaceReaders(DataTracker.java:375) ~[Cassandra/:na]
+ at org.apache.cassandra.io.sstable.SSTableRewriter.replaceReaders(SSTableRewriter.java:284) ~[Cassandra/:na]
+ at org.apache.cassandra.io.sstable.SSTableRewriter.moveStarts(SSTableRewriter.java:250) ~[Cassandra/:na]
+ at org.apache.cassandra.io.sstable.SSTableRewriter.switchWriter(SSTableRewriter.java:298) ~[Cassandra/:na]
+ at org.apache.cassandra.db.compaction.CompactionTask.runWith(CompactionTask.java:187) ~[Cassandra/:na]
+ at org.apache.cassandra.io.util.DiskAwareRunnable.runMayThrow(DiskAwareRunnable.java:48) ~[Cassandra/:na]
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28) ~[Cassandra/:na]
+ at org.apache.cassandra.db.compaction.CompactionTask.executeInternal(CompactionTask.java:75) ~[Cassandra/:na]
+ at org.apache.cassandra.db.compaction.AbstractCompactionTask.execute(AbstractCompactionTask.java:59) ~[Cassandra/:na]
+ at org.apache.cassandra.db.compaction.CompactionManager$BackgroundCompactionTask.run(CompactionManager.java:236) ~[Cassandra/:na]
+ at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471) ~[na:1.7.0_67]
+ at java.util.concurrent.FutureTask.run(FutureTask.java:262) ~[na:1.7.0_67]
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145) ~[na:1.7.0_67]
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615) [na:1.7.0_67]
+ at java.lang.Thread.run(Thread.java:745) [na:1.7.0_67]
+Fix is probably to tell the compaction strategy that there is a new sstable instance whenever we create one.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.1
+Component:
+Local/Compaction
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Marcus Eriksson
+Create date:
+01/Oct/14 14:33
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Oct/14 08:55

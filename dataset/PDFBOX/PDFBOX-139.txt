@@ -1,0 +1,101 @@
+Summary:
+The CMapParser does not recognize essential cmap operators
+Description:
+[imported from SourceForge]
+http://sourceforge.net/tracker/index.php?group_id=78314&atid=552832&aid=1438028
+Originally submitted by vdimchev on 2006-02-24 03:48.
+The bug is directly related to the following bug I
+discovered in the database:
+[ 1208652 ] PDFTextStripper.writeText Exception:Unknown
+encoding for ..
+I'll try to exlain it again here and supply enough
+resources for its fix.
+The problem is that the current implementation of
+CMapParser class supports only the beginbfchar and
+beginbfrange operators.
+This is not enough and causes the invokation to
+PDFTextStripper.writeText() to throw IOException with
+the following message: Unknown encoding for 'Identity-
+V'.
+I also managed to produce the message: "Unknown
+encoding for '90ms-RKSJ-H'.
+The complete stacktrace is:
+java.io.IOException: Unknown encoding for 'Identity-V'
+at org.pdfbox.encoding.EncodingManager.
+getEncoding(EncodingManager.java:83)
+at org.pdfbox.pdmodel.font.PDFont.
+getEncoding(PDFont.java:627)
+at org.pdfbox.pdmodel.font.PDFont.
+encode(PDFont.java:476)
+at org.pdfbox.util.PDFStreamEngine.
+showString(PDFStreamEngine.java:332)
+at org.pdfbox.util.operator.ShowText.
+process(ShowText.java:66)
+at org.pdfbox.util.PDFStreamEngine.
+processOperator(PDFStreamEngine.java:494)
+at org.pdfbox.util.PDFStreamEngine.
+processSubStream(PDFStreamEngine.java:207)
+at org.pdfbox.util.PDFStreamEngine.
+processStream(PDFStreamEngine.java:160)
+at org.pdfbox.util.PDFTextStripper.
+processPage(PDFTextStripper.java:355)
+at org.pdfbox.util.PDFTextStripper.
+processPages(PDFTextStripper.java:268)
+at org.pdfbox.util.PDFTextStripper.
+writeText(PDFTextStripper.java:220)
+In fact the cause of this exception is that the
+CMapParser does not recognize the begincidchar and
+begincidrange operators (in the case of the 90ms-RKSJ-
+H) encoding and usecmap operator in the case of
+Identity-V encoding.
+The cmap files for these encodings are not properly
+parsed and the corresponding Cmap objects do not
+contain neither one nor two byte mappings, further the
+lookup() method returns null.
+I'll attach two samples for the 90ms-RKSJ-H encoding
+and one for the Identity-V encoding.
+I'll attach cmap reference also.
+[attachment on SourceForge]
+http://sourceforge.net/tracker/download.php?group_id=78314&atid=552832&aid=1438028&file_id=168711
+5014.CIDFont_Spec.rar (application/octet-stream), 240282 bytes
+Reference, containing CMAP description
+[attachment on SourceForge]
+http://sourceforge.net/tracker/download.php?group_id=78314&atid=552832&aid=1438028&file_id=168709
+ken1.pdf (application/pdf), 33713 bytes
+The Identity-V sample
+[attachment on SourceForge]
+http://sourceforge.net/tracker/download.php?group_id=78314&atid=552832&aid=1438028&file_id=168708
+tp0404-2a.pdf (application/pdf), 11434 bytes
+The second 90ms-RKSJ-H sample
+[attachment on SourceForge]
+http://sourceforge.net/tracker/download.php?group_id=78314&atid=552832&aid=1438028&file_id=168705
+nan_youkou.pdf (application/pdf), 7663 bytes
+The first 90ms-RKSJ-H sample
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Anonymous
+Create date:
+24/Feb/06 11:48
+Update date:
+25/Aug/13 16:57
+Resolved date:
+25/Aug/13 16:57

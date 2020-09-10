@@ -1,0 +1,91 @@
+Summary:
+SpanNearQuery returns single term spans
+Description:
+Let's assume we have an index with two documents:
+1. contents: "test bunga bunga test"
+2. contents: "test bunga test"
+We run two SpanNearQueries against this index:
+1. spanNear([contents:bunga, contents:bunga], 0, true)
+2. spanNear([contents:bunga, contents:bunga], 0, false)
+For the first query we get 1 hit. The first document in the example above gets matched and the second one doesn't. This make sense, because we want the term "bunga" followed by another "bunga" here.
+However, both documents get matched by the second query. This is also problematic in cases where we have duplicate terms in longer (unordered) spannear queries, e. g.: unordered 'A B A' will match spans such as 'A B' or 'B A'.
+A complete example follows.
+---------
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.spans.SpanNearQuery;
+import org.apache.lucene.search.spans.SpanQuery;
+import org.apache.lucene.search.spans.SpanTermQuery;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.RAMDirectory;
+import org.apache.lucene.util.Version;
+import java.io.StringReader;
+import static org.junit.Assert.assertEquals;
+class SpansBug {
+public static void main(String [] args) throws Exception {
+Directory dir = new RAMDirectory();
+Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_45);
+IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_45, analyzer);
+IndexWriter writer = new IndexWriter(dir, iwc);
+String contents = "contents";
+Document doc1 = new Document();
+doc1.add(new TextField(contents, new StringReader("test bunga bunga test")));
+Document doc2 = new Document();
+doc2.add(new TextField(contents, new StringReader("test bunga test")));
+writer.addDocument(doc1);
+writer.addDocument(doc2);
+writer.commit();
+IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(dir));
+SpanQuery stq1 = new SpanTermQuery(new Term(contents,"bunga"));
+SpanQuery stq2 = new SpanTermQuery(new Term(contents,"bunga"));
+SpanQuery [] spqa = new SpanQuery[]
+{stq1,stq2}
+;
+SpanNearQuery spanQ1 = new SpanNearQuery(spqa,0, true);
+SpanNearQuery spanQ2 = new SpanNearQuery(spqa,0, false);
+System.out.println(spanQ1);
+TopDocs tdocs1 = searcher.search(spanQ1,10);
+assertEquals(tdocs1.totalHits ,1);
+System.out.println(spanQ2);
+TopDocs tdocs2 = searcher.search(spanQ2,10);
+//I'd expect one hit here:
+assertEquals(tdocs2.totalHits ,1); // Assertion fails
+}
+}
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Piotr Pęzik
+Create date:
+13/Jan/14 00:05
+Update date:
+06/Sep/16 16:19
+Resolved date:
+

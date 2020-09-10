@@ -1,0 +1,36 @@
+Summary:
+Killing cassandra process results in unclosed connections
+Description:
+After upgrading from Cassandra from 2.0.12 to 2.0.15, whenever we killed a cassandra process (with SIGTERM), some other nodes maintained a connection with the killed node in the CLOSE_WAIT state on port 7000 for about 5-20 minutes.
+So, when we started the killed node again, other nodes could not establish a handshake because of the connections on the CLOSE_WAIT state, so they remained on the DOWN state to each other until the initial connection expired.
+The problem did not happen if I ran a nodetool disablegossip before killing the node.
+I was able to fix this issue by reverting the CASSANDRA-8336 commits (including CASSANDRA-9238). After reverting this, cassandra now closes connection correctly when killed with -TERM, but leaves connections on CLOSE_WAIT state if I run nodetool disablethrift before killing the nodes.
+I did not try to reproduce the problem in a clean environment.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+3.0.16, 3.11.2, 4.0
+Component:
+Legacy/Distributed Metadata, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Paulo Motta
+Reporter:
+Paulo Motta
+Create date:
+22/Jun/15 12:29
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/Jan/18 12:42

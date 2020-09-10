@@ -1,0 +1,58 @@
+Summary:
+FVH does not work well with phrases and multiple tags
+Description:
+I'm indexing a document with a field which is aaa bbb ccc ddd bbb eee fff.
+I'm running a Bool Query which contains 2 should Phrase queries: aaa bbb and eee fff.
+I'm using an FVH with two tags <1></1> and <2></2>.
+It gives the correct result: <1>aaa bbb</1> ccc ddd bbb <2>eee fff</2>
+With same settings, I'm now running with 2 should Phrase queries: aaa bbb and bbb eee.
+I'm getting back a wrong result: <1>aaa bbb</1> ccc ddd <1>bbb eee</1> fff where I'm expecting <1>aaa bbb</1> ccc ddd <2>bbb eee</2> fff.
+Why this?
+Apparently the FVH is getting back as sequence numbers in the first case 0 and 1 but in the second case 0 and 2.
+The problem is when we call then getPreTag, we are getting the first tag instead of the second one:
+  protected String getPreTag( String[] preTags, int num ){
+    int n = num % preTags.length;
+    return preTags[n];
+  }
+  
+  protected String getPostTag( String[] postTags, int num ){
+    int n = num % postTags.length;
+    return postTags[n];
+  }
+I did not find yet how to fix that. But I believe it is somewhere in org.apache.lucene.search.vectorhighlight.FieldQuery class
+    private void markTerminal( int slop, float boost ){
+      this.terminal = true;
+      this.slop = slop;
+      this.boost = boost;
+      this.termOrPhraseNumber = fieldQuery.nextTermOrPhraseNumber();
+    }
+This call to nextTermOrPhraseNumber() increments the term number I guess because we have already seen the term BBB previously.
+I'm going to join a test case patch.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+trunk
+Fix_version:
+None
+Component:
+modules/highlighter
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+David Pilato
+Create date:
+07/Nov/16 10:53
+Update date:
+07/Mar/18 15:24
+Resolved date:
+

@@ -1,0 +1,50 @@
+Summary:
+Can't use optionnal importer for TLF plainTextFormat and TextLayoutFormat
+Description:
+When you add importer to the TextConverter class, you should be able to let the importer decline the conversion by having its importToFlow method returning null (as it is stated in the TLF blogpost http://blogs.adobe.com/tlf/2010/11/custom-clipboard-formats.htm ).
+It works for all format except plainTextFormat and textLayoutFormat because of these lines in flashx.textLayout.edit.TextClipboard, method importToScrap #170:
+var textFlow:TextFlow = importer.importToFlow(textOnClipboard);
+if (textFlow)
+textScrap = new TextScrap(textFlow);
+if (format == TextConverter.PLAIN_TEXT_FORMAT)
+textScrap.setPlainText(true);
+else if (format == TextConverter.TEXT_LAYOUT_FORMAT)
+textScrap.setPlainText(false);
+If the importer return null, textFlow==null, so textScrap==null and textScrap.setPlainText(...) cause a null object error.
+The solution is trivial. This method should not assume these formats will always have the importer return a non-null textFlow, and should test either the existence of the textFlow or the existence of the textScrap. The correct code would be:
+var textFlow:TextFlow = importer.importToFlow(textOnClipboard);
+if (textFlow)
+textScrap = new TextScrap(textFlow);
+if (format == TextConverter.PLAIN_TEXT_FORMAT && textScrap)
+textScrap.setPlainText(true);
+else if (format == TextConverter.TEXT_LAYOUT_FORMAT && textScrap)
+textScrap.setPlainText(false);
+This bug prevent me from having some converter that check for patterns in a plain text from clipboard and chose to handle the conversion if the patterns are found.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Apache Flex 4.13.0
+Fix_version:
+Apache Flex 4.14.0
+Component:
+.Unspecified - Framework
+Label:
+importer tlf
+Environment:
+
+Attachment number:
+0
+Assignee:
+Frédéric THOMAS
+Reporter:
+dimitri kara
+Create date:
+09/Oct/14 10:24
+Update date:
+19/Jan/15 20:15
+Resolved date:
+18/Oct/14 14:04

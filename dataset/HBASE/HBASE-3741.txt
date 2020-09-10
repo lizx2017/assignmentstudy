@@ -1,0 +1,80 @@
+Summary:
+Make HRegionServer aware of the regions it's opening/closing
+Description:
+This is a serious issue about a race between regions being opened and closed in region servers. We had this situation where the master tried to unassign a region for balancing, failed, force unassigned it, force assigned it somewhere else, failed to open it on another region server (took too long), and then reassigned it back to the original region server. A few seconds later, the region server processed the first closed and the region was left unassigned.
+This is from the master log:
+11-04-05 15:11:17,758 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Sent CLOSE to serverName=sv4borg42,60020,1300920459477, load=(requests=187, regions=574, usedHeap=3918, maxHeap=6973) for region stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:12:10,021 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961 state=PENDING_CLOSE, ts=1302041477758
+2011-04-05 15:12:10,021 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_CLOSE for too long, running forced unassign again on region=stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+...
+2011-04-05 15:14:45,783 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Forcing OFFLINE; was=stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961 state=CLOSED, ts=1302041685733
+2011-04-05 15:14:45,783 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x42ec2cece810b68 Creating (or updating) unassigned node for 1470298961 with OFFLINE state
+...
+2011-04-05 15:14:45,885 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Using pre-existing plan for region stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961; plan=hri=stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961, src=sv4borg42,60020,1300920459477, dest=sv4borg40,60020,1302041218196
+2011-04-05 15:14:45,885 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961 to sv4borg40,60020,1302041218196
+2011-04-05 15:15:39,410 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961 state=PENDING_OPEN, ts=1302041700944
+2011-04-05 15:15:39,410 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_OPEN for too long, reassigning region=stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:15:39,410 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Forcing OFFLINE; was=stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961 state=PENDING_OPEN, ts=1302041700944
+...
+2011-04-05 15:15:39,410 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan was found (or we are ignoring an existing plan) for stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961 so generated a random one; hri=stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961, src=, dest=sv4borg42,60020,1300920459477; 19 (online=19, exclude=null) available servers
+2011-04-05 15:15:39,410 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961 to sv4borg42,60020,1300920459477
+2011-04-05 15:15:40,951 DEBUG org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher: master:60000-0x42ec2cece810b68 Received ZooKeeper Event, type=NodeDataChanged, state=SyncConnected, path=/prodjobs/unassigned/1470298961
+2011-04-05 15:15:40,952 DEBUG org.apache.hadoop.hbase.zookeeper.ZKUtil: master:60000-0x42ec2cece810b68 Retrieved 93 byte(s) of data from znode /prodjobs/unassigned/1470298961 and set watcher; region=stumbles_by_userid2,'����穗���6,1266566087256, server=sv4borg42,60020,1300920459477, state=RS_ZK_REGION_OPENED
+2011-04-05 15:15:40,952 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=sv4borg42,60020,1300920459477, region=1470298961
+2011-04-05 15:15:42,222 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Handling OPENED event for 1470298961; deleting unassigned node
+...
+2011-04-05 15:15:55,812 DEBUG org.apache.hadoop.hbase.zookeeper.ZKUtil: master:60000-0x42ec2cece810b68 Retrieved 93 byte(s) of data from znode /prodjobs/unassigned/1470298961 and set watcher; region=stumbles_by_userid2,'����穗���6,1266566087256, server=sv4borg42,60020,1300920459477, state=RS_ZK_REGION_CLOSING
+2011-04-05 15:15:55,812 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling new unassigned node: /prodjobs/unassigned/1470298961 (region=stumbles_by_userid2,'����穗���6,1266566087256, server=sv4borg42,60020,1300920459477, state=RS_ZK_REGION_CLOSING)
+2011-04-05 15:15:55,812 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_CLOSING, server=sv4borg42,60020,1300920459477, region=1470298961
+2011-04-05 15:15:55,812 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received CLOSING for region 1470298961 from server sv4borg42,60020,1300920459477 but region was in the state null and not in expected PENDING_CLOSE or CLOSING states
+And from sv4borg42:
+2011-04-05 15:09:58,755 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Received close region: stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:11:17,757 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Received close region: stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:12:10,021 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Received close region: stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:14:45,675 DEBUG org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler: Processing close of stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:14:45,700 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Closing stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961: disabling compactions & flushes
+2011-04-05 15:14:45,701 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Updates disabled for region stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:14:45,701 INFO org.apache.hadoop.hbase.regionserver.HRegion: Closed stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:14:45,758 DEBUG org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler: Closed region stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:15:39,410 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Received request to open region: stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:15:39,410 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Processing open of stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:15:39,486 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Opening region: REGION => {NAME => 'stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256', STARTKEY => '\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6', ENDKEY => '\x00'\x9AU\x7F\xFF\xFE\xEBQ\xB0\xC3\xEF\x00Jr\xF2', ENCODED => 1470298961, TABLE => ...
+2011-04-05 15:15:39,487 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Instantiated stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:15:40,399 INFO org.apache.hadoop.hbase.regionserver.HRegion: Onlined stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961; next sequenceid=37627407247
+2011-04-05 15:15:40,488 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Updated row stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961 in region .META.,,1 with server=sv4borg42:60020, startcode=1300920459477
+2011-04-05 15:15:40,582 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Opened stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:15:55,776 DEBUG org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler: Processing close of stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:15:55,809 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Closing stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961: disabling compactions & flushes
+2011-04-05 15:15:55,809 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Updates disabled for region stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:15:55,809 INFO org.apache.hadoop.hbase.regionserver.HRegion: Closed stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:15:55,842 DEBUG org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler: Closed region stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:15:55,943 DEBUG org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler: Processing close of stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961
+2011-04-05 15:15:55,943 WARN org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler: Received CLOSE for region stumbles_by_userid2,\x00'\x8E\xE8\x7F\xFF\xFE\xE7\xA9\x97\xFC\xDF\x01\x10\xCC6,1266566087256.1470298961 but currently not serving
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.1
+Fix_version:
+0.90.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+05/Apr/11 23:47
+Update date:
+20/Nov/15 12:41
+Resolved date:
+27/Apr/11 22:49

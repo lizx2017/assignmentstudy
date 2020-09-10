@@ -1,0 +1,47 @@
+Summary:
+memtable flush during index build causes AssertionError
+Description:
+Noticed when loading a lot of rows and then creating secondary indexes using update CF via the CLI.
+ERROR 18:56:25,008 Fatal exception in thread Thread[FlushWriter:3,5,main]
+java.lang.AssertionError
+        at org.apache.cassandra.io.sstable.SSTable.<init>(SSTable.java:91)
+        at org.apache.cassandra.io.sstable.SSTableWriter.<init>(SSTableWriter.java:71)
+        at org.apache.cassandra.db.ColumnFamilyStore.createFlushWriter(ColumnFamilyStore.java:2124)
+        at org.apache.cassandra.db.Memtable.writeSortedContents(Memtable.java:246)
+        at org.apache.cassandra.db.Memtable.access$400(Memtable.java:49)
+        at org.apache.cassandra.db.Memtable$3.runMayThrow(Memtable.java:270)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+Table.IndexBuilder.build() calls cfs.maybeSwitchMemtable() with writeCommitLog false. So a null ReplayPosition is eventually passed to Memtable.writeSortedContents().
+SSTableRead.open() checks Descriptor.hasReplayPosition() and it looks like any 0.8 stats file should have a ReplayPosition.
+Looks like cfs.maybeSwitchMemtable() should use ReplayPosition.NONE rather than null. Patch looks easy, will also try to write a test.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+amorton
+Reporter:
+amorton
+Create date:
+07/Jun/11 19:43
+Update date:
+16/Apr/19 09:32
+Resolved date:
+07/Jun/11 20:03

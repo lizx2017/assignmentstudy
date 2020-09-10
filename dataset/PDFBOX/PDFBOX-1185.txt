@@ -1,0 +1,53 @@
+Summary:
+A problem with indexed color spaces: bpc of the base color space seems wrong.
+Description:
+I incorporated the "proper" solution to PDFBOX-1075 into my regression tests and the file which made me raise that issue got broken again. It has pictures with indexed color spaces, which now are returned as black. The indexed color space is one-bit. The lookup table has two colors: black and white. With the current trunk, the black pixels remain black (0,0,0), but the white pixels are returned as (1,1,1), which in RGB is nearly just as black. The text on the picture is obviously unreadable.
+On a second look it seems to me that the offending line is here (in PDPixelMap.getRGBImage):
+ColorModel baseColorModel = csIndexed.getBaseColorSpace().createColorModel(bpc);
+I think it's wrong, as in an indexed color space, "bpc" is not "bits per component", but "bits per index" i.e. bits per the integer which is interpreted as the index to the color lookup array. I think that the base color space's color model should be initialized with a different number. I came up with a following calculation:
+PDIndexed csIndexed = (PDIndexed)colorspace;
+PDColorSpace baseCs = csIndexed.getBaseColorSpace();
+int numberOfColorValues = 1 << bpc;
+int highValue = csIndexed.getHighValue();
+int size = Math.min(numberOfColorValues-1, highValue);
+byte[] index = csIndexed.getLookupData();
+int parentComponentsCount = baseCs.getNumberOfComponents();
+int baseColorModelBPC = (index.length * 8) / ((size+1) * parentComponentsCount);
+ColorModel baseColorModel = csIndexed.getBaseColorSpace().createColorModel(baseColorModelBPC);
+The baseColorModelBPC is calculated as the total number of bits in the lookup array divided by the total number of components in all colors. This seems to work for my offending file and causes no regressions with files from PDFBOX-1075, PDFBOX-1010 and PDFBOX-706.
+What is weird though is a line which is later:
+byte[] inData = new byte[baseColorModel.getNumComponents()];
+Doesn't this effectively assume that baseColorModelBPC should always be 8? If the base color model bpc were anything else than 8, then this code wouldn't be able to handle it correctly anyway. Or am I overlooking something?
+I'll attach a patch which works for me. Note that simply changing
+ColorModel baseColorModel = csIndexed.getBaseColorSpace().createColorModel(bpc);
+into
+ColorModel baseColorModel = csIndexed.getBaseColorSpace().createColorModel(8);
+has exactly the same effect (fixed my problem, no regressions in those three earlier issues). Please decide what makes more sense.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.7.0
+Fix_version:
+1.7.0
+Component:
+PDModel
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Antoni Mylka
+Create date:
+06/Dec/11 17:34
+Update date:
+29/May/12 16:21
+Resolved date:
+10/Apr/12 16:34

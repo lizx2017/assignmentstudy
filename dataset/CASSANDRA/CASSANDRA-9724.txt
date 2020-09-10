@@ -1,0 +1,130 @@
+Summary:
+Aggregate appears to be causing query to be executed multiple times
+Description:
+Not sure if this is intended behaviour.
+Example table:
+CREATE TABLE raw_weather_data (
+   wsid text,               // Composite of Air Force Datsav3 station number and NCDC WBAN number
+   year int,                // Year collected
+   month int,               // Month collected
+   day int,                 // Day collected
+   hour int,                // Hour collected
+   temperature double,       // Air temperature (degrees Celsius)
+   dewpoint double,          // Dew point temperature (degrees Celsius)
+   pressure double,          // Sea level pressure (hectopascals)
+   wind_direction int,      // Wind direction in degrees. 0-359
+   wind_speed double,        // Wind speed (meters per second)
+   sky_condition int,       // Total cloud cover (coded, see format documentation)
+   sky_condition_text text, // Non-coded sky conditions
+   one_hour_precip double,   // One-hour accumulated liquid precipitation (millimeters)
+   six_hour_precip double,   // Six-hour accumulated liquid precipitation (millimeters)
+   PRIMARY KEY ((wsid), year, month, day, hour)
+) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC, hour DESC);
+1 node cluster 2.2rc1. Trace for: select temperature from raw_weather_data where wsid = '725030:14732' and year = 2008;
+ activity                                                                                                            | timestamp                  | source    | source_elapsed
+---------------------------------------------------------------------------------------------------------------------+----------------------------+-----------+----------------
+                                                                                                  Execute CQL3 query | 2015-07-03 09:53:25.002000 | 127.0.0.1 |              0
+ Parsing select temperature from raw_weather_data where wsid = '725030:14732' and year = 2008; [SharedPool-Worker-1] | 2015-07-03 09:53:25.002000 | 127.0.0.1 |            109
+                                                                           Preparing statement [SharedPool-Worker-1] | 2015-07-03 09:53:25.002000 | 127.0.0.1 |            193
+                                          Executing single-partition query on raw_weather_data [SharedPool-Worker-2] | 2015-07-03 09:53:25.002000 | 127.0.0.1 |            519
+                                                                  Acquiring sstable references [SharedPool-Worker-2] | 2015-07-03 09:53:25.002000 | 127.0.0.1 |            544
+                                                                   Merging memtable tombstones [SharedPool-Worker-2] | 2015-07-03 09:53:25.002000 | 127.0.0.1 |            558
+                     Skipped 0/0 non-slice-intersecting sstables, included 0 due to tombstones [SharedPool-Worker-2] | 2015-07-03 09:53:25.002001 | 127.0.0.1 |            600
+                                                    Merging data from memtables and 0 sstables [SharedPool-Worker-2] | 2015-07-03 09:53:25.002001 | 127.0.0.1 |            612
+                                                            Read 92 live and 0 tombstone cells [SharedPool-Worker-2] | 2015-07-03 09:53:25.003000 | 127.0.0.1 |            848
+                                                                                                    Request complete | 2015-07-03 09:53:25.003680 | 127.0.0.1 |           1680
+However once i include the min function i get: select min(temperature) from raw_weather_data where wsid = '725030:14732' and year = 2008;
+ activity                                                                                                                 | timestamp                  | source    | source_elapsed
+--------------------------------------------------------------------------------------------------------------------------+----------------------------+-----------+----------------
+                                                                                                       Execute CQL3 query | 2015-07-03 09:56:15.904000 | 127.0.0.1 |              0
+ Parsing select min(temperature) from raw_weather_data where wsid = '725030:14732' and year = 2008; [SharedPool-Worker-1] | 2015-07-03 09:56:15.904000 | 127.0.0.1 |            108
+                                                                                Preparing statement [SharedPool-Worker-1] | 2015-07-03 09:56:15.904000 | 127.0.0.1 |            201
+                                               Executing single-partition query on raw_weather_data [SharedPool-Worker-2] | 2015-07-03 09:56:15.904000 | 127.0.0.1 |            599
+                                                                       Acquiring sstable references [SharedPool-Worker-2] | 2015-07-03 09:56:15.904000 | 127.0.0.1 |            625
+                                                                        Merging memtable tombstones [SharedPool-Worker-2] | 2015-07-03 09:56:15.904000 | 127.0.0.1 |            639
+                          Skipped 0/0 non-slice-intersecting sstables, included 0 due to tombstones [SharedPool-Worker-2] | 2015-07-03 09:56:15.904001 | 127.0.0.1 |            681
+                                                         Merging data from memtables and 0 sstables [SharedPool-Worker-2] | 2015-07-03 09:56:15.904001 | 127.0.0.1 |            692
+                                                                Read 101 live and 0 tombstone cells [SharedPool-Worker-2] | 2015-07-03 09:56:15.905000 | 127.0.0.1 |           1007
+                                               Executing single-partition query on raw_weather_data [SharedPool-Worker-3] | 2015-07-03 09:56:15.906000 | 127.0.0.1 |           2258
+                                                                       Acquiring sstable references [SharedPool-Worker-3] | 2015-07-03 09:56:15.906000 | 127.0.0.1 |           2292
+                                                                        Merging memtable tombstones [SharedPool-Worker-3] | 2015-07-03 09:56:15.906000 | 127.0.0.1 |           2366
+                          Skipped 0/0 non-slice-intersecting sstables, included 0 due to tombstones [SharedPool-Worker-3] | 2015-07-03 09:56:15.906000 | 127.0.0.1 |           2417
+                                                         Merging data from memtables and 0 sstables [SharedPool-Worker-3] | 2015-07-03 09:56:15.906000 | 127.0.0.1 |           2431
+                                                                Read 102 live and 0 tombstone cells [SharedPool-Worker-3] | 2015-07-03 09:56:15.906000 | 127.0.0.1 |           2824
+                                               Executing single-partition query on raw_weather_data [SharedPool-Worker-3] | 2015-07-03 09:56:15.908000 | 127.0.0.1 |           4224
+                                                                       Acquiring sstable references [SharedPool-Worker-3] | 2015-07-03 09:56:15.908000 | 127.0.0.1 |           4250
+                                                                        Merging memtable tombstones [SharedPool-Worker-3] | 2015-07-03 09:56:15.908000 | 127.0.0.1 |           4263
+                          Skipped 0/0 non-slice-intersecting sstables, included 0 due to tombstones [SharedPool-Worker-3] | 2015-07-03 09:56:15.908000 | 127.0.0.1 |           4298
+                                                         Merging data from memtables and 0 sstables [SharedPool-Worker-3] | 2015-07-03 09:56:15.908000 | 127.0.0.1 |           4309
+                                                                Read 102 live and 0 tombstone cells [SharedPool-Worker-3] | 2015-07-03 09:56:15.908000 | 127.0.0.1 |           4571
+                                               Executing single-partition query on raw_weather_data [SharedPool-Worker-2] | 2015-07-03 09:56:15.909000 | 127.0.0.1 |           5358
+                                                                       Acquiring sstable references [SharedPool-Worker-2] | 2015-07-03 09:56:15.909000 | 127.0.0.1 |           5381
+                                                                        Merging memtable tombstones [SharedPool-Worker-2] | 2015-07-03 09:56:15.909000 | 127.0.0.1 |           5396
+                          Skipped 0/0 non-slice-intersecting sstables, included 0 due to tombstones [SharedPool-Worker-2] | 2015-07-03 09:56:15.909000 | 127.0.0.1 |           5426
+                                                         Merging data from memtables and 0 sstables [SharedPool-Worker-2] | 2015-07-03 09:56:15.909000 | 127.0.0.1 |           5437
+                                                                Read 102 live and 0 tombstone cells [SharedPool-Worker-2] | 2015-07-03 09:56:15.909000 | 127.0.0.1 |           5691
+                                               Executing single-partition query on raw_weather_data [SharedPool-Worker-3] | 2015-07-03 09:56:15.911000 | 127.0.0.1 |           7233
+                                                                       Acquiring sstable references [SharedPool-Worker-3] | 2015-07-03 09:56:15.911000 | 127.0.0.1 |           7260
+                                                                        Merging memtable tombstones [SharedPool-Worker-3] | 2015-07-03 09:56:15.911000 | 127.0.0.1 |           7273
+                          Skipped 0/0 non-slice-intersecting sstables, included 0 due to tombstones [SharedPool-Worker-3] | 2015-07-03 09:56:15.911000 | 127.0.0.1 |           7307
+                                                         Merging data from memtables and 0 sstables [SharedPool-Worker-3] | 2015-07-03 09:56:15.911000 | 127.0.0.1 |           7318
+                                                                Read 102 live and 0 tombstone cells [SharedPool-Worker-3] | 2015-07-03 09:56:15.911000 | 127.0.0.1 |           7586
+                                               Executing single-partition query on raw_weather_data [SharedPool-Worker-3] | 2015-07-03 09:56:15.913000 | 127.0.0.1 |           9155
+                                                                       Acquiring sstable references [SharedPool-Worker-3] | 2015-07-03 09:56:15.913000 | 127.0.0.1 |           9184
+                                                                        Merging memtable tombstones [SharedPool-Worker-3] | 2015-07-03 09:56:15.913000 | 127.0.0.1 |           9238
+                          Skipped 0/0 non-slice-intersecting sstables, included 0 due to tombstones [SharedPool-Worker-3] | 2015-07-03 09:56:15.913000 | 127.0.0.1 |           9280
+                                                         Merging data from memtables and 0 sstables [SharedPool-Worker-3] | 2015-07-03 09:56:15.913000 | 127.0.0.1 |           9292
+                                                                Read 102 live and 0 tombstone cells [SharedPool-Worker-3] | 2015-07-03 09:56:15.913000 | 127.0.0.1 |           9568
+                                               Executing single-partition query on raw_weather_data [SharedPool-Worker-3] | 2015-07-03 09:56:15.915000 | 127.0.0.1 |          11083
+                                                                       Acquiring sstable references [SharedPool-Worker-3] | 2015-07-03 09:56:15.915000 | 127.0.0.1 |          11115
+                                                                        Merging memtable tombstones [SharedPool-Worker-3] | 2015-07-03 09:56:15.915000 | 127.0.0.1 |          11128
+                          Skipped 0/0 non-slice-intersecting sstables, included 0 due to tombstones [SharedPool-Worker-3] | 2015-07-03 09:56:15.915000 | 127.0.0.1 |          11163
+                                                         Merging data from memtables and 0 sstables [SharedPool-Worker-3] | 2015-07-03 09:56:15.915000 | 127.0.0.1 |          11174
+                                                                Read 102 live and 0 tombstone cells [SharedPool-Worker-3] | 2015-07-03 09:56:15.915000 | 127.0.0.1 |          11446
+                                               Executing single-partition query on raw_weather_data [SharedPool-Worker-3] | 2015-07-03 09:56:15.917000 | 127.0.0.1 |          13027
+                                                                       Acquiring sstable references [SharedPool-Worker-3] | 2015-07-03 09:56:15.917000 | 127.0.0.1 |          13058
+                                                                        Merging memtable tombstones [SharedPool-Worker-3] | 2015-07-03 09:56:15.917000 | 127.0.0.1 |          13079
+                          Skipped 0/0 non-slice-intersecting sstables, included 0 due to tombstones [SharedPool-Worker-3] | 2015-07-03 09:56:15.917000 | 127.0.0.1 |          13113
+                                                         Merging data from memtables and 0 sstables [SharedPool-Worker-3] | 2015-07-03 09:56:15.917000 | 127.0.0.1 |          13124
+                                                                Read 102 live and 0 tombstone cells [SharedPool-Worker-3] | 2015-07-03 09:56:15.917000 | 127.0.0.1 |          13399
+                                               Executing single-partition query on raw_weather_data [SharedPool-Worker-2] | 2015-07-03 09:56:15.919000 | 127.0.0.1 |          14862
+                                                                       Acquiring sstable references [SharedPool-Worker-2] | 2015-07-03 09:56:15.919000 | 127.0.0.1 |          14888
+                                                                        Merging memtable tombstones [SharedPool-Worker-2] | 2015-07-03 09:56:15.919000 | 127.0.0.1 |          14901
+                          Skipped 0/0 non-slice-intersecting sstables, included 0 due to tombstones [SharedPool-Worker-2] | 2015-07-03 09:56:15.919000 | 127.0.0.1 |          14938
+                                                         Merging data from memtables and 0 sstables [SharedPool-Worker-2] | 2015-07-03 09:56:15.919000 | 127.0.0.1 |          14949
+                                                                Read 102 live and 0 tombstone cells [SharedPool-Worker-2] | 2015-07-03 09:56:15.919000 | 127.0.0.1 |          15231
+                                               Executing single-partition query on raw_weather_data [SharedPool-Worker-2] | 2015-07-03 09:56:15.920000 | 127.0.0.1 |          16665
+                                                                       Acquiring sstable references [SharedPool-Worker-2] | 2015-07-03 09:56:15.920000 | 127.0.0.1 |          16693
+                                                                        Merging memtable tombstones [SharedPool-Worker-2] | 2015-07-03 09:56:15.920000 | 127.0.0.1 |          16706
+                          Skipped 0/0 non-slice-intersecting sstables, included 0 due to tombstones [SharedPool-Worker-2] | 2015-07-03 09:56:15.920000 | 127.0.0.1 |          16751
+                                                         Merging data from memtables and 0 sstables [SharedPool-Worker-2] | 2015-07-03 09:56:15.920000 | 127.0.0.1 |          16763
+                                                                 Read 92 live and 0 tombstone cells [SharedPool-Worker-2] | 2015-07-03 09:56:15.921000 | 127.0.0.1 |          16992
+                                                                                                         Request complete | 2015-07-03 09:56:15.922382 | 127.0.0.1 |          18382
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Robert Stupp
+Reporter:
+Christopher Batey
+Create date:
+03/Jul/15 08:58
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Jul/15 16:22

@@ -1,0 +1,52 @@
+Summary:
+When Snappy compression is not available on the platform, trying to enable it introduces problems
+Description:
+I've tried to enable compression for some column families in my cluster using Snappy compression.
+It does not work and I am having problems with schema updates to remove it (a lot of UNREACHABLE nodes during scema update).
+In log I have the next:
+ERROR [FlushWriter:961] 2011-12-05 17:16:33,383 AbstractCassandraDaemon.java (line 133) Fatal exception in thread Thread[Flu
+shWriter:961,5,main]
+java.lang.NoClassDefFoundError: Could not initialize class org.xerial.snappy.Snappy
+at org.apache.cassandra.io.compress.SnappyCompressor.initialCompressedBufferLength(SnappyCompressor.java:39)
+at org.apache.cassandra.io.compress.CompressedSequentialWriter.<init>(CompressedSequentialWriter.java:63)
+at org.apache.cassandra.io.compress.CompressedSequentialWriter.open(CompressedSequentialWriter.java:34)
+at org.apache.cassandra.io.sstable.SSTableWriter.<init>(SSTableWriter.java:91)
+at org.apache.cassandra.db.ColumnFamilyStore.createFlushWriter(ColumnFamilyStore.java:1850)
+at org.apache.cassandra.db.Memtable.writeSortedContents(Memtable.java:250)
+at org.apache.cassandra.db.Memtable.access$400(Memtable.java:47)
+at org.apache.cassandra.db.Memtable$4.runMayThrow(Memtable.java:291)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:679)
+It looks like Snappy can't initialize because it does not have native library for my platform. It would be great if:
+1) A check be done on schema update if Snappy can be used
+2) If it is enabled and can't be used it would still work without compression writes (but may be outputting some errors to indicate the situation)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.6
+Component:
+None
+Label:
+None
+Environment:
+freebsd
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Vitalii Tymchyshyn
+Create date:
+05/Dec/11 15:20
+Update date:
+16/Apr/19 09:32
+Resolved date:
+05/Dec/11 20:30

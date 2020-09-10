@@ -1,0 +1,39 @@
+Summary:
+Add safeguards to RegExp.toAutomaton and Operations
+Description:
+When creating an automaton from a regexp, some operators can create more states than maxDeterminizedStates:
+a{10000}
+The example above <b>creates</b> a single path with 10k states already determinized so maxDeterminizedStates is not checked.
+Some operations on automaton like Operations.isFinite or Operations.topoSortStates are recursive and the maximum level of recursion depends on the longest path in the automaton. So a large automaton like above can exceed java's stack.
+In most of the cases we are covered by maxDeterminizedStates but there will always be adversarial cases where a large automaton is created from a small input so I think we should also have safeguards in the recursive methods.
+I've attached a patch that adds a max recursion level to Operations.isFinite and Operations.topoSortStates in order to limit stack overflows. The limit is set to 1000 so any automaton with a path bigger than 1000 would throw an IllegalStateException.
+The patch also uses maxDeterminizedStates to limit the number of states that a repeat operator can create and throw a TooComplex..Exception when this limit is reached.
+Finally the patch adds the ability to skip Operations.isFinite on AutomatonQuery and uses this as an optimization for PrefixQuery that uses infinite automatons only.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+7.0, 8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jim Ferenczi
+Create date:
+01/Aug/17 10:51
+Update date:
+10/Aug/17 09:49
+Resolved date:
+04/Aug/17 10:13

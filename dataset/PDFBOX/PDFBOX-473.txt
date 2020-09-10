@@ -1,0 +1,58 @@
+Summary:
+attempt to push back when content read
+Description:
+I got this exception parsing a pdf doc,
+Caused by: org.apache.pdfbox.exceptions.WrappedIOException
+at org.apache.pdfbox.pdfparser.PDFParser.parse(PDFParser.java:228)
+... 2 more
+Caused by: java.lang.ArrayIndexOutOfBoundsException
+at java.io.PushbackInputStream.unread(PushbackInputStream.java:218)
+at org.apache.pdfbox.io.PushBackInputStream.unread(PushBackInputStream.java:123)
+at org.apache.pdfbox.pdfparser.BaseParser.parseCOSString(BaseParser.java:493)
+at org.apache.pdfbox.pdfparser.BaseParser.parseDirObject(BaseParser.java:843)
+at org.apache.pdfbox.pdfparser.PDFParser.parseObject(PDFParser.java:485)
+at org.apache.pdfbox.pdfparser.PDFParser.parse(PDFParser.java:169)
+... 3 more
+This change to BaseParser fixes it,
+Index: src/main/java/org/apache/pdfbox/pdfparser/BaseParser.java
+===================================================================
+— src/main/java/org/apache/pdfbox/pdfparser/BaseParser.java
++++ src/main/java/org/apache/pdfbox/pdfparser/BaseParser.java
+@@ -492,7 +492,10 @@
+braces = 0;
+}
+}
+pdfSource.unread( nextThreeBytes, 0, amountRead );
++ if(amountRead > 0)
++ { + pdfSource.unread( nextThreeBytes, 0, amountRead ); + }
+if( braces != 0 )
+{
+retval.append( ch );
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.8.0-incubator
+Fix_version:
+0.8.0-incubator
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Sean Bridges
+Create date:
+13/May/09 23:31
+Update date:
+21/Oct/09 09:52
+Resolved date:
+26/May/09 20:52

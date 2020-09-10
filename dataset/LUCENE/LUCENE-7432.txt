@@ -1,0 +1,72 @@
+Summary:
+TestIndexWriterOnError.testCheckpoint fails on IBM J9
+Description:
+Not sure if this is a J9 issue or a Lucene issue, but using this version of J9:
+09:26 $ java -version
+java version "1.8.0"
+Java(TM) SE Runtime Environment (build pxa6480sr3fp10-20160720_02(SR3fp10))
+IBM J9 VM (build 2.8, JRE 1.8.0 Linux amd64-64 Compressed References 20160719_312156 (JIT enabled, AOT enabled)
+J9VM - R28_Java8_SR3_20160719_1144_B312156
+JIT  - tr.r14.java_20160629_120284.01
+GC   - R28_Java8_SR3_20160719_1144_B312156_CMPRSS
+J9CL - 20160719_312156)
+JCL - 20160719_01 based on Oracle jdk8u101-b13
+This test failure seems to reproduce:
+   [junit4]   2> NOTE: reproduce with: ant test  -Dtestcase=TestIndexWriterOnVMError -Dtests.method=testCheckpoint -Dtests.seed=FAB0DC147AFDBF4E -Dtests.nightly=true -Dtests.slow=true -Dtests.locale=kn -Dtests.timezone=Australia/South -Dtests.asserts=true -Dtests.file.encoding=UTF-8
+   [junit4] ERROR    196s | TestIndexWriterOnVMError.testCheckpoint <<<
+   [junit4]    > Throwable #1: java.lang.RuntimeException: MockDirectoryWrapper: cannot close: there are still 9 open files: {_2_Asserting_0.pos=1, _2_Asserting_0.dvd=1, _2.fdt=1, _2_Asserting_0.doc=1, _2_Asserting_0.tim=1, _2.nvd=1, _2.tvd=1, _3.cfs=1, _2.dim=1}
+   [junit4]    >  at __randomizedtesting.SeedInfo.seed([FAB0DC147AFDBF4E:FBA18A7C5B16548D]:0)
+   [junit4]    >  at org.apache.lucene.store.MockDirectoryWrapper.close(MockDirectoryWrapper.java:841)
+   [junit4]    >  at org.apache.lucene.index.TestIndexWriterOnVMError.doTest(TestIndexWriterOnVMError.java:89)
+   [junit4]    >  at org.apache.lucene.index.TestIndexWriterOnVMError.testCheckpoint(TestIndexWriterOnVMError.java:280)
+   [junit4]    >  at java.lang.Thread.run(Thread.java:785)
+   [junit4]    > Caused by: java.lang.RuntimeException: unclosed IndexInput: _2.dim
+   [junit4]    >  at org.apache.lucene.store.MockDirectoryWrapper.addFileHandle(MockDirectoryWrapper.java:732)
+   [junit4]    >  at org.apache.lucene.store.MockDirectoryWrapper.openInput(MockDirectoryWrapper.java:776)
+   [junit4]    >  at org.apache.lucene.codecs.lucene60.Lucene60PointsReader.<init>(Lucene60PointsReader.java:85)
+   [junit4]    >  at org.apache.lucene.codecs.lucene60.Lucene60PointsFormat.fieldsReader(Lucene60PointsFormat.java:104)
+   [junit4]    >  at org.apache.lucene.codecs.asserting.AssertingPointsFormat.fieldsReader(AssertingPointsFormat.java:66)
+   [junit4]    >  at org.apache.lucene.index.SegmentCoreReaders.<init>(SegmentCoreReaders.java:128)
+   [junit4]    >  at org.apache.lucene.index.SegmentReader.<init>(SegmentReader.java:74)
+   [junit4]    >  at org.apache.lucene.index.ReadersAndUpdates.getReader(ReadersAndUpdates.java:145)
+   [junit4]    >  at org.apache.lucene.index.ReadersAndUpdates.getReadOnlyClone(ReadersAndUpdates.java:197)
+   [junit4]    >  at org.apache.lucene.index.StandardDirectoryReader.open(StandardDirectoryReader.java:103)
+   [junit4]    >  at org.apache.lucene.index.IndexWriter.getReader(IndexWriter.java:460)
+   [junit4]    >  at org.apache.lucene.index.DirectoryReader.open(DirectoryReader.java:103)
+   [junit4]    >  at org.apache.lucene.index.TestIndexWriterOnVMError.doTest(TestIndexWriterOnVMError.java:175)
+   [junit4]    >  ... 37 more
+   [junit4]   2> NOTE: leaving temporary files on disk at: /l/trunk/lucene/build/core/test/J0/temp/lucene.index.TestIndexWriterOnVMError_FAB0DC147AFDBF4E-001
+   [junit4]   2> NOTE: test params are: codec=Asserting(Lucene62), sim=ClassicSimilarity, locale=kn, timezone=Australia/South
+   [junit4]   2> NOTE: Linux 4.4.0-34-generic amd64/IBM Corporation 1.8.0 (64-bit)/cpus=8,threads=1,free=55483576,total=76742656
+   [junit4]   2> NOTE: All tests run in this JVM: [TestIndexWriterOnVMError]
+The test is quite stressful, provoking "unexpected" exceptions at tricky times for IndexWriter.
+When I run with Oracle's 1.8.0_101 with that same "reproduce with", the test passes.
+I see a similar failure for testUnknownError.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+IBM-J9
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Michael McCandless
+Create date:
+31/Aug/16 13:36
+Update date:
+19/Sep/16 21:20
+Resolved date:
+

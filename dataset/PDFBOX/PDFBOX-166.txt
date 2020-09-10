@@ -1,0 +1,81 @@
+Summary:
+ConvertColorSpace RGB to CMYK
+Description:
+[imported from SourceForge]
+http://sourceforge.net/tracker/index.php?group_id=78314&atid=552832&aid=1486459
+Originally submitted by ddelangle on 2006-05-11 05:15.
+Hello,
+I've corrected what seemed to me to be a bug on
+convertion on grey scales. I did this on CVS version
+from 19/04/2006
+I had to inverse the K value of CMYK (1 - value). Here
+is the corrected method :
+private void replaceGrayTokensWithCMYKTokens( List
+editedPageTokens, List pageTokens, int counter,
+Hashtable colorEquivalents )
+{
+// Get current RGB color.
+float gray = ((COSNumber)pageTokens.get(
+counter - 1 )).floatValue();
+ColorSpaceInstance grayColor = new
+ColorSpaceInstance();
+grayColor.colorspace = "Grayscale";
+grayColor.colorspaceValues = new int[]
+{ 100 - Math.round( gray * 100 ) }
+;
+ColorSpaceInstance cmykColor =
+(ColorSpaceInstance)colorEquivalents.get(grayColor);
+float[] cmyk = null;
+if( cmykColor != null )
+{
+cmyk = new float[]
+{ cmykColor.colorspaceValues[0] / 100.0f, cmykColor.colorspaceValues[1] / 100.0f, cmykColor.colorspaceValues[2] / 100.0f, cmykColor.colorspaceValues[3] / 100.0f }
+;
+}
+else
+{
+cmyk = new float[]
+{0,0,0,1 - gray}
+;
+}
+//remove the Gray components that are already
+part of the editedPageTokens list
+editedPageTokens.remove(
+editedPageTokens.size() -1 );
+// Add the new CMYK color
+editedPageTokens.add( new COSFloat( cmyk[0] ) );
+editedPageTokens.add( new COSFloat( cmyk[1] ) );
+editedPageTokens.add( new COSFloat( cmyk[2] ) );
+editedPageTokens.add( new COSFloat( cmyk[3] ) );
+}
+I hope this is correct.
+Regards,
+Denis
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+2.0.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Anonymous
+Create date:
+11/May/06 12:15
+Update date:
+13/Feb/14 18:05
+Resolved date:
+08/Feb/14 09:16

@@ -1,0 +1,107 @@
+Summary:
+Error while adding a node to existing cluster
+Description:
+Hi,
+We are trying to add a fresh node to existing cluster of cassandra. Currently it has two nodes. While adding, it continue for a while and then node stops after throwing following exception. I have restarted several times but it fails every time.
+ERROR 11:13:54 [Stream #1856b120-1bea-11e5-86e3-4542c13bb31f] Streaming error occurred
+java.io.IOException: net.jpountz.lz4.LZ4Exception: Error decoding offset 24114 of input buffer
+ at org.apache.cassandra.io.compress.LZ4Compressor.uncompress(LZ4Compressor.java:93) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.streaming.compress.CompressedInputStream.decompress(CompressedInputStream.java:114) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.streaming.compress.CompressedInputStream.read(CompressedInputStream.java:92) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at java.io.InputStream.read(InputStream.java:170) ~[na:1.8.0_45]
+ at java.io.DataInputStream.readFully(DataInputStream.java:195) ~[na:1.8.0_45]
+ at java.io.DataInputStream.readLong(DataInputStream.java:416) ~[na:1.8.0_45]
+ at org.apache.cassandra.utils.BytesReadTracker.readLong(BytesReadTracker.java:114) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.db.ColumnSerializer.deserializeColumnBody(ColumnSerializer.java:131) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.db.OnDiskAtom$Serializer.deserializeFromSSTable(OnDiskAtom.java:86) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.db.AbstractCell$1.computeNext(AbstractCell.java:52) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.db.AbstractCell$1.computeNext(AbstractCell.java:46) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:143) ~[guava-16.0.jar:na]
+ at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:138) ~[guava-16.0.jar:na]
+ at org.apache.cassandra.io.sstable.SSTableWriter.appendFromStream(SSTableWriter.java:286) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.streaming.StreamReader.writeRow(StreamReader.java:156) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.streaming.compress.CompressedStreamReader.read(CompressedStreamReader.java:89) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.streaming.messages.IncomingFileMessage$1.deserialize(IncomingFileMessage.java:48) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.streaming.messages.IncomingFileMessage$1.deserialize(IncomingFileMessage.java:38) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.streaming.messages.StreamMessage.deserialize(StreamMessage.java:55) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.streaming.ConnectionHandler$IncomingMessageHandler.run(ConnectionHandler.java:250) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at java.lang.Thread.run(Thread.java:745) [na:1.8.0_45]
+Caused by: net.jpountz.lz4.LZ4Exception: Error decoding offset 24114 of input buffer
+ at net.jpountz.lz4.LZ4JNIFastDecompressor.decompress(LZ4JNIFastDecompressor.java:33) ~[lz4-1.2.0.jar:na]
+ at org.apache.cassandra.io.compress.LZ4Compressor.uncompress(LZ4Compressor.java:88) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ ... 20 common frames omitted
+INFO  11:13:54 [Stream #1856b120-1bea-11e5-86e3-4542c13bb31f] Session with /192.168.36.81 is complete
+WARN  11:13:54 [Stream #1856b120-1bea-11e5-86e3-4542c13bb31f] Stream failed
+ERROR 11:13:54 Exception encountered during startup
+java.lang.RuntimeException: Error during boostrap: Stream failed
+ at org.apache.cassandra.dht.BootStrapper.bootstrap(BootStrapper.java:86) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.service.StorageService.bootstrap(StorageService.java:1121) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.service.StorageService.joinTokenRing(StorageService.java:924) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.service.StorageService.initServer(StorageService.java:720) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.service.StorageService.initServer(StorageService.java:602) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:394) [apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:536) [apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:625) [apache-cassandra-2.1.6.jar:2.1.6]
+Caused by: org.apache.cassandra.streaming.StreamException: Stream failed
+ at org.apache.cassandra.streaming.management.StreamEventJMXNotifier.onFailure(StreamEventJMXNotifier.java:85) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at com.google.common.util.concurrent.Futures$4.run(Futures.java:1172) ~[guava-16.0.jar:na]
+ at com.google.common.util.concurrent.MoreExecutors$SameThreadExecutorService.execute(MoreExecutors.java:297) ~[guava-16.0.jar:na]
+ at com.google.common.util.concurrent.ExecutionList.executeListener(ExecutionList.java:156) ~[guava-16.0.jar:na]
+ at com.google.common.util.concurrent.ExecutionList.execute(ExecutionList.java:145) ~[guava-16.0.jar:na]
+ at com.google.common.util.concurrent.AbstractFuture.setException(AbstractFuture.java:202) ~[guava-16.0.jar:na]
+ at org.apache.cassandra.streaming.StreamResultFuture.maybeComplete(StreamResultFuture.java:208) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.streaming.StreamResultFuture.handleSessionComplete(StreamResultFuture.java:184) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.streaming.StreamSession.closeSession(StreamSession.java:409) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.streaming.StreamSession.onError(StreamSession.java:504) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at org.apache.cassandra.streaming.ConnectionHandler$IncomingMessageHandler.run(ConnectionHandler.java:268) ~[apache-cassandra-2.1.6.jar:2.1.6]
+ at java.lang.Thread.run(Thread.java:745) ~[na:1.8.0_45]
+java.lang.RuntimeException: Error during boostrap: Stream failed
+ at org.apache.cassandra.dht.BootStrapper.bootstrap(BootStrapper.java:86)
+ at org.apache.cassandra.service.StorageService.bootstrap(StorageService.java:1121)
+ at org.apache.cassandra.service.StorageService.joinTokenRing(StorageService.java:924)
+ at org.apache.cassandra.service.StorageService.initServer(StorageService.java:720)
+ at org.apache.cassandra.service.StorageService.initServer(StorageService.java:602)
+ at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:394)
+ at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:536)
+ at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:625)
+Caused by: org.apache.cassandra.streaming.StreamException: Stream failed
+ at org.apache.cassandra.streaming.management.StreamEventJMXNotifier.onFailure(StreamEventJMXNotifier.java:85)
+ at com.google.common.util.concurrent.Futures$4.run(Futures.java:1172)
+ at com.google.common.util.concurrent.MoreExecutors$SameThreadExecutorService.execute(MoreExecutors.java:297)
+ at com.google.common.util.concurrent.ExecutionList.executeListener(ExecutionList.java:156)
+ at com.google.common.util.concurrent.ExecutionList.execute(ExecutionList.java:145)
+ at com.google.common.util.concurrent.AbstractFuture.setException(AbstractFuture.java:202)
+ at org.apache.cassandra.streaming.StreamResultFuture.maybeComplete(StreamResultFuture.java:208)
+ at org.apache.cassandra.streaming.StreamResultFuture.handleSessionComplete(StreamResultFuture.java:184)
+ at org.apache.cassandra.streaming.StreamSession.closeSession(StreamSession.java:409)
+ at org.apache.cassandra.streaming.StreamSession.onError(StreamSession.java:504)
+ at org.apache.cassandra.streaming.ConnectionHandler$IncomingMessageHandler.run(ConnectionHandler.java:268)
+ at java.lang.Thread.run(Thread.java:745)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/Streaming and Messaging
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+pankaj mishra
+Reporter:
+pankaj mishra
+Create date:
+26/Jun/15 15:47
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/May/16 16:46

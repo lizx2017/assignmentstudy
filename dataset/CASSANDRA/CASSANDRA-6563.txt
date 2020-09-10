@@ -1,0 +1,71 @@
+Summary:
+TTL histogram compactions not triggered at high "Estimated droppable tombstones" rate
+Description:
+I have several column families in a largish cluster where virtually all columns are written with a (usually the same) TTL. My understanding of CASSANDRA-3442 is that sstables that have a high ( > 20%) estimated percentage of droppable tombstones should be individually compacted. This does not appear to be occurring with size tired compaction.
+Example from one node:
+$ ll /data/sstables/data/ks/Cf/*Data.db
+-rw-rw-r-- 31 cassandra cassandra 26651211757 Nov 26 22:59 /data/sstables/data/ks/Cf/ks-Cf-ic-295562-Data.db
+-rw-rw-r-- 31 cassandra cassandra  6272641818 Nov 27 02:51 /data/sstables/data/ks/Cf/ks-Cf-ic-296121-Data.db
+-rw-rw-r-- 31 cassandra cassandra  1814691996 Dec  4 21:50 /data/sstables/data/ks/Cf/ks-Cf-ic-320449-Data.db
+-rw-rw-r-- 30 cassandra cassandra 10909061157 Dec 11 17:31 /data/sstables/data/ks/Cf/ks-Cf-ic-340318-Data.db
+-rw-rw-r-- 29 cassandra cassandra   459508942 Dec 12 10:37 /data/sstables/data/ks/Cf/ks-Cf-ic-342259-Data.db
+-rw-rw-r--  1 cassandra cassandra      336908 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342307-Data.db
+-rw-rw-r--  1 cassandra cassandra     2063935 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342309-Data.db
+-rw-rw-r--  1 cassandra cassandra         409 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342314-Data.db
+-rw-rw-r--  1 cassandra cassandra    31180007 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342319-Data.db
+-rw-rw-r--  1 cassandra cassandra     2398345 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342322-Data.db
+-rw-rw-r--  1 cassandra cassandra       21095 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342331-Data.db
+-rw-rw-r--  1 cassandra cassandra       81454 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342335-Data.db
+-rw-rw-r--  1 cassandra cassandra     1063718 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342339-Data.db
+-rw-rw-r--  1 cassandra cassandra      127004 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342344-Data.db
+-rw-rw-r--  1 cassandra cassandra      146785 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342346-Data.db
+-rw-rw-r--  1 cassandra cassandra      697338 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342351-Data.db
+-rw-rw-r--  1 cassandra cassandra     3921428 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342367-Data.db
+-rw-rw-r--  1 cassandra cassandra      240332 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342370-Data.db
+-rw-rw-r--  1 cassandra cassandra       45669 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342374-Data.db
+-rw-rw-r--  1 cassandra cassandra    53127549 Dec 12 12:03 /data/sstables/data/ks/Cf/ks-Cf-ic-342375-Data.db
+-rw-rw-r-- 16 cassandra cassandra 12466853166 Dec 25 22:40 /data/sstables/data/ks/Cf/ks-Cf-ic-396473-Data.db
+-rw-rw-r-- 12 cassandra cassandra  3903237198 Dec 29 19:42 /data/sstables/data/ks/Cf/ks-Cf-ic-408926-Data.db
+-rw-rw-r--  7 cassandra cassandra  3692260987 Jan  3 08:25 /data/sstables/data/ks/Cf/ks-Cf-ic-427733-Data.db
+-rw-rw-r--  4 cassandra cassandra  3971403602 Jan  6 20:50 /data/sstables/data/ks/Cf/ks-Cf-ic-437537-Data.db
+-rw-rw-r--  3 cassandra cassandra  1007832224 Jan  7 15:19 /data/sstables/data/ks/Cf/ks-Cf-ic-440331-Data.db
+-rw-rw-r--  2 cassandra cassandra   896132537 Jan  8 11:05 /data/sstables/data/ks/Cf/ks-Cf-ic-447740-Data.db
+-rw-rw-r--  1 cassandra cassandra   963039096 Jan  9 04:59 /data/sstables/data/ks/Cf/ks-Cf-ic-449425-Data.db
+-rw-rw-r--  1 cassandra cassandra   232168351 Jan  9 10:14 /data/sstables/data/ks/Cf/ks-Cf-ic-450287-Data.db
+-rw-rw-r--  1 cassandra cassandra    73126319 Jan  9 11:28 /data/sstables/data/ks/Cf/ks-Cf-ic-450307-Data.db
+-rw-rw-r--  1 cassandra cassandra    40921916 Jan  9 12:08 /data/sstables/data/ks/Cf/ks-Cf-ic-450336-Data.db
+-rw-rw-r--  1 cassandra cassandra    60881193 Jan  9 12:23 /data/sstables/data/ks/Cf/ks-Cf-ic-450341-Data.db
+-rw-rw-r--  1 cassandra cassandra        4746 Jan  9 12:23 /data/sstables/data/ks/Cf/ks-Cf-ic-450350-Data.db
+-rw-rw-r--  1 cassandra cassandra        5769 Jan  9 12:23 /data/sstables/data/ks/Cf/ks-Cf-ic-450352-Data.db
+295562: Estimated droppable tombstones: 0.899035828535183
+296121: Estimated droppable tombstones: 0.9135080937806197
+320449: Estimated droppable tombstones: 0.8916766879896414
+I've checked in on this example node several times and compactionstats has not shown any other activity that would be blocking the tombstone based compaction. The TTL is in the 15-20 day range so an sstable from November should have had ample opportunities by January.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.9
+Component:
+Local/Compaction
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Paulo Motta
+Reporter:
+Chris Burroughs
+Create date:
+09/Jan/14 17:30
+Update date:
+16/Apr/19 09:31
+Resolved date:
+27/May/14 08:53

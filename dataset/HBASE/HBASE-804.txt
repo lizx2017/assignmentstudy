@@ -1,0 +1,58 @@
+Summary:
+A region split that occurs with live scanners breaks them
+Description:
+In many failed map tasks we see things like this:
+INFO org.apache.hadoop.ipc.Server: IPC Server handler 2 on 64020, call next(-8330618580557781998) from 192.168.1.84:59678: error: org.apache.hadoop.hbase.UnknownScannerException: Name: -8330618580557781998
+Here is an excerpt of the regionserver log:
+2008-08-08 10:49:13,276 INFO org.apache.hadoop.hbase.regionserver.HRegion: Starting split of region entities,North_America-United_States-Missouri-Oran-b9c7e44a-4a2b-11dd-abd4-1231390079f2,1218205066272
+2008-08-08 10:49:13,310 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Compactions and cache flushes disabled for region entities,North_America-United_States-Missouri-Oran-b9c7e44a-4a2b-11dd-abd4-1231390079f2,1218205066272
+2008-08-08 10:49:13,310 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Updates and scanners disabled for region entities,North_America-United_States-Missouri-Oran-b9c7e44a-4a2b-11dd-abd4-1231390079f2,1218205066272
+2008-08-08 10:49:13,310 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: waiting for 1 scanners to finish
+2008-08-08 10:50:13,306 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Scanner -8330618580557781998 lease expired
+2008-08-08 10:50:13,307 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: No more active scanners for region entities,North_America-United_States-Missouri-Oran-b9c7e44a-4a2b-11dd-abd4-1231390079f2,1218205066272
+2008-08-08 10:50:13,307 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: No more row locks outstanding on region entities,North_America-United_States-Missouri-Oran-b9c7e44a-4a2b-11dd-abd4-1231390079f2,1218205066272
+2008-08-08 10:50:13,307 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memcache flush for region entities,North_America-United_States-Missouri-Oran-b9c7e44a-4a2b-11dd-abd4-1231390079f2,1218205066272. Current region memcache size 3.7m
+2008-08-08 10:50:13,821 DEBUG org.apache.hadoop.hbase.regionserver.HStore: Added /hbase/amsterdam_migration/entities/858230020/attribute/mapfiles/5987693228942080783 with 54576 entries, sequence id 9333266, data size 3.7m, file size 4.5m
+2008-08-08 10:50:13,821 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Finished memcache flush for region entities,North_America-United_States-Missouri-Oran-b9c7e44a-4a2b-11dd-abd4-1231390079f2,1218205066272 in 514ms, sequence id=9333266, compaction requested=true
+2008-08-08 10:50:13,821 DEBUG org.apache.hadoop.hbase.regionserver.HStore: closed 858230020/attribute
+2008-08-08 10:50:13,822 DEBUG org.apache.hadoop.hbase.regionserver.HStore: closed 858230020/context
+2008-08-08 10:50:13,822 DEBUG org.apache.hadoop.hbase.regionserver.HStore: closed 858230020/view
+2008-08-08 10:50:13,822 INFO org.apache.hadoop.hbase.regionserver.HRegion: closed entities,North_America-United_States-Missouri-Oran-b9c7e44a-4a2b-11dd-abd4-1231390079f2,1218205066272
+...
+2008-08-08 10:50:23,437 INFO org.apache.hadoop.ipc.Server: IPC Server handler 2 on 64020, call next(-8330618580557781998) from 192.168.1.84:59678: error: org.apache.hadoop.hbase.UnknownScannerException: Name: -8330618580557781998
+org.apache.hadoop.hbase.UnknownScannerException: Name: -8330618580557781998
+  at org.apache.hadoop.hbase.regionserver.HRegionServer.next(HRegionServer.java:1115)
+  at sun.reflect.GeneratedMethodAccessor6.invoke(Unknown Source)
+  at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+  at java.lang.reflect.Method.invoke(Method.java:597)
+  at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:473)
+  at org.apache.hadoop.ipc.Server$Handler.run(Server.java:896)
+We have to have some way of telling the client code that it's scanner lease was canceled because of a split so that it stays hidden from the user.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+0.1.3, 0.2.0
+Fix_version:
+0.2.1, 0.18.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jean-Daniel Cryans
+Create date:
+08/Aug/08 17:41
+Update date:
+22/Aug/08 21:35
+Resolved date:
+08/Aug/08 20:07

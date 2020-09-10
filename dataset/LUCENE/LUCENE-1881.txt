@@ -1,0 +1,68 @@
+Summary:
+Non-stored fields are not copied in writer.addDocument()?
+Description:
+We would like to modified stored documents properties. The method is to use IndexReader to open all files, modified some fields, and copy the document via addDocument() of IndexWriter to another index. But all fields that are created using Field.Store.NO are no longer available for searching.
+Sample code in jsp is attached:
+<%@ page language="java" import="org.apache.lucene.analysis.standard.StandardAnalyzer;"%>
+<%@ page language="java" import="org.apache.lucene.document.*;"%>
+<%@ page language="java" import="org.apache.lucene.index.*;"%>
+<%@ page language="java" import="org.apache.lucene.search.*;"%>
+<%@ page contentType="text/html; charset=utf8" %>
+<%
+// create for testing
+IndexWriter writer = new IndexWriter("/opt/wwwroot/351/Index/test", new StandardAnalyzer(), true, IndexWriter.MaxFieldLength.LIMITED);
+Document doc = new Document();
+doc.add(new Field("A", "1234", Field.Store.NO , Field.Index.NOT_ANALYZED));
+doc.add(new Field("B", "abcd", Field.Store.NO , Field.Index.NOT_ANALYZED));
+writer.addDocument(doc);
+writer.close();
+// check ok
+Query q = new TermQuery(new Term("A", "1234"));
+Searcher s = new IndexSearcher("/opt/wwwroot/351/Index/test");
+Hits h = s.search(q);
+out.println("# of document found is " + h.length()); // it is ok
+// update the document to change or remove a field
+IndexReader r = IndexReader.open("/opt/wwwroot/351/Index/test");
+doc = r.document(0);
+r.deleteDocument(0);
+r.close();
+doc.removeField("B");
+writer = new IndexWriter("/opt/wwwroot/351/Index/test1", new StandardAnalyzer(), true, IndexWriter.MaxFieldLength.LIMITED);
+writer.addDocument(doc);
+writer.optimize();
+writer.close();
+// test again
+s = new IndexSearcher("/opt/wwwroot/351/Index/test1");
+h = s.search(q);
+out.println("<P># of document found is now " + h.length());
+r = IndexReader.open("/opt/wwwroot/351/Index/test1");
+out.println("<P> max Doc is " + r.maxDoc());
+%>
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Invalid
+Affects_version:
+2.4.1
+Fix_version:
+None
+Component:
+core/store
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Hoss Man
+Reporter:
+Wai Wong
+Create date:
+01/Sep/09 12:22
+Update date:
+02/Sep/09 07:35
+Resolved date:
+02/Sep/09 00:58

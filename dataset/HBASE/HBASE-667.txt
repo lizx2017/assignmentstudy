@@ -1,0 +1,91 @@
+Summary:
+Hung regionserver; hung on hdfs: writeChunk, DFSClient.java:2126, DataStreamer socketWrite
+Description:
+Internally, came across a hung regionserver. Here is relevant excerpt from thread dump:
+"ResponseProcessor for block blk_-6991279486194843565" daemon prio=1 tid=0x00002aab3ac13c50 nid=0x7ad7 runnable [0x0000000043080000..0x0000000043080d00]
+        at java.net.SocketInputStream.socketRead0(Native Method)
+        at java.net.SocketInputStream.read(Unknown Source)
+        at java.io.DataInputStream.readFully(Unknown Source)
+        at java.io.DataInputStream.readLong(Unknown Source)
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream$ResponseProcessor.run(DFSClient.java:1734)
+
+...
+
+"IPC Server handler 3 on 60020" daemon prio=1 tid=0x00002aab3c05abf0 nid=0x6b61 waiting for monitor entry [0x0000000042878000..0x0000000042878d00]
+        at org.apache.hadoop.hbase.HLog.append(HLog.java:371)
+        - waiting to lock <0x00002aaab69d1180> (a java.lang.Integer)
+        at org.apache.hadoop.hbase.HRegion.update(HRegion.java:1629)
+        at org.apache.hadoop.hbase.HRegion.batchUpdate(HRegion.java:1432)
+        at org.apache.hadoop.hbase.HRegionServer.batchUpdate(HRegionServer.java:1552)
+        at sun.reflect.GeneratedMethodAccessor9.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+        at java.lang.reflect.Method.invoke(Unknown Source)
+        at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:413)
+        at org.apache.hadoop.ipc.Server$Handler.run(Server.java:901)
+
+.....
+
+"IPC Server handler 1 on 60020" daemon prio=1 tid=0x00002aab3c3220a0 nid=0x6b5f waiting for monitor entry [0x0000000042676000..0x0000000042676c00]
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream.writeChunk(DFSClient.java:2126)
+        - waiting to lock <0x00002aaab69d1a28> (a java.util.LinkedList)
+        at org.apache.hadoop.fs.FSOutputSummer.writeChecksumChunk(FSOutputSummer.java:141)
+        at org.apache.hadoop.fs.FSOutputSummer.write1(FSOutputSummer.java:100)
+        at org.apache.hadoop.fs.FSOutputSummer.write(FSOutputSummer.java:86)
+        - locked <0x00002aaab69d15b0> (a org.apache.hadoop.dfs.DFSClient$DFSOutputStream)
+        at org.apache.hadoop.fs.FSDataOutputStream$PositionCache.write(FSDataOutputStream.java:41)
+        at java.io.DataOutputStream.write(Unknown Source)
+        - locked <0x00002aaab69d1228> (a org.apache.hadoop.fs.FSDataOutputStream)
+        at org.apache.hadoop.io.SequenceFile$Writer.append(SequenceFile.java:990)
+        - locked <0x00002aaab69d1050> (a org.apache.hadoop.io.SequenceFile$Writer)
+        at org.apache.hadoop.hbase.HLog.append(HLog.java:387)
+        - locked <0x00002aaab69d1180> (a java.lang.Integer)
+        at org.apache.hadoop.hbase.HRegion.update(HRegion.java:1629)
+        at org.apache.hadoop.hbase.HRegion.batchUpdate(HRegion.java:1432)
+        at org.apache.hadoop.hbase.HRegionServer.batchUpdate(HRegionServer.java:1552)
+        at sun.reflect.GeneratedMethodAccessor9.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+        at java.lang.reflect.Method.invoke(Unknown Source)
+        at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:413)
+        at org.apache.hadoop.ipc.Server$Handler.run(Server.java:901)
+
+.....
+
+"DataStreamer for file /hbase/aa0-005-2.u.powerset.com/log_208.76.45.223_1212443824255_60020/hlog.dat.000 block blk_-6991279486194843565" daemon prio=1 tid=0x00002aab3c1b2e70 nid=0x6b50 runnable [0x0000000041969000..0x0000000041969c80]
+        at java.net.SocketOutputStream.socketWrite0(Native Method)
+        at java.net.SocketOutputStream.socketWrite(Unknown Source)
+        at java.net.SocketOutputStream.write(Unknown Source)
+        at java.io.BufferedOutputStream.write(Unknown Source)
+        - locked <0x00002aaab7652b70> (a java.io.BufferedOutputStream)
+        at java.io.DataOutputStream.write(Unknown Source)
+        - locked <0x00002aaab7652288> (a java.io.DataOutputStream)
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:1631)
+        - locked <0x00002aaab69d1a28> (a java.util.LinkedList)
+I've seen this before. I saw this this morning where a pure hadoop client was hung in same way. This is hadoop 0.16.4. Seems like a pure hadoop prob.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.1.2
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+04/Jun/08 19:30
+Update date:
+10/Sep/10 17:57
+Resolved date:
+10/Sep/10 17:57

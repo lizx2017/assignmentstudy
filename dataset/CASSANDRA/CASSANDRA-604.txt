@@ -1,0 +1,53 @@
+Summary:
+Compactions might remove tombstones without removing the actual data
+Description:
+I was looking at the code for compaction, and noticed that when we are doing compactions during the normal course of
+Cassandra, we call:
+for (List<SSTableReader> sstables :
+getCompactionBuckets(ssTables_, 50L * 1024L * 1024L))
+{
+if (sstables.size() < minThreshold)
+{ continue; }
+other wise docompactions...
+where getCompactionBuckets puts in buckets very small files, or files
+that are 0.5-1.5 of each other's sizes. It will only compact those if
+they are >= minimum threshold which is 4 by default.
+So far so good. Now how about this scenario, I have an old entry that
+I inserted long time ago and that was compacted into a 75MB file.
+There are fewer 75MB files than 4. I do many deletes, and I end with 4
+extra sstable files filled with tombstones, each about 300 MB large.
+These 4 files are compacted together and in the compaction code, if
+the tombstone is there we don't copy it over to the new file. Now
+since we did not compact the 75MB files, but we compacted the
+tombstone files, that leaves us with the tombstone gone, but
+the data still intact in the 75MB file. If we compacted all the
+files together I don't think that would be a problem, but since we
+only compact 4, this potentially leaves data not cleaned.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.5
+Component:
+None
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Ramzi Rabah
+Create date:
+05/Dec/09 00:12
+Update date:
+16/Apr/19 09:33
+Resolved date:
+08/Dec/09 18:45

@@ -1,0 +1,61 @@
+Summary:
+Wrong partitioner after upgrading sstables (secondary indexes are not handled correctly after CASSANDRA-6962)
+Description:
+After upgrading one of 15 nodes from 2.1.7 to 2.2.0.rc1, C* upgrades automatic sstables. After restart of C*, some of these new generated sstables are not accepted anymore and C* crashes. If I delete the affected sstables, C* starts again.
+system.log
+ERROR [SSTableBatchOpen:1] 2015-06-30 13:08:54,861 SSTableReader.java:432 - Cannot open D:\Programme\Cassandra\data\data\nieste\niesteinverters\la-540-big; partitioner org.apache.cassandra.dht.LocalPartitioner does not match system partitioner org.apache.cassandra.dht.Murmur3Partitioner.  Note that the default partitioner starting with Cassandra 1.2 is Murmur3Partitioner, so you will need to edit that to match your old partitioner if upgrading.
+schema
+CREATE TABLE niesteinverters (
+  id bigint,
+  comment map<timestamp, text>,
+  creation_time timestamp,
+  fk_ncom bigint,
+  last_event timestamp,
+  last_filesize int,
+  last_onl_data timestamp,
+  last_time timestamp,
+  ncom_hist map<timestamp, bigint>,
+  version int,
+  PRIMARY KEY ((id))
+) WITH
+  bloom_filter_fp_chance=0.010000 AND
+  caching='{"keys":"ALL", "rows_per_partition":"NONE"}' AND
+  comment='Table for niesteinverters (niesteplants->niestecoms->niesteinverters)' AND
+  dclocal_read_repair_chance=0.000000 AND
+  gc_grace_seconds=864000 AND
+  read_repair_chance=0.100000 AND
+  default_time_to_live=0 AND
+  speculative_retry='NONE' AND
+  memtable_flush_period_in_ms=0 AND
+  compaction={'class': 'LeveledCompactionStrategy'} AND
+  compression={'sstable_compression': 'LZ4Compressor'};
+
+CREATE INDEX niesteinvertersniestecomsIndex ON niesteinverters (fk_ncom);
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 rc2
+Component:
+Feature/2i Index, (1)
+Label:
+None
+Environment:
+windows 7, java 1.7
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Andreas Schnitzerling
+Create date:
+30/Jun/15 11:15
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Jul/15 18:48

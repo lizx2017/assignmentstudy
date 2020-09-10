@@ -1,0 +1,62 @@
+Summary:
+Explicitly requested keys will always be present in resultset
+Description:
+This bug is regarding the select after the 'truncate'. In 1.0.1 no rows would ever be returned, but now we are seeing a tombstone when querying for user1. Jake mentioned this may be related to CASSANDRA-2855.
+cqlsh> CREATE KEYSPACE ks1 with 
+   ...   strategy_class =  
+   ...     'org.apache.cassandra.locator.SimpleStrategy' 
+   ...   and strategy_options:replication_factor=1;
+  
+cqlsh> use ks1;
+
+cqlsh:ks1> 
+
+cqlsh:ks1> CREATE COLUMNFAMILY users (
+       ...   KEY varchar PRIMARY KEY, password varchar, gender varchar,
+       ...   session_token varchar, state varchar, birth_year bigint);
+
+cqlsh:ks1> INSERT INTO users (KEY, password) VALUES ('user1', 'ch@ngem3a');
+
+cqlsh:ks1> UPDATE users SET gender = 'm', birth_year = '1980' WHERE KEY = 'user1';
+
+cqlsh:ks1> SELECT * FROM users WHERE key='user1';
+   KEY | birth_year | gender |  password |
+ user1 |       1980 |      m | ch@ngem3a |
+
+cqlsh:ks1> TRUNCATE users;
+
+// Expected, no rows returned
+cqlsh:ks1> SELECT * FROM users WHERE key='user1';
+   KEY |
+ user1 |
+
+// Expected, no rows returned
+cqlsh:ks1> SELECT * FROM users;
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Cathy Daw
+Create date:
+18/Nov/11 05:35
+Update date:
+16/Apr/19 09:32
+Resolved date:
+15/May/12 14:30

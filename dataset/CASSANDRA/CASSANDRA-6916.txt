@@ -1,0 +1,41 @@
+Summary:
+Preemptive opening of compaction result
+Description:
+Related to CASSANDRA-6812, but a little simpler: when compacting, we mess quite badly with the page cache. One thing we can do to mitigate this problem is to use the sstable we're writing before we've finished writing it, and to drop the regions from the old sstables from the page cache as soon as the new sstables have them (even if they're only written to the page cache). This should minimise any page cache churn, as the old sstables must be larger than the new sstable, and since both will be in memory, dropping the old sstables is at least as good as dropping the new.
+The approach is quite straight-forward. Every X MB written:
+grab flushed length of index file;
+grab second to last index summary record, after excluding those that point to positions after the flushed length;
+open index file, and check that our last record doesn't occur outside of the flushed length of the data file (pretty unlikely)
+Open the sstable with the calculated upper bound
+Some complications:
+must keep running copy of compression metadata for reopening with
+we need to be able to replace an sstable with itself but a different lower bound
+we need to drop the old page cache only when readers have finished
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 beta2
+Component:
+None
+Label:
+performance
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Benedict
+Create date:
+24/Mar/14 16:06
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/May/14 06:19

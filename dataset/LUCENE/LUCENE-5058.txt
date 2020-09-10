@@ -1,0 +1,74 @@
+Summary:
+IOException when trying to delete data from index
+Description:
+I have a small test prog which inserts some data in an index and after that, opens a searcher from the uncommitted index to search on and output the result to std.out. The Searcher is immediately closed. Then, i call deleteAll() on the index but it encounters an IOException stating that the index files could not be removed. I have investigated with Sysinternals and it says the file is still locked despite the fact that the index searcher is correctly closed. If i call deleteAll() without opening a searcher before it just works fine as expected. This seems to be a bug in Lucene, since closing the index searcher makes it impossible to delete the index.
+Here is the source code:
+Bar.java
+public class LuceneTest {
+
+    private Directory dir;
+    private IndexWriter writer;
+    
+    public void addDocs(long value) throws IOException {
+        Document doc = new Document();
+        doc.add(new LongField("ID", value, Field.Store.YES));
+        writer.deleteDocuments(new Term("ID", "1"));
+        writer.addDocument(doc);
+    }
+    
+    public void search() throws IOException {
+      IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(writer, false));
+        TopDocs results = searcher.search(NumericRangeQuery.newLongRange("ID", 1L, 2L, true, true), 1);
+        
+        for ( ScoreDoc sc : results.scoreDocs) {
+            System.out.println(searcher.doc(sc.doc));
+        }
+        
+        searcher.getIndexReader().close();
+    }
+
+    public static void main(String[] args) throws IOException {
+        new LuceneTest();
+    }
+    
+    public LuceneTest() throws IOException {
+        dir = FSDirectory.open(new File("test"));
+        IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_43, new StandardAnalyzer(Version.LUCENE_43));
+        config.setInfoStream(System.out);
+        writer = new IndexWriter(dir, config);
+        
+        addDocs(1L); 
+        search();
+        //writer.commit(); -- If i call commit after search, then no IOException occurrs!
+        
+        writer.deleteAll();
+    }
+}
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+4.3
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Christian
+Create date:
+14/Jun/13 12:16
+Update date:
+14/Jun/13 16:31
+Resolved date:
+14/Jun/13 16:30

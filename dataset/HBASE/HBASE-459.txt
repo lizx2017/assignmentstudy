@@ -1,0 +1,62 @@
+Summary:
+WrongRegionException should be like NSRE exception?
+Description:
+Jim was just running a loading test. It failed because of a WrongRegionException. At first I thought it HBASE-428 – because we were making regions w/ same start and end key – but looking closer, it looks like the client is getting a WRE thought its making a legitimate request; it just happens to be asking for a row from the top-half of a region just as it split. I would think that on WRE, the client would at least retry in same manner in which it does when it gets a NSRE?
+Here is the split detail:
+2008-02-21 19:15:11,747 INFO  [regionserver/0:0:0:0:0:0:0:0:8020.compactor] hbase.HRegionServer$CompactSplitThread(345): region split, META updated, and report to master all successful. Old region=regionname: TestTable,0018951818,1203620807290, startKey: <0018951818>, endKey: <0022085183>, encodedName: 1601381187, offline: true, split: true, tableDesc: {name: TestTable, families: {info:={name: info, max versions: 3, compression: NONE, in memory: false, block cache enabled: false, max length: 2147483647, bloom filter: none}}}, new regions: TestTable,0018951818,1203621311590, TestTable,0020990296,1203621311590. Split took 0sec
+Here is the WRE:
+org.apache.hadoop.hbase.WrongRegionException: org.apache.hadoop.hbase.WrongRegionException: Requested row out of range for HRegion TestTable,0018951818,1203620807290, startKey='0018951818', getEndKey()='0022085183', row='0062914560'
+ at org.apache.hadoop.hbase.HRegion.checkRow(HRegion.java:1496)
+ at org.apache.hadoop.hbase.HRegion.obtainRowLock(HRegion.java:1541)
+ at org.apache.hadoop.hbase.HRegion.batchUpdate(HRegion.java:1236)
+ at org.apache.hadoop.hbase.HRegionServer.batchUpdate(HRegionServer.java:1450)
+ at sun.reflect.GeneratedMethodAccessor3.invoke(Unknown Source)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+ at java.lang.reflect.Method.invoke(Unknown Source)
+ at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:413)
+ at org.apache.hadoop.ipc.Server$Handler.run(Server.java:910)
+
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance(Unknown Source)
+ at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(Unknown Source)
+ at java.lang.reflect.Constructor.newInstance(Unknown Source)
+ at org.apache.hadoop.hbase.RemoteExceptionHandler.decodeRemoteException(RemoteExceptionHandler.java:82)
+ at org.apache.hadoop.hbase.client.HTable.getRegionServerWithRetries(HTable.java:1008)
+ at org.apache.hadoop.hbase.client.HTable.commit(HTable.java:751)
+ at org.apache.hadoop.hbase.client.HTable.commit(HTable.java:740)
+ at org.apache.hadoop.hbase.client.HTable.commit(HTable.java:721)
+ at org.apache.hadoop.hbase.PerformanceEvaluation$SequentialWriteTest.testRow(PerformanceEvaluation.java:463)
+ at org.apache.hadoop.hbase.PerformanceEvaluation$Test.test(PerformanceEvaluation.java:331)
+ at org.apache.hadoop.hbase.PerformanceEvaluation.runOneClient(PerformanceEvaluation.java:527)
+ at org.apache.hadoop.hbase.PerformanceEvaluation$EvaluationMapTask.map(PerformanceEvaluation.java:176)
+ at org.apache.hadoop.mapred.MapRunner.run(MapRunner.java:50)
+ at org.apache.hadoop.mapred.MapTask.run(MapTask.java:208)
+ at org.apache.hadoop.mapred.TaskTracker$Child.main(TaskTracker.java:2071)
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Won't Fix
+Affects_version:
+0.1.0, 0.2.0
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+21/Feb/08 19:32
+Update date:
+22/Aug/08 21:35
+Resolved date:
+28/Feb/08 21:55

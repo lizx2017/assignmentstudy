@@ -1,0 +1,39 @@
+Summary:
+Repair doesn't synchronize merkle tree creation properly
+Description:
+Being a little slow, I just realized after having opened CASSANDRA-2811 and CASSANDRA-2815 that there is a more general problem with repair.
+When a repair is started, it will send a number of merkle tree to its neighbor as well as himself and assume for correction that the building of those trees will be started on every node roughly at the same time (if not, we end up comparing data snapshot at different time and will thus mistakenly repair a lot of useless data). This is bogus for many reasons:
+Because validation compaction runs on the same executor that other compaction, the start of the validation on the different node is subject to other compactions. 0.8 mitigates this in a way by being multi-threaded (and thus there is less change to be blocked a long time by a long running compaction), but the compaction executor being bounded, its still a problem)
+if you run a nodetool repair without arguments, it will repair every CFs. As a consequence it will generate lots of merkle tree requests and all of those requests will be issued at the same time. Because even in 0.8 the compaction executor is bounded, some of those validations will end up being queued behind the first ones. Even assuming that the different validation are submitted in the same order on each node (which isn't guaranteed either), there is no guarantee that on all nodes, the first validation will take the same time, hence desynchronizing the queued ones.
+Overall, it is important for the precision of repair that for a given CF and range (which is the unit at which trees are computed), we make sure that all node will start the validation at the same time (or, since we can't do magic, as close as possible).
+One (reasonably simple) proposition to fix this would be to have repair schedule validation compactions across nodes one by one (i.e, one CF/range at a time), waiting for all nodes to return their tree before submitting the next request. Then on each node, we should make sure that the node will start the validation compaction as soon as requested. For that, we probably want to have a specific executor for validation compaction and:
+either we fail the whole repair whenever one node is not able to execute the validation compaction right away (because no thread are available right away).
+we simply tell the user that if he start too many repairs in parallel, he may start seeing some of those repairing more data than it should.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.2
+Component:
+None
+Label:
+repair
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+23/Jun/11 11:35
+Update date:
+16/Apr/19 09:32
+Resolved date:
+21/Jul/11 11:13

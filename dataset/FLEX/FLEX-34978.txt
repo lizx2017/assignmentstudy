@@ -1,0 +1,71 @@
+Summary:
+Shutdown errors when running Blazed DS inside of Tomcat & Java 8.
+Description:
+Inside flex.messaging.FlexSessionManager a ConcurrentHashMap member variable is declared and later the keySet() is accessed. The ConcurrentHashMap interface has changed between Java 7 and Java 8. So although it will work when running with Java 7; it will break if you run with Java 8. It should be updated to declare the member as just a Map or ConcurrentMap (which is done elsewhere in the BlazeDS source); however, in the FlexSessionManager it is declared as:
+private final ConcurrentHashMap<Class<? extends FlexSession>, AbstractFlexSessionProvider> providers = new ConcurrentHashMap<Class<? extends FlexSession>, AbstractFlexSessionProvider>();
+Then in the FlexSessionManager.stop() implementation it performs the following directly off of the ConcurrentHashMap which results in a failure:
+/**
+Stops the <tt>FlexSessionManager</tt>.
+Any registered <tt>FlexSession</tt> providers are stopped and unregistered.
+*/
+@Override
+public void stop()
+{
+if (!isStarted())
+return;
+super.stop();
+for (Class<? extends FlexSession> sessionClass : providers.keySet())
+{ unregisterFlexSessionProvider(sessionClass); }
+providers.clear();
+}
+The following is the stacktrace seen in the error log on shutdown:
+2015-11-25 13:47:01,804 [localhost-startStop-2] ERROR org.apache.catalina.core.ContainerBase.[Catalina].[localhost].[/context] - Servlet MessageBrokerServlet threw unload() exception
+javax.servlet.ServletException: Servlet.destroy() for servlet MessageBrokerServlet threw exception
+at org.apache.catalina.core.StandardWrapper.unload(StandardWrapper.java:1507)
+at org.apache.catalina.core.StandardWrapper.stopInternal(StandardWrapper.java:1847)
+at org.apache.catalina.util.LifecycleBase.stop(LifecycleBase.java:232)
+at org.apache.catalina.core.StandardContext.stopInternal(StandardContext.java:5707)
+at org.apache.catalina.util.LifecycleBase.stop(LifecycleBase.java:232)
+at org.apache.catalina.core.ContainerBase$StopChild.call(ContainerBase.java:1591)
+at org.apache.catalina.core.ContainerBase$StopChild.call(ContainerBase.java:1580)
+at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+at java.lang.Thread.run(Thread.java:745)
+Caused by: java.lang.NoSuchMethodError: java.util.concurrent.ConcurrentHashMap.keySet()Ljava/util/concurrent/ConcurrentHashMap$KeySetView;
+at flex.messaging.FlexSessionManager.stop(FlexSessionManager.java:293)
+at flex.messaging.MessageBroker.stop(MessageBroker.java:380)
+at flex.messaging.MessageBrokerServlet.destroy(MessageBrokerServlet.java:263)
+at org.apache.catalina.core.StandardWrapper.unload(StandardWrapper.java:1486)
+... 10 more
+There are two other classes that declare ConcurrentHashMap in the code that should be cleaned up too (although keySet() is not referenced in those classes , it would be better to address them to ensure this issue doesn't re-occur):
+flex.messaging.endpoints.BaseStreamingHTTPEndpoint
+flex.messaging.MessageBroker
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+BlazeDS 4.7
+Fix_version:
+None
+Component:
+.Unspecified - Framework
+Label:
+None
+Environment:
+Tomcat 7.0.58
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Douglas Yeager
+Create date:
+30/Nov/15 15:50
+Update date:
+25/Jan/18 14:52
+Resolved date:
+

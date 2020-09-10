@@ -1,0 +1,38 @@
+Summary:
+Memory leak in SerializingCache
+Description:
+A customer reported a memory leak when off-heap row cache is enabled.
+I gave them a patch against 1.1.9 to troubleshoot (https://github.com/jbellis/cassandra/commits/row-cache-finalizer). This confirms that row cache is responsible. Here is a sample of the log:
+DEBUG [Finalizer] 2013-06-08 06:49:58,656 FreeableMemory.java (line 69) Unreachable memory still has nonzero refcount 1
+DEBUG [Finalizer] 2013-06-08 06:49:58,656 FreeableMemory.java (line 71) Unreachable memory 140337996747792 has not been freed (will free now)
+DEBUG [Finalizer] 2013-06-08 06:49:58,656 FreeableMemory.java (line 69) Unreachable memory still has nonzero refcount 1
+DEBUG [Finalizer] 2013-06-08 06:49:58,656 FreeableMemory.java (line 71) Unreachable memory 140337989287984 has not been freed (will free now)
+That is, memory is not being freed because we never got to zero references.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ryan McGuire
+Reporter:
+Jonathan Ellis
+Create date:
+08/Jun/13 16:17
+Update date:
+16/Apr/19 09:32
+Resolved date:
+03/Jun/15 09:55

@@ -1,0 +1,72 @@
+Summary:
+Reused WALEdits in replication may cause RegionServers to go OOM
+Description:
+WALEdit.heapSize() is incorrect in certain replication scenarios which may cause RegionServers to go OOM.
+A little background on this issue. We noticed that our source replication regionservers would get into gc storms and sometimes even OOM.
+We noticed a case where it showed that there were around 25k WALEdits to replicate, each one with an ArrayList of KeyValues. The array list had a capacity of around 90k (using 350KB of heap memory) but had around 6 non null entries.
+When the ReplicationSource.readAllEntriesToReplicateOrNextFile() gets a WALEdit it removes all kv's that are scoped other than local.
+But in doing so we don't account for the capacity of the ArrayList when determining heapSize for a WALEdit. The logic for shipping a batch is whether you have hit a size capacity or number of entries capacity.
+Therefore if have a WALEdit with 25k entries and suppose all are removed:
+The size of the arrayList is 0 (we don't even count the collection's heap size currently) but the capacity is ignored.
+This will yield a heapSize() of 0 bytes while in the best case it would be at least 100000 bytes (provided you pass initialCapacity and you have 32 bit JVM)
+I have some ideas on how to address this problem and want to know everyone's thoughts:
+1. We use a probabalistic counter such as HyperLogLog and create something like:
+class CapacityEstimateArrayList implements ArrayList
+this class overrides all additive methods to update the probabalistic counts
+it includes one additional method called estimateCapacity (we would take estimateCapacity - size() and fill in sizes for all references)
+Then we can do something like this in WALEdit.heapSize:
+  public long heapSize() {
+    long ret = ClassSize.ARRAYLIST;
+    for (KeyValue kv : kvs) {
+      ret += kv.heapSize();
+    }
+    long nullEntriesEstimate = kvs.getCapacityEstimate() - kvs.size();
+    ret += ClassSize.align(nullEntriesEstimate * ClassSize.REFERENCE);
+    if (scopes != null) {
+      ret += ClassSize.TREEMAP;
+      ret += ClassSize.align(scopes.size() * ClassSize.MAP_ENTRY);
+      // TODO this isn't quite right, need help here
+    }
+    return ret;
+  } 
+2. In ReplicationSource.removeNonReplicableEdits() we know the size of the array originally, and we provide some percentage threshold. When that threshold is met (50% of the entries have been removed) we can call kvs.trimToSize()
+3. in the heapSize() method for WALEdit we could use reflection (Please don't shoot me for this) to grab the actual capacity of the list. Doing something like this:
+public int getArrayListCapacity()  {
+    try {
+      Field f = ArrayList.class.getDeclaredField("elementData");
+      f.setAccessible(true);
+      return ((Object[]) f.get(kvs)).length;
+    } catch (Exception e) {
+      log.warn("Exception in trying to get capacity on ArrayList", e);
+      return kvs.size();
+    }
+I am partial to (1) using HyperLogLog and creating a CapacityEstimateArrayList, this is reusable throughout the code for other classes that implement HeapSize which contains ArrayLists. The memory footprint is very small and it is very fast. The issue is that this is an estimate, although we can configure the precision we most likely always be conservative. The estimateCapacity will always be less than the actualCapacity, but it will be close. I think that putting the logic in removeNonReplicableEdits will work, but this only solves the heapSize problem in this particular scenario. Solution 3 is slow and horrible but that gives us the exact answer.
+I would love to hear if anyone else has any other ideas on how to remedy this problem? I have code for trunk and 0.94 for all 3 ideas and can provide a patch if the community thinks any of these approaches is a viable one.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.5, 0.95.0
+Fix_version:
+0.98.0, 0.96.1, 0.94.14
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+churro morales
+Create date:
+30/Oct/13 23:55
+Update date:
+26/Nov/13 05:53
+Resolved date:
+12/Nov/13 22:15

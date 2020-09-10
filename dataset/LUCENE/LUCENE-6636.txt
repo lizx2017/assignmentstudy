@@ -1,0 +1,136 @@
+Summary:
+Filtered Search Fails against toParentBlockJoinQuery
+Description:
+I'm able to get this to fail against a slightly larger test case than what is run in your test suite. I noticed it first in 5.1 against a much larger index and created a more concise test case to reproduce it in both 5.1 and 5.2. I have similar code running in 4.10.4 that does not fail. I'm assuming this is a bug, but haven't identified the underlying issue in Lucene. I thought at one point this was related to the SOLR issue 7606 but this example seems to eliminate that possibility.
+Stack Trace:
+Exception in thread "main" java.lang.IllegalStateException: child query must only match non-parent docs, but parent docID=2147483647 matched childScorer=class org.apache.lucene.search.TermScorer
+at org.apache.lucene.search.join.ToParentBlockJoinQuery$BlockJoinScorer.nextDoc(ToParentBlockJoinQuery.java:334)
+at org.apache.lucene.search.join.ToParentBlockJoinIndexSearcher.search(ToParentBlockJoinIndexSearcher.java:63)
+at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:485)
+at org.lexevs.lucene.prototype.BlockJoinTestQuery.run(BlockJoinTestQuery.java:53)
+at org.lexevs.lucene.prototype.BlockJoinTestQuery.main(BlockJoinTestQuery.java:71)
+Indexing class:
+package org.lexevs.lucene.prototype;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.util.CharArraySet;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.MMapDirectory;
+public class SmallTestIndexBuilder {
+public enum Code
+{ C1234,C23432,C4234,C2308, C8958; }
+public SmallTestIndexBuilder()
+{ // TODO Auto-generated constructor stub }
+
+public void init(){
+try { LuceneContentBuilder builder = new LuceneContentBuilder(); Path path = Paths.get("/Users/m029206/Desktop/index"); Directory dir = new MMapDirectory(path); Analyzer analyzer=new StandardAnalyzer(new CharArraySet( 0, true)); IndexWriterConfig iwc= new IndexWriterConfig(analyzer); IndexWriter writer = new IndexWriter(dir, iwc); createCodingSchemeIndex(builder, writer ); writer.commit(); writer.close(); } catch (IOException e) { // TODO Auto-generated catch block e.printStackTrace(); }
+}
+private void createCodingSchemeIndex(LuceneContentBuilder builder,
+IndexWriter writer) throws IOException {
+for(Code c :Code.values()){ List<Document> list = createBlockJoin(c.name()); writer.addDocuments(list); list = createBlockJoin2(c.name()); writer.addDocuments(list); }
+}
+
+private List<Document> createBlockJoin(String code) { List<Document> list = new ArrayList<Document>(); Document doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "Blood", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "Mud", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "Suds", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "coagulant", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "hepa", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "hematoma", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "normal", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "abnormal", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "notfound", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "red blood cells", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "Blood", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "Blood", Field.Store.YES)); list.add(doc); Document par = new Document(); par.add(new org.apache.lucene.document.TextField("codingSchemeName", "TestScheme", Field.Store.YES)); par.add(new org.apache.lucene.document.TextField("parentDoc", "yes", Field.Store.YES)); par.add(new org.apache.lucene.document.TextField("entityCode", code, Field.Store.YES)); list.add(par); return list; }
+
+private List<Document> createBlockJoin2(String code) { List<Document> list = new ArrayList<Document>(); Document doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "Blood", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "Mud", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "Suds", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "coagulant", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "hepa", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "hematoma", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "normal", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "abnormal", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "notfound", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "red blood cells", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "Blood", Field.Store.YES)); list.add(doc); doc = new Document(); doc.add(new org.apache.lucene.document.TextField("propertyValue", "Blood", Field.Store.YES)); list.add(doc); Document par = new Document(); par.add(new org.apache.lucene.document.TextField("codingSchemeName", "TestSchemeToo", Field.Store.YES)); par.add(new org.apache.lucene.document.TextField("parentDoc", "yes", Field.Store.YES)); par.add(new org.apache.lucene.document.TextField("entityCode", code, Field.Store.YES)); list.add(par); return list; }
+public static void main(String[] args) { new SmallTestIndexBuilder().init(); }
+
+}
+
+Querying Code:
+
+package org.lexevs.lucene.prototype;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.util.CharArraySet;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryWrapperFilter;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.grouping.GroupDocs;
+import org.apache.lucene.search.grouping.TopGroups;
+import org.apache.lucene.search.join.BitDocIdSetCachingWrapperFilter;
+import org.apache.lucene.search.join.BitDocIdSetFilter;
+import org.apache.lucene.search.join.ScoreMode;
+import org.apache.lucene.search.join.ToParentBlockJoinCollector;
+import org.apache.lucene.search.join.ToParentBlockJoinIndexSearcher;
+import org.apache.lucene.search.join.ToParentBlockJoinQuery;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.MMapDirectory;
+
+public class BlockJoinTestQuery {
+
+public BlockJoinTestQuery() { // TODO Auto-generated constructor stub }
+public void run(){
+Path path = Paths.get("/Users/m029206/Desktop/index");
+Directory index;
+try {
+index = new MMapDirectory(path);
+IndexReader reader = DirectoryReader.open(index);
+IndexSearcher searcher = new ToParentBlockJoinIndexSearcher(reader);
+ToParentBlockJoinCollector collector = new ToParentBlockJoinCollector(Sort.RELEVANCE, 2, true, true);
+BitDocIdSetFilter codingScheme = new BitDocIdSetCachingWrapperFilter(
+new QueryWrapperFilter(new QueryParser("codingSchemeName", new StandardAnalyzer(new CharArraySet( 0, true))).parse("TestScheme")));
+Query query = new QueryParser(null, new StandardAnalyzer(new CharArraySet( 0, true))).createBooleanQuery("propertyValue", "Blood", Occur.MUST);
+ToParentBlockJoinQuery termJoinQuery = new ToParentBlockJoinQuery(
+query,
+codingScheme,
+ScoreMode.Avg);
+searcher.search(termJoinQuery, collector);
+TopGroups<Integer> getTopGroupsResults = collector.getTopGroups(termJoinQuery, null, 0, 10, 0, true);
+String ecode = null;
+for (GroupDocs<Integer> result : getTopGroupsResults.groups)
+{ Document parent = searcher.doc(result.groupValue); ecode = parent.get("entityCode"); System.out.println("entityCode: " + ecode); }
+} catch (IOException e)
+{ // TODO Auto-generated catch block e.printStackTrace(); } catch (ParseException e) { // TODO Auto-generated catch block e.printStackTrace(); }
+}
+public static void main(String[] args)
+{ new BlockJoinTestQuery().run(); }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+5.1, 5.2.1
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+mac os x
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Scott Bauer
+Create date:
+29/Jun/15 20:57
+Update date:
+06/Nov/15 19:47
+Resolved date:
+30/Jun/15 08:45

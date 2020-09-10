@@ -1,0 +1,100 @@
+Summary:
+LineSeries do not show color of line stroke in legend markers
+Description:
+Steps to reproduce:
+1. create a Plot or line chart without itemRenderers (null - no cross or points, dimonds, ...)
+2. set the lineStroke style to a SolidColorStroke instead of a deprecated Stroke
+3. add the legend and some data and run
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600" initialize="initApp(event)">
+<fx:Declarations>
+<s:SolidColorStroke id="lineStroke" color="0xffaaaa" alpha="0.9" weight="1" />
+</fx:Declarations>
+<fx:Script>
+<![CDATA[
+import mx.collections.ArrayCollection;
+[Bindable]
+private var dailyDP:ArrayCollection = new ArrayCollection();
+private function initApp(e:Event):void
+{
+//-- init with debug random data
+var i:uint;
+// – DAILY
+for ( i = 0;i<30;i++)//370
+{
+var nextDate:Date = new Date(1970, i, 1, 0, 0, 0, 0);
+dailyDP.addItem(
+{ date: nextDate, Profit: i+Math.random()*8+Math.cos(i)*10+Math.cos(i*2)*6 + Math.random()*30+10-i*Math.cos(i)/5 }
+);
+}
+}
+]]
+>
+</fx:Script>
+<mx:LineChart x="88" y="44" id="plotchart1" dataProvider="
+{dailyDP}
+">
+<mx:series>
+<mx:LineSeries displayName="Profit" xField="date" yField="Profit" itemRenderer="
+{null}
+" lineStroke="
+{lineStroke}
+"/>
+</mx:series>
+<mx:seriesFilters />
+<mx:filters />
+<mx:horizontalAxis>
+<mx:DateTimeAxis dataUnits="days" interval="1" />
+</mx:horizontalAxis>
+<mx:verticalAxis>
+<mx:LinearAxis />
+</mx:verticalAxis>
+</mx:LineChart>
+<mx:Legend dataProvider="
+{plotchart1}
+"/>
+</s:Application>
+Actual Results:
+The legend markers are always black
+Expected Results:
+They should be of the color defined for the lineSeries
+Workaround (if any):
+Override the private LineSeriesLegendMarker in LineSeries or set your own legend marker class
+Solution:
+add a test case in the LineSeriesLegendMarker for SolidColorStroke
+if (fillStroke is SolidColorStroke)
+{ color = SolidColorStroke(fillStroke).color }
+else if (fillStroke is Stroke)
+{ color = Stroke(fillStroke).color; }
+else if (fillStroke is LinearGradientStroke)
+{ var gb:LinearGradientStroke = LinearGradientStroke(fillStroke); if (gb.entries.length > 0) color = gb.entries[0].color; }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Charts:Data Graphics
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+13/Jul/10 03:27
+Update date:
+26/Oct/10 05:42
+Resolved date:
+26/Oct/10 05:42

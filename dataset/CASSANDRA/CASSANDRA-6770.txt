@@ -1,0 +1,67 @@
+Summary:
+failure to decode multiple UDT
+Description:
+CREATE TYPE address (
+    city text,
+    address text,
+    zip text
+);
+
+CREATE TYPE phone_number (
+    country text,
+    number text
+);
+
+CREATE TABLE users (
+    login text PRIMARY KEY,
+    name text,
+    addresses set<address>,
+    phone_numbers set<phone_number>
+);
+
+insert into users (login, name, addresses, phone_numbers)
+values ('jbellis',
+        'jonathan ellis',
+        {{city: 'Austin', address: '902 East 5th St. #202', zip: '78702'},
+         {city: 'Sunnyvale', address: '292 Gibraltar Drive #107', zip: '94089'}},
+        {{country: '+44', number: '208 622 3021'}, 
+         {country: '+1', number: '512-537-7809'}});
+
+select * from users;
+Result:
+ login   | addresses                                                                                                                                                        | name           | phone_numbers
+---------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------+---------------------------------------------------------------------------------------------------------
+ jbellis | '\x00\x02\x00)\x00\x06Austin\x00\x00\x15902 East 5th St. #202\x00\x00\x0578702\x00\x00/\x00\tSunnyvale\x00\x00\x18292 Gibraltar Drive #107\x00\x00\x0594089\x00' | jonathan ellis | '\x00\x02\x00\x14\x00\x02+1\x00\x00\x0c512-537-7809\x00\x00\x15\x00\x03+44\x00\x00\x0c208 622 3021\x00'
+
+(1 rows)
+
+Failed to decode value '\x00\x02\x00)\x00\x06Austin\x00\x00\x15902 East 5th St. #202\x00\x00\x0578702\x00\x00/\x00\tSunnyvale\x00\x00\x18292 Gibraltar Drive #107\x00\x00\x0594089\x00' (for column 'addresses') as set<address>: unhashable type: 'list'
+Failed to decode value '\x00\x02\x00\x14\x00\x02+1\x00\x00\x0c512-537-7809\x00\x00\x15\x00\x03+44\x00\x00\x0c208 622 3021\x00' (for column 'phone_numbers') as set<phone_number>: unhashable type: 'list'
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 beta2
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mikhail Stepura
+Reporter:
+Jonathan Ellis
+Create date:
+25/Feb/14 19:28
+Update date:
+16/Apr/19 09:31
+Resolved date:
+25/Feb/14 19:58

@@ -1,0 +1,40 @@
+Summary:
+CQL3 shouldn't lowercase DC names for NTS
+Description:
+In CREATE and ALTER statements, when a property map is given (replication, compaction and compression options), CQL3 lowercase the map keys to provide case insensitivity. The goal is to allow things like:
+  replication = { 'Class' : 'SimpleStrategy', 'Replication_factor' : '1' }
+However, this messes up with NTS, as it ends up lower-casing the datacenter names. As a consequence,
+  replication = { 'class' : 'NetworkTopologyStrategy', 'DC1' : '1' }
+will currently create a DC that is really called 'dc1', which is a problem because DC names are interpreted case sensitively otherwise (at least in PropertyFileSnitch).
+That's the problem. Now I'm kind of hesitant on what is the right fix. I see the following possibilities:
+Remove the CQL3 lower-casing completely. I'll admit that providing case insensitivy for property map keys may not have been such a good idea in the first place. After all, those map keys are string literal, which rather suggest case sensitivity. However, making that change would be a break strictly speaking.
+Make DC name case insensitive. As much as I think DC names ought to be case insensitive, I'm not sure that's very doable in practice because that would imply storing DC names lower-cased internally, but DC names are exchanged over gossip and whatnot, so that would probably break all hell loose.
+Keep CQL3 case insensitivity for property map keys in general but special case internally for NTS. The problems I see with that is that 1) this will be ugly and 2) if we special case too much, we might break potential custom strategies inspired by NTS. I also had the idea of changing strategy options internally from Map<String, String> to some custom object that would be essentially a case insensitive string map (general case), but that would also hold the original case of keys so NTS (and any other likely-minded strategy) can do its stuff. This happens to not be a small patch however (I'm attaching the patch for reference because I wrote it, but I'm seriously wondering if it's not too overkill).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+26/Feb/13 17:16
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Feb/13 14:46

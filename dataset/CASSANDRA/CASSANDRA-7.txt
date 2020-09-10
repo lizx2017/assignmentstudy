@@ -1,0 +1,51 @@
+Summary:
+Cassandra silently loses data when a single row gets large
+Description:
+When you insert a large number of columns in a single row, Cassandra silently loses some of these inserts.
+This does not happen until the cumulative size of the columns in a single row exceeds several megabytes.
+Say each value is 1MB large,
+insert("row", "col0", value, timestamp)
+insert("row", "col1", value, timestamp)
+insert("row", "col2", value, timestamp)
+...
+...
+insert("row", "col100", value, timestamp)
+Running:
+get_column("row", "col0")
+get_column("row", "col1")
+...
+..
+get_column("row", "col100")
+The sequence of get_columns will fail at some point before 100. This was a problem with the old code in code.google also.
+I will attach a small program that will help you reproduce this.
+1. This only happens when the cumulative size of the row exceeds several megabytes.
+2. In fact, the single row should be large enough to trigger an SSTable flush to trigger this error.
+3. No OutOfMemory errors are thrown, there is nothing relevant in the logs.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+redhat, linux, java 1.7
+Attachment number:
+0
+Assignee:
+Sandeep Tata
+Reporter:
+Sandeep Tata
+Create date:
+16/Mar/09 19:40
+Update date:
+16/Apr/19 09:33
+Resolved date:
+20/Mar/09 21:29

@@ -1,0 +1,41 @@
+Summary:
+BulkOutputFormat binds to wrong client address when client is Dual-stack and server is IPv6
+Description:
+Trying to run a map/reduce job with BulkOutputFormat, in an environment where the Hadoop nodes have Dual-stack (IPv4+IPv6) and the Cassandra servers are IPv6-only, it seems like the TCP connection setup for streaming is explicitly setting the source address to the IPv4 address of the Hadoop node, even though the destination address is IPv6.
+I'm seeing connection attempts where source address is an IPv4-represented-in-IPv6 address and destination is IPv6 of cassandra node.
+In the log output from the Hadoop M/R job, I see:
+2012-02-01 16:49:19,909 WARN org.apache.cassandra.streaming.FileStreamTask: Failed attempt 1 to connect to /2001:4c28:a030:30:72f3:95ff:fe02:2936 to stream /var/lib/hadoop/mapred/local/taskTracker/forsberg/jobcache/job_201201120812_0204/attempt_201201120812_0204_m_000000_0/test/Histograms/test-Histograms-hc-1-Data.db sections=1 progress=0/749048 - 0%. Retrying in 4000 ms. (java.net.ConnectException: Connection timed out)
+So, digging a bit down the code, I see that org.apache.cassandra.hadoop.BulkRecordWriter successfully creates a Thrift connection to my Cassandra cluster, over IPv6. It successfully retrieves tokenrange information.
+Later on, in org.apache.cassandra.streaming.FileStreamTask, it fails to connect to the destination cassandra node. It seems to me that the problem is that org.apache.cassandra.net.OutboundTcpConnectionPool is asking FBUtilities.getLocalAddress for the address to bind to, and getLocalAddress is returning an IPv4 address when DatabaseDescriptor has not been initialized. And DatabaseDescriptor has not been initialized, becase in BulkOutputFormat we're not reading cassandra.yaml.
+I actually have a workaround for this which involves not applying patch that removes need to read cassandra.yaml, then point to a cassandra.yaml generated specifically for the purpose on each hadoop node, with listen_address set to the IPv6 address of the node.
+This is with net.ipv6.bindv6only=0 in Linux sysctl - something you must have for Hadoop to run.
+Also tried -D mapred.child.java.opts="-Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true", i.e. setting properties to prefer IPv6 stack to M/R job, but didn't help.
+In this case, we would probably be better of not explicitly binding to any address - the OS would do that for us. I understand binding explicitly makes sense when this code is running inside Cassandra server.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+None
+Label:
+bulkloader Labels
+Environment:
+linux, hava 1.6
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Erik Forsberg
+Create date:
+02/Feb/12 13:46
+Update date:
+16/Apr/19 09:32
+Resolved date:
+02/Feb/12 23:19

@@ -1,0 +1,89 @@
+Summary:
+memtable with no post-flush activity can leave commitlog permanently dirty
+Description:
+Only dirty Memtables are flushed, and so only dirty memtables are used to discard obsolete commit log segments. This can result it log segments not been deleted even though the data has been flushed.
+Was using a 3 node 0.7.6-2 AWS cluster (DataStax AMI's) with pre 0.7 data loaded and a running application working against the cluster. Did a rolling restart and then kicked off a repair, one node filled up the commit log volume with 7GB+ of log data, there was about 20 hours of log files.
+$ sudo ls -lah commitlog/
+total 6.9G
+drwx------ 2 cassandra cassandra  12K 2011-06-24 20:38 .
+drwxr-xr-x 3 cassandra cassandra 4.0K 2011-06-25 01:47 ..
+-rw------- 1 cassandra cassandra 129M 2011-06-24 01:08 CommitLog-1308876643288.log
+-rw------- 1 cassandra cassandra   28 2011-06-24 20:47 CommitLog-1308876643288.log.header
+-rw-r--r-- 1 cassandra cassandra 129M 2011-06-24 01:36 CommitLog-1308877711517.log
+-rw-r--r-- 1 cassandra cassandra   28 2011-06-24 20:47 CommitLog-1308877711517.log.header
+-rw-r--r-- 1 cassandra cassandra 129M 2011-06-24 02:20 CommitLog-1308879395824.log
+-rw-r--r-- 1 cassandra cassandra   28 2011-06-24 20:47 CommitLog-1308879395824.log.header
+...
+-rw-r--r-- 1 cassandra cassandra 129M 2011-06-24 20:38 CommitLog-1308946745380.log
+-rw-r--r-- 1 cassandra cassandra   36 2011-06-24 20:47 CommitLog-1308946745380.log.header
+-rw-r--r-- 1 cassandra cassandra 112M 2011-06-24 20:54 CommitLog-1308947888397.log
+-rw-r--r-- 1 cassandra cassandra   44 2011-06-24 20:47 CommitLog-1308947888397.log.header
+The user KS has 2 CF's with 60 minute flush times. System KS had the default settings which is 24 hours. Will create another ticket see if these can be reduced or if it's something users should do, in this case it would not have mattered.
+I grabbed the log headers and used the tool in CASSANDRA-2828 and most of the segments had the system CF's marked as dirty.
+$ bin/logtool dirty /tmp/logs/commitlog/
+
+Not connected to a server, Keyspace and Column Family names are not available.
+
+/tmp/logs/commitlog/CommitLog-1308876643288.log.header
+Keyspace Unknown:
+ Cf id 0: 444
+/tmp/logs/commitlog/CommitLog-1308877711517.log.header
+Keyspace Unknown:
+ Cf id 1: 68848763
+...
+/tmp/logs/commitlog/CommitLog-1308944451460.log.header
+Keyspace Unknown:
+ Cf id 1: 61074
+/tmp/logs/commitlog/CommitLog-1308945597471.log.header
+Keyspace Unknown:
+ Cf id 1000: 43175492
+ Cf id 1: 108483
+/tmp/logs/commitlog/CommitLog-1308946745380.log.header
+Keyspace Unknown:
+ Cf id 1000: 239223
+ Cf id 1: 172211
+
+/tmp/logs/commitlog/CommitLog-1308947888397.log.header
+Keyspace Unknown:
+ Cf id 1001: 57595560
+ Cf id 1: 816960
+ Cf id 1000: 0
+CF 0 is the Status / LocationInfo CF and 1 is the HintedHandof CF. I dont have it now, but IIRC CFStats showed the LocationInfo CF with dirty ops.
+I was able to repo a case where flushing the CF's did not mark the log segments as obsolete (attached unit-test patch). Steps are:
+1. Write to cf1 and flush.
+2. Current log segment is marked as dirty at the CL position when the flush started, CommitLog.discardCompletedSegmentsInternal()
+3. Do not write to cf1 again.
+4. Roll the log, my test does this manually.
+5. Write to CF2 and flush.
+6. Only CF2 is flushed because it is the only dirty CF. cfs.maybeSwitchMemtable() is not called for cf1 and so log segment 1 is still marked as dirty from cf1.
+Step 5 is not essential, just matched what I thought was happening. I thought SystemTable.updateToken() was called which does not flush, and this was the last thing that happened.
+The expired memtable thread created by Table uses the same cfs.forceFlush() which is a no-op if the cf or it's secondary indexes are clean.
+I think the same problem would exist in 0.8.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+amorton
+Create date:
+27/Jun/11 01:54
+Update date:
+16/Apr/19 09:32
+Resolved date:
+01/Aug/11 15:12

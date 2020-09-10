@@ -1,0 +1,67 @@
+Summary:
+XFDF annotations partially incorrectly applied to existing PDF or exceptions when parsing
+Description:
+I am currently investigating in using PDFBox (my tests used PFDBox 2.0RC2) for a small use case „stamping“ annotations from a given XFDF format (created by Qoppa’s jPDFEditor/jPDFNotes, www.qoppa.com) into a given PDF/A-1b file.
+This works with a surprisingly minimal set of Java code line  But: obviously not all XFDF elements are supported and/or there are bugs in reading XFDF up to now.
+I just wanted to let you know about my experiences.
+a) Drawing lines painted by a pencil (element: “<gesture>”) do not show up at all after stamping them. Why?
+Sample data to test with:
+<ink name="C2B070EBB736993EA25F4545350AD2C3" style="solid" width="4.0" flags="print" date="D:20151207122033+01'00'" color="#00ff00" opacity="1.0" page="0" subject="Bleistift" rect="62.4562,1378.1637,167.5599,1402.8388" title="matstoll"><inklist><gesture>68.4562,1385.1637;69.7534,1385.1637;73.6451,1385.1637;77.5368,1385.1637;82.7258,1387.7582;89.212,1389.0554;93.1037,1390.3525;96.9954,1390.3525;100.8871,1391.6498;104.7788,1392.947;111.2649,1394.2443;116.4539,1394.2443;121.6428,1395.5415;125.5345,1395.5415;130.7235,1395.5415;134.6152,1395.5415;139.8041,1395.5415;143.6958,1395.5415;148.8848,1395.5415;151.4792,1395.5415;155.3709,1396.8387;156.6682,1396.8387;157.9654,1396.8387;160.5599,1396.8387</gesture></inklist><contents>Pencil line</contents></ink>
+b) Polygons (at least when created with jPDFNotes) throw an exception when reading:
+Exception in thread "main" java.lang.NumberFormatException: For input string: "1318.7075;1054.6517"
+at sun.misc.FloatingDecimal.readJavaFormatString(Unknown Source)
+at sun.misc.FloatingDecimal.parseFloat(Unknown Source)
+at java.lang.Float.parseFloat(Unknown Source)
+at org.apache.pdfbox.pdmodel.fdf.FDFAnnotationPolygon.initVertices(FDFAnnotationPolygon.java:101)
+at org.apache.pdfbox.pdmodel.fdf.FDFAnnotationPolygon.<init>(FDFAnnotationPolygon.java:78)
+at org.apache.pdfbox.pdmodel.fdf.FDFDictionary.<init>(FDFDictionary.java:196)
+Sample data to test with:
+<polygon name="534DC02A197B56578FFA6AE5F178100F" style="solid" width="9.0" flags="print" date="D:20151207121013+01'00'" color="#0000ff" opacity="1.0" page="0" subject="Polygon" rect="857.5527,1117.7167,1063.6517,1334.1936" title="matstoll">
+<vertices>866.5527,1318.7075;1054.6517,1325.1936;1032.5987,1126.7167;876.9306,1179.9034;866.5527,1318.7075;</vertices>
+</polygon>
+c) A cloudy polygon cannot be read either – I assume a general issue reading polygons.
+Sample data to test with:
+<polygon name="0276B0ECDCA680FDB0C0AE8377AE0FAA" style="cloudy" width="4.0" flags="print" date="D:20151207122247+01'00'" intensity="2" color="#ff5500" opacity="1.0" page="0" subject="Cloud/Wolke" rect="278.8037,1105.6361,563.5944,1216.9184" title="matstoll" IT="PolygonCloud"><vertices>310.0391,1147.4725;420.304,1205.8481;555.2164,1117.6361;342.4699,1117.6361;286.6888,1134.5002;310.0391,1147.4725;</vertices></polygon>
+d) A freetext (“<freetext>”) element will not show up correctly:
+b1) Though “width=0.0” for the box, it PDFBox will render a box around the text
+b2) Though font is set to “font: Courier 12pt; color:#000000” a wrong font will be rendered
+b3) The color setting will be ignored: my tests setting a color of font and border to red showed up a textbox with black border and black text.
+e) A freetext element with legend options does not show up correctly:
+e1) Colors are wrong/ignored
+e2) Font size not correct
+e3) Legend arrow not drawn
+Sample data to test with:
+<freetext name="95DB90502D987FDE0DD5446ED48C098A" style="solid" width="3.0" justification="left" flags="print" date="D:20151207122813+01'00'" color="#4055ff" callout="356.7395,1471.7811,479.2464,1372.3664,494.2464,1327.1395" page="0" subject="Legend textfield" fringe="137.5069,-0.0,0.0,86.9147" rect="356.7395,1269.4126,704.3984,1471.7811" head="OpenArrow" title="matstoll" IT="FreeTextCallout"><contents>This is a legend with arrow</contents><defaultstyle>font: Courier 24pt; color:#BFAAFF</defaultstyle><defaultappearance>1.0 0.7490196078431373 0.0 rg /Helv 12 Tf</defaultappearance></freetext>
+There might be more of such issues – but I think this should be sufficient info for now to check how to proceed.
+Adobe Acrobat renders all these test cases correctly by the way, so I assume the XFDF elements are all correct.
+I can provide the sample code if needed – where shall I upload it – if needed?
+As I do not find that much info about the support of XFDF in various PDF libraries – what about the official support in PDFBox? Should all of the samples work? What are the plans to do so?
+Thanks a lot in advance.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.10, 2.0.0
+Fix_version:
+2.0.0
+Component:
+PDModel
+Label:
+annotations xfdf
+Environment:
+windows 7, java 1.8
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Matthias Stoll
+Create date:
+14/Dec/15 21:50
+Update date:
+17/Mar/16 19:06
+Resolved date:
+18/Dec/15 20:07

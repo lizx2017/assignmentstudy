@@ -1,0 +1,39 @@
+Summary:
+CompressedSequentialWriter can write zero-length segments during scrub
+Description:
+This results in errors like this:
+java.lang.IllegalArgumentException
+ at java.nio.Buffer.limit(Buffer.java:267)
+ at org.apache.cassandra.io.compress.CompressedRandomAccessReader.decompressChunk(CompressedRandomAccessReader.java:108)
+ at org.apache.cassandra.io.compress.CompressedRandomAccessReader.reBuffer(CompressedRandomAccessReader.java:87)
+ at org.apache.cassandra.io.util.RandomAccessReader.seek(RandomAccessReader.java:280)
+(Because a zero-length chunk actually turns into a length of -4 in the compressed.limit(chunk.length) call, since no checksum is written either.)
+I thought this would be from two bad rows in a row, but it's not; the source file that resulted in scrub creating this, did not have any of those. (But it does have several instances of bad-good-bad, i.e. separated by exactly one row, that is not large enough to force a new compressed chunk.)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.16, 2.0.6, 2.1 beta2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Viktor Kuzmin
+Reporter:
+Jonathan Ellis
+Create date:
+02/Mar/14 02:18
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Mar/14 13:31

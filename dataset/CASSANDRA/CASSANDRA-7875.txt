@@ -1,0 +1,43 @@
+Summary:
+Prepared statements using dropped indexes are not handled correctly
+Description:
+When select statements are prepared, we verify that the column restrictions use indexes (where necessary). However, we don't perform a similar check when the statement is executed, so it fails somewhere further down the line. In this case, it hits an assertion:
+java.lang.AssertionError: Sequential scan with filters is not supported (if you just created an index, you need to wait for the creation to be propagated to all nodes before querying it)
+ at org.apache.cassandra.db.filter.ExtendedFilter$WithClauses.getExtraFilter(ExtendedFilter.java:259)
+ at org.apache.cassandra.db.ColumnFamilyStore.filter(ColumnFamilyStore.java:1759)
+ at org.apache.cassandra.db.ColumnFamilyStore.getRangeSlice(ColumnFamilyStore.java:1709)
+ at org.apache.cassandra.db.PagedRangeCommand.executeLocally(PagedRangeCommand.java:119)
+ at org.apache.cassandra.service.StorageProxy$LocalRangeSliceRunnable.runMayThrow(StorageProxy.java:1394)
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1936)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:724)
+During execution, we should check that the indexes still exist and provide a better error if they do not.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+2.0.13
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Stefania
+Reporter:
+Tyler Hobbs
+Create date:
+03/Sep/14 21:06
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Mar/15 17:59

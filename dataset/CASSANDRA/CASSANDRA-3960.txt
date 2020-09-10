@@ -1,0 +1,35 @@
+Summary:
+reporting "new" nodes to FD in gossiper is incorrect for bootstrapping nodes
+Description:
+The fix committed for CASSANDRA-3626 is incorrect for bootstrapping nodes. The saved endpoint states include only those fully joined in the ring, so when a node is restarted, all nodes that are in joining state will be "new" from the perspective of that node. The FD report() call in the Gossiper bumps the node into UP. This can be negative because it causes requests to be queued up to the node, which is potentially significant (e.g. GC pressure due to promotion into old-gen).
+In the case I saw this in production the node was in fact up so it was okay (but it later got kicked down due to computational complexity issues and gossip stage being backed up on start-up, which is how I realized this could be a problem).
+Since the impact is limited to affecting writes (since joining nodes don't serve reads), the negative effects should hopefully be limited to uselessly queueing up a bunch of messages and confusing operators. So, the issue seems minor right now.
+In addition, we currently drop joining nodes away from our notion of the ring very quickly (see the discussion in CASSANDRA-3895) so the time period during which this behavior has any impact at all should be small in modern Cassandra (assuming the code to avoid re-popping up dropped nodes works). My observations have still been on the 0.x branch. However, with CASSANDRA-3892 fixed in the future we can no longer be dropping state about joining nodes and the impact window is higher.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Peter Schuller
+Reporter:
+Peter Schuller
+Create date:
+26/Feb/12 04:29
+Update date:
+16/Apr/19 09:32
+Resolved date:
+09/Jul/13 16:38

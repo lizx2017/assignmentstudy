@@ -1,0 +1,100 @@
+Summary:
+Uneven tickmarks in DateTimeAxis for consecutive dates in disabledRanges & disabledDays
+Description:
+Steps to reproduce:
+-Create a chart using DateTimeAxis with sample data below.
+-Apply dataUnits="weeks"
+-Apply disabledDays of [0,6]
+-Apply disabledRanges containing say Aug 26, which is Monday.
+-So, there are 3 consecutive disabled dates.
+Expected result:
+Chart to show labels at equal intervals.
+Actual result:
+Uneven tickmarks appear on the axis.
+Chart will skip a label 8/26, which is correct, as it is a holiday.
+But that creates a gaps on the axis. (See "Before" in attached screencap).
+Workaround (if any):
+Idea is to move it to next working day, instead. So, it will not skip the label.
+Thus, now it will show 8/27 & 9/3. (See "After" in attached screencap).
+Modify DateTimeAxis to replace all occurrences of:
+i = tmp.time;
+by
+i = dateSkipOffDays(tmp.time);
+Add following functions:
+public function dateSkipOffDays(time:Number):Number
+{
+var pDate:Date = new Date(time);
+var holidays:Array = disabledRanges;
+if( ! ( isWeekend(pDate) || isHoliday(pDate) ) )
+return pDate.time;
+else
+{ pDate.setDate(pDate.getDate() + 1); return dateSkipOffDays(pDate.time); }
+}
+public function isHoliday(pDate:Date):Boolean
+{
+var holidays:Array = disabledRanges;
+if(holidays) {
+for(var i:int=0; i<holidays.length; i++)
+{ var date:Date = holidays[i]; var diff:int = dateDiff(date,pDate); if(diff==0) return true; }
+}
+return false;
+}
+public static function dateDiff(pStartDate:Date, pEndDate:Date):int
+{ var _differenceDays:int=Math.ceil((pEndDate.getTime() - pStartDate.getTime()) / MILLISECONDS_IN_DAY); return _differenceDays; }
+public function isWeekend(pDate:Date):Boolean
+{
+if (pDate.day == 0)
+{ return true; }
+else if (pDate.day == 6)
+{ return true; }
+return false;
+}
+Sample data:
+8/12/2013 197.75
+8/13/2013 198.48
+8/14/2013 198.45
+8/15/2013 198.34
+8/16/2013 197.58
+8/19/2013 197
+8/20/2013 197.46
+8/21/2013 197.11
+8/22/2013 197.47
+8/23/2013 197.67
+8/27/2013 197
+8/28/2013 196.86
+8/29/2013 196.66
+8/30/2013 196.71
+9/3/2013 196.79
+9/4/2013 196.57
+9/5/2013 196.99
+9/6/2013 196.41
+9/9/2013 197.09
+9/10/2013 197.61
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Manohar Joshi
+Create date:
+11/Oct/13 20:17
+Update date:
+11/Oct/13 20:55
+Resolved date:
+

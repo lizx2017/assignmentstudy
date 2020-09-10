@@ -1,0 +1,42 @@
+Summary:
+IndexReader.unlock() won't clear commit.lock if write.lock not present
+Description:
+IndexReader.unlock() calls Directory.deleteFile() for write.lock and
+commit.lock in succession, presumably to clear both locks. However, if
+write.lock doesn't exist, FSDirectory will throw an IOException, preventing the
+second deletefile from getting called and potentially leaving the commit.lock.
+public static void unlock(Directory directory) throws IOException {
+directory.deleteFile("write.lock");
+directory.deleteFile("commit.lock");
+Added note:
+Since IndexReader.isLocked() only checks for the write.lock, there's no way
+programmatically to assure that the commit.lock is not set without breaking the
+API abstraction and looking for it in the Directory object by name.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+1.2
+Fix_version:
+None
+Component:
+core/store
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Peter Kammer
+Create date:
+18/Sep/02 04:24
+Update date:
+27/May/06 01:35
+Resolved date:
+27/May/06 01:35

@@ -1,0 +1,45 @@
+Summary:
+Add hint to ExplicitColumnTracker to avoid seeking
+Description:
+The issue of slow seeking in ExplicitColumnTracker was brought up by Vladimir Rodionov on the dev list.
+My idea here is to avoid the seeking if we know that there aren't many versions to skip.
+How do we know? We'll use the column family's VERSIONS setting as a hint. If VERSIONS is set to 1 (or maybe some value < 10) we'll avoid the seek and call SKIP repeatedly.
+HBASE-9769 has some initial number for this approach:
+Interestingly it depends on which column(s) is (are) selected.
+Some numbers: 4m rows, 5 cols each, 1 cf, 10 bytes values, VERSIONS=1, everything filtered at the server with a ValueFilter. Everything measured in seconds.
+Without patch:
+Wildcard Col 1 Col 2 Col 4 Col 5 Col 2+4
+6.4 8.5 14.3 14.6 11.1 20.3
+With patch:
+Wildcard Col 1 Col 2 Col 4 Col 5 Col 2+4
+6.4 8.4 8.9 9.9 6.4 10.0
+Variation here was +- 0.2s.
+So with this patch scanning is 2x faster than without in some cases, and never slower. No special hint needed, beyond declaring VERSIONS correctly.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.96.2, 0.98.1, 0.99.0, (1)
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Lars Hofhansl
+Create date:
+16/Oct/13 04:50
+Update date:
+04/Mar/15 22:25
+Resolved date:
+11/Mar/14 18:35

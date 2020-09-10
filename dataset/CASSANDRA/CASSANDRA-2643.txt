@@ -1,0 +1,62 @@
+Summary:
+read repair/reconciliation breaks slice based iteration at QUORUM
+Description:
+In short, I believe iterating over columns is impossible to do reliably with QUORUM due to the way reconciliation works.
+The problem is that the SliceQueryFilter is executing locally when reading on a node, but no attempts seem to be made to consider limits when doing reconciliation and/or read-repair (RowRepairResolver.resolveSuperset() and ColumnFamily.resolve()).
+If a node slices and comes up with 100 columns, and another node slices and comes up with 100 columns, some of which are unique to each side, reconciliation results in > 100 columns in the result set. In this case the effect is limited to "client gets more than asked for", but the columns still accurately represent the range. This is easily triggered by my test-case.
+In addition to the client receiving "too many" columns, I believe some of them will not be satisfying the QUORUM consistency level for the same reasons as with deletions (see discussion below).
+Now, there should be a problem for tombstones as well, but it's more subtle. Suppose A has:
+1
+2
+3
+4
+5
+6
+and B has:
+1
+del 2
+del 3
+del 4
+5
+6
+If you now slice 1-6 with count=3 the tombstones from B will reconcile with those from A - fine. So you end up getting 1,5,6 back. This made it a bit difficult to trigger in a test case until I realized what was going on. At first I was "hoping" to see a "short" iteration result, which would mean that the process of iterating until you get a short result will cause spurious "end of columns" and thus make it impossible to iterate correctly.
+So; due to 5-6 existing (and if they didn't, you legitimately reached end-of-columns) we do indeed get a result of size 3 which contains 1,5 and 6. However, only node B would have contributed columns 5 and 6; so there is actually no QUORUM consistency on the co-ordinating node with respect to these columns. If node A and C also had 5 and 6, they would not have been considered.
+Am I wrong?
+In any case; using script I'm about to attach, you can trigger the over-delivery case very easily:
+(0) disable hinted hand-off to avoid that interacting with the test
+(1) start three nodes
+(2) create ks 'test' with rf=3 and cf 'slicetest'
+(3) ./slicetest.py hostname_of_node_C insert # let it run for a few seconds, then ctrl-c
+(4) stop node A
+(5) ./slicetest.py hostname_of_node_C insert # let it run for a few seconds, then ctrl-c
+(6) start node A, wait for B and C to consider it up
+(7) ./slicetest.py hostname_of_node_A slice # make A co-ordinator though it doesn't necessarily matter
+You can also pass 'delete' (random deletion of 50% of contents) or 'deleterange' (delete all in [0.2,0.8]) to slicetest, but you don't trigger a short read by doing that (see discussion above).
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Byron Clark
+Reporter:
+Peter Schuller
+Create date:
+12/May/11 16:27
+Update date:
+16/Apr/19 09:32
+Resolved date:
+02/Aug/11 13:27

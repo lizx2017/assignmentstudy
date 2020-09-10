@@ -1,0 +1,57 @@
+Summary:
+Exception in reading SortedDocValues
+Description:
+While reading SortedDocValues, I am getting the following stacktrace:
+Exception in thread "main" java.lang.IndexOutOfBoundsException
+ at java.nio.Buffer.checkIndex(Buffer.java:546)
+ at java.nio.DirectByteBuffer.getShort(DirectByteBuffer.java:590)
+ at org.apache.lucene.store.ByteBufferIndexInput$SingleBufferImpl.readShort(ByteBufferIndexInput.java:443)
+ at org.apache.lucene.util.packed.DirectReader$DirectPackedReader16.get(DirectReader.java:185)
+ at org.apache.lucene.codecs.lucene54.Lucene54DocValuesProducer$2.get(Lucene54DocValuesProducer.java:502)
+ at org.apache.lucene.util.LongValues.get(LongValues.java:45)
+ at org.apache.lucene.codecs.lucene54.Lucene54DocValuesProducer$7.getOrd(Lucene54DocValuesProducer.java:800)
+I am not able to reproduce with a unit test. However, I am able to consistently reproduce it with my data. I think this is some sort of off-by-one error caused with my index.
+I am happy to provide my index to help debug this offline.
+Here is the code snippet:
+public static void main(String[] args) throws Exception {
+    File idx = new File("/tmp/myidx");
+    int id = 719265;
+    Path idxPath = FileSystems.getDefault().getPath(idx.getAbsolutePath());
+    FSDirectory dir = FSDirectory.open(idxPath);
+    DirectoryReader dreader = DirectoryReader.open(dir);
+    LeafReaderContext ctx = dreader.leaves().get(0);
+        
+    SortedDocValues docVal = ctx.reader().getSortedDocValues("host");
+    int ord = docVal.getOrd(id);    
+    System.out.println("ord: " + ord);
+    
+  }
+My index has 1 segment and 5M docs.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+5.4
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+John Wang
+Create date:
+10/Jan/16 05:43
+Update date:
+10/Jan/16 05:54
+Resolved date:
+10/Jan/16 05:54

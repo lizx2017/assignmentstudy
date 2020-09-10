@@ -1,0 +1,41 @@
+Summary:
+Meta stuck in transition when it is assigned to a just restarted dead region sever
+Description:
+Support the meta region server is down, and the SSH tries to re-assign it. This could happen:
+1. AM plans to assign meta to a region server (R_old);
+2. Now R_old is dead, the new region server (R_new) starts up on the same host, port, but gets a different start code;
+3. AM sends the open region request to R_new and the Meta is opened on it;
+4. AM gets ZK event, but it is from a different region server instance (R_new), not the expected one (R_old), so it sends a close region request to R_new;
+5. Now, the meta is stuck in transition and won't be assigned.
+This won't happen to a user region since the SSH for R_old will find out the user region stuck in transition and re-assign it. For meta, it is a little different. AM checks if a dead region server carries the meta based on the ZK info, which is changed to the new region server R_new at step 3 by the open region handler.
+The fix I was thinking about is:
+1. In checking if a region server carries a region, uses the region transition information if it exists (which is the source of truth, to master), if not, checks the ZK data as before;
+2. In open region handler, when transition assign zk node from offline to opening, make sure the current region server is the expected one (ZK#transitionNode, existing code doesn't check the target server name).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.1
+Component:
+Region Assignment
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Jimmy Xiang
+Create date:
+14/May/13 17:04
+Update date:
+19/Dec/13 22:33
+Resolved date:
+21/May/13 17:20

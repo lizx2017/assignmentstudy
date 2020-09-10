@@ -1,0 +1,52 @@
+Summary:
+Temp SSTable and file descriptor leak
+Description:
+Discussion about this started in CASSANDRA-3532. It's on it's own ticket now.
+Anyhow:
+The nodes in my cluster are using a lot of file descriptors, holding open tmp files. A few are using 50K+, nearing their limit (on Solaris, of 64K).
+Here's a small snippet of lsof:
+java 828 appdeployer *162u VREG 181,65540 0 333884 /data1/cassandra/data/MA_DDR/messages_meta-tmp-hb-776518-Data.db
+java 828 appdeployer *163u VREG 181,65540 0 333502 /data1/cassandra/data/MA_DDR/messages_meta-tmp-hb-776452-Data.db
+java 828 appdeployer *165u VREG 181,65540 0 333929 /data1/cassandra/data/MA_DDR/messages_meta-tmp-hb-776527-Index.db
+java 828 appdeployer *166u VREG 181,65540 0 333859 /data1/cassandra/data/MA_DDR/messages_meta-tmp-hb-776514-Data.db
+java 828 appdeployer *167u VREG 181,65540 0 333663 /data1/cassandra/data/MA_DDR/messages_meta-tmp-hb-776480-Data.db
+java 828 appdeployer *168u VREG 181,65540 0 333812 /data1/cassandra/data/MA_DDR/messages_meta-tmp-hb-776506-Index.db
+I spot checked a few and found they still exist on the filesystem too:
+rw-rr- 1 appdeployer appdeployer 0 Dec 12 07:16 /data1/cassandra/data/MA_DDR/messages_meta-tmp-hb-776506-Index.db
+After more investigation, it seems to happen during a CompactionTask.
+I waited until I saw some tmp files hanging around in the data dir:
+rw-rr- 1 appdeployer appdeployer 0 Dec 12 21:47:10 2011 messages_meta-tmp-hb-788904-Data.db
+rw-rr- 1 appdeployer appdeployer 0 Dec 12 21:47:10 2011 messages_meta-tmp-hb-788904-Index.db
+and then found this in the logs:
+INFO [CompactionExecutor:18839] 2011-12-12 21:47:07,173 CompactionTask.java (line 113) Compacting [SSTableReader(path='/data1/cassandra/data/MA_DDR/messages_meta-hb-760408-Data.db'), SSTableReader(path='/data1/cassandra/data/MA_DDR/messages_meta-hb-760413-Data.db'), SSTableReader(path='/data1/cassandra/data/MA_DDR/messages_meta-hb-760409-Data.db'), SSTableReader(path='/data1/cassandra/data/MA_DDR/messages_meta-hb-788314-Data.db'), SSTableReader(path='/data1/cassandra/data/MA_DDR/messages_meta-hb-760407-Data.db'), SSTableReader(path='/data1/cassandra/data/MA_DDR/messages_meta-hb-760412-Data.db'), SSTableReader(path='/data1/cassandra/data/MA_DDR/messages_meta-hb-760410-Data.db'), SSTableReader(path='/data1/cassandra/data/MA_DDR/messages_meta-hb-760411-Data.db')]
+INFO [CompactionExecutor:18839] 2011-12-12 21:47:10,461 CompactionTask.java (line 218) Compacted to [/data1/cassandra/data/MA_DDR/messages_meta-hb-788896-Data.db,/data1/cassandra/data/MA_DDR/messages_meta-hb-788897-Data.db,/data1/cassandra/data/MA_DDR/messages_meta-hb-788898-Data.db,/data1/cassandra/data/MA_DDR/messages_meta-hb-788899-Data.db,/data1/cassandra/data/MA_DDR/messages_meta-hb-788900-Data.db,/data1/cassandra/data/MA_DDR/messages_meta-hb-788901-Data.db,/data1/cassandra/data/MA_DDR/messages_meta-hb-788902-Data.db,/data1/cassandra/data/MA_DDR/messages_meta-hb-788903-Data.db,]. 83,899,295 to 83,891,657 (~99% of original) bytes for 75,662 keys at 24.332518MB/s. Time: 3,288ms.
+Note that the timestamp of the 2nd log line matches the last modified time of the files, and has IDs leading up to, but not including 788904.
+I thought this might be relavent information, but I haven't found the specific cause yet.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Eric Parusel
+Create date:
+12/Dec/11 22:07
+Update date:
+16/Apr/19 09:32
+Resolved date:
+19/Dec/11 09:28

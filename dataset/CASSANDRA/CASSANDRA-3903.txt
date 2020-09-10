@@ -1,0 +1,76 @@
+Summary:
+Intermittent unexpected errors: possibly race condition around CQL parser?
+Description:
+When running multiple simultaneous instances of the test_cql.py piece of the python-cql test suite, I can reliably reproduce intermittent and unpredictable errors in the tests.
+The failures often occur at the point of keyspace creation during test setup, with a CQL statement of the form:
+        CREATE KEYSPACE 'asnvzpot' WITH strategy_class = SimpleStrategy
+            AND strategy_options:replication_factor = 1
+    
+An InvalidRequestException is returned to the cql driver, which re-raises it as a cql.ProgrammingError. The message:
+ProgrammingError: Bad Request: line 2:24 no viable alternative at input 'asnvzpot'
+In a few cases, Cassandra threw an ArrayIndexOutOfBoundsException and this traceback, closing the thrift connection:
+ERROR [Thrift:244] 2012-02-10 15:51:46,815 CustomTThreadPoolServer.java (line 205) Error occurred during processing of message.
+java.lang.ArrayIndexOutOfBoundsException: 7
+        at org.apache.cassandra.db.ColumnFamilyStore.all(ColumnFamilyStore.java:1520)
+        at org.apache.cassandra.thrift.ThriftValidation.validateCfDef(ThriftValidation.java:634)
+        at org.apache.cassandra.cql.QueryProcessor.processStatement(QueryProcessor.java:744)
+        at org.apache.cassandra.cql.QueryProcessor.process(QueryProcessor.java:898)
+        at org.apache.cassandra.thrift.CassandraServer.execute_cql_query(CassandraServer.java:1245)
+        at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3458)
+        at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3446)
+        at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+        at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+        at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:187)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:680)
+Sometimes I see an ArrayOutOfBoundsError with no traceback:
+ERROR [Thrift:858] 2012-02-13 12:04:01,537 CustomTThreadPoolServer.java (line 205) Error occurred during processing of message.
+java.lang.ArrayIndexOutOfBoundsException
+Sometimes I get this:
+ERROR [MigrationStage:1] 2012-02-13 12:04:46,077 AbstractCassandraDaemon.java (line 134) Fatal exception in thread Thread[MigrationStage:1,5,main]
+java.lang.IllegalArgumentException: value already present: 1558
+        at com.google.common.base.Preconditions.checkArgument(Preconditions.java:115)
+        at com.google.common.collect.AbstractBiMap.putInBothMaps(AbstractBiMap.java:111)
+        at com.google.common.collect.AbstractBiMap.put(AbstractBiMap.java:96)
+        at com.google.common.collect.HashBiMap.put(HashBiMap.java:84)
+        at org.apache.cassandra.config.Schema.load(Schema.java:392)
+        at org.apache.cassandra.db.migration.MigrationHelper.addColumnFamily(MigrationHelper.java:284)
+        at org.apache.cassandra.db.migration.MigrationHelper.addColumnFamily(MigrationHelper.java:209)
+        at org.apache.cassandra.db.migration.AddColumnFamily.applyImpl(AddColumnFamily.java:49)
+        at org.apache.cassandra.db.migration.Migration.apply(Migration.java:66)
+        at org.apache.cassandra.cql.QueryProcessor$1.call(QueryProcessor.java:334)
+        at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+Again, around 99% of the instances of this CREATE KEYSPACE statement work fine, so it's a little hard to git bisect out, but I guess I'll see what I can do.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+paul cannon
+Create date:
+13/Feb/12 19:29
+Update date:
+16/Apr/19 09:32
+Resolved date:
+17/Feb/12 08:11

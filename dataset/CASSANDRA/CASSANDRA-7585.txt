@@ -1,0 +1,70 @@
+Summary:
+cassandra sstableloader connection refused with inter_node_encryption
+Description:
+cassandra sstableloader connection refused with inter_node_encryption
+When using sstableloader to import tables (cassandra 2.0.5) with inter-node encryption and client encryption enabled, I get a connection refused error
+I am using
+sstableloader -d $myhost -p 9160 -u cassandra -pw cassandra -ciphers TLS_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA -st JKS -tf org.apache.cassandra.thrift.SSLTransportFactory -ts /path/to/truststore -tspw <passwd> $fullpath/$table
+Errors out with
+Streaming session ID: 1bc395c0-fbb2-11e3-9812-73da15121373
+WARN 17:13:34,147 Failed attempt 1 to connect to
+Similar problem reported in cassandra 2.0.8 by another user
+http://stackoverflow.com/questions/24390604/cassandra-sstableloader-connection-refused-with-inter-node-encryption
+==================
+Relevant cassandra.yaml snippet (with obfuscation)
+server_encryption_options:
+internode_encryption: all
+keystore:/path/to/keystore
+keystore_password: <passwd>
+truststore:/path/to/truststore
+truststore_password:<passwd>
+More advanced defaults below:
+protocol: TLS
+algorithm: SunX509
+store_type: JKS
+cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA]
+require_client_auth: true
+enable or disable client/server encryption.
+client_encryption_options:
+enabled: true
+keystore: /path/to/keystore
+keystore_password: <truststorepasswd>
+#require_client_auth: true
+Set trustore and truststore_password if require_client_auth is true
+truststore:/path/to/truststore
+truststore_password: <truststorepasswd>
+More advanced defaults below:
+protocol: TLS
+algorithm: SunX509
+store_type: JKS
+cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA]
+======================
+Note that by setting inter-node encryption to "none" sstableloader works.. but setting it to "all" fails... It seems like sstableloader uses 7000 is my guess instead of using the ssl port 7001 for streaming/gossip.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10, 2.1.1
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Samphel Norden
+Create date:
+22/Jul/14 14:28
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/Aug/14 18:27

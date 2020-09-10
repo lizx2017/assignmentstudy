@@ -1,0 +1,82 @@
+Summary:
+Deadlocked master; wants to assign root but can't because root is not assigned
+Description:
+This lock assigning regions looks broad.
+"IPC Server handler 6 on 60000" daemon prio=10 tid=0x00007ff2d00ab400 nid=0x645b in Object.wait() [0x000000004330b000..0x000000004330cd70]
+   java.lang.Thread.State: WAITING (on object monitor)
+ at java.lang.Object.wait(Native Method)
+ at java.lang.Object.wait(Object.java:502)
+ at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:695)
+ - locked <0x00007ff2e8e2b3b0> (a org.apache.hadoop.hbase.ipc.HBaseClient$Call)
+ at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:321)
+ at $Proxy2.batchUpdates(Unknown Source)
+ at org.apache.hadoop.hbase.client.HConnectionManager$TableServers$2.call(HConnectionManager.java:916)
+ at org.apache.hadoop.hbase.client.HConnectionManager$TableServers$2.call(HConnectionManager.java:914)
+ at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.getRegionServerForWithoutRetries(HConnectionManager.java:872)
+ at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.processBatchOfRows(HConnectionManager.java:913)
+ at org.apache.hadoop.hbase.client.HTable.flushCommits(HTable.java:1270)
+ at org.apache.hadoop.hbase.client.HTable.commit(HTable.java:1241)
+ - locked <0x00007ff2e8c01b90> (a org.apache.hadoop.hbase.client.HTable)
+ at org.apache.hadoop.hbase.client.HTable.commit(HTable.java:1221)
+ - locked <0x00007ff2e8c01b90> (a org.apache.hadoop.hbase.client.HTable)
+ at org.apache.hadoop.hbase.RegionHistorian.add(RegionHistorian.java:239)
+ at org.apache.hadoop.hbase.RegionHistorian.add(RegionHistorian.java:218)
+ at org.apache.hadoop.hbase.RegionHistorian.addRegionAssignment(RegionHistorian.java:142)
+ at org.apache.hadoop.hbase.master.RegionManager.assignRegionsToMultipleServers(RegionManager.java:282)
+ at org.apache.hadoop.hbase.master.RegionManager.assignRegions(RegionManager.java:220)
+ - locked <0x00007ff2e895d3f8> (a java.util.Collections$SynchronizedSortedMap)
+ at org.apache.hadoop.hbase.master.ServerManager.processMsgs(ServerManager.java:382)
+ at org.apache.hadoop.hbase.master.ServerManager.processRegionServerAllsWell(ServerManager.java:324)
+ at org.apache.hadoop.hbase.master.ServerManager.regionServerReport(ServerManager.java:240)
+ at org.apache.hadoop.hbase.master.HMaster.regionServerReport(HMaster.java:570)
+ at sun.reflect.GeneratedMethodAccessor3.invoke(Unknown Source)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+ at java.lang.reflect.Method.invoke(Method.java:616)
+ at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:632)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:892)
+
+....
+Its messing up assigning root it seems.
+We are stuck in here. Doesn't look like we'll break out though maybe we time out?
+  public Writable call(Writable param, InetSocketAddress addr, 
+                       UserGroupInformation ticket)  
+                       throws InterruptedException, IOException {
+    Call call = new Call(param);
+    Connection connection = getConnection(addr, ticket, call);
+    connection.sendParam(call);                 // send the parameter
+    synchronized (call) {
+      while (!call.done) {
+        try {
+          call.wait();                           // wait for the result
+        } catch (InterruptedException ignored) {}
+      }
+...
+... down in HBaseClient.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+jgray
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+22/Dec/08 17:20
+Update date:
+23/Jan/09 19:43
+Resolved date:
+23/Jan/09 19:43

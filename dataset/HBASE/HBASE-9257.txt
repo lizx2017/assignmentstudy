@@ -1,0 +1,78 @@
+Summary:
+TestAsyncProcess#testFailAndSuccess fails sometime due to a race condition
+Description:
+The test failed in our test env with the following stack. The reason is that we use the following pattern to check errors:
+    while (!ap.hasError()) {
+      Thread.sleep(1);
+    }
+    ...
+    Assert.assertEquals(1, ap.getErrors().actions.size());
+While in our product code, we set errors in different order
+      ...
+      this.hasError.set(true);
+      errors.add(throwable, row, location);
+      ...
+Therefore, a client code may not get error actions when hasError is true due to thread scheduling.
+Test Error Stack:
+
+java.lang.AssertionError: expected:<1> but was:<0>
+    at org.junit.Assert.fail(Assert.java:88)
+    at org.junit.Assert.failNotEquals(Assert.java:743)
+    at org.junit.Assert.assertEquals(Assert.java:118)
+    at org.junit.Assert.assertEquals(Assert.java:555)
+    at org.junit.Assert.assertEquals(Assert.java:542)
+    at org.apache.hadoop.hbase.client.TestAsyncProcess.testFailAndSuccess(TestAsyncProcess.java:308)
+    at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+    at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+    at java.lang.reflect.Method.invoke(Method.java:597)
+    at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:47)
+    at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:44)
+    at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:271)
+    at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:70)
+    at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:50)
+    at org.junit.runners.ParentRunner$3.run(ParentRunner.java:238)
+    at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:63)
+    at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:236)
+    at org.junit.runners.ParentRunner.access$000(ParentRunner.java:53)
+    at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:229)
+    at org.junit.runners.ParentRunner.run(ParentRunner.java:309)
+    at org.junit.runners.Suite.runChild(Suite.java:127)
+    at org.junit.runners.Suite.runChild(Suite.java:26)
+    at org.junit.runners.ParentRunner$3.run(ParentRunner.java:238)
+    at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+    at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+    at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+    at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+    at java.lang.Thread.run(Thread.java:662)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.95.2
+Fix_version:
+0.98.0, 0.96.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeffrey Zhong
+Reporter:
+Jeffrey Zhong
+Create date:
+17/Aug/13 18:35
+Update date:
+20/Nov/15 11:54
+Resolved date:
+18/Aug/13 06:22

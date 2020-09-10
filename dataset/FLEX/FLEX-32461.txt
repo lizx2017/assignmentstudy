@@ -1,0 +1,59 @@
+Summary:
+AdvancedDataGridBaseEx method focusInHandler causes error in editable grids
+Description:
+We encountered this in the Brainstorm project (BrainstormDev@adobe.com). I tried to write a very simple Flex app with an ADG in it to reproduce, but it didn't reproduce it.
+What is necessary on the AdvancedDataGrid:
+editable=true
+displayItemsExpanded=false
+probably something else, since my test app didn't reproduce it. Not sure what this would be, though.
+Steps to reproduce:
+1. Expand the first item in the grid
+2. Close the first item in the grid
+Actual:
+TypeError: Error #1010: A term is undefined and has no properties.
+at mx.controls::AdvancedDataGridBaseEx/displayToAbsoluteColumnIndex()[C:\work\flex\dmv_automation\projects\datavisualisation\src\mx\controls\AdvancedDataGridBaseEx.as:7238]
+at mx.controls::AdvancedDataGridBaseEx/commitEditedItemPosition()[C:\work\flex\dmv_automation\projects\datavisualisation\src\mx\controls\AdvancedDataGridBaseEx.as:4445]
+at mx.controls::AdvancedDataGridBaseEx/updateDisplayList()[C:\work\flex\dmv_automation\projects\datavisualisation\src\mx\controls\AdvancedDataGridBaseEx.as:1827]
+at mx.controls::AdvancedDataGrid/updateDisplayList()[C:\work\flex\dmv_automation\projects\datavisualisation\src\mx\controls\AdvancedDataGrid.as:6007]
+at mx.controls.listClasses::AdvancedListBase/validateDisplayList()[C:\work\flex\dmv_automation\projects\datavisualisation\src\mx\controls\listClasses\AdvancedListBase.as:3072]
+at mx.managers::LayoutManager/validateDisplayList()[C:\autobuild\3.2.0\frameworks\projects\framework\src\mx\managers\LayoutManager.as:622]
+at mx.managers::LayoutManager/doPhasedInstantiation()[C:\autobuild\3.2.0\frameworks\projects\framework\src\mx\managers\LayoutManager.as:695]
+at Function/http://adobe.com/AS3/2006/builtin::apply()
+at mx.core::UIComponent/callLaterDispatcher2()[C:\autobuild\3.2.0\frameworks\projects\framework\src\mx\core\UIComponent.as:8628]
+at mx.core::UIComponent/callLaterDispatcher()[C:\autobuild\3.2.0\frameworks\projects\framework\src\mx\core\UIComponent.as:8568]
+at flash.utils::Timer/_timerDispatch()
+at flash.utils::Timer/tick()
+Expected: no error.
+As I debugged this, I found that the focusInHandler was setting _editedItemPosition in a loop, looking for the right one. If it finds what it's after, it calls setEditedItemPosition(_editedItemPosition), which seems redundant, since that just sets _editedItemPosition again. However, in this case it's not finding what it's after since we're not editing anything at the moment, so _editedItemPosition is left set to the loop values, which has a column index of 1 greater than the last column index. This invalid value of _editedItemPosition is what causes the action script error above.
+It only happens on the first item in the grid because of a check in collectionChangeHandler, on line 5349:
+else if (ceEvent.location <= editedItemPosition.rowIndex) <-- this passes for the first item in the grid, but not others, which causes the call that hits the above error.
+I created a workaround that sets editedItemPosition to null when we lose focus, and it seems to work. What would be better is if focusInHandler either didn't use _editedItemPosition as its temporary loop pointer, or if it didn't find what it was after, set it to null or something.
+If you need help reproducing this, let me know.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+02/Apr/09 16:54
+Update date:
+29/Jun/11 22:58
+Resolved date:
+15/Mar/11 02:36

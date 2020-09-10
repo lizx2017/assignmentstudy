@@ -1,0 +1,82 @@
+Summary:
+JDK-8054565 Java 8 close contract issue
+Description:
+Java 8 bug uncovered, and wondering if the PDFBox team would be willing to
+work around it? You should probably reply with an emphatic "no", butI
+figure it is worth a shot.
+Here is the openjdk bug: https://bugs.openjdk.java.net/browse/JDK-8054565
+PDDocument.saveIncremental(OutputStream) calls close() twice - once in
+try{} and once in finally{}, relying on the Closable contract which says it
+will do nothing if the stream is already close.
+But, we see this:
+Caused by: java.io.IOException: Closed LOB
+    at
+oracle.jdbc.driver.DatabaseError.SQLToIOException(DatabaseError.java:519)
+    at
+oracle.jdbc.driver.OracleBlobOutputStream.ensureOpen(OracleBlobOutputStream.java:231)
+    at
+oracle.jdbc.driver.OracleBlobOutputStream.flush(OracleBlobOutputStream.java:167)
+    at java.io.FilterOutputStream.flush(FilterOutputStream.java:140)
+    at java.io.FilterOutputStream.close(FilterOutputStream.java:158)
+    at org.apache.pdfbox.pdfwriter.COSWriter.close(COSWriter.java:300)
+    at org.apache.pdfbox.pdmodel.PDDocument.save(PDDocument.java:1366)
+    at ourpackage.util.pdf.PdfDRM.applyDRM(PdfDRM.java:225)
+    at
+ourpackage.db.liquibase.customchanges.IQMDxContentLoader.applyDrmToCesPdfDocumentInDatabase(IQMDxContentLoader.java:383)
+    at
+ourpackage.db.liquibase.customchanges.IQMDxContentLoader.applyZippedCesDocumentChangesToDatabase(IQMDxContentLoader.java:265)
+    at
+ourpackage.db.liquibase.customchanges.IQMDxContentLoader.generateStatements(IQMDxContentLoader.java:153)
+    ... 33 more
+Because Java 8's FilterOutputStream.close() is calling flush() on the
+second close and Oracle's driver code doesn't like that.
+The bug can be worked around it by implementing close() in
+COSStandardOutputStream as below:
+        private boolean closed;
+
+        @Override
+        public void close() throws IOException
+        {
+                try (OutputStream ostream = out)
+                {
+                        if (!closed)
+                                flush();
+                }
+                closed = true;
+        }
+I've done this in our project code base, by cloning and owning
+COSStandardOutputStream and adding it to our classpath first. Not ideal.
+Also, mailing list thread on openjdk that recognizes the bug
+http://marc.info/?t=141767408700004&r=1&w=2. Although, it is fixed in Java
+9 with no plan of backporting. Not sure how to request a backport, but
+that would be the ideal solution.
+original mailing list report http://asfmail.lucidworks.io/mail_files/pdfbox-users/201509.mbox/%3CCALRFkrtvYZC1Y7CFXG8x17kkmD+7byyXgxsR0uMqXz_MVD0F4w@mail.gmail.com%3E
+(note: listed versions I know this affects)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.10, 1.8.11, 1.8.12
+Fix_version:
+1.8.13, 2.0.4, 3.0.0 PDFBox
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Caleb Cushing
+Create date:
+14/Nov/16 19:27
+Update date:
+25/Mar/17 18:13
+Resolved date:
+16/Nov/16 15:45

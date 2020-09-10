@@ -1,0 +1,53 @@
+Summary:
+Cqlsh reads floats and doubles with added non-trivial precision
+Description:
+I found that on Cqlsh v. 4.1.1 and Cassandra 2.0.6.28 when I inserted value into float or double column, "select" returned a slightly different value
+If cqlsh returns with only a low level precision, this does not show:
+cqlsh> create KEYSPACE test WITH replication = {'class': 'SimpleStrategy', 'replication_factor':1};
+cqlsh> use test ;
+cqlsh:test> create table testing (a int PRIMARY KEY , b float);
+cqlsh:test> INSERT INTO testing (a, b ) VALUES (  1, 2.0002);
+cqlsh:test> select * FROM testing ;
+
+ a | b
+---+--------
+ 1 | 2.0002
+But if precision is increased, for example, 20 digits:
+cqlsh> SELECT * FROM test.testing ;
+
+ a | b
+---+-----------------------
+ 1 | 2.0002000331878662109
+Using sstable2json, one sees that this issue is with cqlsh, the actual data is the value inserted:
+sstable2json /var/lib/cassandra/data/test/testing/test-testing-jb-1-Data.db 
+[
+{"key": "00000001","columns": [["","",1398459775180000], ["b","2.0002",1398459775180000]]}
+]
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Mikhail Stepura
+Reporter:
+Andrew Spitzer
+Create date:
+25/Apr/14 21:30
+Update date:
+16/Apr/19 09:31
+Resolved date:
+25/Apr/14 22:15

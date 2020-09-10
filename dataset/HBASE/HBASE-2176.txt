@@ -1,0 +1,58 @@
+Summary:
+HRegionInfo reported empty on regions in meta, leading to them being deleted, although the regions contain data and exist
+Description:
+We ran some tests on our cluster, and getting back reports about WrongRegionException, on some rows. After looking at the data, we see that we have "gaps" between regions, like this:
+demo__users,user_8949795897,1264089193398  l2:60030  736660864  user_8949795897  user_8950697145 <- end key
+demo__users,user_8953502603,1263992844343  l5:60030  593335873  user_8953502603 <- should be star key here   user_8956071605
+Fact: we had 28 regions that were reported with empty HRegionInfo, and deleted from .META..
+Fact: we recovered our data entirely, without any issues, by running the .META. restore script from table contents (bin/add_table.rb)
+Fact: on our regionservers, we have three days with no logs. To the best of our knowledge, the machines were not rebooted, the processes were running. During these three days, on the master, the only entry in the logs (repeated), every second, is a .META. scan:
+2010-01-23 00:01:27,816 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scan of 1 row(s) of meta region {server: 10.72.135.7:60020, regionname: -ROOT-,,0, startKey: <>} complete
+2010-01-23 00:01:34,413 INFO org.apache.hadoop.hbase.master.ServerManager: 6 region servers, 0 dead, average load 1113.6666666666667
+2010-01-23 00:02:23,645 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scanning meta region {server: 10.72.135.10:60020, regionname: .META.,,1, startKey: <>}
+2010-01-23 00:02:26,002 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.metaScanner scan of 6679 row(s) of meta region {server: 10.72.135.10:60020, regionname: .META.,,1, startKey: <>} complete
+2010-01-23 00:02:26,002 INFO org.apache.hadoop.hbase.master.BaseScanner: All 1 .META. region(s) scanned
+2010-01-23 00:02:27,821 INFO org.apache.hadoop.hbase.master.BaseScanner: RegionManager.rootScanner scanning meta region {server: 10.72.135.7:60020, regionname: -ROOT-,,0, startKey: <>}
+.......................................................
+In the master logs, we see a pretty normal evolution: region r0 is split into r1 and r2. Now, r1 exists and is good, r2 does not exist in .META. anymore, because it was reported as having empty HRegionInfo. The only thing in the master logs that is weird is that the message about updating the region in meta comes up twice:
+2010-01-27 22:46:45,007 INFO org.apache.hadoop.hbase.master.RegionServerOperation: demo__users,user_8950697145,1264089193398 open on 10.72.135.7:60020
+2010-01-27 22:46:45,010 INFO org.apache.hadoop.hbase.master.RegionServerOperation: Updated row demo__users,user_8950697145,1264089193398 in region .META.,,1 with startcode=1264661019484, server=10.72.135.7:60020
+2010-01-27 22:46:45,010 INFO org.apache.hadoop.hbase.master.RegionServerOperation: demo__users,user_8950697145,1264089193398 open on 10.72.135.7:60020
+2010-01-27 22:46:45,012 INFO org.apache.hadoop.hbase.master.RegionServerOperation: Updated row demo__users,user_8950697145,1264089193398 in region .META.,,1 with startcode=1264661019484, server=10.72.135.7:60020
+Attached you will find the entire forensics work, with explanations, in a text file.
+Suppositions:
+Our entire cluster was in a really weird state. All the regionservers are missing logs for three days, and to the best of our knowledge they were running, and in this time the master has ONLY .META. scan messages, every second, reporting 6 regionservers live, out of 7 total.
+Also, during this time, we get filesystem closed messages on a regionservers with one of the missing regions. This is after the gap in the logs.
+How we suppose the data in .META. was lost
+1. Race conditions in ServerManager / RegionManager. In our logs, we have about 3 or 4 CME, in these classes (see the attached file)
+2. Data loss in HDFS. On a regionserver, we get filesystem closed messages
+3. Data could not be read fro HDFS ( highly unlikely, there are no weird data read messages)
+4. Race condition leading to loss of the HRegionInfo from memory, and then persisted as empty.
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Won't Fix
+Affects_version:
+0.90.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Andrei Dragomir
+Create date:
+29/Jan/10 20:32
+Update date:
+16/Jul/14 18:59
+Resolved date:
+16/Jul/14 18:59

@@ -1,0 +1,55 @@
+Summary:
+In 0.90, balancer algo leading to same region balanced twice and picking same region with Src and Destination as same RS.
+Description:
+There are possibility of 2 problems
+-> When we populate regionsToMove while iterating the serverinfo in descending manner there is a chance that the same region can be added twice.
+Because in the first loop we do a randomization of the regions.
+Where as when we get we have neededRegions!= 0 we just get the region in the index and add it again . This may lead to have same region in the regionsToMove list.
+-> Another problem is
+when the problem in the first point happens then there is a chance that
+the regionToMove can have the same src and destination and the same region can be picked every 5 mins.
+for(Map.Entry<HServerInfo, List<HRegionInfo>> server :
+        serversByLoad.descendingMap().entrySet()) {
+        BalanceInfo balanceInfo = serverBalanceInfo.get(server.getKey());
+        int idx =
+          balanceInfo == null ? 0 : balanceInfo.getNextRegionForUnload();
+        if (idx >= server.getValue().size()) break;
+        HRegionInfo region = server.getValue().get(idx);
+        if (region.isMetaRegion()) continue; // Don't move meta regions.
+        regionsToMove.add(new RegionPlan(region, server.getKey(), null));
+        if(--neededRegions == 0) {
+          // No more regions needed, done shedding
+          break;
+        }
+      }
+If i have meta and root in the top two loaded region server(totally 3 RS), we just skip the regions in those region server and populate the region from the least loaded RS.
+Then in the next loop we iterate from the least loaded server and populate the destination as also the same server.
+This is leading to a condition where every 5 min balancing happens and also the server is same for src and dest.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.5
+Fix_version:
+0.90.7
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+27/Feb/12 08:39
+Update date:
+20/Mar/12 06:21
+Resolved date:
+20/Mar/12 06:21

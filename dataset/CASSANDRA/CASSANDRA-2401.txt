@@ -1,0 +1,36 @@
+Summary:
+getColumnFamily() return null, which is not checked in ColumnFamilyStore.java scan() method, causing Timeout Exception in query
+Description:
+ColumnFamilyStore.java, line near 1680, "ColumnFamily data = getColumnFamily(new QueryFilter(dk, path, firstFilter))", the data is returned null, causing NULL exception in "satisfies(data, clause, primary)" which is not captured. The callback got timeout and return a Timeout exception to Hector.
+The data is empty, as I traced, I have the the columns Count as 0 in removeDeletedCF(), which return the null there. (I am new and trying to understand the logics around still). Instead of crash to NULL, could we bypass the data?
+About my test:
+A stress-test program to add, modify and delete data to keyspace. I have 30 threads simulate concurrent users to perform the actions above, and do a query to all rows periodically. I have Column Family with rows (as File) and columns as index (e.g. userID, fileType).
+No issue on the first day of test, and stopped for 3 days. I restart the test on 4th day, 1 of the users failed to query the files (timeout exception received). Most of the users are still okay with the query.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.6
+Component:
+None
+Label:
+None
+Environment:
+hector, windows 7, eclipse
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Tey Kar Shiang
+Create date:
+29/Mar/11 07:15
+Update date:
+16/Apr/19 09:33
+Resolved date:
+14/May/11 15:03

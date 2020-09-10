@@ -1,0 +1,38 @@
+Summary:
+TCP writes get stuck
+Description:
+In our test cluster, I observed that on some nodes, TCP writes get accumulated in TcpConnection.pendingWrites. However, the selector never gets a ready to write event. As a result, all writes get stuck. This is because write(message) and doPendingWrites() are not fully synchronized. This following situation can happen:
+1. write(message) adds stuff to pendingWrites.
+2. a ready to write event happens; in doPendingWrites() buffered requests are written to socket
+3. another write request happens, in write(message), the test for pendingWrites.isEmpty() is false
+4. doPendingWrites() finishes writing all buffered request to socket
+5. in write(message), the new request is added to pendingWrites
+Now, ready to write events will never happen again and all write requests get stuck in pendingWrites.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jun Rao
+Reporter:
+Jun Rao
+Create date:
+08/Jun/09 04:17
+Update date:
+16/Apr/19 09:33
+Resolved date:
+23/Jun/09 17:57

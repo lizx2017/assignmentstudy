@@ -1,0 +1,48 @@
+Summary:
+FontBox sets GSUB features globally across shared fonts
+Description:
+Migrating the following issue from PDFBOX-4106:
+So we have a problem. While looking at building a proper ToUnicodeMap for PDFBOX-4189 I've encountered some significant issues related to this feature. Given that this was shipped in 2.0.9, we're likely going to face some hard choices.
+Most of the handling of vertical text in this patch is fine. It generally does a good job of handling the intricacies of both PDF and OpenType and juggling the sometimes competing concerns.
+The issue is that the new APIs added to FontBox's TrueTypeFont are incompatible with PDFBox's multi-threading. Unlike most of PDFBox, fonts in FontBox must be thread safe - they are cached and shared globally between all PDDocument instances. For this reason a FontBoxFont must not contain any document-specific state.
+The following fields added to TrueTypeFont contain document-specific state:
+List<String> enabledGsubFeatures
+The following methods added to TrueTypeFont write document-specific state:
+enableVerticalSubstitutions()
+enableGsubFeature(String)
+disableGsubFeature(String)
+The following methods added to TrueTypeFont read document-specific state:
+getUnicodeCmapLookup()
+getUnicodeCmapLookup(boolean)
+None of the additions are thread safe, anyone who calls these methods will clobber the corresponding state for all other threads. This problem can even occur if the user is manipulating more than one document within a single thread. There's no way around this and no way to fix these methods - document-specific state can't live in shared global fonts
+ Tough choices: Given that these are all just auxiliary methods limited to just FontBox's TrueTypeFont class, we could remove them. These are very obscure methods which have only been around for a few weeks. It's unlikely that any users would be affected by their removal. Obviously the missing functionality will be implemented in the appropriate location*, so vertical text will still work in 2.0 and the existing PDType0Font.loadVertical API - which is the only thing that matters - will remain unchanged!
+Yes, I'm suggesting a very obscure breaking API change to 2.0 but as it stands we have just shipped a breaking functionality change to 2.0 and broken existing functionality in an irreparable manner, and that seems worse. Thoughts?
+* And I have some ideas how to achieve this and am happy to do it
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+2.0.9, 3.0.0 PDFBox
+Fix_version:
+None
+Component:
+FontBox, Parsing, Writing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+John Hewson
+Reporter:
+John Hewson
+Create date:
+11/May/18 16:46
+Update date:
+05/Sep/18 04:40
+Resolved date:
+

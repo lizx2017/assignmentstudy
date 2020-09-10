@@ -1,0 +1,47 @@
+Summary:
+PDF loader causes infinite loop on non-PDF inputs
+Description:
+The current SVN head for the pdfbox incubator will experience an infinite loop in PDFParser.parseHeader() if you feed any non-PDF document to the parser. The problem is that it tries to find the PDF header within the document by skipping over any non-matching lines which don't start with a numeric digit. It relies on a readLine() function from BaseParser.java which will return an empty string when the stream is at the end-of-file. The parseHeader() call will loop on these empty lines.
+I've patched this in our system by throwing an IOException from BaseParser.readLine() if the stream is already at the end-of-file at the beginning of that call.
+Index: src/main/java/org/apache/pdfbox/pdfparser/BaseParser.java
+===================================================================
+— src/main/java/org/apache/pdfbox/pdfparser/BaseParser.java (revision 802578)
++++ src/main/java/org/apache/pdfbox/pdfparser/BaseParser.java (working copy)
+@@ -1088,6 +1088,11 @@
+{
+StringBuffer buffer = new StringBuffer( 11 );
++ if (pdfSource.isEOF())
++
+{ + throw new IOException( "Error: End-of-File, expected line"); + }
++
+int c;
+while ((c = pdfSource.read()) != -1)
+{
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.8.0-incubator
+Fix_version:
+0.8.0-incubator
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Dave Engberg
+Create date:
+12/Aug/09 23:51
+Update date:
+28/Apr/10 22:16
+Resolved date:
+01/Sep/09 17:21

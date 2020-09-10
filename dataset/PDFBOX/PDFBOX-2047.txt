@@ -1,0 +1,43 @@
+Summary:
+read operations alter PDLab object
+Description:
+This is a follow-up to PDFBOX-2042 but for PDLab: "A read operation must not alter the pdf."
+The problem described PDFBOX-2042 happened because the constructor called loadICCProfile(), which called getRangeForComponent(c), which altered its own object with (broken) default values. PDLab has no such constructor so Jurajs test won't show any problem, but this different test will:
+        PDLab pdLab = new PDLab();
+        COSArray cosArray = (COSArray) pdLab.getCOSObject();
+        COSDictionary dict = (COSDictionary)cosArray.getObject(1);
+        pdLab.getBlackPoint();
+        pdLab.getWhitepoint();
+        pdLab.getARange();
+        pdLab.getBRange();
+        assertEquals("read operations should not change the size of /Lab objects", 0, dict.size());
+        dict.toString(); // rev 1571125 does stack overflow here in 2.0
+removing the assert brings a stack overflow.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.4, 1.8.5, 2.0.0
+Fix_version:
+1.8.6, 2.0.0
+Component:
+PDModel
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+26/Apr/14 06:26
+Update date:
+22/Jun/14 14:34
+Resolved date:
+02/May/14 08:40

@@ -1,0 +1,67 @@
+Summary:
+Quickly restarted nodes can list others as down indefinitely
+Description:
+In a healthy cluster, if a node is restarted quickly, it may list other nodes as down when it comes back up and never list them as up. I reproduced it on a small cluster running in Docker containers.
+1. Have a healthy 5 node cluster:
+$ nodetool status
+Datacenter: datacenter1
+=======================
+Status=Up/Down
+/ State=Normal/Leaving/Joining/Moving
+– Address Load Tokens Owns (effective) Host ID Rack
+UN 192.168.100.1 40.88 KB 256 38.3% 92930ef6-1b29-49f0-a8cd-f962b55dca1b rack1
+UN 192.168.100.254 80.63 KB 256 39.6% ef15a717-9d60-48fb-80a9-e0973abdd55e rack1
+UN 192.168.100.3 87.78 KB 256 40.8% 4e6765db-97ed-4429-a9f4-8e29de247f18 rack1
+UN 192.168.100.2 75.22 KB 256 40.6% e89bc581-5345-4abd-88ba-7018371940fc rack1
+UN 192.168.100.4 80.83 KB 256 40.8% 466a9798-d484-44f0-aae8-bb2b78d80331 rack1
+2. Kill a node and restart it quickly:
+kill -9 <pid> && start-cassandra
+3. Wait for the node to come back and more often than not, it lists one or more other nodes as down indefinitely:
+$ nodetool status
+Datacenter: datacenter1
+=======================
+Status=Up/Down
+/ State=Normal/Leaving/Joining/Moving
+– Address Load Tokens Owns (effective) Host ID Rack
+UN 192.168.100.1 40.88 KB 256 38.3% 92930ef6-1b29-49f0-a8cd-f962b55dca1b rack1
+UN 192.168.100.254 80.63 KB 256 39.6% ef15a717-9d60-48fb-80a9-e0973abdd55e rack1
+DN 192.168.100.3 87.78 KB 256 40.8% 4e6765db-97ed-4429-a9f4-8e29de247f18 rack1
+DN 192.168.100.2 75.22 KB 256 40.6% e89bc581-5345-4abd-88ba-7018371940fc rack1
+DN 192.168.100.4 80.83 KB 256 40.8% 466a9798-d484-44f0-aae8-bb2b78d80331 rack1
+From trace logging, here's what I think is going on:
+1. The nodes are all happy gossiping
+2. Restart node X. When it comes back up it starts gossiping with the other nodes.
+3. Before node X marks node Y as alive, X sends an echo message (introduced in CASSANDRA-3533)
+4. The echo message is received by Y. To reply, Y attempts to reuse a connection to X. The connection is dead, but the message is attempted anyway but fails.
+5. X never receives the echo back, so Y isn't marked as alive.
+6. X gossips to Y again, but because the endpoint isAlive() returns true, it never calls markAlive() to properly set Y as alive.
+I tried to fix this by defaulting isAlive=false in the constructor of EndpointState. This made it less likely to mark a node as down but it still happens.
+The workaround is to leave a node down for a while so the connections die on the remaining nodes.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.5
+Component:
+None
+Label:
+gossip
+Environment:
+
+Attachment number:
+0
+Assignee:
+sankalp kohli
+Reporter:
+Richard Low
+Create date:
+10/Jan/14 22:18
+Update date:
+16/Apr/19 09:31
+Resolved date:
+13/Jan/14 15:17

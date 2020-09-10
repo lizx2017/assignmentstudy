@@ -1,0 +1,59 @@
+Summary:
+Problem when merging PDF 1.4 and PDF 1.1 Documents
+Description:
+Merging PDF 1.1 document with other Version (i.e. PDF 1.4) ends up with following exception: java.io.IOException: Unknown OpenAction COSInt{26}.
+Here's the referring stack trace
+Alias: PBOX000029: Enter the username:  [guest] java.io.IOException: Unknown OpenAction COSInt{26}
+    at org.apache.pdfbox.pdmodel.PDDocumentCatalog.getOpenAction(PDDocumentCatalog.java:279)
+    at org.apache.pdfbox.multipdf.PDFMergerUtility.appendDocument(PDFMergerUtility.java:348)
+    at org.apache.pdfbox.multipdf.PDFMergerUtility.mergeDocuments(PDFMergerUtility.java:263)
+  To fix this issue COSInteger should be handled in PDDocumentCatalog's getOpenAction method. Our tests showed that returning “null” results in correctly merged document.
+Here is our suggestion for the fixed method:
+public PDDestinationOrAction getOpenAction() throws IOException {
+   COSBase openAction = this.root.getDictionaryObject(COSName.OPEN_ACTION);
+   if (openAction == null) {
+     return null;
+   } else if (openAction instanceof COSBoolean) {
+     if (!((COSBoolean) openAction).getValue()) {
+       return null;
+     } else {
+       throw new IOException("Can't create OpenAction from COSBoolean");
+     }
+  } else if (openAction instanceof COSInteger) {
+     return null;      
+   } else if (openAction instanceof COSDictionary) {
+     return PDActionFactory.createAction((COSDictionary)openAction);
+   } else if (openAction instanceof COSArray) {
+     return PDDestination.create(openAction);
+   } else {
+     throw new IOException("Unknown OpenAction " + openAction);
+   }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.9
+Fix_version:
+2.0.10, 3.0.0 PDFBox
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Christian Lauer
+Create date:
+20/Apr/18 05:56
+Update date:
+21/Jun/18 20:27
+Resolved date:
+17/May/18 22:01

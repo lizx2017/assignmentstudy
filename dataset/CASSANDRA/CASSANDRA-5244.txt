@@ -1,0 +1,38 @@
+Summary:
+Compactions don't work while node is bootstrapping
+Description:
+It seems that there is a race condition in StorageService that prevents compactions from completing while node is in a bootstrap state.
+I have been able to reproduce this multiple times by throttling streaming throughput to extend the bootstrap time while simultaneously inserting data to the cluster.
+The problems lies in the synchronization of initServer(int delay) and reportSeverity(double incr) methods as they both try to acquire the instance lock of StorageService through the use of synchronized keyword. As initServer does not return until the bootstrap has completed, all calls to reportSeverity will block until that. However, reportSeverity is called when starting compactions in CompactionInfo and thus all compactions block until bootstrap completes.
+This might severely degrade node's performance after bootstrap as it might have lots of compactions pending while simultaneously starting to serve reads.
+I have been able to solve the issue by adding a separate lock for reportSeverity and removing its class level synchronization. This of course is not a valid approach if we must assume that any of Gossiper's IEndpointStateChangeSubscribers could potentially end up calling back to StorageService's synchronized methods. However, at least at the moment, that does not seem to be the case.
+Maybe somebody with more experience about the codebase comes up with a better solution?
+(This might affect DynamicEndpointSnitch as well, as it also calls to reportSeverity in its setSeverity method)
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.2
+Component:
+None
+Label:
+gossip
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Jouni Hartikainen
+Create date:
+12/Feb/13 13:41
+Update date:
+16/Apr/19 09:32
+Resolved date:
+14/Feb/13 04:56

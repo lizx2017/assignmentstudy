@@ -1,0 +1,63 @@
+Summary:
+If new master crashes, restart is messy
+Description:
+If master crashes, the cluster-is-up flag is left stuck on.
+On restart of cluster, regionservers may come up before the master. They'll have registered themselves in zk by time the master assumes its role and master will think its joining an up and running cluster when in fact this is a fresh startup. Other probs. are that there'll be a root region that is bad up in zk. Same for meta and at moment we're not handling bad root and meta very well.
+Here's sample of kinda of issues we're running into:
+2010-09-25 23:53:13,938 FATAL org.apache.hadoop.hbase.master.HMaster:
+Unhandled exception. Starting shutdown.
+java.io.IOException: Call to /10.20.20.188:60020 failed on local
+exception: java.io.IOException: Connection reset by peer
+   at org.apache.hadoop.hbase.ipc.HBaseClient.wrapException(HBaseClient.java:781)
+   at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:750)
+   at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:255)
+   at $Proxy1.getProtocolVersion(Unknown Source)
+   at org.apache.hadoop.hbase.ipc.HBaseRPC.getProxy(HBaseRPC.java:412)
+   at org.apache.hadoop.hbase.ipc.HBaseRPC.getProxy(HBaseRPC.java:388)
+   at org.apache.hadoop.hbase.ipc.HBaseRPC.getProxy(HBaseRPC.java:435)
+   at org.apache.hadoop.hbase.ipc.HBaseRPC.waitForProxy(HBaseRPC.java:345)
+   at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getHRegionConnection(HConnectionManager.java:889)
+   at org.apache.hadoop.hbase.catalog.CatalogTracker.getCachedConnection(CatalogTracker.java:350)
+   at org.apache.hadoop.hbase.catalog.CatalogTracker.getRootServerConnection(CatalogTracker.java:209)
+   at org.apache.hadoop.hbase.catalog.CatalogTracker.getMetaServerConnection(CatalogTracker.java:241)
+   at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMeta(CatalogTracker.java:286)
+   at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMetaServerConnectionDefault(CatalogTracker.java:326)
+   at org.apache.hadoop.hbase.catalog.MetaReader.fullScan(MetaReader.java:157)
+   at org.apache.hadoop.hbase.catalog.MetaReader.fullScan(MetaReader.java:140)
+   at org.apache.hadoop.hbase.master.AssignmentManager.rebuildUserRegions(AssignmentManager.java:753)
+   at org.apache.hadoop.hbase.master.AssignmentManager.processFailover(AssignmentManager.java:174)
+   at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:314)
+Caused by: java.io.IOException: Connection reset by peer
+   at sun.nio.ch.FileDispatcher.read0(Native Method)
+   at sun.nio.ch.SocketDispatcher.read(SocketDispatcher.java:21)
+   at sun.nio.ch.IOUtil.readIntoNativeBuffer(IOUtil.java:233)
+   at sun.nio.ch.IOUtil.read(IOUtil.java:206)
+Notice, we think its a case of processFailover so we think we can just scan meta to fixup our inmemory picture of the running cluster, only the scan of meta fails because the meta isn not assigned.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+28/Sep/10 21:30
+Update date:
+20/Nov/15 12:42
+Resolved date:
+30/Sep/10 03:31

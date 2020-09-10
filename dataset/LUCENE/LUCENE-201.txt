@@ -1,0 +1,42 @@
+Summary:
+Bad performance in PrefixQuery for large indices.
+Description:
+[Version is lucene-1.3-final, but that was not selectable as version above]
+In org.apache.lucene.search.PrefixQuery.rewrite(IndexReader):
+1. term.text().startsWith(prefixText) is checked before
+term.field() == prefixField although it is much more expensive.
+Why check text at all when it is the wrong field?
+2. If there are many matches in the index, lots and lots of
+potentially identical TermQuery's are added to the BooleanQuery.
+Either it can be solved here by first adding the TermQueries to
+a HashSet (so all entries in the set are unique) and then traverse
+the set and add them to the BooleanQuery. Or modify BooleanQuery's
+add method so it only adds if not already contained in "clauses".
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Incomplete
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Jorgen Rydenius
+Create date:
+23/Mar/04 19:05
+Update date:
+02/Jun/11 22:04
+Resolved date:
+27/May/06 01:37

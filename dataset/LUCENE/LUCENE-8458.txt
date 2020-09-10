@@ -1,0 +1,78 @@
+Summary:
+Carry-over hard-deletes after merge may not adjust soft-delete count
+Description:
+Attached is a test that can trip PendingDeletetes assertion around 5%.
+The assertion is violated because we do not reduce soft-deletes count accordingly when carrying over hard-deletes after a merge in IndexWriter#carryOverHardDeletes. If the newly merged segment has soft-deleted documents, its PendingDeletes requires a segment reader to "transfer" soft-deletes count to hard-deletes accordingly.
+testSoftDeleteWhileMergeSurvives (introduced in LUCENE-8293) always passes as a segment warmer used in that test forces ReadersAndUpdates to open a new segment reader.
+NOTE: reproduce with: ant test  -Dtestcase=TestSoftDeletesRetentionMergePolicy -Dtests.method=testMixedSoftDeletesAndHardDeletes -Dtests.seed=FFED48B49B9F6AA5 -Dtests.slow=true -Dtests.badapples=true -Dtests.locale=zh-Hans -Dtests.timezone=Atlantic/South_Georgia -Dtests.asserts=true -Dtests.file.encoding=UTF-8
+8月 19, 2018 12:11:10 上午 com.carrotsearch.randomizedtesting.RandomizedRunner$QueueUncaughtExceptionsHandler uncaughtException
+警告: Uncaught exception in thread: Thread[Lucene Merge Thread #0,5,TGRP-TestSoftDeletesRetentionMergePolicy]
+org.apache.lucene.index.MergePolicy$MergeException: java.lang.AssertionError: softDeleteCount doesn't match 21 != 19
+ at __randomizedtesting.SeedInfo.seed([FFED48B49B9F6AA5]:0)
+ at org.apache.lucene.index.ConcurrentMergeScheduler.handleMergeException(ConcurrentMergeScheduler.java:704)
+ at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:684)
+Caused by: java.lang.AssertionError: softDeleteCount doesn't match 21 != 19
+ at org.apache.lucene.index.PendingSoftDeletes.onNewReader(PendingSoftDeletes.java:87)
+ at org.apache.lucene.index.ReadersAndUpdates.getReader(ReadersAndUpdates.java:173)
+ at org.apache.lucene.index.ReadersAndUpdates.getLatestReader(ReadersAndUpdates.java:237)
+ at org.apache.lucene.index.PendingSoftDeletes.ensureInitialized(PendingSoftDeletes.java:189)
+ at org.apache.lucene.index.PendingSoftDeletes.isFullyDeleted(PendingSoftDeletes.java:200)
+ at org.apache.lucene.index.ReadersAndUpdates.isFullyDeleted(ReadersAndUpdates.java:744)
+ at org.apache.lucene.index.IndexWriter.isFullyDeleted(IndexWriter.java:5161)
+ at org.apache.lucene.index.IndexWriter.commitMerge(IndexWriter.java:3926)
+ at org.apache.lucene.index.IndexWriter.mergeMiddle(IndexWriter.java:4592)
+ at org.apache.lucene.index.IndexWriter.merge(IndexWriter.java:4058)
+ at org.apache.lucene.index.ConcurrentMergeScheduler.doMerge(ConcurrentMergeScheduler.java:625)
+ at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:662)
+
+NOTE: reproduce with: ant test  -Dtestcase=TestSoftDeletesRetentionMergePolicy -Dtests.method=testMixedSoftDeletesAndHardDeletes -Dtests.seed=FFED48B49B9F6AA5 -Dtests.slow=true -Dtests.badapples=true -Dtests.locale=zh-Hans -Dtests.timezone=Atlantic/South_Georgia -Dtests.asserts=true -Dtests.file.encoding=UTF-8
+
+com.carrotsearch.randomizedtesting.UncaughtExceptionError: Captured an uncaught exception in thread: Thread[id=16, name=Lucene Merge Thread #0, state=RUNNABLE, group=TGRP-TestSoftDeletesRetentionMergePolicy]
+
+ at __randomizedtesting.SeedInfo.seed([FFED48B49B9F6AA5:B2667DCCD81812E2]:0)
+Caused by: org.apache.lucene.index.MergePolicy$MergeException: java.lang.AssertionError: softDeleteCount doesn't match 21 != 19
+ at __randomizedtesting.SeedInfo.seed([FFED48B49B9F6AA5]:0)
+ at org.apache.lucene.index.ConcurrentMergeScheduler.handleMergeException(ConcurrentMergeScheduler.java:704)
+ at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:684)
+Caused by: java.lang.AssertionError: softDeleteCount doesn't match 21 != 19
+ at org.apache.lucene.index.PendingSoftDeletes.onNewReader(PendingSoftDeletes.java:87)
+ at org.apache.lucene.index.ReadersAndUpdates.getReader(ReadersAndUpdates.java:173)
+ at org.apache.lucene.index.ReadersAndUpdates.getLatestReader(ReadersAndUpdates.java:237)
+ at org.apache.lucene.index.PendingSoftDeletes.ensureInitialized(PendingSoftDeletes.java:189)
+ at org.apache.lucene.index.PendingSoftDeletes.isFullyDeleted(PendingSoftDeletes.java:200)
+ at org.apache.lucene.index.ReadersAndUpdates.isFullyDeleted(ReadersAndUpdates.java:744)
+ at org.apache.lucene.index.IndexWriter.isFullyDeleted(IndexWriter.java:5161)
+ at org.apache.lucene.index.IndexWriter.commitMerge(IndexWriter.java:3926)
+ at org.apache.lucene.index.IndexWriter.mergeMiddle(IndexWriter.java:4592)
+ at org.apache.lucene.index.IndexWriter.merge(IndexWriter.java:4058)
+ at org.apache.lucene.index.ConcurrentMergeScheduler.doMerge(ConcurrentMergeScheduler.java:625)
+ at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:662)
+ 
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+7.5, 8.0
+Fix_version:
+7.5, 8.0
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Nhat Nguyen
+Create date:
+19/Aug/18 02:28
+Update date:
+24/Sep/18 08:02
+Resolved date:
+24/Aug/18 13:15

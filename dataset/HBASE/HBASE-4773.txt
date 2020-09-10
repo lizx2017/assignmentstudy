@@ -1,0 +1,46 @@
+Summary:
+HBaseAdmin may leak ZooKeeper connections
+Description:
+When master crashs, HBaseAdmin will leaks ZooKeeper connections
+I think we should close the zk connetion when throw MasterNotRunningException
+public HBaseAdmin(Configuration c)
+throws MasterNotRunningException, ZooKeeperConnectionException {
+this.conf = HBaseConfiguration.create(c);
+this.connection = HConnectionManager.getConnection(this.conf);
+this.pause = this.conf.getLong("hbase.client.pause", 1000);
+this.numRetries = this.conf.getInt("hbase.client.retries.number", 10);
+this.retryLongerMultiplier = this.conf.getInt("hbase.client.retries.longer.multiplier", 10);
+//we should add this code and close the zk connection
+try
+{ this.connection.getMaster(); }
+catch(MasterNotRunningException e)
+{ HConnectionManager.deleteConnection(conf, false); throw e; }
+}
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.6, 0.92.0
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+xufeng
+Reporter:
+gaojinchao
+Create date:
+11/Nov/11 09:23
+Update date:
+20/Nov/15 11:54
+Resolved date:
+04/Jan/12 19:00

@@ -1,0 +1,131 @@
+Summary:
+Asserting trips when IW tries to free ram by writing DV updates
+Description:
+This assertion is pretty new I think we need to relax is since there are chances that this situation is valid ie. if a ReadersAndUpdates instance gets concurrently written and readerpooling is off. That is just fine since this is best effort anyway. I will attach a patch.
+07:35:14    [junit4] Suite: org.apache.lucene.index.TestBinaryDocValuesUpdates
+07:35:14    [junit4] IGNOR/A 0.01s J0 | TestBinaryDocValuesUpdates.testTonsOfUpdates
+07:35:14    [junit4]    > Assumption #1: 'nightly' test group is disabled (@Nightly())
+07:35:14    [junit4]   1> TEST: isNRT=false reader1=StandardDirectoryReader(segments_1:4 _0(7.5.0):c2)
+07:35:14    [junit4]   1> TEST: now reopen
+07:35:14    [junit4]   2> NOTE: reproduce with: ant test  -Dtestcase=TestBinaryDocValuesUpdates -Dtests.method=testUpdatesAreFlushed -Dtests.seed=B8D5250C8CAA9010 -Dtests.slow=true -Dtests.badapples=true -Dtests.locale=en-IE -Dtests.timezone=SystemV/CST6 -Dtests.asserts=true -Dtests.file.encoding=UTF8
+07:35:14    [junit4] FAILURE 0.04s J0 | TestBinaryDocValuesUpdates.testUpdatesAreFlushed <<<
+07:35:14    [junit4]    > Throwable #1: java.lang.AssertionError: Segment [_2(7.5.0):c1] is not dropped yet
+07:35:14    [junit4]    >  at __randomizedtesting.SeedInfo.seed([B8D5250C8CAA9010:8228ECC925943F29]:0)
+07:35:14    [junit4]    >  at org.apache.lucene.index.IndexWriter.writeSomeDocValuesUpdates(IndexWriter.java:613)
+07:35:14    [junit4]    >  at org.apache.lucene.index.FrozenBufferedUpdates.apply(FrozenBufferedUpdates.java:298)
+07:35:14    [junit4]    >  at org.apache.lucene.index.IndexWriter.lambda$publishFrozenUpdates$3(IndexWriter.java:2594)
+07:35:14    [junit4]    >  at org.apache.lucene.index.IndexWriter.processEvents(IndexWriter.java:5064)
+07:35:14    [junit4]    >  at org.apache.lucene.index.IndexWriter.updateBinaryDocValue(IndexWriter.java:1742)
+07:35:14    [junit4]    >  at org.apache.lucene.index.TestBinaryDocValuesUpdates.testUpdatesAreFlushed(TestBinaryDocValuesUpdates.java:100)
+07:35:14    [junit4]    >  at java.lang.Thread.run(Thread.java:748)
+07:35:14    [junit4]   2> Jun 15, 2018 1:35:14 AM com.carrotsearch.randomizedtesting.RandomizedRunner$QueueUncaughtExceptionsHandler uncaughtException
+07:35:14    [junit4]   2> WARNING: Uncaught exception in thread: Thread[Lucene Merge Thread #1,5,TGRP-TestBinaryDocValuesUpdates]
+07:35:14    [junit4]   2> org.apache.lucene.index.MergePolicy$MergeException: java.lang.IllegalStateException: this writer hit an unrecoverable error; cannot merge
+07:35:14    [junit4]   2>  at __randomizedtesting.SeedInfo.seed([B8D5250C8CAA9010]:0)
+07:35:14    [junit4]   2>  at org.apache.lucene.index.ConcurrentMergeScheduler.handleMergeException(ConcurrentMergeScheduler.java:704)
+07:35:14    [junit4]   2>  at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:684)
+07:35:14    [junit4]   2> Caused by: java.lang.IllegalStateException: this writer hit an unrecoverable error; cannot merge
+07:35:14    [junit4]   2>  at org.apache.lucene.index.IndexWriter._mergeInit(IndexWriter.java:4222)
+07:35:14    [junit4]   2>  at org.apache.lucene.index.IndexWriter.mergeInit(IndexWriter.java:4202)
+07:35:14    [junit4]   2>  at org.apache.lucene.index.IndexWriter.merge(IndexWriter.java:4054)
+07:35:14    [junit4]   2>  at org.apache.lucene.index.ConcurrentMergeScheduler.doMerge(ConcurrentMergeScheduler.java:625)
+07:35:14    [junit4]   2>  at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:662)
+07:35:14    [junit4]   2> Caused by: java.lang.AssertionError: Segment [_2(7.5.0):c1] is not dropped yet
+07:35:14    [junit4]   2>  at __randomizedtesting.SeedInfo.seed([B8D5250C8CAA9010:8228ECC925943F29]:0)
+07:35:14    [junit4]   2>  at org.apache.lucene.index.IndexWriter.writeSomeDocValuesUpdates(IndexWriter.java:613)
+07:35:14    [junit4]   2>  at org.apache.lucene.index.FrozenBufferedUpdates.apply(FrozenBufferedUpdates.java:298)
+07:35:14    [junit4]   2>  at org.apache.lucene.index.IndexWriter.lambda$publishFrozenUpdates$3(IndexWriter.java:2594)
+07:35:14    [junit4]   2>  at org.apache.lucene.index.IndexWriter.processEvents(IndexWriter.java:5064)
+07:35:14    [junit4]   2>  at org.apache.lucene.index.IndexWriter.updateBinaryDocValue(IndexWriter.java:1742)
+07:35:14    [junit4]   2>  at org.apache.lucene.index.TestBinaryDocValuesUpdates.testUpdatesAreFlushed(TestBinaryDocValuesUpdates.java:100)
+07:35:14    [junit4]   2>  at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+07:35:14    [junit4]   2>  at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+07:35:14    [junit4]   2>  at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+07:35:14    [junit4]   2>  at java.lang.reflect.Method.invoke(Method.java:498)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.RandomizedRunner.invoke(RandomizedRunner.java:1737)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.RandomizedRunner$8.evaluate(RandomizedRunner.java:934)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.RandomizedRunner$9.evaluate(RandomizedRunner.java:970)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.RandomizedRunner$10.evaluate(RandomizedRunner.java:984)
+07:35:14    [junit4]   2>  at org.apache.lucene.util.TestRuleSetupTeardownChained$1.evaluate(TestRuleSetupTeardownChained.java:49)
+07:35:14    [junit4]   2>  at org.apache.lucene.util.AbstractBeforeAfterRule$1.evaluate(AbstractBeforeAfterRule.java:45)
+07:35:14    [junit4]   2>  at org.apache.lucene.util.TestRuleThreadAndTestName$1.evaluate(TestRuleThreadAndTestName.java:48)
+07:35:14    [junit4]   2>  at org.apache.lucene.util.TestRuleIgnoreAfterMaxFailures$1.evaluate(TestRuleIgnoreAfterMaxFailures.java:64)
+07:35:14    [junit4]   2>  at org.apache.lucene.util.TestRuleMarkFailure$1.evaluate(TestRuleMarkFailure.java:47)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.rules.StatementAdapter.evaluate(StatementAdapter.java:36)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.ThreadLeakControl$StatementRunner.run(ThreadLeakControl.java:368)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.ThreadLeakControl.forkTimeoutingTask(ThreadLeakControl.java:817)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.ThreadLeakControl$3.evaluate(ThreadLeakControl.java:468)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.RandomizedRunner.runSingleTest(RandomizedRunner.java:943)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.RandomizedRunner$5.evaluate(RandomizedRunner.java:829)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.RandomizedRunner$6.evaluate(RandomizedRunner.java:879)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.RandomizedRunner$7.evaluate(RandomizedRunner.java:890)
+07:35:14    [junit4]   2>  at org.apache.lucene.util.AbstractBeforeAfterRule$1.evaluate(AbstractBeforeAfterRule.java:45)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.rules.StatementAdapter.evaluate(StatementAdapter.java:36)
+07:35:14    [junit4]   2>  at org.apache.lucene.util.TestRuleStoreClassName$1.evaluate(TestRuleStoreClassName.java:41)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.rules.NoShadowingOrOverridesOnMethodsRule$1.evaluate(NoShadowingOrOverridesOnMethodsRule.java:40)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.rules.NoShadowingOrOverridesOnMethodsRule$1.evaluate(NoShadowingOrOverridesOnMethodsRule.java:40)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.rules.StatementAdapter.evaluate(StatementAdapter.java:36)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.rules.StatementAdapter.evaluate(StatementAdapter.java:36)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.rules.StatementAdapter.evaluate(StatementAdapter.java:36)
+07:35:14    [junit4]   2>  at org.apache.lucene.util.TestRuleAssertionsRequired$1.evaluate(TestRuleAssertionsRequired.java:53)
+07:35:14    [junit4]   2>  at org.apache.lucene.util.TestRuleMarkFailure$1.evaluate(TestRuleMarkFailure.java:47)
+07:35:14    [junit4]   2>  at org.apache.lucene.util.TestRuleIgnoreAfterMaxFailures$1.evaluate(TestRuleIgnoreAfterMaxFailures.java:64)
+07:35:14    [junit4]   2>  at org.apache.lucene.util.TestRuleIgnoreTestSuites$1.evaluate(TestRuleIgnoreTestSuites.java:54)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.rules.StatementAdapter.evaluate(StatementAdapter.java:36)
+07:35:14    [junit4]   2>  at com.carrotsearch.randomizedtesting.ThreadLeakControl$StatementRunner.run(ThreadLeakControl.java:368)
+07:35:14    [junit4]   2>  at java.lang.Thread.run(Thread.java:748)
+07:35:14    [junit4]   2> 
+07:35:14    [junit4]   2> NOTE: reproduce with: ant test  -Dtestcase=TestBinaryDocValuesUpdates -Dtests.method=testUpdateTwoNonexistingTerms -Dtests.seed=B8D5250C8CAA9010 -Dtests.slow=true -Dtests.badapples=true -Dtests.locale=en-IE -Dtests.timezone=SystemV/CST6 -Dtests.asserts=true -Dtests.file.encoding=UTF8
+07:35:14    [junit4] ERROR   0.01s J0 | TestBinaryDocValuesUpdates.testUpdateTwoNonexistingTerms <<<
+07:35:14    [junit4]    > Throwable #1: com.carrotsearch.randomizedtesting.UncaughtExceptionError: Captured an uncaught exception in thread: Thread[id=806, name=Lucene Merge Thread #1, state=RUNNABLE, group=TGRP-TestBinaryDocValuesUpdates]
+07:35:14    [junit4]    >  at __randomizedtesting.SeedInfo.seed([B8D5250C8CAA9010:C6CD8D9072E639EE]:0)
+07:35:14    [junit4]    > Caused by: org.apache.lucene.index.MergePolicy$MergeException: java.lang.IllegalStateException: this writer hit an unrecoverable error; cannot merge
+07:35:14    [junit4]    >  at __randomizedtesting.SeedInfo.seed([B8D5250C8CAA9010]:0)
+07:35:14    [junit4]    >  at org.apache.lucene.index.ConcurrentMergeScheduler.handleMergeException(ConcurrentMergeScheduler.java:704)
+07:35:14    [junit4]    >  at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:684)
+07:35:14    [junit4]    > Caused by: java.lang.IllegalStateException: this writer hit an unrecoverable error; cannot merge
+07:35:14    [junit4]    >  at org.apache.lucene.index.IndexWriter._mergeInit(IndexWriter.java:4222)
+07:35:14    [junit4]    >  at org.apache.lucene.index.IndexWriter.mergeInit(IndexWriter.java:4202)
+07:35:14    [junit4]    >  at org.apache.lucene.index.IndexWriter.merge(IndexWriter.java:4054)
+07:35:14    [junit4]    >  at org.apache.lucene.index.ConcurrentMergeScheduler.doMerge(ConcurrentMergeScheduler.java:625)
+07:35:14    [junit4]    >  at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:662)
+07:35:14    [junit4]    > Caused by: java.lang.AssertionError: Segment [_2(7.5.0):c1] is not dropped yet
+07:35:14    [junit4]    >  at __randomizedtesting.SeedInfo.seed([B8D5250C8CAA9010:8228ECC925943F29]:0)
+07:35:14    [junit4]    >  at org.apache.lucene.index.IndexWriter.writeSomeDocValuesUpdates(IndexWriter.java:613)
+07:35:14    [junit4]    >  at org.apache.lucene.index.FrozenBufferedUpdates.apply(FrozenBufferedUpdates.java:298)
+07:35:14    [junit4]    >  at org.apache.lucene.index.IndexWriter.lambda$publishFrozenUpdates$3(IndexWriter.java:2594)
+07:35:14    [junit4]    >  at org.apache.lucene.index.IndexWriter.processEvents(IndexWriter.java:5064)
+07:35:14    [junit4]    >  at org.apache.lucene.index.IndexWriter.updateBinaryDocValue(IndexWriter.java:1742)
+07:35:14    [junit4]    >  at org.apache.lucene.index.TestBinaryDocValuesUpdates.testUpdatesAreFlushed(TestBinaryDocValuesUpdates.java:100)
+07:35:14    [junit4]    >  at java.lang.Thread.run(Thread.java:748)
+07:35:14    [junit4]   2> NOTE: test params are: codec=Asserting(Lucene70): {bdv=BlockTreeOrds(blocksize=128), f=PostingsFormat(name=Asserting), k1=PostingsFormat(name=Asserting), foo=PostingsFormat(name=Asserting), dvUpdateKey=PostingsFormat(name=Asserting), k2=Lucene50(blocksize=128), upd=TestBloomFilteredLucenePostings(BloomFilteringPostingsFormat(Lucene50(blocksize=128))), updKey=BlockTreeOrds(blocksize=128), id=Lucene50(blocksize=128), key=Lucene50(blocksize=128)}, docValues:{val=DocValuesFormat(name=Direct), ndv=DocValuesFormat(name=Lucene70), cf=DocValuesFormat(name=Asserting), ssdv=DocValuesFormat(name=Lucene70), sdv=DocValuesFormat(name=Direct), f=DocValuesFormat(name=Lucene70), control=DocValuesFormat(name=Direct), f0=DocValuesFormat(name=Lucene70), sort=DocValuesFormat(name=Lucene70), f1=DocValuesFormat(name=Asserting), f2=DocValuesFormat(name=Lucene70), cf0=DocValuesFormat(name=Direct), f3=DocValuesFormat(name=Direct), f4=DocValuesFormat(name=Lucene70), bdv2=DocValuesFormat(name=Lucene70), number=DocValuesFormat(name=Direct), bdv1=DocValuesFormat(name=Direct), bdv=DocValuesFormat(name=Lucene70), id=DocValuesFormat(name=Asserting), key=DocValuesFormat(name=Asserting)}, maxPointsInLeafNode=747, maxMBSortInHeap=5.830077125785203, sim=RandomSimilarity(queryNorm=true): {}, locale=en-IE, timezone=SystemV/CST6
+07:35:14    [junit4]   2> NOTE: Linux 4.4.0-1057-aws amd64/Oracle Corporation 1.8.0_171 (64-bit)/cpus=16,threads=1,free=140024800,total=343932928
+07:35:14    [junit4]   2> NOTE: All tests run in this JVM: [TestSimilarityBase, TestMatchAllDocsQuery, TestSortRescorer, TestBagOfPostings, TestNumericUtils, TestThreadedForceMerge, TestLucene50LiveDocsFormat, TestIndexableField, TestIndexWriterThreadsToSegments, TestSnapshotDeletionPolicy, TestFilterDirectoryReader, TestWildcardRandom, TestLongPostings, TestTermScorer, TestFutureObjects, TestLucene70NormsFormat, TestFixedBitDocIdSet, TestParallelLeafReader, TestFieldInfos, TestLazyProxSkipping, TestBoolean2, TermInSetQueryTest, TestExitableDirectoryReader, TestPositiveScoresOnlyCollector, TestMixedCodecs, TestDisjunctionMaxQuery, TestSimpleSearchEquivalence, TestDocValuesQueries, TestSpanMultiTermQueryWrapper, TestMultiset, TestManyFields, TestDocValuesFieldUpdates, TestCustomNorms, TestFloatRangeFieldQueries, TestMultiThreadTermVectors, TestSimpleFSDirectory, TestDateSort, TestRAMDirectory, TestOrdinalMap, TestAxiomaticSimilarity, TestFilterSpans, TestNoMergeScheduler, TestGeoEncodingUtils, TestDateTools, TestFieldType, TestParallelCompositeReader, TestLucene60FieldInfoFormat, TestBufferedIndexInput, TestPrefixQuery, TestIndexWriterWithThreads, TestSpansEnum, TestSynonymQuery, TestIndexWriterExceptions, TestIntroSorter, TestBooleanOr, TestTrackingDirectoryWrapper, Test2BNumericDocValues, TestBinaryDocument, TestStressAdvance, TestReusableStringReader, TestIndexWriter, TestGraphTokenizers, TestShardSearching, TestNRTThreads, TestStandardAnalyzer, TestNeverDelete, TestTieredMergePolicy, TestByteSlices, TestLockFactory, TestPhraseQuery, TestFixedBitSet, TestComplexExplanations, TestRegexpRandom2, TestSegmentReader, TestIndexWriterNRTIsCurrent, TestPagedBytes, TestCrash, TestFieldsReader, TestTermsEnum2, Test2BDocs, TestIndexWriterOnDiskFull, TestFlex, TestFastCompressionMode, TestDeterminism, TestCharTermAttributeImpl, TestOmitTf, TestNearSpansOrdered, TestTermRangeQuery, TestDocumentWriter, TestLiveFieldValues, TestForTooMuchCloning, TestFuzzyQuery, TestTopDocsCollector, TestComplexExplanationsOfNonMatches, TestParallelReaderEmptyIndex, TestTopFieldCollector, TestDirectory, TestCheckIndex, TestPositionIncrement, TestVirtualMethod, TestSetOnce, TestCachingTokenFilter, TestDocCount, TestTotalHitCountCollector, TestSpanFirstQuery, TestNoMergePolicy, TestByteBlockPool, TestRollback, Test4GBStoredFields, TestScoreCachingWrappingScorer, Test2BPositions, TestByteArrayDataInput, TestDelegatingAnalyzerWrapper, TestPackedTokenAttributeImpl, TestLucene50CompoundFormat, TestIndexedDISI, TestBinaryDocValuesUpdates]
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+7.4, 7.5, 8.0
+Fix_version:
+7.4, 7.5, 8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Simon Willnauer
+Create date:
+15/Jun/18 08:41
+Update date:
+27/Jun/18 08:30
+Resolved date:
+15/Jun/18 10:03

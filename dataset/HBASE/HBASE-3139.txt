@@ -1,0 +1,52 @@
+Summary:
+Server shutdown processor stuck because meta not online
+Description:
+Playing with rolling restart I see that the server hosting root and meta can go down close to each other. In below, note how we are processing server hosting ROOT and part of its processing involves reading .META. content to see what servers it was carrying. Well, note that .META. is offline at time (our verification attempt failed because server had just been shutdown and verification got ConnectException). So we pause the server shutdown processing till .META. comes back online – only it never does.
+2010-10-21 07:32:23,931 INFO org.apache.hadoop.hbase.catalog.RootLocationEditor: Unsetting ROOT region location in ZooKeeper
+2010-10-21 07:32:23,953 INFO org.apache.hadoop.hbase.master.handler.ServerShutdownHandler: Splitting logs for sv2borg182,60020,1287645693959                                                                                       2010-10-21 07:32:23,994 INFO org.apache.hadoop.hbase.catalog.RootLocationEditor: Unsetting ROOT region location in ZooKeeper
+2010-10-21 07:32:24,020 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x12bcd5b344b0115 Creating (or updating) unassigned node for 70236052 with OFFLINE state                                                    2010-10-21 07:32:24,045 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan for -ROOT-,,0.70236052 so generated a random one; hri=-ROOT-,,0.70236052, src=, dest=sv2borg181,60020,1287646329081; 8 (online=8, exclude=null) available servers                                                                                                                                                                                         2010-10-21 07:32:24,045 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region -ROOT-,,0.70236052 to sv2borg181,60020,1287646329081                                                                              2010-10-21 07:32:24,048 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1; java.net.ConnectException: Connection refused
+2010-10-21 07:32:24,048 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Current cached META location is not valid, resetting
+2010-10-21 07:32:24,079 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=sv2borg181,60020,1287646329081, region=70236052/-ROOT-                                            2010-10-21 07:32:24,162 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=sv2borg181,60020,1287646329081, region=70236052/-ROOT-
+2010-10-21 07:32:24,212 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=sv2borg181,60020,1287646329081, region=70236052/-ROOT-                                             2010-10-21 07:32:24,212 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Handling OPENED event for 70236052; deleting unassigned node                                                                             2010-10-21 07:32:24,212 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x12bcd5b344b0115 Deleting existing unassigned node for 70236052 that is in expected state RS_ZK_REGION_OPENED                              2010-10-21 07:32:24,238 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Opened region -ROOT-,,0.70236052                                                                                                         2010-10-21 07:32:27,902 INFO org.apache.hadoop.hbase.master.ServerManager: Registering server=sv2borg183,60020,1287646347597, regionCount=0, userLoad=false                                                                        2010-10-21 07:32:30,523 INFO org.apache.hadoop.hbase.zookeeper.RegionServerTracker: RegionServer ephemeral node deleted, processing expiration [sv2borg184,60020,1287645693960]                                                    2010-10-21 07:32:30,523 DEBUG org.apache.hadoop.hbase.master.ServerManager: Added=sv2borg184,60020,1287645693960 to dead servers, submitted shutdown handler to be executed                                                        2010-10-21 07:32:36,254 INFO org.apache.hadoop.hbase.master.ServerManager: Registering server=sv2borg184,60020,1287646355951, regionCount=0, userLoad=false                                                                        2010-10-21 07:32:39,567 INFO org.apache.hadoop.hbase.zookeeper.RegionServerTracker: RegionServer ephemeral node deleted, processing expiration [sv2borg185,60020,1287645693959]                                                    2010-10-21 07:32:39,567 DEBUG org.apache.hadoop.hbase.master.ServerManager: Added=sv2borg185,60020,1287645693959 to dead servers, submitted shutdown handler to be executed                                                        2010-10-21 07:32:45,614 INFO org.apache.hadoop.hbase.master.ServerManager: Registering server=sv2borg185,60020,1287646365304, regionCount=0, userLoad=false                                                                        2010-10-21 07:32:48,652 INFO org.apache.hadoop.hbase.zookeeper.RegionServerTracker: RegionServer ephemeral node deleted, processing expiration [sv2borg186,60020,1287645693962]                                                    2010-10-21 07:32:48,652 DEBUG org.apache.hadoop.hbase.master.ServerManager: Added=sv2borg186,60020,1287645693962 to dead servers, submitted shutdown handler to be executed                                                        2010-10-21 07:32:50,097 INFO org.apache.hadoop.hbase.master.ServerManager: regionservers=8, averageload=93.38, deadservers=[sv2borg185,60020,1287645693959, sv2borg183,60020,1287645693959, sv2borg182,60020,1287645693959,        sv2borg184,60020,1287645693960, sv2borg186,60020,1287645693962]
+....
+We're supposed to have a thread of 5 executors to handle server shutdowns. I see an executor stuck waiting on .META. but I dont see any others running. Odd. Trying to figure why executors are 1 only.
+"MASTER_SERVER_OPERATIONS-sv2borg180:60000-1" daemon prio=10 tid=0x0000000041dc7000 nid=0x50a4 in Object.wait() [0x00007f285d537000]
+   java.lang.Thread.State: TIMED_WAITING (on object monitor)
+    at java.lang.Object.wait(Native Method)
+    at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMeta(CatalogTracker.java:324)
+    - locked <0x00007f286d150ce8> (a java.util.concurrent.atomic.AtomicBoolean)
+    at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMetaServerConnectionDefault(CatalogTracker.java:359)
+    at org.apache.hadoop.hbase.catalog.MetaReader.getServerUserRegions(MetaReader.java:487)
+    at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.process(ServerShutdownHandler.java:115)
+    at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:150)
+    at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+    at java.lang.Thread.run(Thread.java:619)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+21/Oct/10 08:30
+Update date:
+20/Nov/15 12:40
+Resolved date:
+23/Oct/10 06:33

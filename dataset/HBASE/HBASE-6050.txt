@@ -1,0 +1,56 @@
+Summary:
+HLogSplitter renaming recovered.edits and CJ removing the parent directory race, making the HBCK think cluster is inconsistent.
+Description:
+The scenario is like this
+-> A region is getting splitted.
+-> The master is still not processed the split .
+-> Region server goes down.
+-> Split log manager starts splitting the logs and creates the recovered.edits in the splitlog path.
+-> CJ starts and deletes the entry from META and also just completes the deletion of the region dir.
+-> in hlogSplitter on final step we rename the recovered.edits to come under the regiondir.
+There if the regiondir doesnot exist we tend to create and then add the recovered.edits.
+Because of this HBCK thinks it to be an orphan region because we have the regiondir but with no regioninfo.
+Ideally cluster is fine but we it is misleading.
+        } else {
+          Path dstdir = dst.getParent();
+          if (!fs.exists(dstdir)) {
+            if (!fs.mkdirs(dstdir)) LOG.warn("mkdir failed on " + dstdir);
+          }
+        }
+        fs.rename(src, dst);
+        LOG.debug(" moved " + src + " => " + dst);
+      } else {
+        LOG.debug("Could not move recovered edits from " + src +
+            " as it doesn't exist");
+      }
+    }
+    archiveLogs(null, corruptedLogs, processedLogs,
+        oldLogDir, fs, conf);
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.1, 0.94.0
+Fix_version:
+0.94.1, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+18/May/12 15:41
+Update date:
+26/Feb/13 08:16
+Resolved date:
+27/May/12 16:38

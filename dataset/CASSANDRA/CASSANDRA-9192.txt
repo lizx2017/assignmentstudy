@@ -1,0 +1,40 @@
+Summary:
+Tuple columns with UDTs not updated when the UDT is altered
+Description:
+When a tuple column contains a UDT and the UDT is altered, we do not update the tuple column:
+cqlsh> create keyspace ks1 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1' };
+cqlsh> create type ks1.foo (a int, b int);
+cqlsh> create table ks1.mytable (a int primary key, b frozen<tuple<int, ks1.foo>>);
+cqlsh> insert into ks1.mytable (a, b) VALUES (1, (1, {a: 1, b: 1}));
+cqlsh> alter type ks1.foo ADD c int;
+cqlsh> insert into ks1.mytable (a, b) VALUES (1, (1, {a: 1, b: 1}));
+cqlsh> insert into ks1.mytable (a, b) VALUES (1, (1, {a: 1, b: 1, c: 1}));
+InvalidRequest: code=2200 [Invalid query] message="Unknown field 'c' in value of user defined type foo"
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Tyler Hobbs
+Create date:
+14/Apr/15 22:48
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/Apr/15 16:47

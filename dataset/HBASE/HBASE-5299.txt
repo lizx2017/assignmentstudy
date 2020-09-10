@@ -1,0 +1,54 @@
+Summary:
+CatalogTracker.getMetaServerConnection() checks for root server connection and makes waitForMeta to go into infinite wait in region assignment flow.
+Description:
+RSA, RS B and RS C are 3 region servers.
+RS A -> META
+RS B -> ROOT
+RS C -> NON META and NON ROOT
+Kill RS B and wait for server shutdown handler to start.
+Start RS B again before assigning ROOT to RS C.
+Now the cluster will try to assign new regions to RS B.
+But as ROOT is not yet assigned the OpenRegionHandler.updateMeta will fail to update the regions just because ROOT is not online.
+a87109263ed53e67158377a149c5a7be from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2012-01-30 16:23:25,126 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x1352e27539c0009 Attempting to transition node a87109263ed53e67158377a149c5a7be from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2012-01-30 16:23:25,159 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x1352e27539c0009 Successfully transitioned node a87109263ed53e67158377a149c5a7be from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2012-01-30 16:23:35,385 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x1352e27539c0009 Attempting to transition node a87109263ed53e67158377a149c5a7be from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2012-01-30 16:23:35,449 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x1352e27539c0009 Successfully transitioned node a87109263ed53e67158377a149c5a7be from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2012-01-30 16:24:16,666 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x1352e27539c0009 Attempting to transition node a87109263ed53e67158377a149c5a7be from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2012-01-30 16:24:16,701 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x1352e27539c0009 Successfully transitioned node a87109263ed53e67158377a149c5a7be from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2012-01-30 16:24:20,788 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Interrupting thread Thread[PostOpenDeployTasks:a87109263ed53e67158377a149c5a7be,5,main]
+2012-01-30 16:24:30,699 WARN org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Exception running postOpenDeployTasks; region=a87109263ed53e67158377a149c5a7be
+org.apache.hadoop.hbase.NotAllMetaRegionsOnlineException: Interrupted
+ at org.apache.hadoop.hbase.catalog.CatalogTracker.waitForMetaServerConnectionDefault(CatalogTracker.java:439)
+ at org.apache.hadoop.hbase.catalog.MetaEditor.updateRegionLocation(MetaEditor.java:142)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.postOpenDeployTasks(HRegionServer.java:1382)
+ at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler$PostOpenDeployTasksThread.run(OpenRegionHandler.java:221)
+So we need to wait for TM to assign the regions again.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+30/Jan/12 11:57
+Update date:
+30/Dec/14 07:08
+Resolved date:
+30/Dec/14 07:08

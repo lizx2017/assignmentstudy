@@ -1,0 +1,65 @@
+Summary:
+cqlsh doesn't show correct timezone when SELECTing a column of type TIMESTAMP
+Description:
+trying to figure out if i'm doing something wrong or a bug. i am
+creating a simple schema, inserting a timestamp using ISO8601 format,
+but when retrieving the timestamp, the timezone is displayed
+incorrectly. i'm inserting using GMT, the result is shown with
+"+0000", but the time is for my local timezone (-0800)
+tried with 1.1.6 (DSE 2.2.1), and 1.2.0-rc1-SNAPSHOT
+here's the trace:
+bin/cqlsh
+Connected to Test Cluster at localhost:9160.
+[cqlsh 2.3.0 | Cassandra 1.2.0-rc1-SNAPSHOT | CQL spec 3.0.0 | Thrift
+protocol 19.35.0]
+Use HELP for help.
+cqlsh> CREATE KEYSPACE btoddb WITH replication =
+{'class':'SimpleStrategy', 'replication_factor':1}
+;
+cqlsh>
+cqlsh> USE btoddb;
+cqlsh:btoddb> CREATE TABLE test (
+... id uuid PRIMARY KEY,
+... ts TIMESTAMP
+... );
+cqlsh:btoddb>
+cqlsh:btoddb> INSERT INTO test
+... (id, ts)
+... values (
+... '89d09c88-40ac-11e2-a1e2-6067201fae78',
+... '2012-12-07T10:00:00-0000'
+... );
+cqlsh:btoddb>
+cqlsh:btoddb> SELECT * FROM test;
+id | ts
+-------------------------------------+-------------------------
+89d09c88-40ac-11e2-a1e2-6067201fae78 | 2012-12-07 02:00:00+0000
+cqlsh:btoddb>
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.8, 1.2.0 rc1
+Component:
+None
+Label:
+None
+Environment:
+dse
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+B. Todd Burruss
+Create date:
+09/Dec/12 03:24
+Update date:
+16/Apr/19 09:32
+Resolved date:
+10/Dec/12 15:28

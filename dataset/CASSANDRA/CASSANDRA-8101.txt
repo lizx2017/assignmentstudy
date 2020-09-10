@@ -1,0 +1,42 @@
+Summary:
+Invalid ASCII and UTF-8 chars not rejected in CQL string literals
+Description:
+When processing CQL string literals, we ultimately use String.getBytes(Charset), which has the following note:
+This method always replaces malformed-input and unmappable-character sequences with this charset's default replacement byte array. The CharsetEncoder class should be used when more control over the encoding process is required.
+So, if we insert a non-ASCII character into an ascii string literal, it will be replaced with a ? char. Something similar happens for UTF-8.
+For example:
+cqlsh:ks1> create table badstrings (a int primary key, b ascii);
+cqlsh:ks1> insert into badstrings (a, b) VALUES ( 0, 'ΎΔδϠ');
+cqlsh:ks1> select * from badstrings;
+
+ a | b
+---+------
+ 0 | ????
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.11, 2.1.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Tyler Hobbs
+Create date:
+10/Oct/14 16:41
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Oct/14 18:24

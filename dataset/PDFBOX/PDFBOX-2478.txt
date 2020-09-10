@@ -1,0 +1,59 @@
+Summary:
+NPE in XObjImageValidator.checkColorSpaceAndImageMask
+Description:
+I get this with the file PDFBOX-2376-087731.pdf:
+java.lang.NullPointerException
+PDFBOX-2376-179204-EMC.pdf
+ at org.apache.pdfbox.preflight.xobject.XObjImageValidator.checkColorSpaceAndImageMask(XObjImageValidator.java:132)
+ at org.apache.pdfbox.preflight.xobject.XObjImageValidator.validate(XObjImageValidator.java:183)
+ at org.apache.pdfbox.preflight.process.reflect.GraphicObjectPageValidationProcess.validate(GraphicObjectPageValidationProcess.java:70)
+ at org.apache.pdfbox.preflight.utils.ContextHelper.callValidation(ContextHelper.java:73)
+ at org.apache.pdfbox.preflight.utils.ContextHelper.validateElement(ContextHelper.java:52)
+ at org.apache.pdfbox.preflight.process.reflect.ResourcesValidationProcess.validateXObjects(ResourcesValidationProcess.java:288)
+ at org.apache.pdfbox.preflight.process.reflect.ResourcesValidationProcess.validate(ResourcesValidationProcess.java:80)
+ at org.apache.pdfbox.preflight.utils.ContextHelper.callValidation(ContextHelper.java:73)
+ at org.apache.pdfbox.preflight.utils.ContextHelper.validateElement(ContextHelper.java:52)
+ at org.apache.pdfbox.preflight.process.reflect.SinglePageValidationProcess.validateResources(SinglePageValidationProcess.java:167)
+ at org.apache.pdfbox.preflight.process.reflect.SinglePageValidationProcess.validate(SinglePageValidationProcess.java:82)
+ at org.apache.pdfbox.preflight.utils.ContextHelper.callValidation(ContextHelper.java:73)
+ at org.apache.pdfbox.preflight.utils.ContextHelper.validateElement(ContextHelper.java:52)
+ at org.apache.pdfbox.preflight.process.PageTreeValidationProcess.validatePage(PageTreeValidationProcess.java:56)
+ at org.apache.pdfbox.preflight.process.PageTreeValidationProcess.validate(PageTreeValidationProcess.java:45)
+ at org.apache.pdfbox.preflight.utils.ContextHelper.callValidation(ContextHelper.java:73)
+ at org.apache.pdfbox.preflight.utils.ContextHelper.validateElement(ContextHelper.java:88)
+ at org.apache.pdfbox.preflight.PreflightDocument.validate(PreflightDocument.java:168)
+ at pdfboxpageimageextraction.PreflightTest.main(PreflightTest.java:47)
+The cause is this piece of code:
+            Integer bitsPerCompValue = COSUtils.getAsInteger(bitsPerComp, cosDocument);
+            if (bitsPerCompValue != 1)
+which fails on this input:
+44 0 obj<</Length 289/Filter/CCITTFaxDecode/DecodeParms<</K -1/Columns 282/Rows 40>>/Width 282/Height 40/ImageMask true/Subtype/Image>>
+That segment is called only for image masks. The spec does not require BitsPerComponent for image masks, but if it is there, it must be 1. So all I have to do is to add a null check.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.7, 1.8.8, 2.0.0
+Fix_version:
+1.8.8, 2.0.0
+Component:
+Preflight
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+03/Nov/14 20:08
+Update date:
+13/Dec/14 14:14
+Resolved date:
+03/Nov/14 21:00

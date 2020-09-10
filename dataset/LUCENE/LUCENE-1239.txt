@@ -1,0 +1,35 @@
+Summary:
+IndexWriter deadlock when using ConcurrentMergeScheduler
+Description:
+I'm trying to update our application from Compass 2.0.0M1 with Lucene 2.2 to Compass 2.0.0M3 (latest build) with Lucene 2.3.1. I'm holding all other things constant and only changing the Compass and Lucene jars. I'm recreating the search index for our data and seeing deadlock in Lucene's IndexWriter. It appears to be waiting on a signal from the merge thread. I've tried creating a simple reproduction case for this but to no avail.
+Doing the exact same steps with Compass 2.0.0M1 and Lucene 2.2 has no problems and recreates our search index. That is to say, it's not our code.
+In particular, the main thread performing the commit (Lucene document save) from Compass is calling Lucene's IndexWriter.optimize(). We're using Compass's ExecutorMergeScheduler to handle the merging, and it is calling IndexWriter.merge(). The main thread in IndexWriter.optimize() enters the wait() at the bottom of that method and is never notified. I can't tell if this is because optimizeMergesPending() is returning true incorrectly, or if IndexWriter.merge()'s notifyAll() is being called prematurely. Looking at the code, it doesn't seem possible for IndexWriter.optimize() to be waiting and miss a notifyAll(), and Lucene's IndexWriter.merge() was recently fixed to always call notifyAll() even on exceptions – that is all the relevant IndexWriter code looks properly synchronized. Nevertheless, I'm seeing the deadlock behavior described, and it's reproducible using our app and our test data set.
+Could someone familiar with IndexWriter's synchronization code take another look at it? I'm sorry that I can't give you a simple reproduction test case.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+2.3.1
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+compass, spring
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael Lossos
+Create date:
+18/Mar/08 10:11
+Update date:
+18/Mar/08 16:08
+Resolved date:
+18/Mar/08 12:52

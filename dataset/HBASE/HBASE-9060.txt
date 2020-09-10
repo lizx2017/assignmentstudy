@@ -1,0 +1,49 @@
+Summary:
+ExportSnapshot job fails if target path contains percentage character
+Description:
+Here is the stack trace:
+hbase org.apache.hadoop.hbase.snapshot.ExportSnapshot -snapshot table1_snapshot -copy-to hdfs:///myhbase%2Cbackup/table1_snapshot
+13/07/26 18:09:50 INFO mapred.JobClient:  map 0% reduce 0%
+13/07/26 18:09:58 INFO mapred.JobClient: Task Id : attempt_201307261804_0002_m_000001_0, Status : FAILED
+java.util.MissingFormatArgumentException: Format specifier ') from family1/table1=3567d8ac6cfee83dfe81c346f139fb9c-c5bc120475a54d188f30d4b621d505b1 to hdfs:/myhbase%2C'
+        at java.util.Formatter.getArgument(Formatter.java:592)
+        at java.util.Formatter.format(Formatter.java:561)
+        at java.util.Formatter.format(Formatter.java:510)
+        at java.lang.String.format(String.java:1977)
+        at org.apache.hadoop.hbase.snapshot.ExportSnapshot$ExportMapper.copyData(ExportSnapshot.java:274)
+        at org.apache.hadoop.hbase.snapshot.ExportSnapshot$ExportMapper.copyFile(ExportSnapshot.java:204)
+        at org.apache.hadoop.hbase.snapshot.ExportSnapshot$ExportMapper.map(ExportSnapshot.java:149)
+        at org.apache.hadoop.hbase.snapshot.ExportSnapshot$ExportMapper.map(ExportSnapshot.java:98)
+The problem is this code in copyData():
+final String statusMessage = "copied %s/" + StringUtils.humanReadableInt(inputFileSize) +
+                                   " (%.3f%%) from " + inputPath + " to " + outputPath;
+Since we don't know what the path may contain that may confuse the formatter, we need to pull that part out of the format string.
+Also the percentage completion math seems to be wrong in the same code.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.95.1, 0.94.10
+Fix_version:
+0.98.0, 0.95.2, 0.94.11
+Component:
+snapshots
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jerry He
+Reporter:
+Jerry He
+Create date:
+27/Jul/13 19:07
+Update date:
+21/Aug/13 00:08
+Resolved date:
+28/Jul/13 12:18

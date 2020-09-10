@@ -1,0 +1,43 @@
+Summary:
+Snapshot file descriptors not getting purged (possible fd leak)
+Description:
+OpsCenter has the repair service which does a lot of small range repairs. Each repair would generate a snapshot as per normal. The cluster was showing a steady increase in disk space over the course of a couple of days and the only way to workaround the issue was to restart the node.
+Upon some further inspection it was seen that a lsof output of the cassandra process was still showing file descriptors for snapshots that no longer existed on the file system. For example:
+ava    5822 cassandra  DEL    REG             202,32                 7359833 /media/ephemeral1/cassandra/data/somekeyspace/table1/snapshots/669a3a30-f3d3-11e4-bec6-3f6c4fb06498/somekeyspace-table1-jb-897689-Data.db
+We also took a heapdump which basically showed the same thing, lots of references to these file handles. We checked the logs for any errors especially relating to repairs that might have failed but there was nothing observed
+The repair service logs in OpsCenter showed also that all repairs (1000s of them) had completed successfully, again showing that there was no repair issue.
+I have not yet been able to reproduce the issue locally on a test box. The cluster that this original issue appeared on was a production cluster with the following spec:
+cassandra_versions: 2.0.14.352
+cluster_cores : 8,
+cluster_instance_types : i2.2xlarge
+cluster_os : Amazon linux amd64
+node count: 4
+node java version: Oracle Java 1.7.0_51
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.17, 2.1.9, 2.2.1,
+Component:
+Legacy/Local Write-Read Paths
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Mark Curtis
+Create date:
+14/May/15 13:30
+Update date:
+16/Apr/19 09:31
+Resolved date:
+28/Jul/15 23:57

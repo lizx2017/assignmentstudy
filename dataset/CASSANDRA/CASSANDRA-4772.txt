@@ -1,0 +1,48 @@
+Summary:
+HintedHandoff fails to deliver hints after first repaired node
+Description:
+If some node has hints for a few nodes it will deliver hints only for the first one of them. After all hints delivery for the first node compaction process is started. After compaction all data from hints cf is removed.
+target fix for 1.2 version:
+diff --git a/src/java/org/apache/cassandra/db/HintedHandOffManager.java b/src/java/org/apache/cassandra/db/HintedHandOffManager.java
+index e5ff163..c02997e 100644
+--- a/src/java/org/apache/cassandra/db/HintedHandOffManager.java
++++ b/src/java/org/apache/cassandra/db/HintedHandOffManager.java
+@@ -189,7 +189,7 @@ public class HintedHandOffManager implements HintedHandOffManagerMBean
+         ArrayList<Descriptor> descriptors = new ArrayList<Descriptor>();
+         for (SSTable sstable : hintStore.getSSTables())
+             descriptors.add(sstable.descriptor);
+-        return CompactionManager.instance.submitUserDefined(hintStore, descriptors, Integer.MAX_VALUE);
++        return CompactionManager.instance.submitUserDefined(hintStore, descriptors, (int) System.currentTimeMillis() / 1000);
+     }
+
+ 
+     private static boolean pagingFinished(ColumnFamily hintColumnFamily, ByteBuffer startColumn)
+Can I expect to see that fix in 1.1.6 version?
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.6
+Component:
+None
+Label:
+hintedhandoff
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alexey Zotov
+Reporter:
+Alexey Zotov
+Create date:
+05/Oct/12 21:01
+Update date:
+16/Apr/19 09:32
+Resolved date:
+09/Oct/12 13:55

@@ -1,0 +1,92 @@
+Summary:
+Empty rpc_address prevents running MapReduce job outside a cluster
+Description:
+Setting rpc_address to empty to make Cassandra listen on all network intefaceces breaks running mapredude job from outside the cluster. The jobs wont even start, showing these messages:
+12/01/26 11:15:21 DEBUG  hadoop.ColumnFamilyInputFormat: failed
+connect to endpoint 0.0.0.0
+java.io.IOException: unable to connect to server
+       at org.apache.cassandra.hadoop.ConfigHelper.createConnection(ConfigHelper.java:389)
+       at org.apache.cassandra.hadoop.ColumnFamilyInputFormat.getSubSplits(ColumnFamilyInputFormat.java:224)
+       at org.apache.cassandra.hadoop.ColumnFamilyInputFormat.access$200(ColumnFamilyInputFormat.java:73)
+       at org.apache.cassandra.hadoop.ColumnFamilyInputFormat$SplitCallable.call(ColumnFamilyInputFormat.java:193)
+       at org.apache.cassandra.hadoop.ColumnFamilyInputFormat$SplitCallable.call(ColumnFamilyInputFormat.java:178)
+       at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+       at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+       at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+       at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+       at java.lang.Thread.run(Thread.java:662)
+Caused by: org.apache.thrift.transport.TTransportException:
+java.net.ConnectException: Connection refused
+       at org.apache.thrift.transport.TSocket.open(TSocket.java:183)
+       at org.apache.thrift.transport.TFramedTransport.open(TFramedTransport.java:81)
+       at org.apache.cassandra.hadoop.ConfigHelper.createConnection(ConfigHelper.java:385)
+       ... 9 more
+Caused by: java.net.ConnectException: Connection refused
+       at java.net.PlainSocketImpl.socketConnect(Native Method)
+       at java.net.PlainSocketImpl.doConnect(PlainSocketImpl.java:351)
+       at java.net.PlainSocketImpl.connectToAddress(PlainSocketImpl.java:211)
+       at java.net.PlainSocketImpl.connect(PlainSocketImpl.java:200)
+       at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:366)
+       at java.net.Socket.connect(Socket.java:529)
+       at org.apache.thrift.transport.TSocket.open(TSocket.java:178)
+       ... 11 more
+
+...
+
+Caused by: java.util.concurrent.ExecutionException:
+java.io.IOException: failed connecting to all endpoints
+10.0.18.129,10.0.18.99,10.0.18.98
+       at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+       at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+       at org.apache.cassandra.hadoop.ColumnFamilyInputFormat.getSplits(ColumnFamilyInputFormat.java:156)
+       ... 19 more
+Caused by: java.io.IOException: failed connecting to all endpoints
+10.0.18.129,10.0.18.99,10.0.18.98
+       at org.apache.cassandra.hadoop.ColumnFamilyInputFormat.getSubSplits(ColumnFamilyInputFormat.java:241)
+       at org.apache.cassandra.hadoop.ColumnFamilyInputFormat.access$200(ColumnFamilyInputFormat.java:73)
+       at org.apache.cassandra.hadoop.ColumnFamilyInputFormat$SplitCallable.call(ColumnFamilyInputFormat.java:193)
+       at org.apache.cassandra.hadoop.ColumnFamilyInputFormat$SplitCallable.call(ColumnFamilyInputFormat.java:178)
+       at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+       at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+       at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+       at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+       at java.lang.Thread.run(Thread.java:662)
+Describe ring retunrs:
+describe_ring returns:
+endpoints: 10.0.18.129,10.0.18.99,10.0.18.98
+rpc_endpoints: 0.0.0.0,0.0.0.0,0.0.0.0
+Michael Frisch found possible bug in the Cassandra source:
+If the code in the 0.8 branch is reflective of what is actually included in
+Cassandra 0.8.9 (here:
+http://svn.apache.org/repos/asf/cassandra/branches/cassandra-0.8/src/java/org/apache/cassandra/hadoop/ColumnFamilyInputFormat.java)
+then the problem is that line 202 is doing an == comparison on strings. The
+correct way to compare would be endpoint_address.equals("0.0.0.0") instead.
+Mike
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+debian
+Attachment number:
+0
+Assignee:
+Patrik Modesto
+Reporter:
+Patrik Modesto
+Create date:
+30/Jan/12 07:30
+Update date:
+16/Apr/19 09:32
+Resolved date:
+29/Jul/14 20:42

@@ -1,0 +1,218 @@
+Summary:
+running compact on an index did not compact two index files into one
+Description:
+With a data directory containing secondary index files ending in -1 and -2, I expected that when I ran compact against the index that they would compact down to a set of -3 files. This column family uses SizeTieredCompactionStrategy.
+Using our standard CQL example, the compact command used was:
+$ ./nodetool compact test1 test1-playlists.playlists_artist_idx
+Please note: reproducing this test on 1.1.12 (using a single primary key), you will see that running compact on the keyspace also does not compact the index file. There is no option to compact the index, so I could not compare that.
+CREATE KEYSPACE test1 WITH replication = {'class':'SimpleStrategy', 'replication_factor':1};
+
+use test1;
+
+CREATE TABLE playlists (
+  id uuid,
+  song_order int,
+  song_id uuid,
+  title text,
+  album text,
+  artist text,
+  PRIMARY KEY  (id, song_order ) );
+
+INSERT INTO playlists (id, song_order, song_id, title, artist, album)
+  VALUES (62c36092-82a1-3a00-93d1-46196ee77204, 1,
+  a3e64f8f-bd44-4f28-b8d9-6938726e34d4, 'La Grange', 'ZZ Top', 'Tres Hombres');
+
+select * from playlists;
+
+=====================================
+./nodetool flush test1
+
+$ ls /var/lib/cassandra/data/test1/playlists
+test1-playlists-ic-1-CompressionInfo.db    
+test1-playlists-ic-1-Data.db 
+test1-playlists-ic-1-Filter.db     
+test1-playlists-ic-1-Index.db     
+test1-playlists-ic-1-Statistics.db    
+test1-playlists-ic-1-Summary.db     
+test1-playlists-ic-1-TOC.txt     
+
+=====================================
+
+CREATE INDEX ON playlists(artist );
+select * from playlists;
+select * from playlists where artist = 'ZZ Top';
+
+=====================================
+$ ./nodetool flush test1
+
+$ ls /var/lib/cassandra/data/test1/playlists
+test1-playlists-ic-1-CompressionInfo.db   
+test1-playlists-ic-1-Data.db     
+test1-playlists-ic-1-Filter.db     
+test1-playlists-ic-1-Index.db     
+test1-playlists-ic-1-Statistics.db    
+test1-playlists-ic-1-Summary.db     
+test1-playlists-ic-1-TOC.txt     
+ 
+test1-playlists.playlists_artist_idx-ic-1-CompressionInfo.db
+test1-playlists.playlists_artist_idx-ic-1-Data.db
+test1-playlists.playlists_artist_idx-ic-1-Filter.db
+test1-playlists.playlists_artist_idx-ic-1-Index.db
+test1-playlists.playlists_artist_idx-ic-1-Statistics.db
+test1-playlists.playlists_artist_idx-ic-1-Summary.db
+test1-playlists.playlists_artist_idx-ic-1-TOC.txt
+
+=====================================
+
+delete artist from playlists where id = 62c36092-82a1-3a00-93d1-46196ee77204 and song_order = 1;
+select * from playlists;
+select * from playlists where artist = 'ZZ Top';
+
+=====================================
+$ ./nodetool flush test1
+
+$ ls /var/lib/cassandra/data/test1/playlists
+test1-playlists-ic-1-CompressionInfo.db 
+test1-playlists-ic-1-Data.db     
+test1-playlists-ic-1-Filter.db     
+test1-playlists-ic-1-Index.db     
+test1-playlists-ic-1-Statistics.db    
+test1-playlists-ic-1-Summary.db     
+test1-playlists-ic-1-TOC.txt     
+test1-playlists-ic-2-CompressionInfo.db    
+test1-playlists-ic-2-Data.db     
+test1-playlists-ic-2-Filter.db     
+test1-playlists-ic-2-Index.db     
+test1-playlists-ic-2-Statistics.db    
+test1-playlists-ic-2-Summary.db     
+test1-playlists-ic-2-TOC.txt
+   
+test1-playlists.playlists_artist_idx-ic-1-CompressionInfo.db
+test1-playlists.playlists_artist_idx-ic-1-Data.db
+test1-playlists.playlists_artist_idx-ic-1-Filter.db
+test1-playlists.playlists_artist_idx-ic-1-Index.db
+test1-playlists.playlists_artist_idx-ic-1-Statistics.db
+test1-playlists.playlists_artist_idx-ic-1-Summary.db
+test1-playlists.playlists_artist_idx-ic-1-TOC.txt
+test1-playlists.playlists_artist_idx-ic-2-CompressionInfo.db
+test1-playlists.playlists_artist_idx-ic-2-Data.db
+test1-playlists.playlists_artist_idx-ic-2-Filter.db
+test1-playlists.playlists_artist_idx-ic-2-Index.db
+test1-playlists.playlists_artist_idx-ic-2-Statistics.db
+test1-playlists.playlists_artist_idx-ic-2-Summary.db
+test1-playlists.playlists_artist_idx-ic-2-TOC.txt
+
+=====================================
+
+./nodetool compact test1
+
+$ ls /var/lib/cassandra/data/test1/playlists
+test1-playlists-ic-3-CompressionInfo.db
+test1-playlists-ic-3-Data.db
+test1-playlists-ic-3-Filter.db
+test1-playlists-ic-3-Index.db
+test1-playlists-ic-3-Statistics.db
+test1-playlists-ic-3-Summary.db
+test1-playlists-ic-3-TOC.txt
+test1-playlists.playlists_artist_idx-ic-1-CompressionInfo.db
+test1-playlists.playlists_artist_idx-ic-1-Data.db
+test1-playlists.playlists_artist_idx-ic-1-Filter.db
+test1-playlists.playlists_artist_idx-ic-1-Index.db
+test1-playlists.playlists_artist_idx-ic-1-Statistics.db
+test1-playlists.playlists_artist_idx-ic-1-Summary.db
+test1-playlists.playlists_artist_idx-ic-1-TOC.txt
+test1-playlists.playlists_artist_idx-ic-2-CompressionInfo.db
+test1-playlists.playlists_artist_idx-ic-2-Data.db
+test1-playlists.playlists_artist_idx-ic-2-Filter.db
+test1-playlists.playlists_artist_idx-ic-2-Index.db
+test1-playlists.playlists_artist_idx-ic-2-Statistics.db
+test1-playlists.playlists_artist_idx-ic-2-Summary.db
+test1-playlists.playlists_artist_idx-ic-2-TOC.txt
+
+=====================================
+
+$ ./nodetool compact test1 test1-playlists.playlists_artist_idx
+
+$ ls /var/lib/cassandra/data/test1/playlists
+test1-playlists-ic-3-CompressionInfo.db
+test1-playlists-ic-3-Data.db
+test1-playlists-ic-3-Filter.db
+test1-playlists-ic-3-Index.db
+test1-playlists-ic-3-Statistics.db
+test1-playlists-ic-3-Summary.db
+test1-playlists-ic-3-TOC.txt
+test1-playlists.playlists_artist_idx-ic-1-CompressionInfo.db
+test1-playlists.playlists_artist_idx-ic-1-Data.db
+test1-playlists.playlists_artist_idx-ic-1-Filter.db
+test1-playlists.playlists_artist_idx-ic-1-Index.db
+test1-playlists.playlists_artist_idx-ic-1-Statistics.db
+test1-playlists.playlists_artist_idx-ic-1-Summary.db
+test1-playlists.playlists_artist_idx-ic-1-TOC.txt
+test1-playlists.playlists_artist_idx-ic-2-CompressionInfo.db
+test1-playlists.playlists_artist_idx-ic-2-Data.db
+test1-playlists.playlists_artist_idx-ic-2-Filter.db
+test1-playlists.playlists_artist_idx-ic-2-Index.db
+test1-playlists.playlists_artist_idx-ic-2-Statistics.db
+test1-playlists.playlists_artist_idx-ic-2-Summary.db
+test1-playlists.playlists_artist_idx-ic-2-TOC.txt
+
+
+=====================================
+cqlsh:test1> describe keyspace test1;
+
+CREATE KEYSPACE test1 WITH replication = {
+  'class': 'SimpleStrategy',
+  'replication_factor': '1'
+};
+
+USE test1;
+
+CREATE TABLE playlists (
+  id uuid,
+  song_order int,
+  album text,
+  artist text,
+  song_id uuid,
+  title text,
+  PRIMARY KEY (id, song_order)
+) WITH
+  bloom_filter_fp_chance=0.010000 AND
+  caching='KEYS_ONLY' AND
+  comment='' AND
+  dclocal_read_repair_chance=0.000000 AND
+  gc_grace_seconds=864000 AND
+  read_repair_chance=0.100000 AND
+  replicate_on_write='true' AND
+  populate_io_cache_on_flush='false' AND
+  compaction={'class': 'SizeTieredCompactionStrategy'} AND
+  compression={'sstable_compression': 'SnappyCompressor'};
+
+CREATE INDEX playlists_artist_idx ON playlists (artist);
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.9, 2.0 rc1
+Component:
+Legacy/Tools
+Label:
+nodetool secondary_i
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jason Brown
+Reporter:
+Cathy Daw
+Create date:
+20/Jun/13 01:14
+Update date:
+16/Apr/19 09:32
+Resolved date:
+30/Jul/13 20:54

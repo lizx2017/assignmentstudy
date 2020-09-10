@@ -1,0 +1,46 @@
+Summary:
+ConcurrentMergeScheduler should not stall its own merge threads!
+Description:
+http://build-eu-00.elasticsearch.org/job/lucene_trunk_linux_java8_64_analyzers/25834
+uncovered this issue.
+I accidentally introduced this with auto-IO-throttle (LUCENE-6119)
+... the CMS.maybeStall method, which is supposed to block "segment
+producing" threads so indexing slows down when merges cannot keep up,
+can now sometimes block its own merge threads. This happens when the merge
+thread re-invokes CMS.merge after it finishes, so new merges can kick
+off.
+This is really silly, since merge threads are not segment producers,
+but rather the "messengers", spawned by the true segment producers,
+so CMS should not shoot the messenger here.
+I think it's also possible this could lead to deadlock in CMS, but I'm
+not certain, and I couldn't provoke it.
+I'd like to fix this for 5.0 because it was first introduced in 5.0
+and not yet released...
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.0, 5.1, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+23/Jan/15 16:57
+Update date:
+09/May/16 18:36
+Resolved date:
+24/Jan/15 15:18

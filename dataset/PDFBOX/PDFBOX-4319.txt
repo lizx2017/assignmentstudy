@@ -1,0 +1,70 @@
+Summary:
+Parsing 100000 page pdf is slow
+Description:
+Parsing 100000 page pdf is slow, how do i speed it up?
+import org.apache.pdfbox.contentstream.operator.Operator;
+import org.apache.pdfbox.cos.COSBase;
+import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.pdfparser.PDFStreamParser;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+public class CheckPDF {
+    public static void main(String[] args) throws IOException {
+        PDDocument doc = PDDocument.load(new File("out.pdf"));
+        for (int i=0; i<doc.getNumberOfPages(); i++) {
+            System.out.println(i);
+            PDPage page = doc.getPage(i);
+            PDFStreamParser parser = new PDFStreamParser(page.getContents());
+            parser.parse();
+            List<Object> it = parser.getTokens();
+            List<COSBase> arguments = new ArrayList<COSBase>();
+            for (Object o : it) {
+                if (o instanceof Operator) {
+                    Operator op = (Operator)o;
+                    if (op.getName().equals("Do")) {
+                        COSName name = (COSName) arguments.get(0);
+                        if (page.getResources().getXObject(name) == null) {
+                            throw new RuntimeException(name + " not found");
+                        }
+                    }
+                    arguments.clear();
+                } else {
+                    arguments.add((COSBase)o);
+                }
+            }
+        }
+        doc.close();
+    }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.11, 3.0.0 PDFBox
+Fix_version:
+2.0.12, 3.0.0 PDFBox
+Component:
+Documentation, Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+simon steiner
+Create date:
+20/Sep/18 09:17
+Update date:
+05/Oct/18 04:53
+Resolved date:
+20/Sep/18 18:33

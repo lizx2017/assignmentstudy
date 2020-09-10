@@ -1,0 +1,43 @@
+Summary:
+ASCII stream data size is increased when written
+Description:
+This bug is quite complicated and was discovered when visual signatures were used along with parsing of the document with Preflight before signing.
+I dig a bit trying to investigate this bug nature as the bug does not appear regularly. It appears that it manifests itself under such conditions:
+Document is parsed when opened (ex. by Preflight) and entry with number value is detected, which is marked as direct by BaseParser.parseCOSDictionary(BaseParser.java:381);
+Stream with ASCII filter is created or present in document having the same length as the number found in step 1 (ex. when visual signature is created by calling SignatureOptions#setVisualSignature());
+While written COSWriter checks the stream length by its direct property. If /Length is present and is flaged as direct, it is not recalculated when written.
+As a result, when doucument is written, the stream length is changed: written stream is increased by 2 bytes, while /Length entry still indicate the original length. That violates PDF requirements for the /Length entry:
+The number of bytes from the beginning of the line following the keyword stream to the last byte just before the keyword endstream. (There may be an additional EOL marker, preceding endstream, that is not included in the count and is not logically part of the stream data.)
+These bugs complement to this effect:
+PDFBOX-3320 & PDFBOX-2685, as number used for stream length is marked as direct;
+BaseParser.parseCOSStream(BaseParser.java:490) parses ASCII stream using EndstreamOutputStream class, which always includes all characters till the endstream keyword, though CRLF preceding endstream is not part of the stream data;
+COSWriter checks the stream length by its direct property, even though it could be set as indirect via COSObject. As it is flaged as direct due to mutability of cached COSNumber, the stream length is not recalculated.
+As COSWriter always adds CRLF at the end of the stream, the final stream data increased by 2 bytes.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+1.8.11
+Fix_version:
+1.8.12
+Component:
+Parsing
+Label:
+signature streams
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Petras
+Create date:
+19/Apr/16 08:05
+Update date:
+25/Apr/16 17:24
+Resolved date:
+21/Apr/16 16:38

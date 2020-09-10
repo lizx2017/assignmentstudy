@@ -1,0 +1,52 @@
+Summary:
+bin/hbase's logic of adding Hadoop jar files to the classpath is fragile when presented with split packaged Hadoop 0.23 installation
+Description:
+Here's the bit from bin/hbase that might need TLC now that Hadoop can be spotted in the wild in split-package configuration:
+#If avail, add Hadoop to the CLASSPATH and to the JAVA_LIBRARY_PATH
+if [ ! -z $HADOOP_HOME ]; then
+  HADOOPCPPATH=""
+  if [ -z $HADOOP_CONF_DIR ]; then
+    HADOOPCPPATH=$(append_path "${HADOOPCPPATH}" "${HADOOP_HOME}/conf")
+  else
+    HADOOPCPPATH=$(append_path "${HADOOPCPPATH}" "${HADOOP_CONF_DIR}")
+  fi
+  if [ "`echo ${HADOOP_HOME}/hadoop-core*.jar`" != "${HADOOP_HOME}/hadoop-core*.jar" ] ; then
+    HADOOPCPPATH=$(append_path "${HADOOPCPPATH}" `ls ${HADOOP_HOME}/hadoop-core*.jar | head -1`)
+  else
+    HADOOPCPPATH=$(append_path "${HADOOPCPPATH}" `ls ${HADOOP_HOME}/hadoop-common*.jar | head -1`)
+    HADOOPCPPATH=$(append_path "${HADOOPCPPATH}" `ls ${HADOOP_HOME}/hadoop-hdfs*.jar | head -1`)
+    HADOOPCPPATH=$(append_path "${HADOOPCPPATH}" `ls ${HADOOP_HOME}/hadoop-mapred*.jar | head -1`)
+  fi
+There's a couple of issues with the above code:
+0. HADOOP_HOME is now deprecated in Hadoop 0.23
+1. the list of jar files added to the class-path should be revised
+2. we need to figure out a more robust way to get the jar files that are needed to the classpath (things like hadoop-mapred*.jar tend to match src/test jars as well)
+Better yet, it would be useful to look into whether we can transition HBase's bin/hbase onto using bin/hadoop as a launcher script instead of direct JAVA invocations (Pig, Hive, Sqoop and Mahout already do that)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.1, 0.94.0
+Component:
+scripts
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Roman Shaposhnik
+Reporter:
+Roman Shaposhnik
+Create date:
+26/Jan/12 18:51
+Update date:
+12/Oct/12 05:34
+Resolved date:
+03/Mar/12 16:59

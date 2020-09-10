@@ -1,0 +1,44 @@
+Summary:
+Large number of bootstrapping nodes cause gossip to stop working
+Description:
+Long running section of code in PendingRangeCalculatorService is synchronized on bootstrapTokens. This causes gossip to stop working as it waits for the same lock when a large number of nodes (hundreds in our case) are bootstrapping. Consequently, the whole cluster becomes non-functional.
+I experimented with the following change in PendingRangeCalculatorService.java and it resolved the problem in our case. Prior code had synchronized around the for loop.
+synchronized(bootstrapTokens) {
+bootstrapTokens = new LinkedHashMap<Token, InetAddress>(bootstrapTokens);
+}
+for (Map.Entry<Token, InetAddress> entry : bootstrapTokens.entrySet())
+{
+InetAddress endpoint = entry.getValue();
+allLeftMetadata.updateNormalToken(entry.getKey(), endpoint);
+for (Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))
+pendingRanges.put(range, endpoint);
+allLeftMetadata.removeEndpoint(endpoint);
+}
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.11, 1.2.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Oleg Kibirev
+Reporter:
+Oleg Kibirev
+Create date:
+11/Apr/13 18:44
+Update date:
+16/Apr/19 09:32
+Resolved date:
+12/Apr/13 17:13

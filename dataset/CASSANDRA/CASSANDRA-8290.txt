@@ -1,0 +1,83 @@
+Summary:
+archiving commitlogs after restart fails
+Description:
+After update to Cassandra 2.0.11 Cassandra mostly fails during startup while archiving commitlogs
+see logfile:
+RROR [main] 2014-11-03 13:08:59,388 CassandraDaemon.java (line 513) Exception encountered during startup
+java.lang.RuntimeException: java.util.concurrent.ExecutionException: java.lang.RuntimeException: java.io.IOException: Exception while executing the command: /bin/ln /var/lib/cassandra/commitlog/CommitLog-3-1413451666161.log /var/lib/cassandra/archive/CommitLog-3-1413451666161.log, command error Code: 1, command output: /bin/ln: failed to create hard link `/var/lib/cassandra/archive/CommitLog-3-1413451666161.log': File exists
+
+        at org.apache.cassandra.db.commitlog.CommitLogArchiver.maybeWaitForArchiving(CommitLogArchiver.java:158)
+        at org.apache.cassandra.db.commitlog.CommitLog.recover(CommitLog.java:124)
+        at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:336)
+        at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:496)
+        at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:585)
+Caused by: java.util.concurrent.ExecutionException: java.lang.RuntimeException: java.io.IOException: Exception while executing the command: /bin/ln /var/lib/cassandra/commitlog/CommitLog-3-1413451666161.log /var/lib/cassandra/archive/CommitLog-3-1413451666161.log, command error Code: 1, command output: /bin/ln: failed to create hard link `/var/lib/cassandra/archive/CommitLog-3-1413451666161.log': File exists
+
+        at java.util.concurrent.FutureTask.report(FutureTask.java:122)
+        at java.util.concurrent.FutureTask.get(FutureTask.java:188)
+        at org.apache.cassandra.db.commitlog.CommitLogArchiver.maybeWaitForArchiving(CommitLogArchiver.java:145)
+        ... 4 more
+Caused by: java.lang.RuntimeException: java.io.IOException: Exception while executing the command: /bin/ln /var/lib/cassandra/commitlog/CommitLog-3-1413451666161.log /var/lib/cassandra/archive/CommitLog-3-1413451666161.log, command error Code: 1, command output: /bin/ln: failed to create hard link `/var/lib/cassandra/archive/CommitLog-3-1413451666161.log': File exists
+
+        at com.google.common.base.Throwables.propagate(Throwables.java:160)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:32)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:745)
+Caused by: java.io.IOException: Exception while executing the command: /bin/ln /var/lib/cassandra/commitlog/CommitLog-3-1413451666161.log /var/lib/cassandra/archive/CommitLog-3-1413451666161.log, command error Code: 1, command output: /bin/ln: failed to create hard link `/var/lib/cassandra/archive/CommitLog-3-1413451666161.log': File exists
+
+        at org.apache.cassandra.utils.FBUtilities.exec(FBUtilities.java:604)
+        at org.apache.cassandra.db.commitlog.CommitLogArchiver.exec(CommitLogArchiver.java:197)
+        at org.apache.cassandra.db.commitlog.CommitLogArchiver.access$100(CommitLogArchiver.java:44)
+        at org.apache.cassandra.db.commitlog.CommitLogArchiver$1.runMayThrow(CommitLogArchiver.java:132)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+        ... 5 more
+ERROR [commitlog_archiver:1] 2014-11-03 13:08:59,388 CassandraDaemon.java (line 199) Exception in thread Thread[commitlog_archiver:1,5,main]
+java.lang.RuntimeException: java.io.IOException: Exception while executing the command: /bin/ln /var/lib/cassandra/commitlog/CommitLog-3-1413451666161.log /var/lib/cassandra/archive/CommitLog-3-1413451666161.log, command error Code: 1, command output: /bin/ln: failed to create hard link `/var/lib/cassandra/archive/CommitLog-3-1413451666161.log': File exists
+
+        at com.google.common.base.Throwables.propagate(Throwables.java:160)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:32)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:745)
+Caused by: java.io.IOException: Exception while executing the command: /bin/ln /var/lib/cassandra/commitlog/CommitLog-3-1413451666161.log /var/lib/cassandra/archive/CommitLog-3-1413451666161.log, command error Code: 1, command output: /bin/ln: failed to create hard link `/var/lib/cassandra/archive/CommitLog-3-1413451666161.log': File exists
+
+        at org.apache.cassandra.utils.FBUtilities.exec(FBUtilities.java:604)
+        at org.apache.cassandra.db.commitlog.CommitLogArchiver.exec(CommitLogArchiver.java:197)
+        at org.apache.cassandra.db.commitlog.CommitLogArchiver.access$100(CommitLogArchiver.java:44)
+        at org.apache.cassandra.db.commitlog.CommitLogArchiver$1.runMayThrow(CommitLogArchiver.java:132)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+        ... 5 more
+The commitlogs are archived already. In this case it makes no sense to crash.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+Legacy/Local Write-Read Paths, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Manuel Lausch
+Create date:
+11/Nov/14 09:41
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Mar/15 23:17

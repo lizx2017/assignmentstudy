@@ -1,0 +1,48 @@
+Summary:
+race between RS shutdown thread and openregionhandler causes region to get stuck
+Description:
+2013-01-22 17:59:03,237 INFO [Shutdown of org.apache.hadoop.hbase.fs.HFileSystem@5984cf08] hbase.MiniHBaseCluster$SingleFileSystemShutdownThread(186): Hook closing fs=org.apache.hadoop.hbase.fs.HFileSystem@5984cf08
+...
+2013-01-22 17:59:03,411 DEBUG [RS_OPEN_REGION-10.11.2.92,50661,1358906192942-0] regionserver.HRegion(1001): Closing IntegrationTestRebalanceAndKillServersTargeted,66666660,1358906196709.0200b366bc37c5afd1185f7d487c7dfb.: disabling compactions & flushes
+2013-01-22 17:59:03,411 DEBUG [RS_OPEN_REGION-10.11.2.92,50661,1358906192942-0] regionserver.HRegion(1023): Updates disabled for region IntegrationTestRebalanceAndKillServersTargeted,66666660,1358906196709.0200b366bc37c5afd1185f7d487c7dfb.
+2013-01-22 17:59:03,415 ERROR [RS_OPEN_REGION-10.11.2.92,50661,1358906192942-0] executor.EventHandler(205): Caught throwable while processing event M_RS_OPEN_REGION
+java.io.IOException: java.io.IOException: java.io.IOException: Filesystem closed
+at org.apache.hadoop.hbase.regionserver.HRegion.doClose(HRegion.java:1058)
+at org.apache.hadoop.hbase.regionserver.HRegion.close(HRegion.java:974)
+at org.apache.hadoop.hbase.regionserver.HRegion.close(HRegion.java:945)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.cleanupFailedOpen(OpenRegionHandler.java:459)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:143)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:202)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:680)
+tryTransitionFromOpeningToFailedOpen or transitionToOpened below is never called and region can get stuck.
+As an added benefit, the meta is already written by that time.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.6, 0.95.0
+Fix_version:
+0.94.5, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudevan
+Reporter:
+Sergey Shelukhin
+Create date:
+28/Jan/13 22:26
+Update date:
+05/Mar/13 07:52
+Resolved date:
+07/Feb/13 18:13

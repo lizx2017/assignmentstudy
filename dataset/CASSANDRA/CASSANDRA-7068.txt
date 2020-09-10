@@ -1,0 +1,60 @@
+Summary:
+AssertionError when running putget_test
+Description:
+running the putget_test like so:
+nosetests2 -x -s -v putget_test.py:TestPutGet.non_local_read_test
+Yields this error in the logs on cassandra-2.0:
+ERROR [Thrift:1] 2014-04-22 14:25:37,584 CassandraDaemon.java (line 198) Exception in thread Thread[Thrift:1,5,main]
+java.lang.AssertionError
+        at org.apache.cassandra.net.MessagingService.addCallback(MessagingService.java:542)
+        at org.apache.cassandra.net.MessagingService.sendRR(MessagingService.java:595)
+        at org.apache.cassandra.net.MessagingService.sendRR(MessagingService.java:579)
+        at org.apache.cassandra.service.StorageProxy.sendToHintedEndpoints(StorageProxy.java:817)
+        at org.apache.cassandra.service.StorageProxy$2.apply(StorageProxy.java:119)
+        at org.apache.cassandra.service.StorageProxy.performWrite(StorageProxy.java:693)
+        at org.apache.cassandra.service.StorageProxy.mutate(StorageProxy.java:465)
+        at org.apache.cassandra.service.StorageProxy.mutateWithTriggers(StorageProxy.java:535)
+        at org.apache.cassandra.cql3.statements.ModificationStatement.executeWithoutCondition(ModificationStatement.java:542)
+        at org.apache.cassandra.cql3.statements.ModificationStatement.execute(ModificationStatement.java:526)
+        at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:158)
+        at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:175)
+        at org.apache.cassandra.thrift.CassandraServer.execute_cql3_query(CassandraServer.java:1959)
+        at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4486)
+        at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4470)
+        at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:39)
+        at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:39)
+        at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:201)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:744)
+On cassandra-2.1 I don't get any errors in the logs, but the test doesn't run , instead I get a 'TSocket read 0 bytes' error.
+Test on 1.2 is fine.
+After bisecting, it appears that a common commit 3a73e392fa424bff5378d4bb72117cfa28f9b0b7 is the cause.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Ryan McGuire
+Create date:
+22/Apr/14 18:30
+Update date:
+16/Apr/19 09:31
+Resolved date:
+30/Apr/14 01:13

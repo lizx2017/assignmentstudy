@@ -1,0 +1,50 @@
+Summary:
+Inconsistency between Weight.scorer documentation and ConstantScoreQuery on top of a Filter
+Description:
+Weight.scorer states that if topScorer == true, Scorer.collect will be called and that otherwise Scorer.nextDoc/advance will be called.
+This is a problem when ConstantScoreQuery is used on top of a QueryWrapperFilter:
+1. ConstantScoreWeight calls getDocIdSet on the filter to know which documents to collect.
+2. QueryWrapperFilter.getDocIdSet returns a Scorer created with topScorer == false so that nextDoc/advance are supported.
+3. But then ConstantScorer.score(Collector) has the following optimization:
+    // this optimization allows out of order scoring as top scorer!
+    @Override
+    public void score(Collector collector) throws IOException {
+      if (docIdSetIterator instanceof Scorer) {
+        ((Scorer) docIdSetIterator).score(wrapCollector(collector));
+      } else {
+        super.score(collector);
+      }
+    }
+So the filter iterator is a scorer which was created with topScorer = false but ParentScorer ends up using its score(Collector) method, which is illegal. (I found this out because AssertingSearcher has some checks to make sure Scorers are used accordingly to the value of topScorer.)
+I can imagine several fixes, including:
+removing this optimization when working on top of a filter
+relaxing Weight documentation to allow for using score(Collector) when topScorer == false
+but I'm not sure which one is the best one. What do you think?
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+4.6, 6.0
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Uwe Schindler
+Reporter:
+Adrien Grand
+Create date:
+25/Oct/13 16:49
+Update date:
+09/May/16 18:37
+Resolved date:
+26/Oct/13 09:29

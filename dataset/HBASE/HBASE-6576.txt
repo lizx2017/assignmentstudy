@@ -1,0 +1,60 @@
+Summary:
+HBaseAdmin.createTable should wait until the table is enabled
+Description:
+The function:
+public void createTable(final HTableDescriptor desc, byte [][] splitKeys)
+in HBaseAdmin is synchronous and returns once all the regions of the table are online, but does not wait for the table to be enabled, which is the last step of table creation (see CreateTableHandler).
+This is confusing and leads to racy code because users do not realize that this is the case. For example, I saw the following test failure in 0.92 when I ran:
+mvn test -Dtest=org.apache.hadoop.hbase.client.TestAdmin#testEnableDisableAddColumnDeleteColumn
+Error Message
+
+org.apache.hadoop.hbase.TableNotEnabledException: testMasterAdmin at org.apache.hadoop.hbase.master.handler.DisableTableHandler.<init>(DisableTableHandler.java:75) at org.apache.hadoop.hbase.master.HMaster.disableTable(HMaster.java:1154) at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method) at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39) at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25) at java.lang.reflect.Method.invoke(Method.java:597) at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Server.call(WritableRpcEngine.java:364) at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1336)
+
+Stacktrace
+
+org.apache.hadoop.hbase.TableNotEnabledException: org.apache.hadoop.hbase.TableNotEnabledException: testMasterAdmin
+at org.apache.hadoop.hbase.master.handler.DisableTableHandler.<init>(DisableTableHandler.java:75)
+at org.apache.hadoop.hbase.master.HMaster.disableTable(HMaster.java:1154)
+at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Server.call(WritableRpcEngine.java:364)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1336)
+The issue is that code will create and table and immediately disable it in order to do some testing, for example, to test an operation that only works when the table is disabled. If the table has not been enabled yet, they will get back a TableNotEnabledException.
+The specific test above was fixed in HBASE-5206, but other examples exist in the code, for example the following:
+hbase org.apache.hadoop.hbase.mapreduce.TestHFileOutputFormat newtable asdf14
+The code in question is:
+byte[] tname = args[1].getBytes();
+HTable table = util.createTable(tname, FAMILIES);
+HBaseAdmin admin = new HBaseAdmin(conf);
+admin.disableTable(tname);
+It would be better if createTable just waited until the table was enabled, or threw a TableNotEnabledException if it exhausted the configured number of retries.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.2
+Component:
+Client, test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gregory Chanan
+Reporter:
+Gregory Chanan
+Create date:
+14/Aug/12 00:01
+Update date:
+07/Apr/13 04:47
+Resolved date:
+17/Aug/12 17:02

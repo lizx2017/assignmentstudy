@@ -1,0 +1,54 @@
+Summary:
+Scrub does not close files
+Description:
+After scrubbing I find that cassandra process still holds file handles to the deleted sstables:
+root@blnrzh047:/mnt/cassandra# jps
+6932 Jps
+32359 CassandraDaemon
+32398 CassandraJmxHttpServer
+
+root@blnrzh047:/mnt/cassandra# du -sh .
+315G .
+
+root@blnrzh047:/mnt/cassandra# df -h .
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md0              1.1T  626G  420G  60% /mnt/cassandra
+
+
+root@blnrzh047:/mnt/cassandra# lsof | grep /mnt
+java      32359        root  356r      REG                9,0           24    4194599 /mnt/cassandra/data/system/Migrations-f-13-Index.db (deleted)
+java      32359        root  357r      REG                9,0       329451    4194547 /mnt/cassandra/data/system/HintsColumnFamily-f-588-Data.db (deleted)
+java      32359        root  358r      REG                9,0           22    4194546 /mnt/cassandra/data/system/HintsColumnFamily-f-588-Index.db (deleted)
+java      32359        root  359r      REG                9,0       313225    4194534 /mnt/cassandra/data/system/HintsColumnFamily-f-587-Data.db (deleted)
+java      32359        root  360r      REG                9,0           22    4194494 /mnt/cassandra/data/system/HintsColumnFamily-f-587-Index.db (deleted)
+java      32359        root  361r      REG                9,0        30452    4194636 /mnt/cassandra/data/system/Schema-f-13-Data.db (deleted)
+java      32359        root  362r      REG                9,0          484    4194635 /mnt/cassandra/data/system/Schema-f-13-Index.db (deleted)
+I guess there's a missing dataFile.close() in CompactionManager:648
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.7, 0.8.1
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Daniel Doubleday
+Create date:
+19/May/11 17:14
+Update date:
+16/Apr/19 09:32
+Resolved date:
+15/Jun/11 12:06

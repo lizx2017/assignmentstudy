@@ -1,0 +1,80 @@
+Summary:
+hbase looses its mind when hdfs fills
+Description:
+Looking in log, I see:
+2008-08-26 18:57:23,602 INFO org.apache.hadoop.dfs.DFSClient: org.apache.hadoop.ipc.RemoteException: java.io.IOException: File /hbase/aa0-000-8.u.powerset.com/log_208.76.45.95_1218666613846_60020/hlog.dat.1219776799293 could only be replicated to 0 nodes, instead of 1
+        at org.apache.hadoop.dfs.FSNamesystem.getAdditionalBlock(FSNamesystem.java:1145)
+        at org.apache.hadoop.dfs.NameNode.addBlock(NameNode.java:300)
+        at sun.reflect.GeneratedMethodAccessor17.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+        at java.lang.reflect.Method.invoke(Unknown Source)
+        at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:446)
+        at org.apache.hadoop.ipc.Server$Handler.run(Server.java:896)
+
+        at org.apache.hadoop.ipc.Client.call(Client.java:557)
+        at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:212)
+        at org.apache.hadoop.dfs.$Proxy1.addBlock(Unknown Source)
+        at sun.reflect.GeneratedMethodAccessor5.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+        at java.lang.reflect.Method.invoke(Unknown Source)
+        at org.apache.hadoop.io.retry.RetryInvocationHandler.invokeMethod(RetryInvocationHandler.java:82)
+        at org.apache.hadoop.io.retry.RetryInvocationHandler.invoke(RetryInvocationHandler.java:59)
+        at org.apache.hadoop.dfs.$Proxy1.addBlock(Unknown Source)
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream.locateFollowingBlock(DFSClient.java:2335)
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream.nextBlockOutputStream(DFSClient.java:2220)
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream.access$1700(DFSClient.java:1702)
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:1842)
+... and then:
+2008-08-26 18:57:28,423 WARN org.apache.hadoop.dfs.DFSClient: Error Recovery for block null bad datanode[0]
+2008-08-26 18:57:28,424 FATAL org.apache.hadoop.hbase.regionserver.HLog: Could not append. Requesting close of log
+java.io.IOException: Could not get block locations. Aborting... 
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream.processDatanodeError(DFSClient.java:2081)
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream.access$1300(DFSClient.java:1702)
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:1818)
+2008-08-26 18:57:28,424 INFO org.apache.hadoop.hbase.regionserver.LogRoller: Rolling hlog. Number of entries: 127
+2008-08-26 18:57:28,424 ERROR org.apache.hadoop.hbase.regionserver.LogRoller: Log rolling failed
+java.io.IOException: Could not get block locations. Aborting...
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream.processDatanodeError(DFSClient.java:2081)
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream.access$1300(DFSClient.java:1702)
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:1818)
+...
+... and so on.
+Meantime clients are trying to do updates and getting below:
+2008-08-26 22:49:42,834 INFO org.apache.hadoop.ipc.Server: IPC Server handler 9 on 60020, call batchUpdate([B@40e830f1, row => IKwQLMJ3rKRvtAv_ZkQlAk==, {column => page:url, value => '...', column => page:contents, value => '...'}) from 208.76.45.3:51164: error: java.io.IOException: Could not get block locations. Aborting... 
+java.io.IOException: Could not get block locations. Aborting...
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream.processDatanodeError(DFSClient.java:2081)
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream.access$1300(DFSClient.java:1702)
+        at org.apache.hadoop.dfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:1818)
+..
+DFSClient seems horked.
+Need to be able to ride out these kind of event.
+Restart is needed.
+Test this by filling HDFS.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+26/Aug/08 23:25
+Update date:
+31/Aug/12 22:14
+Resolved date:
+31/Aug/12 22:14

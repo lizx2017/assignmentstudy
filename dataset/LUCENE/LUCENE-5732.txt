@@ -1,0 +1,77 @@
+Summary:
+Possible order violation in lucene library version 2.4.1
+Description:
+Hi,
+I am working on a research project on data race detection, and am using the DaCapo benchmarks for evaluation. I am using the benchmark lusearch from the 2009 suite, which uses lucene library 2.4.1.
+For one test case, I am monitoring a pair of accesses
+say, Lorg/apache/lucene/store/Directory;.<init> ()V:40(6) and
+Lorg/apache/lucene/store/FSDirectory;.close ()V:524(1). The format is <class name>.<method name> <method desc>:line(byte code index).
+During my work, I am getting AlreadyClosedExceptions on the FSDirectory from the ensureOpen() method for some threads, which I think is probably due to an order violation. I have actually introduced delays
+in my instrumentation which delays threads that execute the code in
+Lorg/apache/lucene/store/FSDirectory;.close ()V. This is causing the other query threads to throw an exception.
+Here is the exception trace:
+org.apache.lucene.store.AlreadyClosedException: this Directory is closed
+at org.apache.lucene.store.Directory.ensureOpen(Directory.java:220)
+at org.apache.lucene.store.FSDirectory.list(FSDirectory.java:320)
+at org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run(SegmentInfos.java:533)
+at org.apache.lucene.index.DirectoryIndexReader.open(DirectoryIndexReader.java:115)
+at org.apache.lucene.index.IndexReader.open(IndexReader.java:316)
+at org.apache.lucene.index.IndexReader.open(IndexReader.java:206)
+at org.dacapo.lusearch.Search$QueryProcessor.<init>(Search.java:207)
+at org.dacapo.lusearch.Search$QueryThread.run(Search.java:179)
+org.apache.lucene.store.AlreadyClosedException: this Directory is closed
+at org.apache.lucene.store.Directory.ensureOpen(Directory.java:220)
+at org.apache.lucene.store.FSDirectory.list(FSDirectory.java:320)
+at org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run(SegmentInfos.java:533)
+at org.apache.lucene.index.DirectoryIndexReader.open(DirectoryIndexReader.java:115)
+at org.apache.lucene.index.IndexReader.open(IndexReader.java:316)
+at org.apache.lucene.index.IndexReader.open(IndexReader.java:206)
+at org.dacapo.lusearch.Search$QueryProcessor.<init>(Search.java:207)
+at org.dacapo.lusearch.Search$QueryThread.run(Search.java:179)
+java.lang.NullPointerException
+at org.dacapo.lusearch.Search$QueryProcessor.run(Search.java:226)
+at org.dacapo.lusearch.Search$QueryThread.run(Search.java:179)
+java.lang.NullPointerException
+at org.dacapo.lusearch.Search$QueryProcessor.run(Search.java:226)
+at org.dacapo.lusearch.Search$QueryThread.run(Search.java:179)
+org.apache.lucene.store.AlreadyClosedException: this Directory is closed
+at org.apache.lucene.store.Directory.ensureOpen(Directory.java:220)
+at org.apache.lucene.store.FSDirectory.list(FSDirectory.java:320)
+at org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run(SegmentInfos.java:533)
+at org.apache.lucene.index.DirectoryIndexReader.open(DirectoryIndexReader.java:115)
+at org.apache.lucene.index.IndexReader.open(IndexReader.java:316)
+at org.apache.lucene.index.IndexReader.open(IndexReader.java:206)
+at org.dacapo.lusearch.Search$QueryProcessor.<init>(Search.java:207)
+at org.dacapo.lusearch.Search$QueryThread.run(Search.java:179)
+java.lang.NullPointerException
+at org.dacapo.lusearch.Search$QueryProcessor.run(Search.java:226)
+at org.dacapo.lusearch.Search$QueryThread.run(Search.java:179)
+This exception does not happen during normal instrumentation, but can easily be reproduced by introducing just delays in the instrumentation.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+2.4.1
+Fix_version:
+None
+Component:
+core/store
+Label:
+None
+Environment:
+redhat
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Swarnendu Biswas
+Create date:
+04/Jun/14 00:49
+Update date:
+04/Jun/14 00:49
+Resolved date:
+

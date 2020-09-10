@@ -1,0 +1,79 @@
+Summary:
+Logic errror causes infinite loop in HRegion.bulkLoadHFiles(List)
+Description:
+the wrong logic is here:
+when a ColumnFamily does not exist, it gets a null store object, then ioes.add(ioe); failures.add(p)
+but the code below, if (failures.size() != 0), it prints a warn log and return false, so it will never go into the code if (ioes.size() != 0) below, and IOException will not be thrown, then the client will keep retry forever.
+there is the same situation when doing store.assertBulkLoadHFileOk, if any WrongRegionException is caught and failures.add(p), then all the other IOException thrown by assertBulkLoadHFileOk will be ignored.
+so i think if (failures.size() != 0) {} should be dealt with after if (ioes.size() !=0) {}
+for (Pair<byte[], String> p : familyPaths) {
+    byte[] familyName = p.getFirst();
+    String path = p.getSecond();
+
+    Store store = getStore(familyName);
+    if (store == null) {
+        IOException ioe = new DoNotRetryIOException(
+                "No such column family " + Bytes.toStringBinary(familyName));
+        ioes.add(ioe);
+        failures.add(p);
+    } else {
+        try {
+            store.assertBulkLoadHFileOk(new Path(path));
+        } catch (WrongRegionException wre) {
+            // recoverable (file doesn't fit in region)
+            failures.add(p);
+        } catch (IOException ioe) {
+            // unrecoverable (hdfs problem)
+            ioes.add(ioe);
+        }
+    }
+}
+
+
+// validation failed, bail out before doing anything permanent.
+if (failures.size() != 0) {
+    StringBuilder list = new StringBuilder();
+    for (Pair<byte[], String> p : failures) {
+        list.append("\n").append(Bytes.toString(p.getFirst())).append(" : ")
+            .append(p.getSecond());
+    }
+    // problem when validating
+    LOG.warn("There was a recoverable bulk load failure likely due to a" +
+            " split.  These (family, HFile) pairs were not loaded: " + list);
+    return false;
+}
+
+// validation failed because of some sort of IO problem.
+if (ioes.size() != 0) {
+    LOG.error("There were IO errors when checking if bulk load is ok.  " +
+            "throwing exception!");
+    throw MultipleIOException.createIOException(ioes);
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.1, 0.94.2, 0.94.3, (2)
+Fix_version:
+0.98.0, 0.94.7, 0.95.1, 0.95.2
+Component:
+regionserver
+Label:
+patch
+Environment:
+
+Attachment number:
+0
+Assignee:
+Chenghao Jiang
+Reporter:
+Chenghao Jiang
+Create date:
+25/Mar/13 06:05
+Update date:
+27/Apr/13 15:55
+Resolved date:
+02/Apr/13 18:51

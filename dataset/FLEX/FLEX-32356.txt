@@ -1,0 +1,56 @@
+Summary:
+ADG drawCellItem() spends 30% of its time in isHeaderItemRenderer() due to poor guid lookup
+Description:
+Steps to reproduce:
+1. Run performance profiler on ADG with at least 14 columns and enough rows to require vertical scrolling of at least 3 of four pages
+2. Scroll the grid vertically using page down (click between thumb and down arrow of scroll bar) to cause all rows to be redrawn
+3. Capture performance profile in profiler and analyze by drilling down to AdvancaedDataGrid.drawCellItem call and see approximatel 30% of the time is spend within AdvancedDataGrid.isHeaderItemRenderer(). This is caused by multiple calls to UIDUtil.getUID
+Expected Results:
+The test for isHeaderItemRenderer should take an insignificant amount of time.
+Function in question:
+override protected function isHeaderItemRenderer(item:IListItemRenderer):Boolean
+{
+var n:int = !orderedHeadersList ? 0 : orderedHeadersList.length;
+for (var i:int = 0; i < n; i++)
+{ if (UIDUtil.getUID(orderedHeadersList[i].headerItem) == UIDUtil.getUID(item)) return true; }
+return false;
+}
+Observations:
+1. Implementation loops through orderedHeadersList thereby the more columns in the ADG, the slower things get, even if columns are not visible or off screen.
+2. Implementation uses redundant uid lookup via loop invariant "UIDUtil.getUID(item)"
+Suggested fix:
+1. Add isHeader to IListItemRender interface
+2. Add property private var _isHeader:Boolean = false
+3. Add public get and set accessors
+4. Change AdvancedDataGrid.isHeaderItemRender(item) implementation to ' return item.isHeader;'
+5. Change other ADG machinery whenever item renderers are created/set as header item renderers, to set 'renderer.isHeader = true;'
+Notes:
+Above suggested fix will avoid loop which gets slower with more grid columns and avoid repetetive and slow guid lookup. This should have a marked display performance improvement across the board since isHeaderItemRenderer is called in multiple places within the ADG display logic.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+ADG:Display
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+09/Dec/08 17:39
+Update date:
+05/Aug/11 02:11
+Resolved date:
+02/May/09 01:06

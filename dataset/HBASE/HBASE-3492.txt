@@ -1,0 +1,55 @@
+Summary:
+NPE while splitting table with empty column family store
+Description:
+I did a simple test on trunk where I create a table (after wiping the local /tmp/hbase-<username>):
+hbase(main):001:0> create 'testtable', 'cf1', 'cf2'                                                                                                  
+Then I inserted 17k rows:
+hbase(main):002:0> for i in 'a'..'z' do for j in 'a'..'z' do for k in 'a'..'z' do put 'testtable', "row-#{i}#{j}#{k}", "cf1:#{k}", "#{k}" end end end
+and called
+hbase(main):003:0> split 'testttable'
+and the logs gave this NPE and no split was performed:
+2011-01-31 10:06:38,534 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memstore flush for testtable,,1296461957099.2528e23534565a83e2c8590d33f3a47c., current region memstore size 3.5m
+2011-01-31 10:06:38,575 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Finished snapshotting, commencing flushing stores
+2011-01-31 10:06:38,856 INFO org.apache.hadoop.hbase.regionserver.Store: Renaming flushed file at file:/tmp/hbase-larsgeorge/hbase/testtable/2528e23534565a83e2c8590d33f3a47c/.tmp/5265602271926296451 to file:/tmp/hbase-larsgeorge/hbase/testtable/2528e23534565a83e2c8590d33f3a47c/cf1/5349044325262044918
+2011-01-31 10:06:38,861 INFO org.apache.hadoop.hbase.regionserver.Store: Added file:/tmp/hbase-larsgeorge/hbase/testtable/2528e23534565a83e2c8590d33f3a47c/cf1/5349044325262044918, entries=17576, sequenceid=17588, memsize=3.5m, filesize=549.9k
+2011-01-31 10:06:38,863 INFO org.apache.hadoop.hbase.regionserver.HRegion: Finished memstore flush of ~3.5m for region testtable,,1296461957099.2528e23534565a83e2c8590d33f3a47c. in 328ms, sequenceid=17588, compaction requested=false
+2011-01-31 10:06:38,869 INFO org.apache.hadoop.hbase.regionserver.HRegion: Starting compaction on region testtable,,1296461957099.2528e23534565a83e2c8590d33f3a47c.
+2011-01-31 10:06:38,870 INFO org.apache.hadoop.hbase.regionserver.HRegion: aborted compaction on region testtable,,1296461957099.2528e23534565a83e2c8590d33f3a47c. after 0sec
+2011-01-31 10:06:38,872 ERROR org.apache.hadoop.hbase.regionserver.CompactSplitThread: Compaction failed for region testtable,,1296461957099.2528e23534565a83e2c8590d33f3a47c.
+java.lang.NullPointerException
+        at org.apache.hadoop.hbase.regionserver.Store.checkSplit(Store.java:1367)
+        at org.apache.hadoop.hbase.regionserver.Store.compact(Store.java:633)
+        at org.apache.hadoop.hbase.regionserver.HRegion.compactStores(HRegion.java:793)
+        at org.apache.hadoop.hbase.regionserver.CompactSplitThread.run(CompactSplitThread.java:81)
+2011-01-31 10:06:38,873 DEBUG org.apache.hadoop.hbase.regionserver.CompactSplitThread: Compaction requested for testtable,,1296461957099.2528e23534565a83e2c8590d33f3a47c. because User-triggered split; priority=1, compaction queue size=0
+I added a row with data in cf2:
+hbase(main):005:0> put 'testtable', 'row1', 'cf2', 'test1'                                                                                           
+and the tried to split the table again like above and now it worked.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.92.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars George
+Reporter:
+Lars George
+Create date:
+31/Jan/11 09:15
+Update date:
+20/Nov/15 12:42
+Resolved date:
+03/Feb/11 11:36

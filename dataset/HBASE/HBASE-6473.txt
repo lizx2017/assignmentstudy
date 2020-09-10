@@ -1,0 +1,50 @@
+Summary:
+deleted table is not deleted completely, some region may be still online
+Description:
+consider such Scenario:
+we have a table called T1, which has 1 regions: A
+1. move A from rs1 to rs2,and A is now closed
+2. disable T1,
+3. delete T1.
+when we disable T1, disable handler will just set the zk to disabled and A will still be assigned. when Ais opened, A in transition will be clean out.
+At that time, Deletetable found it is safe to delete all regions and table in meta and fs , it will also delete the zk node of T1.
+while (System.currentTimeMillis() < done) {
+        AssignmentManager.RegionState rs = am.isRegionInTransition(region);
+        if (rs == null) break;
+        Threads.sleep(waitingTimeForEvents);
+        LOG.debug("Waiting on  region to clear regions in transition; " + rs);
+      }
+      if (am.isRegionInTransition(region) != null) {
+        throw new IOException("Waited hbase.master.wait.on.region (" +
+          waitTime + "ms) for region to leave region " +
+          region.getRegionNameAsString() + " in transitions");
+      }
+however A is still being unassigned, when it finished closed the A,it finds that the disabled state in zk is deleted, and then A will be assigned again.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Incomplete
+Affects_version:
+0.94.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+zhou wenjian
+Create date:
+30/Jul/12 09:00
+Update date:
+11/Apr/15 00:23
+Resolved date:
+11/Apr/15 00:23

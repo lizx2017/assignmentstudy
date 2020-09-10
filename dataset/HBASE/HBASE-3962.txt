@@ -1,0 +1,45 @@
+Summary:
+HConnectionManager.getConnection(HBaseConfiguration) returns new connection in default HTable constructor
+Description:
+The HBase instance are currently indexed by Configuration, which since HBASE-1976 does not have any other equivalence that the object equivalence.
+So, everytime a new configuration is passed to the method a new connection is created.
+If we create many HTable connections with the same configuration, there is no problem:
+HBaseConfiguration config = HBaseConfiguration.create();
+HTable table 1 = new HTable(config, "table1"); // init connection
+HTable table 2 = new HTable(config, "table2"); // re-use connection
+HTable table 3 = new HTable(config, "table3"); // re-use connection
+However, if we call the default constructor, or re-call HBaseConfiguration.create();, we will pass a new instance of the configuration to the constructor. This will cause many connections to be created:
+HTable table 1 = new HTable("table1"); // init connection
+HTable table 2 = new HTable("table2"); // init new connection
+HTable table 3 = new HTable("table3"); // init new connection
+I know connection should be pooled, but sometimes we have to create a new connection, and without having access to a previously instanced configuration object.
+Since zookeeper has a max client connection (default was 30, now is 10), after creating 30 instances of HTable, we can no longer access to the database.
+In addition to this, the HBASE_INSTANCES map does not close the connection when removing the eldest entry. So if we have a larger maxConnection value than the hard-coded MAX_CACHED_HBASE_INSTANCES variable, connections will remain but won't be closed. MAX_CACHED_HBASE_INSTANCES should actually be set from the hbase.zookeeper.property.maxClientCnxns parameter (value + 1).
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.1
+Fix_version:
+None
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Philippe
+Create date:
+08/Jun/11 14:44
+Update date:
+29/Aug/12 18:20
+Resolved date:
+29/Aug/12 18:20

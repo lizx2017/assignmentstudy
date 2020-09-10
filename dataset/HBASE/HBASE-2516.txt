@@ -1,0 +1,50 @@
+Summary:
+Ugly IOE when region is being closed; rather, should NSRE
+Description:
+I'm running 80/20 YCSB (80% reads/20% writes). I see this from time to time in logs (especially if I do big fat bulk upload at same time – having trouble making ycsb do heavy loading at mo):
+2010-05-05 06:57:01,165 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Updates disabled for region, no outstanding scanners on usertable,user1431413702,1273040674721
+2010-05-05 06:57:01,165 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: No more row locks outstanding on region usertable,user1431413702,1273040674721
+2010-05-05 06:57:01,178 DEBUG org.apache.hadoop.hbase.regionserver.Store: closed cf
+2010-05-05 06:57:01,178 INFO org.apache.hadoop.hbase.regionserver.HRegion: Closed usertable,user1431413702,1273040674721
+2010-05-05 06:57:01,178 ERROR org.apache.hadoop.hbase.regionserver.HRegionServer:
+java.io.IOException: Region usertable,user1431413702,1273040674721 closed
+        at org.apache.hadoop.hbase.regionserver.HRegion.getScanner(HRegion.java:1179)
+        at org.apache.hadoop.hbase.regionserver.HRegion.getScanner(HRegion.java:1172)
+        at org.apache.hadoop.hbase.regionserver.HRegion.get(HRegion.java:2506)
+        at org.apache.hadoop.hbase.regionserver.HRegion.get(HRegion.java:2493)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.get(HRegionServer.java:1742)
+        at sun.reflect.GeneratedMethodAccessor12.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:657)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:915)
+This should be a NSRE.
+J-D took a look and fact that we do an IOE 'region closed' is way old, from before the time forgot, so its just always been there just more obvious now that Get is a Scan.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+moved_from_0_20_5
+Environment:
+
+Attachment number:
+0
+Assignee:
+Daniel Ploeg
+Reporter:
+stack
+Create date:
+05/May/10 16:37
+Update date:
+20/Nov/15 12:43
+Resolved date:
+24/May/10 15:44

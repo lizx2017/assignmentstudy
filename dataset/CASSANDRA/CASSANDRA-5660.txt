@@ -1,0 +1,46 @@
+Summary:
+Gossiper incorrectly drops AppState for an upgrading node
+Description:
+When doing a major rev upgrade (from 1.1 to 1.2, for example), after a node is upgraded to the new version, the older nodes incorrectly drop ApplicationState about the new nodes when the new ones attempt to connect. The short story is the older node doesn't allow the new node to connect because it contains a higher message protocol version number, and will call Gossiper.addSavedEndpoint(), which overwrites any previous entry in the endpointStateMap.
+Here's a fuller description of the steps:
+0) have a stable, multi-datacenter cluster running 1.1.x
+1) upgrade one node to 1.2, and bring it up
+2) 1.2 node starts to gossip
+3) 1.1 node gets request in IncomingTcpConnection. 1.1 checks the messaging version, sees that it is greater than it's own, and calls Gossiper.addSavedEnpoint, which overwrites any previous entry in endpointStateMap. 1.1 closes connection
+4) 1.1 node chooses to gossip with 1.2 (as it kept the InetAddr around), on 1.2's publicIp. As standard part of request header, it sends it's version along
+5) 1.2 node ACKs the gossip request, and sends along the message version of 1.1 in it's header
+6) 1.1 can successfully accept the ACK connection and Gossiper.handleMajorStateChange() is called and the 1.2 node is fully 'alive' to this 1.1 node
+6a) if you are using Ec2MultiRegionSnitch, it's onAlive/onJoin methods are called, and eventually onChange. If 1.2 node is in same region as 1.1,
+1.1 node will close the socket on the publicIP, and attempt to connect on localIp
+7) when 1.2 reads on publicIp socket it will find it has been closed (broken pipe). It then closes its end of socket and calls Gossiper.resetVersion().
+This throws away the previously recorded messaging version for the 1.1 node (Gossiper.versions). Thus, when 1.2 goes to communicate back with 1.1,
+it sends it's message protocol version (instead of 1.1's), and we're back at step 3 again.
+For most use cases, there is an very short term problem of the AppState getting dropped, but that will be quickly fixed when the lower version node connects to the newer node (and passes it's message protocol version). However, everything goes to hell in a handbasket when the Ec2MultiRegionSnitch gets involved (steps 6a/7 above) and the connections keep getting closed.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.6, 2.0 beta 1
+Component:
+None
+Label:
+gossip upgrade
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jason Brown
+Reporter:
+Jason Brown
+Create date:
+19/Jun/13 13:07
+Update date:
+16/Apr/19 09:32
+Resolved date:
+19/Jun/13 19:24

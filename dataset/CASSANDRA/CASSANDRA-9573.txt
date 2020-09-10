@@ -1,0 +1,51 @@
+Summary:
+OOM when loading sstables (system.hints)
+Description:
+Andy Tolbert discovered an issue while running endurance tests on 2.2. A Node was not able to start and was killed by the OOM Killer.
+Briefly, Cassandra use an excessive amount of memory when loading compressed sstables (off-heap?). We have initially seen the issue with system.hints before knowing it was related to compression. system.hints use lz4 compression by default. If we have a sstable of, say 8-10G, Cassandra will be killed by the OOM killer after 1-2 minutes. I can reproduce that bug everytime locally.
+the issue also happens if we have 10G of data splitted in 13MB sstables.
+I can reproduce the issue if I put a lot of data in the system.hints table.
+I cannot reproduce the issue with a standard table using the same compression (LZ4). Something seems to be different when it's hints?
+You wont see anything in the node system.log but you'll see this in /var/log/syslog.log:
+Out of memory: Kill process 30777 (java) score 600 or sacrifice child
+The issue has been introduced in this commit but is not related to the performance issue in CASSANDRA-9240: https://github.com/apache/cassandra/commit/aedce5fc6ba46ca734e91190cfaaeb23ba47a846
+Here is the core dump and some yourkit snapshots in attachments. I am not sure you will be able to get useful information from them.
+core dump: http://dl.alanb.ca/core.tar.gz
+Not sure if this is related, but all dumps and snapshot points to EstimatedHistogramReservoir ... and we can see many javax.management.InstanceAlreadyExistsException: org.apache.cassandra.metrics:... exceptions in system.log before it hangs then crash.
+To reproduce the issue:
+1. created a cluster of 3 nodes
+2. start the whole cluster
+3. shutdown node2 and node3
+4. writes 10-15G of data on node1 with replication factor 3. You should see a lot of hints.
+5. stop node1
+6. start node2 and node3
+7. start node1, you should OOM.
+//cc T Jake Luciani Benedict Andy Tolbert
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 rc2
+Component:
+Legacy/Coordination
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Alan Boudreault
+Create date:
+10/Jun/15 15:02
+Update date:
+16/Apr/19 09:31
+Resolved date:
+11/Jun/15 19:21

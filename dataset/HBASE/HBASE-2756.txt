@@ -1,0 +1,41 @@
+Summary:
+MetaScanner.metaScan doesn't take configurations
+Description:
+HBASE-2468 added a bunch of code in MetaScanner.metaScan, and this particular line is wrong:
++    // if row is not null, we want to use the startKey of the row's region as
++    // the startRow for the meta scan.
++    if (row != null) {
++      HTable metaTable = new HTable(HConstants.META_TABLE_NAME);   <<<<<<<<<<<<<<<<<
++      Result startRowResult = metaTable.getRowOrBefore(startRow,
++          HConstants.CATALOG_FAMILY);
++      if (startRowResult == null) {
+If the user specified any new configuration in his code, like ZK's parent znode, then it will miss it. This should use the HTable constructor that takes a Configuration and pass the one it already has.
+I found this with my TestReplication test in HBASE-2223.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+20/Jun/10 00:08
+Update date:
+20/Nov/15 12:41
+Resolved date:
+21/Jun/10 17:17

@@ -1,0 +1,46 @@
+Summary:
+After a minor compaction, deleted key-slices are visible again
+Description:
+After a minor compaction, deleted key-slices are visible again.
+Steps to reproduce:
+1) Insert a row named "test".
+2) Insert 500000 rows. During this step, row "test" is included in a major compaction:
+file-1, file-2, file-3 and file-4 compacted to file-5 (includes "test").
+3) Delete row named "test".
+4) Insert 500000 rows. During this step, row "test" is included in a minor compaction:
+file-6, file-7, file-8 and file-9 compacted to file-10 (should include tombstoned "test").
+After step 4, row "test" is live again.
+Test environment:
+Single node with empty database.
+Standard configured super-column-family (I see this behavior with several gc_grace settings (big and small values):
+create column family Customers with column_type = 'Super' and comparator = 'BytesType;
+In Cassandra 0.7.6 I observe the expected behavior, i.e. after step 4, the row is still deleted.
+I've included a .NET program to reproduce the problem. I will add a Java version later on.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.8, 1.0.4
+Component:
+None
+Label:
+compaction
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+rene kochen
+Create date:
+17/Jun/11 12:42
+Update date:
+16/Apr/19 09:32
+Resolved date:
+23/Nov/11 15:39

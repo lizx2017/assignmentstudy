@@ -1,0 +1,177 @@
+Summary:
+Waiting for Vector in org.apache.lucene.index.FieldInfos.fieldInfo
+Description:
+Running lucene-1.2.jar for product searching on WebLogic 8.1, Solaris 8, 4 CPU
+clustered config. While under index searching load across the CPUs, the app
+server Execute Queue piled up after not releasing threads. After completing a
+thread dump, the common factor between them was the threads were in a wait
+state while watiting for a Vector in
+org.apache.lucene.index.FieldInfos.fieldInfo. To solve, we cycled the web
+container on the app server, which released the threads.
+Here is the output of the CPU usage on the OS (Solaris 8):
+PID USERNAME SIZE RSS STATE PRI NICE TIME CPU PROCESS/LWPID
+5089 weblogic 1769M 1544M run 22 0 0:06.25 6.0% java/15
+5089 weblogic 1769M 1544M run 21 0 0:04.38 6.0% java/12
+5089 weblogic 1769M 1544M run 20 0 0:05.16 6.0% java/14
+5089 weblogic 1769M 1544M run 22 0 0:07.44 5.9% java/18
+5089 weblogic 1769M 1544M run 21 0 0:14.29 5.8% java/23
+5089 weblogic 1769M 1544M run 21 0 0:17.46 5.7% java/24
+5089 weblogic 1769M 1544M run 20 0 0:13.07 5.7% java/22
+5089 weblogic 1769M 1544M run 22 0 0:07.23 5.6% java/17
+5089 weblogic 1769M 1544M run 21 0 0:27.52 5.5% java/25
+5089 weblogic 1769M 1544M run 21 0 0:06.05 5.5% java/20
+5089 weblogic 1769M 1544M run 22 0 0:07.00 5.5% java/16
+5089 weblogic 1769M 1544M run 21 0 0:15.11 5.4% java/21
+5089 weblogic 1769M 1544M run 22 0 0:04.40 5.4% java/13
+5089 weblogic 1769M 1544M cpu1 22 0 0:06.29 5.4% java/19
+5089 weblogic 1769M 1544M sleep 58 0 0:00.36 0.7% java/38
+Total: 1 processes, 51 lwps, load averages: 8.56, 8.96, 7.89
+Here is the output of the app server thread dump:
+"ExecuteThread: '6' for queue: 'weblogic.kernel.Default'" daemon prio=5
+tid=0x8b5c68 nid=0x11 waiting for monitor entry [8de7f000..8de819bc]
+at java.util.Vector.elementAt(Vector.java:426)
+waiting to lock <9de7ef28> (a java.util.Vector)
+at org.apache.lucene.index.FieldInfos.fieldInfo(Unknown Source)
+at org.apache.lucene.index.FieldInfos.fieldName(Unknown Source)
+at org.apache.lucene.index.SegmentTermEnum.readTerm(Unknown Source)
+at org.apache.lucene.index.SegmentTermEnum.next(Unknown Source)
+at
+com.comergent.reference.appservices.productService.search.query.SearchPriceFilte
+r.bits(SearchPriceFilter.java:96)
+at com.comergent.api.appservices.search.query.CmgtFilter.bits
+(CmgtFilter.java:98)
+at org.apache.lucene.search.IndexSearcher.search(Unknown Source)
+at org.apache.lucene.search.Hits.getMoreDocs(Unknown Source)
+at org.apache.lucene.search.Hits.hitDoc(Unknown Source)
+at org.apache.lucene.search.Hits.doc(Unknown Source)
+at
+com.comergent.reference.appservices.productService.controller.SearchResultBuilde
+r.getProdScoresAndTrim(SearchResultBuilder.java:274)
+at
+com.comergent.reference.appservices.productService.controller.ProductListBuilder
+.process(ProductListBuilder.java:71)
+at
+com.comergent.reference.appservices.productService.controller.CatalogSearchResul
+tController.processResult(CatalogSearchResultController.java:211)
+at
+com.comergent.reference.appservices.productService.controller.CatalogSearchResul
+tController.execute(CatalogSearchResultController.java:153)
+at com.comergent.dcm.core.DispatchServlet.executeController
+(DispatchServlet.java:725)
+at com.comergent.dcm.core.DispatchServlet.doExecute
+(DispatchServlet.java:688)
+at com.comergent.dcm.core.DispatchServlet.execute
+(DispatchServlet.java:576)
+at com.comergent.dcm.core.ComergentResponse.localRedirect
+(ComergentResponse.java:92)
+at com.comergent.dcm.core.ComergentResponse.localRedirect
+(ComergentResponse.java:73)
+at
+com.comergent.reference.apps.catalog.controller.CatalogAdvancedSearchController.
+execute(CatalogAdvancedSearchController.java:125)
+at com.comergent.dcm.core.DispatchServlet.executeController
+(DispatchServlet.java:725)
+at com.comergent.dcm.core.DispatchServlet.doExecute
+(DispatchServlet.java:688)
+at com.comergent.dcm.core.DispatchServlet.execute
+(DispatchServlet.java:576)
+at com.comergent.dcm.core.ComergentResponse.localRedirect
+(ComergentResponse.java:118)
+at
+com.comergent.dcm.authentication.LoginController.executePostLoginMessageType
+(LoginController.java:171)
+at com.comergent.dcm.authentication.LoginController.execute
+(LoginController.java:86)
+at com.comergent.dcm.core.DispatchServlet.executeController
+(DispatchServlet.java:725)
+at com.comergent.dcm.core.DispatchServlet.doExecute
+(DispatchServlet.java:688)
+at com.comergent.dcm.core.DispatchServlet.execute
+(DispatchServlet.java:576)
+at com.comergent.dcm.core.ComergentResponse.localRedirect
+(ComergentResponse.java:118)
+at
+com.comergent.dcm.authentication.LoadLoginController.loginInWindowRedirect
+(LoadLoginController.java:52)
+at com.comergent.dcm.authentication.LoadLoginController.execute
+(LoadLoginController.java:30)
+at com.comergent.dcm.core.DispatchServlet.executeController
+(DispatchServlet.java:725)
+at com.comergent.dcm.core.DispatchServlet.doExecute
+(DispatchServlet.java:688)
+at com.comergent.dcm.core.DispatchServlet.execute
+(DispatchServlet.java:576)
+at com.comergent.dcm.core.ComergentResponse.forwardLocally
+(ComergentResponse.java:142)
+at com.comergent.dcm.core.DispatchServlet.execute
+(DispatchServlet.java:591)
+at com.comergent.dcm.core.DispatchServlet.dispatch
+(DispatchServlet.java:206)
+at com.comergent.dcm.core.DispatchServlet.doPost
+(DispatchServlet.java:119)
+at javax.servlet.http.HttpServlet.service(HttpServlet.java:760)
+at javax.servlet.http.HttpServlet.service(HttpServlet.java:853)
+at weblogic.servlet.internal.ServletStubImpl$ServletInvocationAction.run
+(ServletStubImpl.java:1053)
+at weblogic.servlet.internal.ServletStubImpl.invokeServlet
+(ServletStubImpl.java:387)
+at weblogic.servlet.internal.ServletStubImpl.invokeServlet
+(ServletStubImpl.java:305)
+at
+weblogic.servlet.internal.WebAppServletContext$ServletInvocationAction.run
+(WebAppServletContext.java:6310)
+at weblogic.security.acl.internal.AuthenticatedSubject.doAs
+(AuthenticatedSubject.java:317)
+at weblogic.security.service.SecurityManager.runAs
+(SecurityManager.java:118)
+at weblogic.servlet.internal.WebAppServletContext.invokeServlet
+(WebAppServletContext.java:3622)
+at weblogic.servlet.internal.ServletRequestImpl.execute
+(ServletRequestImpl.java:2569)
+at weblogic.kernel.ExecuteThread.execute(ExecuteThread.java:197)
+at weblogic.kernel.ExecuteThread.run(ExecuteThread.java:170)
+Also, found this posting on the internet:
+http://java2.5341.com/msg/72356.html
+Are synchronized objects necessary in FieldInfos
+2004-07-08 - By Aviran
+Back
+Hi all,
+First let me explain what I found out. I 'm running Lucene on a 4 CPU server.
+While doing some stress tests I 've noticed that searching threads are
+blocked on the method: public FieldInfo fieldInfo(int fieldNumber)
+This causes for a significant cpu idle time. I noticed that the class
+org.apache.lucene.index.FieldInfos uses private class members Vector
+byNumber and Hashtable byName, both of which are synchronized objects. By
+changing the Vector byNumber to ArrayList byNumber I was able to get 110%
+improvement in performance (number of searches per second).
+My question is: do the fields byNumber and byName have to be synchronized
+and what can happen if I 'll change them to be ArrayList and HashMap which
+are not synchronized ?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Duplicate
+Affects_version:
+1.2
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Jerry Davis
+Create date:
+22/Sep/04 23:23
+Update date:
+27/May/06 01:38
+Resolved date:
+27/May/06 01:38

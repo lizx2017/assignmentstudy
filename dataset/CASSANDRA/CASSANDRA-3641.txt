@@ -1,0 +1,43 @@
+Summary:
+inconsistent/corrupt counters w/ broken shards never converge
+Description:
+We ran into a case (which MIGHT be related to CASSANDRA-3070) whereby we had counters that were corrupt (hopefully due to CASSANDRA-3178). The corruption was that there would exist shards with the same node_id, same clock id, but different counts.
+The counter column diffing and reconciliation code assumes that this never happens, and ignores the count. The problem with this is that if there is an inconsistency, the result of a reconciliation will depend on the order of the shards.
+In our case for example, we would see the value of the counter randomly fluctuating on a CL.ALL read, but we would get consistent (whatever the node had) on CL.ONE (submitted to one of the nodes in the replica set for the key).
+In addition, read repair would not work despite digest mismatches because the diffing algorithm also did not care about the counts when determining the differences to send.
+I'm attaching patches that fixes this. The first patch is against our 0.8 branch, which is not terribly useful to people, but I include it because it is the well-tested version that we have used on the production cluster which was subject to this corruption.
+The other patch is against trunk, and contains the same change.
+What the patch does is:
+On diffing, treat as DISJOINT if there is a count discrepancy.
+On reconciliation, look at the count and deterministically pick the higher one, and:
+log the fact that we detected a corrupt counter
+increment a JMX observable counter for monitoring purposes
+A cluster which is subject to such corruption and has this patch, will fix itself with and AES + compact (or just repeated compactions assuming the replicate-on-compact is able to deliver correctly).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Peter Schuller
+Reporter:
+Peter Schuller
+Create date:
+15/Dec/11 20:09
+Update date:
+16/Apr/19 09:32
+Resolved date:
+02/Jan/12 17:21

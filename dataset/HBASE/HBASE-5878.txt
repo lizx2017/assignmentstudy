@@ -1,0 +1,62 @@
+Summary:
+Use getVisibleLength public api from HdfsDataInputStream from Hadoop-2.
+Description:
+SequencFileLogReader:
+Currently Hbase using getFileLength api from DFSInputStream class by reflection. DFSInputStream is not exposed as public. So, this may change in future. Now HDFS exposed HdfsDataInputStream as public API.
+We can make use of it, when we are not able to find the getFileLength api from DFSInputStream as a else condition. So, that we will not have any sudden surprise like we are facing today.
+Also, it is just logging one warn message and proceeding if it throws any exception while getting the length. I think we can re-throw the exception because there is no point in continuing with dataloss.
+long adjust = 0;
+
+          try {
+            Field fIn = FilterInputStream.class.getDeclaredField("in");
+            fIn.setAccessible(true);
+            Object realIn = fIn.get(this.in);
+            // In hadoop 0.22, DFSInputStream is a standalone class.  Before this,
+            // it was an inner class of DFSClient.
+            if (realIn.getClass().getName().endsWith("DFSInputStream")) {
+              Method getFileLength = realIn.getClass().
+                getDeclaredMethod("getFileLength", new Class<?> []{});
+              getFileLength.setAccessible(true);
+              long realLength = ((Long)getFileLength.
+                invoke(realIn, new Object []{})).longValue();
+              assert(realLength >= this.length);
+              adjust = realLength - this.length;
+            } else {
+              LOG.info("Input stream class: " + realIn.getClass().getName() +
+                  ", not adjusting length");
+            }
+          } catch(Exception e) {
+            SequenceFileLogReader.LOG.warn(
+              "Error while trying to get accurate file length.  " +
+              "Truncation / data loss may occur if RegionServers die.", e);
+          }
+
+          return adjust + super.getPos();
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.14, (5)
+Component:
+wal
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ashish Singhi
+Reporter:
+Uma Maheswara Rao G
+Create date:
+25/Apr/12 19:20
+Update date:
+31/Aug/15 22:39
+Resolved date:
+11/Aug/15 00:14

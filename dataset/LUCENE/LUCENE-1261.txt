@@ -1,0 +1,34 @@
+Summary:
+Impossible to use custom norm encoding/decoding
+Description:
+Although it is possible to override methods encodeNorm and decodeNorm in a custom Similarity class, these methods are not actually used by the query processing and scoring functions, not by the indexing functions. The relevant Lucene classes all call "Similarity.decodeNorm" rather than "similarity.decodeNorm", i.e. the norm encoding/decoding is fixed to use that of the base Similarity class. Also index writing classes such as DocumentWriter use "Similarity.decodeNorm" rather than "similarity.decodeNorm", so we are stuck with the 3 bit mantissa encoding implemented by SmallFloat.floatToByte315 and SmallFloat.byte315ToFloat.
+This is very restrictive and annoying, since in practice many users would prefer an encoding that allows finer distinctions for boost and normalisation factors close to 1.0. For example. SmallFloat.floatToByte52 uses 5 bits of mantissa, and this would be of great help in distinguishing much better between subtly different lengthNorms and FieldBoost/DocumentBoost values.
+It hsould be easy to fix this by changing all instances of "Similarity.decodeNorm" and "Similarity.encodeNorm" to "similarity.decodeNorm" and "similarity.encodeNorm" in the Lucene code (there are only a few of each).
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Duplicate
+Affects_version:
+2.3.1
+Fix_version:
+None
+Component:
+core/query/scoring
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Otis Gospodnetic
+Reporter:
+John Adams
+Create date:
+08/Apr/08 16:40
+Update date:
+19/May/08 13:05
+Resolved date:
+19/May/08 13:05

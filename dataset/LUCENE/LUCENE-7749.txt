@@ -1,0 +1,48 @@
+Summary:
+IndexOrDocValuesQuery not working with LRUQueryCache (?)
+Description:
+I was experimenting with 6.5.0-SNAPSHOT and could not see any performance improvement using the new IndexOrDocValuesQuery where I would have expected some.
+I am using a basic FILTER query (term + point/dv range), along with IndexSearcher#search.
+Looking at the stack trace it seems that LRUQueryCache#CachingWrapperWeight not delegating the scorerSupplier method is the reason.
+Maybe it is on purpose for the result to be cacheable ? Does that mean IndexOrDocValuesQuery is not useable with the default IndexSearcher cache ? (Or maybe am I just completely misusing the IndexOrDocValuesQuery feature ?)
+Here is a thread dump of the call to IndexOrDocValuesQuery#scorerSupplier
+at org.apache.lucene.search.IndexOrDocValuesQuery$1.scorerSupplier(IndexOrDocValuesQuery.java:148)
+at org.apache.lucene.search.IndexOrDocValuesQuery$1.scorer(IndexOrDocValuesQuery.java:168)
+at org.apache.lucene.search.LRUQueryCache$CachingWrapperWeight.scorer(LRUQueryCache.java:746)
+at org.apache.lucene.search.Weight.scorerSupplier(Weight.java:126)
+at org.apache.lucene.search.BooleanWeight.scorerSupplier(BooleanWeight.java:400)
+at org.apache.lucene.search.BooleanWeight.scorer(BooleanWeight.java:381)
+at org.apache.lucene.search.Weight.bulkScorer(Weight.java:160)
+at org.apache.lucene.search.BooleanWeight.bulkScorer(BooleanWeight.java:375)
+at org.apache.lucene.search.LRUQueryCache$CachingWrapperWeight.cache(LRUQueryCache.java:704)
+at org.apache.lucene.search.LRUQueryCache$CachingWrapperWeight.bulkScorer(LRUQueryCache.java:787)
+at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:666)
+at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:473)
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.5.1, 6.6, 7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Martin Amirault
+Create date:
+21/Mar/17 09:41
+Update date:
+27/Apr/17 11:57
+Resolved date:
+03/Apr/17 14:20

@@ -1,0 +1,53 @@
+Summary:
+Potential leak of HTable instances when using HTablePool with PoolType.ThreadLocal
+Description:
+(Initially discussed in HBASE-4150)
+In HTablePool, when obtaining a table:
+private HTableInterface findOrCreateTable(String tableName) {
+    HTableInterface table = tables.get(tableName);
+    if (table == null) {
+      table = createHTable(tableName);
+    }
+    return table;
+  }
+In the case of ThreadLocalPool, it seems like there's an exposure here between when the table is created initially and when ThreadLocalPool.put() is called to set the thread local variable (on PooledHTable.close()).
+Potential solution described by Karthick Sankarachary:
+For one thing, we might want to clear the tables variable when the HTablePool is closed (as shown below). For another, we should override ThreadLocalPool#get method so that it removes the resource, otherwise it might end up referencing a HTableInterface that's has been released.
+1 diff --git a/src/main/java/org/apache/hadoop/hbase/client/HTablePool.java b/src/main/java/org/apache/hadoop/hbase/client/HTablePool.java
+      2 index 952a3aa..c198f15 100755
+      3 --- a/src/main/java/org/apache/hadoop/hbase/client/HTablePool.java
+      4 +++ b/src/main/java/org/apache/hadoop/hbase/client/HTablePool.java
+     13 @@ -309,6 +310,7 @@ public class HTablePool implements Closeable {
+     14      for (String tableName : tables.keySet()) {
+     15        closeTablePool(tableName);
+     16      }
+     17 +    this.tables.clear();
+     18    }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Karthick Sankarachar
+Reporter:
+Gary Helmling
+Create date:
+04/Aug/11 23:04
+Update date:
+20/Nov/15 11:54
+Resolved date:
+23/Aug/11 01:08

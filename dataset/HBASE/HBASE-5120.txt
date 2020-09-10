@@ -1,0 +1,61 @@
+Summary:
+Timeout monitor races with table disable handler
+Description:
+Here is what J-D described here:
+https://issues.apache.org/jira/browse/HBASE-5119?focusedCommentId=13179176&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-13179176
+I think I will retract from my statement that it "used to be extremely racy and caused more troubles than it fixed", on my first test I got a stuck region in transition instead of being able to recover. The timeout was set to 2 minutes to be sure I hit it.
+First the region gets closed
+2012-01-04 00:16:25,811 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Sent CLOSE to sv4r5s38,62023,1325635980913 for region test1,089cd0c9,1325635015491.1a4b111bcc228043e89f59c4c3f6a791.
+2 minutes later it times out:
+2012-01-04 00:18:30,026 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: test1,089cd0c9,1325635015491.1a4b111bcc228043e89f59c4c3f6a791. state=PENDING_CLOSE, ts=1325636185810, server=null
+2012-01-04 00:18:30,026 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_CLOSE for too long, running forced unassign again on region=test1,089cd0c9,1325635015491.1a4b111bcc228043e89f59c4c3f6a791.
+2012-01-04 00:18:30,027 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region test1,089cd0c9,1325635015491.1a4b111bcc228043e89f59c4c3f6a791. (offlining)
+100ms later the master finally gets the event:
+2012-01-04 00:18:30,129 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_CLOSED, server=sv4r5s38,62023,1325635980913, region=1a4b111bcc228043e89f59c4c3f6a791, which is more than 15 seconds late
+2012-01-04 00:18:30,129 DEBUG org.apache.hadoop.hbase.master.handler.ClosedRegionHandler: Handling CLOSED event for 1a4b111bcc228043e89f59c4c3f6a791
+2012-01-04 00:18:30,129 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Table being disabled so deleting ZK node and removing from regions in transition, skipping assignment of region test1,089cd0c9,1325635015491.1a4b111bcc228043e89f59c4c3f6a791.
+2012-01-04 00:18:30,129 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:62003-0x134589d3db03587 Deleting existing unassigned node for 1a4b111bcc228043e89f59c4c3f6a791 that is in expected state RS_ZK_REGION_CLOSED
+2012-01-04 00:18:30,166 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:62003-0x134589d3db03587 Successfully deleted unassigned node for region 1a4b111bcc228043e89f59c4c3f6a791 in expected state RS_ZK_REGION_CLOSED
+At this point everything is fine, the region was processed as closed. But wait, remember that line where it said it was going to force an unassign?
+2012-01-04 00:18:30,322 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:62003-0x134589d3db03587 Creating unassigned node for 1a4b111bcc228043e89f59c4c3f6a791 in a CLOSING state
+2012-01-04 00:18:30,328 INFO org.apache.hadoop.hbase.master.AssignmentManager: Server null returned java.lang.NullPointerException: Passed server is null for 1a4b111bcc228043e89f59c4c3f6a791
+Now the master is confused, it recreated the RIT znode but the region doesn't even exist anymore. It even tries to shut it down but is blocked by NPEs. Now this is what's going on.
+The late ZK notification that the znode was deleted (but it got recreated after):
+2012-01-04 00:19:33,285 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: The znode of region test1,089cd0c9,1325635015491.1a4b111bcc228043e89f59c4c3f6a791. has been deleted.
+Then it prints this, and much later tries to unassign it again:
+2012-01-04 00:19:46,607 DEBUG org.apache.hadoop.hbase.master.handler.DeleteTableHandler: Waiting on region to clear regions in transition; test1,089cd0c9,1325635015491.1a4b111bcc228043e89f59c4c3f6a791. state=PENDING_CLOSE, ts=1325636310328, server=null
+...
+2012-01-04 00:20:39,623 DEBUG org.apache.hadoop.hbase.master.handler.DeleteTableHandler: Waiting on region to clear regions in transition; test1,089cd0c9,1325635015491.1a4b111bcc228043e89f59c4c3f6a791. state=PENDING_CLOSE, ts=1325636310328, server=null
+2012-01-04 00:20:39,864 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: test1,089cd0c9,1325635015491.1a4b111bcc228043e89f59c4c3f6a791. state=PENDING_CLOSE, ts=1325636310328, server=null
+2012-01-04 00:20:39,864 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_CLOSE for too long, running forced unassign again on region=test1,089cd0c9,1325635015491.1a4b111bcc228043e89f59c4c3f6a791.
+2012-01-04 00:20:39,865 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region test1,089cd0c9,1325635015491.1a4b111bcc228043e89f59c4c3f6a791. (offlining)
+2012-01-04 00:20:39,865 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Attempted to unassign region test1,089cd0c9,1325635015491.1a4b111bcc228043e89f59c4c3f6a791. but it is not currently assigned anywhere
+And this is still ongoing.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+Ted Yu
+Create date:
+04/Jan/12 02:45
+Update date:
+12/Oct/12 05:34
+Resolved date:
+28/Feb/12 17:39

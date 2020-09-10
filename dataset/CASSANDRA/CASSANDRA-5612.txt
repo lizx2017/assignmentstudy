@@ -1,0 +1,58 @@
+Summary:
+NPE when upgrading a mixed version 1.1/1.2 cluster fully to 1.2
+Description:
+See the attached upgrade_through_versions_test.py upgrade_test_mixed().
+Conceptually this method does the following:
+Instantiates a 3 node 1.1.9 cluster
+Writes some data
+Shuts down node 1 and upgrades it to 1.2 (HEAD)
+Brings the node1 back up, making the cluster a mixed version 1.1/1.2
+Brings down node2 and node3 and does the same upgrade making it all the same version.
+At this point, I would run upgradesstables on each of the nodes, but there is already an error on node3 directly after it's upgrade:
+INFO [FlushWriter:1] 2013-06-03 22:49:46,543 Memtable.java (line 461) Writing Memtable-peers@1023263314(237/237 serialized/live bytes, 14 op
+s)
+ INFO [FlushWriter:1] 2013-06-03 22:49:46,556 Memtable.java (line 495) Completed flushing /tmp/dtest-YqMtHN/test/node3/data/system/peers/syst
+em-peers-ic-2-Data.db (291 bytes) for commitlog position ReplayPosition(segmentId=1370314185862, position=58616)
+ INFO [GossipStage:1] 2013-06-03 22:49:46,568 StorageService.java (line 1330) Node /127.0.0.2 state jump to normal
+ERROR [MigrationStage:1] 2013-06-03 22:49:46,655 CassandraDaemon.java (line 192) Exception in thread Thread[MigrationStage:1,5,main]
+java.lang.NullPointerException
+        at org.apache.cassandra.db.DefsTable.addColumnFamily(DefsTable.java:511)
+        at org.apache.cassandra.db.DefsTable.mergeColumnFamilies(DefsTable.java:445)
+        at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:355)
+        at org.apache.cassandra.db.DefinitionsUpdateVerbHandler$1.runMayThrow(DefinitionsUpdateVerbHandler.java:55)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+        at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:334)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:166)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:722)
+This error is repeatable, but inconsistent. Interestingly, it is always node3 with the error.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Ryan McGuire
+Create date:
+04/Jun/13 02:55
+Update date:
+16/Apr/19 09:32
+Resolved date:
+16/Aug/13 02:09

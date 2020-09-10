@@ -1,0 +1,42 @@
+Summary:
+META region stuck in RS2ZK_REGION_OPENED state
+Description:
+In cluster testing trunk, I ended up with a situation where META was unassigned and no amount of restarting various pieces would fix it. On master startup, I see:
+2010-06-20 21:08:05,431 DEBUG org.apache.hadoop.hbase.master.BaseScanner: Current assignment of .META.,,1.1028785192 is not valid; serverAddress=, startCode=0 unknown.
+2010-06-20 21:08:05,436 DEBUG org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper: While creating UNASSIGNED region 1028785192 exists, state = RS2ZK_REGION_OPENED
+2010-06-20 21:08:05,438 WARN org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper: <monster01.sf.cloudera.com:/hbase,org.apache.hadoop.hbase.master.HMaster>Failed to create ZNode /hbase/UNASSIGNED/1028785192 in ZooKeeper
+org.apache.zookeeper.KeeperException$NodeExistsException: KeeperErrorCode = NodeExists for /hbase/UNASSIGNED/1028785192
+2010-06-20 21:08:05,438 DEBUG org.apache.hadoop.hbase.master.RegionManager: Created UNASSIGNED zNode .META.,,1.1028785192 in state M2ZK_REGION_OFFLINE
+then on the RS:
+2010-06-20 21:08:05,899 ERROR org.apache.hadoop.hbase.regionserver.RSZookeeperUpdater: ZNode /hbase/UNASSIGNED/1028785192 is not in CLOSED/OFFLINE state (state = RS2ZK_REGION_OPENED), will NOT open region.
+2010-06-20 21:08:05,899 ERROR org.apache.hadoop.hbase.regionserver.HRegionServer: Error opening .META.,,1.1028785192
+java.io.IOException: ZNode /hbase/UNASSIGNED/1028785192 is not in CLOSED/OFFLINE state (state = RS2ZK_REGION_OPENED), will NOT open region.
+and the region never opens
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+master, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Karthik Ranganathan
+Reporter:
+Todd Lipcon
+Create date:
+21/Jun/10 04:16
+Update date:
+20/Nov/15 12:43
+Resolved date:
+23/Jun/10 03:32

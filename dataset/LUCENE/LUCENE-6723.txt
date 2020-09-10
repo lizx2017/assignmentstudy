@@ -1,0 +1,46 @@
+Summary:
+Date field problems using ExtractingRequestHandler and java 9 (b71)
+Description:
+Tracking bug to note that the (Tika based) ExtractingRequestHandler will not work properly with jdk9 starting with build71.
+This first manifested itself with failures like this from the tests...
+   [junit4]   2> NOTE: reproduce with: ant test  -Dtestcase=ExtractingRequestHandlerTest
+-Dtests.method=testArabicPDF -Dtests.seed=232D0A5404C2ADED -Dtests.multiplier=3 -Dtests.slow=true
+-Dtests.locale=en_JM -Dtests.timezone=Etc/GMT-7 -Dtests.asserts=true -Dtests.file.encoding=UTF-8
+   [junit4] ERROR   0.58s | ExtractingRequestHandlerTest.testArabicPDF <<<
+   [junit4]    > Throwable #1: org.apache.solr.common.SolrException: Invalid Date String:'Tue Mar 09 13:44:49
+GMT+07:00 2010'
+Workarround noted by Uwe...
+The test passes on JDK 9 b71 with:
+-Dargs="-Djava.locale.providers=JRE,SPI"
+This reenabled the old Locale data. I will add this to the build parameters of policeman Jenkins to stop this from
+failing. To me it looks like the locale data somehow is not able to correctly parse weekdays and/or timezones. I
+will check this out tomorrow and report a bug to the OpenJDK people. There is something fishy with CLDR locale data.
+There are already some bugs open, so work is not yet finished (e.g. sometimes it uses wrong timezone shortcuts,...)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.4, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Uwe Schindler
+Reporter:
+Hoss Man
+Create date:
+09/Jul/15 18:18
+Update date:
+09/May/16 18:37
+Resolved date:
+25/Nov/15 14:15

@@ -1,0 +1,50 @@
+Summary:
+PieSeries always leaves room for a drop shadow, even when none is used
+Description:
+The PieSeries component always leaves room for the drop shadow, even if you have cleared the drop shadow filter. This means that you cannot have a pie series that takes up the entire height and width of a chart component. This became an issue when making a custom bubbleseries itemRenderer that was actually a pie chart. As the bubbles get smaller, the pie charts become unreadable sooner than they should due to this extra space.
+The problem is in two units, one of which can be worked around and one that can't because it is interwoven into the rest of the series.
+PieSeries.as:
+override protected function updateTransform():void
+...
+_radiusInPixelsAfterLabels = dataTransform.radius - DROP_SHADOW_SIZE;
+...
+This line of code is where the drop shadow is always subtracted from the pie radius, no matter what. If you clone the PieSeries unit and remove it, you are halfway to fixing the problem.
+WedgeItemRenderer.as:
+override protected function updateDisplayList(unscaledWidth:Number,
+unscaledHeight:Number):void
+...
+if (stroke && !isNaN(stroke.weight))
+outerRadius -= Math.max(stroke.weight/2,SHADOW_INSET);
+else
+outerRadius -= SHADOW_INSET;
+...
+This is the second problem. It is not as hard to fix since creating your own itemRenderer is common. However, as it stands, you still have to clone the unit, then put in code to be able to disable the SHADOW_INSET from being subtracted from the radius.
+These problems are caused because the way the drop shadow is put in as a filter is a bit of a kludge. The chart doesn't quite understand how to figure out that it should leave space otherwise. I'm not sure of a great way around this, but at the very least you should be able to disable the shadow from taking up extra room when it's not being used.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK 3.1 (
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+19/Aug/08 10:00
+Update date:
+29/Jun/11 22:58
+Resolved date:
+10/Mar/11 09:32

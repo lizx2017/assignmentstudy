@@ -1,0 +1,33 @@
+Summary:
+If we get IOException when closing a region, we should still remove it from online regions and complete the close in ZK
+Description:
+Ran into issue on cluster where HDFS was taken out from under it. RS eventually tried to shut itself down. As regions were being closed, they got IOException "Filesystem closed". In the CloseRegionHandlers, this was causing the close operation to not finish (in ZK and in the online region list in RS). That, in turn, held up the waitOnAllRegionsToClose() so the RS never shut down.
+If we get an IOException during a close, which can happen if fatal error doing flush, this is not recoverable so we should complete the region close in ZK and by removing from map of online regions on that RS.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+Jonathan Gray
+Create date:
+08/Nov/10 23:15
+Update date:
+20/Nov/15 12:40
+Resolved date:
+09/Nov/10 22:06

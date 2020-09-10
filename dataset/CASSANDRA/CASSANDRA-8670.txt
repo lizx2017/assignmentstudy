@@ -1,0 +1,39 @@
+Summary:
+Large columns + NIO memory pooling causes excessive direct memory usage
+Description:
+If you provide a large byte array to NIO and ask it to populate the byte array from a socket it will allocate a thread local byte buffer that is the size of the requested read no matter how large it is. Old IO wraps new IO for sockets (but not files) so old IO is effected as well.
+Even If you are using Buffered
+{Input | Output}
+Stream you can end up passing a large byte array to NIO. The byte array read method will pass the array to NIO directly if it is larger than the internal buffer.
+Passing large cells between nodes as part of intra-cluster messaging can cause the NIO pooled buffers to quickly reach a high watermark and stay there. This ends up costing 2x the largest cell size because there is a buffer for input and output since they are different threads. This is further multiplied by the number of nodes in the cluster - 1 since each has a dedicated thread pair with separate thread locals.
+Anecdotally it appears that the cost is doubled beyond that although it isn't clear why. Possibly the control connections or possibly there is some way in which multiple
+Need a workload in CI that tests the advertised limits of cells on a cluster. It would be reasonable to ratchet down the max direct memory for the test to trigger failures if a memory pooling issue is introduced. I don't think we need to test concurrently pulling in a lot of them, but it should at least work serially.
+The obvious fix to address this issue would be to read in smaller chunks when dealing with large values. I think small should still be relatively large (4 megabytes) so that code that is reading from a disk can amortize the cost of a seek. It can be hard to tell what the underlying thing being read from is going to be in some of the contexts where we might choose to implement switching to reading chunks.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/Local Write-Read Paths, (2)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ariel Weisberg
+Reporter:
+Ariel Weisberg
+Create date:
+22/Jan/15 23:36
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Apr/15 21:44

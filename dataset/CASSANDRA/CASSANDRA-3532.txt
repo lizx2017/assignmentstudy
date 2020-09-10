@@ -1,0 +1,68 @@
+Summary:
+Compaction cleanupIfNecessary costly when many files in data dir
+Description:
+From what I can tell SSTableWriter.cleanupIfNecessary seems increasingly costly as the number of files in the data dir increases.
+It calls SSTable.componentsFor(descriptor, Descriptor.TempState.TEMP) which lists all files in the data dir to find matching components.
+Am I roughly correct that (cleanupCost = SSTable count * data dir size)?
+We had been doing write load testing with default compaction throttling (16MB/s) and LeveledCompaction.
+Unfortunately we haven't been keeping tabs on sstable counts and it grew out of control.
+On a system with 300,000 sstables here is an example of our compaction rate. Note that as you're probably aware cleanupIfNecessary is included in the timing:
+INFO [CompactionExecutor:48] 2011-11-25 22:25:30,353 CompactionTask.java (line 213) Compacted to [/data1/cassandra/data/MA_DDR/indexes_03-hc-5369-Data.db,]. 5,821,590 to 5,306,354 (~91% of original) bytes for 123 keys at 0.163755MB/s. Time: 30,903ms.
+Here's a slightly larger one:
+INFO [CompactionExecutor:43] 2011-11-25 22:23:28,956 CompactionTask.java (line 213) Compacted to [/data1/cassandra/data/MA_DDR/indexes_03-hc-5336-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5337-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5338-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5339-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5340-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5341-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5342-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5343-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5344-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5345-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5346-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5347-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5348-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5349-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5350-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5351-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5352-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5353-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5354-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5355-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5356-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5357-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5358-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5359-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5360-Data.db,/data1/cassandra/data/MA_DDR/indexes_03-hc-5361-Data.db,]. 140,706,512 to 137,990,868 (~98% of original) bytes for 2,181 keys at 0.338627MB/s. Time: 388,623ms.
+This is with compaction throttling set to 0 (Off).
+So I believe because of this it's going to take a very long time to recover from having so many small sstables.
+It might be notable that we're using Solaris 10, possibly listFiles() is faster on other platforms?
+Is it feasible to keep track of the temp files and just delete them rather than searching for them for each SSTable using SSTable.componentsFor()?
+Here's the stack trace for the CompactionExecutor:14 thread that appears to be occupying the majority of the cpu time on this node:
+Name: CompactionExecutor:14
+State: RUNNABLE
+Total blocked: 3 Total waited: 1,610,714
+Stack trace:
+java.io.UnixFileSystem.getBooleanAttributes0(Native Method)
+java.io.UnixFileSystem.getBooleanAttributes(Unknown Source)
+java.io.File.isDirectory(Unknown Source)
+org.apache.cassandra.io.sstable.SSTable$3.accept(SSTable.java:204)
+java.io.File.listFiles(Unknown Source)
+org.apache.cassandra.io.sstable.SSTable.componentsFor(SSTable.java:200)
+org.apache.cassandra.io.sstable.SSTableWriter.cleanupIfNecessary(SSTableWriter.java:289)
+org.apache.cassandra.db.compaction.CompactionTask.execute(CompactionTask.java:189)
+org.apache.cassandra.db.compaction.LeveledCompactionTask.execute(LeveledCompactionTask.java:57)
+org.apache.cassandra.db.compaction.CompactionManager$1.call(CompactionManager.java:134)
+org.apache.cassandra.db.compaction.CompactionManager$1.call(CompactionManager.java:114)
+java.util.concurrent.FutureTask$Sync.innerRun(Unknown Source)
+java.util.concurrent.FutureTask.run(Unknown Source)
+java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Unknown Source)
+java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+java.lang.Thread.run(Unknown Source)
+No matter where I click in the busy Compaction thread timeline in YourKit it's in Running state and showing this above trace, except for short periods of time where it's actually compacting
+Thanks,
+Eric
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.6
+Component:
+None
+Label:
+compaction
+Environment:
+solaris
+Attachment number:
+0
+Assignee:
+Eric Parusel
+Reporter:
+Eric Parusel
+Create date:
+25/Nov/11 22:58
+Update date:
+16/Apr/19 09:32
+Resolved date:
+02/Dec/11 21:01

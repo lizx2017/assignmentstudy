@@ -1,0 +1,48 @@
+Summary:
+reassigning region stuck in open still may not work correctly due to leftover ZK node
+Description:
+(logs grepped by region name, and abridged.
+META server was dead so OpenRegionHandler for the region took a while, and was interrupted:
+2013-02-08 14:35:01,555 DEBUG [RS_OPEN_REGION-10.11.2.92,64485,1360362800564-2] handler.OpenRegionHandler(255): Interrupting thread Thread[PostOpenDeployTasks:871d1c3bdf98a2c93b527cb6cc61327d,5,main]
+Then master tried to force region offline and reassign:
+2013-02-08 14:35:06,500 INFO  [MASTER_SERVER_OPERATIONS-10.11.2.92,64483,1360362800340-1] master.RegionStates(347): Found opening region {IntegrationTestRebalanceAndKillServersTargeted,7333332c,1360362805563.871d1c3bdf98a2c93b527cb6cc61327d. state=OPENING, ts=1360362901596, server=10.11.2.92,64485,1360362800564} to be reassigned by SSH for 10.11.2.92,64485,1360362800564
+2013-02-08 14:35:06,500 INFO  [MASTER_SERVER_OPERATIONS-10.11.2.92,64483,1360362800340-1] master.RegionStates(242): Region {NAME => 'IntegrationTestRebalanceAndKillServersTargeted,7333332c,1360362805563.871d1c3bdf98a2c93b527cb6cc61327d.', STARTKEY => '7333332c', ENDKEY => '7ffffff8', ENCODED => 871d1c3bdf98a2c93b527cb6cc61327d,} transitioned from {IntegrationTestRebalanceAndKillServersTargeted,7333332c,1360362805563.871d1c3bdf98a2c93b527cb6cc61327d. state=OPENING, ts=1360362901596, server=10.11.2.92,64485,1360362800564} to {IntegrationTestRebalanceAndKillServersTargeted,7333332c,1360362805563.871d1c3bdf98a2c93b527cb6cc61327d. state=CLOSED, ts=1360362906500, server=null}
+2013-02-08 14:35:06,505 DEBUG [10.11.2.92,64483,1360362800340-GeneralBulkAssigner-1] master.AssignmentManager(1530): Forcing OFFLINE; was={IntegrationTestRebalanceAndKillServersTargeted,7333332c,1360362805563.871d1c3bdf98a2c93b527cb6cc61327d. state=CLOSED, ts=1360362906500, server=null}
+2013-02-08 14:35:06,506 DEBUG [10.11.2.92,64483,1360362800340-GeneralBulkAssigner-1] zookeeper.ZKAssign(176): master:64483-0x13cbbf1025d0000 Async create of unassigned node for 871d1c3bdf98a2c93b527cb6cc61327d with OFFLINE state
+But didn't delete the original ZK node?
+2013-02-08 14:35:06,509 WARN  [main-EventThread] master.OfflineCallback(59): Node for /hbase/region-in-transition/871d1c3bdf98a2c93b527cb6cc61327d already exists
+2013-02-08 14:35:06,509 DEBUG [main-EventThread] master.OfflineCallback(69): rs={IntegrationTestRebalanceAndKillServersTargeted,7333332c,1360362805563.871d1c3bdf98a2c93b527cb6cc61327d. state=OFFLINE, ts=1360362906506, server=null}, server=10.11.2.92,64488,1360362800651
+2013-02-08 14:35:06,512 DEBUG [main-EventThread] master.OfflineCallback$ExistCallback(106): rs={IntegrationTestRebalanceAndKillServersTargeted,7333332c,1360362805563.871d1c3bdf98a2c93b527cb6cc61327d. state=OFFLINE, ts=1360362906506, server=null}, server=10.11.2.92,64488,1360362800651
+So it went into infinite cycle of failing to assign due to this:
+2013-02-08 14:35:06,517 INFO  [PRI IPC Server handler 7 on 64488] regionserver.HRegionServer(3435): Received request to open region: IntegrationTestRebalanceAndKillServersTargeted,7333332c,1360362805563.871d1c3bdf98a2c93b527cb6cc61327d. on 10.11.2.92,64488,1360362800651
+2013-02-08 14:35:06,521 WARN  [RS_OPEN_REGION-10.11.2.92,64488,1360362800651-0] zookeeper.ZKAssign(762): regionserver:64488-0x13cbbf1025d0004 Attempt to transition the unassigned node for 871d1c3bdf98a2c93b527cb6cc61327d from M_ZK_REGION_OFFLINE to RS_ZK_REGION_OPENING failed, the node existed but was in the state RS_ZK_REGION_OPENING set by the server [wrong server name redacted, see HBASE-7798]
+Transitioning failed-to-open similarly fails.
+It seems like master needs to nuke ZK node unconditionally to offline?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Sergey Shelukhin
+Create date:
+09/Feb/13 02:10
+Update date:
+23/Sep/13 18:30
+Resolved date:
+15/Feb/13 21:39

@@ -1,0 +1,48 @@
+Summary:
+Region server references deleted compaction log
+Description:
+The region server appears to reference blocks from deleted log files after compaction. Stopping the affected region server causes the region to be reassigned and appears to function properly again.
+We have seen two instances this week where this caused the region server to get stuck with the following error:
+hbase-root-regionserver-hfs-030015.log:2009-10-07 12:24:41,853 INFO org.apache.hadoop.hdfs.DFSClient: Could not obtain block blk_6092375271544310747_250240 from any node: java.io.IOException: No live nodes contain current block
+.
+.
+.
+/opt/hbase/logs/hbase-root-regionserver-hfs-030015.log:java.io.IOException: Cannot open filename /hbase/fc_test/1209236691/json/9131415140626575165
+/opt/hbase/logs/hbase-root-regionserver-hfs-030015.log:2009-10-07 13:09:47,343 INFO org.apache.hadoop.hdfs.DFSClient: Could not obtain block blk_6092375271544310747_250240 from any node: java.io.IOException: No live nodes contain current block
+From the hdfs log we can see that the block in question was part of a compaction log:
+hadoop-root-namenode-hfs-030010.log:2009-10-07 08:48:31,271 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* NameSystem.allocateBlock: /hbase/fc_test/compaction.dir/1209236691/2099727166320402414. blk_6092375271544310747_250240
+hadoop-root-namenode-hfs-030010.log:2009-10-07 08:48:31,337 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* NameSystem.addStoredBlock: blockMap updated: 10.4.30.39:50010 is added to blk_6092375271544310747_250240 size 360813
+hadoop-root-namenode-hfs-030010.log:2009-10-07 08:48:31,338 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* NameSystem.addStoredBlock: blockMap updated: 10.4.30.23:50010 is added to blk_6092375271544310747_250240 size 360813
+hadoop-root-namenode-hfs-030010.log:2009-10-07 08:48:31,339 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* NameSystem.addStoredBlock: blockMap updated: 10.4.30.16:50010 is added to blk_6092375271544310747_250240 size 360813
+From the same log we see the block deleted:
+hadoop-root-namenode-hfs-030010.log:2009-10-07 12:13:20,738 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* ask 10.4.30.39:50010 to delete blk_-8366798629992987785_250239 blk_-278212026264018289_224708 blk_4131756856877489141_230749 blk_6092375271544310747_250240 blk_-1303356519220271320_144130
+hadoop-root-namenode-hfs-030010.log:2009-10-07 12:13:26,739 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* ask 10.4.30.23:50010 to delete blk_3405064566022477311_135928 blk_-7806500863137897827_139699 blk_6092375271544310747_250240
+hadoop-root-namenode-hfs-030010.log:2009-10-07 12:13:29,739 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* ask 10.4.30.16:50010 to delete blk_-3938002954120963098_139149 blk_2284074818158875873_144134 blk_519099260905493191_222718 blk_7684159545746656462_144137 blk_7857071994919747100_144127 blk_6311161030310597085_135919 blk_-8366798629992987785_250239 blk_5638304438869005376_142347 blk_-1019479064035180992_143997 blk_4131756856877489141_230749 blk_6092375271544310747_250240 blk_-1520990752128999182_192595 blk_1714900485284856973_230761 blk_-1303356519220271320_144130
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.20.0
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+elsif
+Create date:
+07/Oct/09 20:43
+Update date:
+16/Jul/14 21:52
+Resolved date:
+16/Jul/14 21:52

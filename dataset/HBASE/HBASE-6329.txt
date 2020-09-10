@@ -1,0 +1,59 @@
+Summary:
+Stopping META regionserver when splitting region could cause daughter region to be assigned twice
+Description:
+We found this issue in 0.94, first let me describe the case：
+Stop META rs when split is in progress
+1.Stopping META rs(Server A).
+2.The main thread of rs close ZK and delete ephemeral node of the rs.
+3.SplitTransaction is retring MetaEditor.addDaughter
+4.Master's ServerShutdownHandler process the above dead META server
+5.Master fixup daughter and assign the daughter
+6.The daughter is opened on another server(Server B)
+7.Server A's splitTransaction successfully add the daughter to .META. with serverName=Server A
+8.Now, in the .META., daughter's region location is Server A but it is onlined on Server B
+9.Restart Master, and master will assign the daughter again.
+Attaching the logs, daughter region 80f999ea84cb259e20e9a228546f6c8a
+Master log:
+2012-07-04 13:45:56,493 INFO org.apache.hadoop.hbase.master.handler.ServerShutdownHandler: Splitting logs for dw93.kgb.sqa.cm4,60020,1341378224464
+2012-07-04 13:45:58,983 INFO org.apache.hadoop.hbase.master.handler.ServerShutdownHandler: Fixup; missing daughter writetest,JC\xCA\xC8\xCF<Q\xC49>OH\xCEV\xCC\xC2\xB5\xC2@\xD4,1341380730558.80f999ea84cb259e20e9a228546f6c8a.
+2012-07-04 13:45:58,985 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Added daughter writetest,JC\xCA\xC8\xCF<Q\xC49>OH\xCEV\xCC\xC2\xB5\xC2@\xD4,1341380730558.80f999ea84cb259e20e9a228546f6c8a., serverName=null
+2012-07-04 13:45:58,988 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region writetest,JC\xCA\xC8\xCF<Q\xC49>OH\xCEV\xCC\xC2\xB5\xC2@\xD4,1341380730558.80f999ea84cb259e20e9a228546f6c8a. to dw88.kgb.sqa.cm4,60020,1341379188777
+2012-07-04 13:46:00,201 INFO org.apache.hadoop.hbase.master.AssignmentManager: The master has opened the region writetest,JC\xCA\xC8\xCF<Q\xC49>OH\xCEV\xCC\xC2\xB5\xC2@\xD4,1341380730558.80f999ea84cb259e20e9a228546f6c8a. that was online on dw88.kgb.sqa.cm4,60020,1341379188777
+Master log after restart:
+2012-07-04 14:27:05,824 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x136187d60e34644 Creating (or updating) unassigned node for 80f999ea84cb259e20e9a228546f6c8a with OFFLINE state
+2012-07-04 14:27:05,851 INFO org.apache.hadoop.hbase.master.AssignmentManager: Processing region writetest,JC\xCA\xC8\xCF<Q\xC49>OH\xCEV\xCC\xC2\xB5\xC2@\xD4,1341380730558.80f999ea84cb259e20e9a228546f6c8a. in state M_ZK_REGION_OFFLINE
+2012-07-04 14:27:05,854 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region writetest,JC\xCA\xC8\xCF<Q\xC49>OH\xCEV\xCC\xC2\xB5\xC2@\xD4,1341380730558.80f999ea84cb259e20e9a228546f6c8a. to dw93.kgb.sqa.cm4,60020,1341380812020
+2012-07-04 14:27:06,051 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=dw93.kgb.sqa.cm4,60020,1341380812020, region=80f999ea84cb259e20e9a228546f6c8a
+Regionserver(META rs) log:
+2012-07-04 13:45:56,491 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: stopping server dw93.kgb.sqa.cm4,60020,1341378224464; zookeeper connection c
+losed.
+2012-07-04 13:46:11,951 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Added daughter writetest,JC\xCA\xC8\xCF<Q\xC49>OH\xCEV\xCC\xC2\xB5\xC2@\xD4,1341380730558.80f999ea84cb259e20e9a228546f6c8a., serverName=dw93.kgb.sqa.cm4,60020,1341378224464
+2012-07-04 13:46:11,952 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Done with post open deploy task for region=writetest,JC\xCA\xC8\xCF<Q\xC49>OH\xCEV\xCC\xC2\xB5\xC2@\xD4,1341380730558.80f999ea84cb259e20e9a228546f6c8a., daughter=true
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.0
+Fix_version:
+0.94.1, 0.95.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+05/Jul/12 03:51
+Update date:
+26/Feb/13 08:16
+Resolved date:
+08/Jul/12 19:22

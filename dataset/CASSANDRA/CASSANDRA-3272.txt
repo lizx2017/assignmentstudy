@@ -1,0 +1,90 @@
+Summary:
+READ Operation with CL=EACH_QUORUM succeed when a DC is down (RF=3)
+Description:
+"READ EACH_QUORUM: Returns the record with the most recent timestamp once a quorum of replicas in each data center of the cluster has responded."
+In other words, if a DC is down and the QUORUM could not be reached on that DC, read should fail.
+test case:
+Cassandra version 0.8.6:
+INFO [main] 2011-09-28 22:26:24,297 StorageService.java (line 371) Cassandra version: 0.8.6
+6-node cluster with 2 DC and 3 node each. RF=3 in each DC:
+[default@Keyspace3] describe keyspace;
+Keyspace: Keyspace3:
+Replication Strategy: org.apache.cassandra.locator.NetworkTopologyStrategy
+Durable Writes: true
+Options: [DC2:3, DC1:3]
+Column Families:
+ColumnFamily: test
+Key Validation Class: org.apache.cassandra.db.marshal.BytesType
+Default column value validator: org.apache.cassandra.db.marshal.BytesType
+Columns sorted by: org.apache.cassandra.db.marshal.BytesType
+Row cache size / save period in seconds: 0.0/0
+Key cache size / save period in seconds: 200000.0/14400
+Memtable thresholds: 1.0875/1440/232 (millions of ops/minutes/MB)
+GC grace seconds: 864000
+Compaction min/max thresholds: 4/32
+Read repair chance: 1.0
+Replicate on write: true
+Built indexes: []
+all nodes are up, insert a row:
+$ nodetool -h localhost ring
+Address DC Rack Status State Load Owns Token
+141784319550391026443072753096570088106
+10.34.79.179 DC1 RAC1 Up Normal 11.13 KB 16.67% 0
+10.34.70.163 DC2 RAC1 Up Normal 11.14 KB 16.67% 28356863910078205288614550619314017621
+10.35.81.147 DC1 RAC1 Up Normal 11.14 KB 16.67% 56713727820156410577229101238628035242
+10.84.233.170 DC2 RAC1 Up Normal 11.14 KB 16.67% 85070591730234615865843651857942052864
+10.195.201.236 DC1 RAC1 Up Normal 11.14 KB 16.67% 113427455640312821154458202477256070485
+10.118.147.73 DC2 RAC1 Up Normal 11.14 KB 16.67% 141784319550391026443072753096570088106
+insert a value
+[default@Keyspace3] set test[utf8('test-key-1')][utf8('test-col')]=utf8('test-value');
+Value inserted.
+sanity check (cli connects to a node in DC1) :
+[default@Keyspace3] consistencylevel as EACH_QUORUM;
+Consistency level is set to 'EACH_QUORUM'.
+[default@Keyspace3] get test[utf8('test-key-1')];
+=> (column=746573742d636f6c, value=test-value, timestamp=1317249361722000)
+Returned 1 results
+shut down DC2:
+$ nodetool -h localhost ring
+Address DC Rack Status State Load Owns Token
+141784319550391026443072753096570088106
+10.34.79.179 DC1 RAC1 Up Normal 51.86 KB 16.67% 0
+10.34.70.163 DC2 RAC1 Down Normal 51.88 KB 16.67% 28356863910078205288614550619314017621
+10.35.81.147 DC1 RAC1 Up Normal 47.5 KB 16.67% 56713727820156410577229101238628035242
+10.84.233.170 DC2 RAC1 Down Normal 51.88 KB 16.67% 85070591730234615865843651857942052864
+10.195.201.236 DC1 RAC1 Up Normal 47.5 KB 16.67% 113427455640312821154458202477256070485
+10.118.147.73 DC2 RAC1 Down Normal 51.88 KB 16.67% 141784319550391026443072753096570088106
+[default@Keyspace3] get test[utf8('test-key-1')];
+=> (column=746573742d636f6c, value=746573742d76616c7565, timestamp=1317249361722000)
+Returned 1 results.
+tried with pycassaShell:
+>>> col_fam.get('test-key-1',read_consistency_level=pycassa.ConsistencyLevel.EACH_QUORUM)
+OrderedDict([('test-col', 'test-value')])
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jackson Chung
+Create date:
+28/Sep/11 23:25
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/Oct/11 14:06

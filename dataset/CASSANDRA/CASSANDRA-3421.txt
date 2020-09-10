@@ -1,0 +1,58 @@
+Summary:
+Can create a table with DecimalType comparator but CQL explodes trying to actually use it.
+Description:
+CREATE KEYSPACE CassandraCQLTestKeyspace WITH strategy_class='org.apache.cassandra.locator.SimpleStrategy' AND strategy_options:replication_factor=1
+USE CassandraCQLTestKeyspace
+CREATE COLUMNFAMILY comparator_cf_decimal (id text PRIMARY KEY) WITH comparator='DecimalType'
+INSERT INTO comparator_cf_decimal (id, 15.333) VALUES ('test', 'test')
+This leads to failure
+SELECT 15.333 FROM comparator_cf_decimal WHERE id = 'test'
+ERROR 12:22:56,909 Internal error processing execute_cql_query
+java.nio.BufferUnderflowException
+at java.nio.Buffer.nextGetIndex(Buffer.java:480)
+at java.nio.HeapByteBuffer.getInt(HeapByteBuffer.java:336)
+at org.apache.cassandra.cql.jdbc.JdbcDecimal.compose(JdbcDecimal.java:90)
+at org.apache.cassandra.db.marshal.DecimalType.compose(DecimalType.java:43)
+at org.apache.cassandra.db.marshal.DecimalType.compare(DecimalType.java:38)
+at org.apache.cassandra.db.marshal.DecimalType.compare(DecimalType.java:30)
+at java.util.TreeMap.getEntryUsingComparator(TreeMap.java:351)
+at java.util.TreeMap.getEntry(TreeMap.java:322)
+at java.util.TreeMap.get(TreeMap.java:255)
+at org.apache.cassandra.db.TreeMapBackedSortedColumns.getColumn(TreeMapBackedSortedColumns.java:138)
+at org.apache.cassandra.db.AbstractColumnContainer.getColumn(AbstractColumnContainer.java:128)
+at org.apache.cassandra.cql.QueryProcessor.process(QueryProcessor.java:627)
+at org.apache.cassandra.thrift.CassandraServer.execute_cql_query(CassandraServer.java:1236)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.process(Cassandra.java:4072)
+at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:2889)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:187)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:680)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.2
+Component:
+None
+Label:
+cql
+Environment:
+
+Attachment number:
+0
+Assignee:
+Rick Shaw
+Reporter:
+Kelley Reynolds
+Create date:
+29/Oct/11 16:25
+Update date:
+16/Apr/19 09:32
+Resolved date:
+03/Nov/11 04:53

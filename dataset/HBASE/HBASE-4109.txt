@@ -1,0 +1,42 @@
+Summary:
+Hostname returned via reverse dns lookup contains trailing period if configured interface is not "default"
+Description:
+If you are using an interface anything other than 'default' (literally that keyword) DNS.java 's getDefaultHost will return a string which will
+have a trailing period at the end. It seems javadoc of reverseDns in DNS.java (see below) is conflicting with what that function is actually doing.
+It is returning a PTR record while claims it returns a hostname. The PTR record always has period at the end , RFC: http://irbs.net/bog-4.9.5/bog47.html
+We make call to DNS.getDefaultHost at more than one places and treat that as actual hostname.
+Quoting HRegionServer for example
+String machineName = DNS.getDefaultHost(conf.get(
+        "hbase.regionserver.dns.interface", "default"), conf.get(
+        "hbase.regionserver.dns.nameserver", "default"));
+This causes inconsistencies. An example of such inconsistency was observed while debugging the issue "Regions not getting reassigned if RS is brought down". More here
+http://search-hadoop.com/m/CANUA1qRCkQ1
+We may want to sanitize the string returned from DNS class. Or better we can take a path of overhauling the way we do DNS name matching all over.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.90.4
+Component:
+master, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Shrijeet Paliwal
+Reporter:
+Shrijeet Paliwal
+Create date:
+15/Jul/11 21:38
+Update date:
+20/Nov/15 11:55
+Resolved date:
+21/Jul/11 06:14

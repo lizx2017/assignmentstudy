@@ -1,0 +1,73 @@
+Summary:
+sstableloader error on trunk due to loading read meter
+Description:
+If you try to run sstableloader on trunk, you'll get an error like the following:
+Exception: sstableloader command '/tmp/dtest-p5eSr3/test/node1/bin/sstableloader -d 127.0.0.1 /tmp/tmpzd5CCh/ks/cf' failed; exit status: 1'; stdout: Established connection to initial hosts
+Opening sstables and calculating sections to stream
+; stderr: null
+java.lang.AssertionError
+org.apache.cassandra.exceptions.ConfigurationException
+ at org.apache.cassandra.locator.AbstractReplicationStrategy.createInternal(AbstractReplicationStrategy.java:249)
+ at org.apache.cassandra.locator.AbstractReplicationStrategy.createReplicationStrategy(AbstractReplicationStrategy.java:264)
+ at org.apache.cassandra.db.Keyspace.createReplicationStrategy(Keyspace.java:279)
+ at org.apache.cassandra.db.Keyspace.<init>(Keyspace.java:267)
+ at org.apache.cassandra.db.Keyspace.open(Keyspace.java:115)
+ at org.apache.cassandra.db.Keyspace.open(Keyspace.java:92)
+ at org.apache.cassandra.cql3.restrictions.StatementRestrictions.<init>(StatementRestrictions.java:128)
+ at org.apache.cassandra.cql3.statements.SelectStatement$RawStatement.prepareRestrictions(SelectStatement.java:788)
+ at org.apache.cassandra.cql3.statements.SelectStatement$RawStatement.prepare(SelectStatement.java:741)
+ at org.apache.cassandra.cql3.QueryProcessor.getStatement(QueryProcessor.java:488)
+ at org.apache.cassandra.cql3.QueryProcessor.parseStatement(QueryProcessor.java:266)
+ at org.apache.cassandra.cql3.QueryProcessor.prepareInternal(QueryProcessor.java:300)
+ at org.apache.cassandra.cql3.QueryProcessor.executeInternal(QueryProcessor.java:308)
+ at org.apache.cassandra.db.SystemKeyspace.getSSTableReadMeter(SystemKeyspace.java:899)
+ at org.apache.cassandra.io.sstable.format.SSTableReader$GlobalTidy.<init>(SSTableReader.java:1973)
+ at org.apache.cassandra.io.sstable.format.SSTableReader$GlobalTidy.get(SSTableReader.java:2012)
+ at org.apache.cassandra.io.sstable.format.SSTableReader$DescriptorTypeTidy.<init>(SSTableReader.java:1890)
+ at org.apache.cassandra.io.sstable.format.SSTableReader$DescriptorTypeTidy.get(SSTableReader.java:1926)
+ at org.apache.cassandra.io.sstable.format.SSTableReader$InstanceTidier.setup(SSTableReader.java:1809)
+ at org.apache.cassandra.io.sstable.format.SSTableReader.setup(SSTableReader.java:1754)
+ at org.apache.cassandra.io.sstable.format.SSTableReader.openForBatch(SSTableReader.java:398)
+ at org.apache.cassandra.io.sstable.SSTableLoader$1.accept(SSTableLoader.java:117)
+ at java.io.File.list(File.java:1155)
+ at org.apache.cassandra.io.sstable.SSTableLoader.openSSTables(SSTableLoader.java:78)
+ at org.apache.cassandra.io.sstable.SSTableLoader.stream(SSTableLoader.java:162)
+ at org.apache.cassandra.tools.BulkLoader.main(BulkLoader.java:106)
+Caused by: java.lang.AssertionError
+ at org.apache.cassandra.locator.AbstractReplicationStrategy.<init>(AbstractReplicationStrategy.java:66)
+ at org.apache.cassandra.locator.LocalStrategy.<init>(LocalStrategy.java:36)
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:57)
+ at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+ at java.lang.reflect.Constructor.newInstance(Constructor.java:526)
+ at org.apache.cassandra.locator.AbstractReplicationStrategy.createInternal(AbstractReplicationStrategy.java:244)
+ ... 25 more
+At first glance, it looks like the SSTableReader is trying to load the read meter even though it shouldn't (or doesn't need to). Assigning to Benedict since this seems to be most related to SSTableReader management.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5, 2.2.0 beta 1
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Tyler Hobbs
+Create date:
+31/Mar/15 22:57
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Apr/15 11:58

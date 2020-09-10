@@ -1,0 +1,46 @@
+Summary:
+Mouse down on programmatically removed chartItem throws error.
+Description:
+I have a chart which double clicking an item will add or remove an item. Intermittently, I throw an error that is a bug in the ChartBase class when the item has been removed, but the application thinks it has not. The problem is in the ChartBase.as processRollEvents method in the following code (lines 2656-2668):
+if (event.type == flash.events.MouseEvent.MOUSE_DOWN)
+{
+if (_dragEnabled && !DragManager.isDragging)
+{ _mouseDown = true; pt = new Point(event.localX, event.localY); pt = DisplayObject(event.target).localToGlobal(pt); _mouseDownPoint = globalToLocal(pt); _mouseDownItem = hitSet[0].chartItem; #####Here is the problem##### }
+else if (hitSet.length > 0) // If dragEnabled is true, selection change happens on mouseup as items will get deselected.
+selectItem(hitSet[0].chartItem,event);
+}
+The problem is that logically from the top of the method you can get here with hitSet.length = 0, but the nested if statement crashes in that case with the error:
+TypeError: Error #1010: A term is undefined and has no properties.
+at mx.charts.chartClasses::ChartBase/processRollEvents()[E:\dev\4.0.0\frameworks\projects\datavisualization\src\mx\charts\chartClasses\ChartBase.as:2664]
+at mx.charts.chartClasses::ChartBase/mouseDownHandler()[E:\dev\4.0.0\frameworks\projects\datavisualization\src\mx\charts\chartClasses\ChartBase.as:4848]
+The fix is easy on line 2656.
+if (hitSet.length > 0 && _dragEnabled && !DragManager.isDragging)
+It would be nice if someone would update this.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.0 (
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+25/Feb/10 15:51
+Update date:
+25/Feb/10 15:51
+Resolved date:
+

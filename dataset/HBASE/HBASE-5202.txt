@@ -1,0 +1,60 @@
+Summary:
+NPE during Master failover in master.AssignmentManager.regionOnline()
+Description:
+The following NPE can occur during master failover:
+2012-01-15 17:45:00,314 FATAL [Master:1;ip-10-166-123-193.us-west-1.compute.internal:36708] master.HMaster(944): Unhandled exception. Starting shutdown.
+java.lang.NullPointerException
+        at org.apache.hadoop.hbase.master.AssignmentManager.regionOnline(AssignmentManager.java:724)
+        at org.apache.hadoop.hbase.master.AssignmentManager.processFailover(AssignmentManager.java:214)
+        at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:396)
+        at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:279)
+        at java.lang.Thread.run(Thread.java:636)
+This is caused by regionOnline() being passed a null serverInfo (its second parameter).
+The AssignmentManager's processFailover() method is passing a null to regionOnline() because the value that regionOnline is passing, hsi, is set as:
+hsi = this.serverManager.getHServerInfo(this.catalogTracker.getMetaLocation());
+and
+hsi = this.serverManager.getHServerInfo(this.catalogTracker.getRootLocation());
+getHServerInfo() is defined as:
+  public HServerInfo getHServerInfo(final HServerAddress hsa) {
+    synchronized(this.onlineServers) {
+      // TODO: This is primitive.  Do a better search.
+      for (Map.Entry<String, HServerInfo> e: this.onlineServers.entrySet()) {
+        if (e.getValue().getServerAddress().equals(hsa)) {
+          return e.getValue();
+        }
+      }
+    }
+    return null;
+  }
+This will return null if the onlineServers map does not yet have a value corresponding to the key supplied by the catalogTracker's getRootLocation() or getMetaLocation().
+Since the catalogTracker uses zookeeper to establish the server locations of ROOT and .META., while the onlineServers map is set according to the these servers' registering with the master, there can be an inconsistency between the catalogTracker and the onlineServers if either of these regionservers is online with respect to zookeeper, but haven't yet registered with the master (perhaps due to a high latency network between the master and the regionserver).
+The attached testMasterFailoverWithSlowRS.txt patch can be used to modify TestMasterFailover to cause this NPE.
+The proposed fix (provided along with the above test in a separate attachment) is for the master to use the new verifyMetaTablesAreUp() to wait for both of the servers named by the catalog tracker's getRootLocation() and getMetaLocation() to register with the master before the master can continue with failover.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Incomplete
+Affects_version:
+0.90.6
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Eugene Koontz
+Create date:
+15/Jan/12 18:23
+Update date:
+11/Apr/15 00:16
+Resolved date:
+11/Apr/15 00:16

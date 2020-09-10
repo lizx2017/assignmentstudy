@@ -1,0 +1,54 @@
+Summary:
+Unable to select partition keys directly using IN keyword (no replacement for multi row multiget in thrift)
+Description:
+We're converting some old thrift CF's to CQL. We aren't looking to change the underlying physical structure, since this has proven effective in production. In order to migrate, we need full select via multi equivalent. In thrift, the format was as follows.
+(scopeId, scopeType, nodeId, nodeType)
+{ 0x00, timestamp }
+Where we have deliberately designed only 1 column per row. To translate this to CQL, I have defined the following table.
+CREATE TABLE Graph_Marked_Nodes ( 
+ scopeId uuid,
+ scopeType varchar,
+ nodeId uuid,
+ nodeType varchar,
+ timestamp bigint,
+ PRIMARY KEY(scopeId, scopeType, nodeId, nodeType)
+)
+I then try to select using the IN keyword.
+select timestamp from Graph_Marked_Nodes WHERE (scopeId , scopeType , nodeId , nodeType)  IN ( (5a391596-3181-11e4-a87e-600308a690e2, 'organization', 5a3a2708-3181-11e4-a87e-600308a690e2 ,'test' ),(5a391596-3181-11e4-a87e-600308a690e2, 'organization', 5a3a2709-3181-11e4-a87e-600308a690e2 ,'test' ),(5a391596-3181-11e4-a87e-600308a690e2, 'organization', 5a39fff7-3181-11e4-a87e-600308a690e2 ,'test' ) )
+Which results in the following stack trace
+Caused by: com.datastax.driver.core.exceptions.InvalidQueryException: Multi-column relations can only be applied to clustering columns: scopeid
+ at com.datastax.driver.core.Responses$Error.asException(Responses.java:97)
+ at com.datastax.driver.core.DefaultResultSetFuture.onSet(DefaultResultSetFuture.java:110)
+ at com.datastax.driver.core.RequestHandler.setFinalResult(RequestHandler.java:235)
+ at com.datastax.driver.core.RequestHandler.onSet(RequestHandler.java:367)
+ at com.datastax.driver.core.Connection$Dispatcher.messageReceived(Connection.java:584)
+This is still possible via the thrift API. Apologies in advance if I've filed this erroneously. I can't find any examples of this type of query anywhere.
+Note that our size grows far too large to fit in a single physical partition (row) if we use only scopeId and scopeType, so we need all 4 data elements to be part of our partition key to ensure we have the distribution we need.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Todd Nine
+Create date:
+01/Sep/14 02:46
+Update date:
+16/Apr/19 09:31
+Resolved date:
+29/Jan/15 09:41

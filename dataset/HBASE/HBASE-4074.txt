@@ -1,0 +1,42 @@
+Summary:
+When a RS has hostname with uppercase letter, there are two RS entries in master
+Description:
+When a RS has uppercase letter in its hostname, e.g. Harpertown08-15.sh.intel.com. Then, there will be two RS entries in master report, they are
+harpertown08-15.sh.intel.com
+Harpertown08-15.sh.intel.com
+This leads to wrong region allocation.
+This problem is caused by the implementation of java.net.InetSocketAddress.
+The logic is:
+1. RS Harpertown08-15.sh.intel.com sends its DNS resolved hostname harpertown08-15.sh.intel.com to master for registration in HRegionServer.reportForDuty().
+2. Master handles it and returns harpertown08-15.sh.intel.com via HServerAddress object to RS to notify it this new name (actually the same as the one reported by RS).
+3. HServerAddress deserialize this object by first read out hostname as string ("harpertown08-15.sh.intel.com") and construct a InetSocketAddress object.
+4. RS get the new name by call this InetSocketAddress.getHostName() method which returns Harpertown08-15.sh.intel.com instead.
+5. In latter hearbeat communication (HRegionServer.tryRegionServerReport()), RS uses this new name (Harpertown08-15.sh.intel.com) to report to master and master regard it as a new RS. Thus, two RS entries exist.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.1, (2)
+Fix_version:
+0.90.4
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Weihua Jiang
+Reporter:
+Weihua Jiang
+Create date:
+07/Jul/11 07:46
+Update date:
+20/Nov/15 11:55
+Resolved date:
+07/Jul/11 16:52

@@ -1,0 +1,38 @@
+Summary:
+DFS errors during a read operation (get/scan), may cause write outliers
+Description:
+This is a similar issue as discussed in HBASE-8228
+1) A scanner holds the Store.ReadLock() while opening the store files ... encounters errors. Thus, takes a long time to finish.
+2) A flush is completed, in the mean while. It needs the write lock to commit(), and update scanners. Hence ends up waiting.
+3+) All Puts (and also Gets) to the CF, which will need a read lock, will have to wait for 1) and 2) to complete. Thus blocking updates to the system for the DFS timeout.
+Fix:
+Open Store files outside the read lock. getScanners() already tries to do this optimisation. However, Store.getScanner() which calls this functions through the StoreScanner constructor, redundantly tries to grab the readLock. Causing the readLock to be held while the storeFiles are being opened, and seeked.
+We should get rid of the readLock() in Store.getScanner(). This is not required. The constructor for StoreScanner calls getScanners(xxx, xxx, xxx). This has the required locking already.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Not A Problem
+Affects_version:
+0.89-fb, 0.95.2
+Fix_version:
+0.89-fb, 2.0.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Elliott Clark
+Reporter:
+Amitanand Aiyer
+Create date:
+13/Jul/13 00:24
+Update date:
+06/Apr/15 19:52
+Resolved date:
+06/Apr/15 19:52

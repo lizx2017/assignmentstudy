@@ -1,0 +1,47 @@
+Summary:
+HMaster does not go down while splitting logs even if explicit shutdown is called.
+Description:
+When master starts up and tries to do splitlog, in case of any error we try to do that infinitely in a loop until it succeeds.
+But now if we get a shutdown call, inside SplitLogManager
+          if (stopper.isStopped()) {
+            LOG.warn("Stopped while waiting for log splits to be completed");
+            return;
+          }
+Here we know that the master has stopped. As the task may not be completed now
+ if (batch.done != batch.installed) {
+      batch.isDead = true;
+      tot_mgr_log_split_batch_err.incrementAndGet();
+      LOG.warn("error while splitting logs in " + logDirs +
+      " installed = " + batch.installed + " but only " + batch.done + " done");
+      throw new IOException("error or interrupt while splitting logs in "
+          + logDirs + " Task = " + batch);
+    }
+we throw an exception. In MasterFileSystem.splitLogAfterStartup() we don't check if the master is stopped and we try continously.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.1, 0.94.0
+Fix_version:
+0.94.1, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+rajeshbabu
+Create date:
+29/Jun/12 11:35
+Update date:
+26/Feb/13 08:16
+Resolved date:
+05/Jul/12 17:47

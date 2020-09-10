@@ -1,0 +1,58 @@
+Summary:
+Some improvement in snapshot
+Description:
+(1)timeout for Procedure can not be configured.
+Procedure's timeout
+ProcedureCoordinator
+  final static long TIMEOUT_MILLIS_DEFAULT = 60000;
+   createProcedure(ForeignExceptionDispatcher fed, String procName, byte[] procArgs,
+      List<String> expectedMembers) {
+    // build the procedure
+    return new Procedure(this, fed, WAKE_MILLIS_DEFAULT, TIMEOUT_MILLIS_DEFAULT,
+        procName, procArgs, expectedMembers);
+  }
+
+RegionServerSnapshotManager:
+  /** Conf key for max time to keep threads in snapshot request pool waiting */
+  public static final String SNAPSHOT_TIMEOUT_MILLIS_KEY = "hbase.snapshot.region.timeout";
+  /** Keep threads alive in request pool for max of 60 seconds */
+  public static final long SNAPSHOT_TIMEOUT_MILLIS_DEFAULT = 60000;
+
+  public Subprocedure buildSubprocedure(SnapshotDescription snapshot) {
+    long timeoutMillis = conf.getLong(SNAPSHOT_TIMEOUT_MILLIS_KEY,
+        SNAPSHOT_TIMEOUT_MILLIS_DEFAULT);
+    case FLUSH:
+      SnapshotSubprocedurePool taskManager =
+        new SnapshotSubprocedurePool(rss.getServerName().toString(), conf);
+  }
+(2)TakeSnapshotHandler
+after snapshotRegions we should call monitor.rethrowException(); to check if there is exception and if there is we can skip the verifySnapshot
+(3)too much error message when error happened in some place.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.8, 0.95.0
+Fix_version:
+0.98.0, 0.95.2
+Component:
+snapshots
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Matteo Bertozzi
+Reporter:
+binlijin
+Create date:
+07/Jun/13 09:25
+Update date:
+23/Sep/13 19:22
+Resolved date:
+12/Jun/13 19:50

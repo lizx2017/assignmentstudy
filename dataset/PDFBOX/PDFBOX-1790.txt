@@ -1,0 +1,49 @@
+Summary:
+NPE during PDTrueTypeFont.loadTTF() on Mac TrueType font lacking Windows-platformID CMAPEncodingEntry
+Description:
+I'm attempting to embed a TrueType font using PDFBox, on the Mac, using PDTrueType.loadTTF( PDDocument, InputStream, Encoding ).
+For TrueType fonts originating from Windows (e.g., Tahoma) this works.
+For TrueType fonts originating from the Mac (e.g., Apple Chancery), a NullPointerException is thrown.
+java.lang.NullPointerException
+at org.apache.pdfbox.pdmodel.font.PDTrueTypeFont.loadDescriptorDictionary(PDTrueTypeFont.java:409)
+at org.apache.pdfbox.pdmodel.font.PDTrueTypeFont.loadTTF(PDTrueTypeFont.java:201)
+at org.apache.pdfbox.pdmodel.font.PDTrueTypeFont.loadTTF(PDTrueTypeFont.java:177)
+I stepped through the code in a debugger. The method PDTrueTypeFont.loadDescriptorDictionary() loops through the cmap table for the font, looking for a cmap with platform ID 3 (Windows), and sets the variable unimap only if one is found. After that loop, the variable unimap is dereferenced without checking for null.
+Some Mac TrueType fonts have platform IDs 0 (Unicode) and 1 (Mac), but not 3 (Windows).
+At the least, a null check seems required. But more desirable would be support for Mac TrueType fonts.
+Am I missing something, or should I enter a bug?
+Example problem font:
+Apple Chancery (Included with OS)
+Details:
+PDFBox version: 1.8.2 [Have not yet tested with 1.8.3, which was released a few days ago]
+Platform: Mac
+Java 6
+Font platform IDs: 0, 1
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+1.8.2
+Fix_version:
+2.0.0
+Component:
+Writing
+Label:
+None
+Environment:
+mac os, java 1.6
+Attachment number:
+0
+Assignee:
+John Hewson
+Reporter:
+Andrew Thomas
+Create date:
+02/Dec/13 16:25
+Update date:
+17/Mar/16 19:07
+Resolved date:
+19/Dec/14 19:21

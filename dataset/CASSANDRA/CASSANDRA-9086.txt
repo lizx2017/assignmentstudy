@@ -1,0 +1,46 @@
+Summary:
+CAS precondition mismatch - row is still inserted
+Description:
+Cassandra claims CAS precondition didn't match current values[1], but the row is still inserted.
+We are having a quite simple cf schema:
+create table index (
+  u text PRIMARY KEY,
+  abc set<uuid>,
+) WITH
+  compaction={'class': 'LeveledCompactionStrategy'};
+CQL statement:
+INSERT INTO index(u, abc) VALUES(?, ?) IF NOT EXISTS
+Sometimes, especially during some write load, Cassandra claims the conditional insert wasn't satisfied ([applied] false), but the row is still inserted.
+The response from the conditional insert contains [applied]=false + the data we tried to insert.
+A full CQL trace is attached.
+[1] CAS precondition CAS precondition org.apache.cassandra.cql3.statements.CQL3CasConditions@1b2576ce does not match current values ColumnFamily(username_index -
+{deletedAt=-9223372036854775808, localDeletion=2147483647, ranges=[abc-abc:!, deletedAt=1427889576525999, localDeletion=1427889564]}
+- [:false:0@1427889576526000,abc:39f1a470ee694761a8197c0d0ada8e8f:false:0@1427889576526000,]) | 11:59:37.060 | /10.0.0.1 | 533702
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+2.0.15
+Component:
+None
+Label:
+LWT
+Environment:
+
+Attachment number:
+0
+Assignee:
+Carl Yeksigian
+Reporter:
+Roger Schildmeijer
+Create date:
+01/Apr/15 14:24
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Apr/15 16:13

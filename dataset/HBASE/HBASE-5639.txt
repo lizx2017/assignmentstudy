@@ -1,0 +1,47 @@
+Summary:
+The logic used in waiting for region servers during startup is broken
+Description:
+See the tail of HBASE-4993, which I'll report here:
+Me:
+I think a bug was introduced here. Here's the new waiting logic in waitForRegionServers:
+the 'hbase.master.wait.on.regionservers.mintostart' is reached AND
+there have been no new region server in for
+'hbase.master.wait.on.regionservers.interval' time
+And the code that verifies that:
+!(lastCountChange+interval > now && count >= minToStart)
+Nic:
+It seems that changing the code to
+(count < minToStart ||
+lastCountChange+interval > now)
+would make the code works as documented.
+If you have 0 region servers that checked in and you are under the interval, you wait: (true or true) = true.
+If you have 0 region servers but you are above the interval, you wait: (true or false) = true.
+If you have 1 or more region servers that checked in and you are under the interval, you wait: (false or true) = true.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+26/Mar/12 23:11
+Update date:
+12/Oct/12 05:35
+Resolved date:
+27/Mar/12 20:41

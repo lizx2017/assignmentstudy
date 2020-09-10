@@ -1,0 +1,44 @@
+Summary:
+ArrayIndexOutOfBoundsException in UnifiedHighlighter
+Description:
+We see ArrayIndexOutOfBoundsExceptions coming out of the UnifiedHighlighter in our production logs from time to time:
+java.lang.ArrayIndexOutOfBoundsException
+ at java.base/java.lang.System.arraycopy(Native Method)
+ at org.apache.lucene.search.uhighlight.PhraseHelper$SpanCollectedOffsetsEnum.add(PhraseHelper.java:386)
+ at org.apache.lucene.search.uhighlight.PhraseHelper$OffsetSpanCollector.collectLeaf(PhraseHelper.java:341)
+ at org.apache.lucene.search.spans.TermSpans.collect(TermSpans.java:121)
+ at org.apache.lucene.search.spans.NearSpansOrdered.collect(NearSpansOrdered.java:149)
+ at org.apache.lucene.search.spans.NearSpansUnordered.collect(NearSpansUnordered.java:171)
+ at org.apache.lucene.search.spans.FilterSpans.collect(FilterSpans.java:120)
+ at org.apache.lucene.search.uhighlight.PhraseHelper.createOffsetsEnumsForSpans(PhraseHelper.java:261)
+...
+It turns out that there is an "off by one" error in the UnifiedHighlighter's code that, as far as I can tell, is only triggered when two nested SpanNearQueries contain the same term.
+The resulting behaviour depends on the content of the highlighted document. Either, some highlighted terms go missing or an ArrayIndexOutOfBoundsException is thrown.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+7.3.1
+Fix_version:
+7.4.1, 7.5, 8.0
+Component:
+modules/highlighter
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Simon Willnauer
+Reporter:
+Marc Morissette
+Create date:
+20/Jun/18 02:29
+Update date:
+24/Sep/18 08:02
+Resolved date:
+20/Jun/18 15:00

@@ -1,0 +1,50 @@
+Summary:
+deadlock occurs between hlog roller and hlog syncer
+Description:
+the hlog roller thread and hlog syncer thread may occur dead lock with the 'flushLock' and 'updateLock', and then cause all 'IPC Server handler' thread blocked on hlog append. the jstack info is as follow :
+"regionserver60020.logRoller":
+at org.apache.hadoop.hbase.regionserver.wal.HLog.syncer(HLog.java:1305)
+waiting to lock <0x000000067bf88d58> (a java.lang.Object)
+at org.apache.hadoop.hbase.regionserver.wal.HLog.syncer(HLog.java:1283)
+at org.apache.hadoop.hbase.regionserver.wal.HLog.sync(HLog.java:1456)
+at org.apache.hadoop.hbase.regionserver.wal.HLog.cleanupCurrentWriter(HLog.java:876)
+at org.apache.hadoop.hbase.regionserver.wal.HLog.rollWriter(HLog.java:657)
+locked <0x000000067d54ace0> (a java.lang.Object)
+at org.apache.hadoop.hbase.regionserver.LogRoller.run(LogRoller.java:94)
+at java.lang.Thread.run(Thread.java:662)
+"regionserver60020.logSyncer":
+at org.apache.hadoop.hbase.regionserver.wal.HLog.syncer(HLog.java:1314)
+waiting to lock <0x000000067d54ace0> (a java.lang.Object)
+locked <0x000000067bf88d58> (a java.lang.Object)
+at org.apache.hadoop.hbase.regionserver.wal.HLog.syncer(HLog.java:1283)
+at org.apache.hadoop.hbase.regionserver.wal.HLog.sync(HLog.java:1456)
+at org.apache.hadoop.hbase.regionserver.wal.HLog$LogSyncer.run(HLog.java:1235)
+at java.lang.Thread.run(Thread.java:662)
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.94.2
+Fix_version:
+0.94.5, 0.95.0
+Component:
+wal
+Label:
+None
+Environment:
+Linux 2.6.18-164.el5 x86_64 GNU/Linux
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Wang Qiang
+Create date:
+31/Jan/13 07:36
+Update date:
+26/Feb/13 08:27
+Resolved date:
+01/Feb/13 22:38

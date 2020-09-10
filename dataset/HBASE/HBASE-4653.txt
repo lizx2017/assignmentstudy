@@ -1,0 +1,88 @@
+Summary:
+Master can't easily get rid of LZO compressed tables when the codec isn't available
+Description:
+I mistakenly created a table with COMPRESSION => LZO, and I don't have LZO installed. I'm running a vanilla 0.90.4 release. The master is unable to deploy the region of that table because the codec is missing. I can't get rid of it. I can't drop the table from the shell, although it seems I could disable it. Thankfully I found a workaround for this bug (see further below).
+hbase(main):003:0> disable 'mytable'
+0 row(s) in 1.1010 seconds
+
+hbase(main):004:0> drop 'mytable'
+[hung forever]
+in the logs:
+2011-10-22 03:05:42,153 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Instantiated mytable,,1319278131519.6eb6891a8b072402b5064f4cc68c210d.
+2011-10-22 03:05:42,154 ERROR org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Failed open of region=mytable,,1319278131519.6eb6891a8b072402b5064f4cc68c210d. java.io.IOException: java.lang.RuntimeException:
+java.lang.ClassNotFoundException: com.hadoop.compression.lzo.LzoCodec
+       at org.apache.hadoop.hbase.util.CompressionTest.testCompression(CompressionTest.java:89)
+       at org.apache.hadoop.hbase.regionserver.HRegion.checkCompressionCodecs(HRegion.java:2573)
+       at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:2562)
+       at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:2550)
+       at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.openRegion(OpenRegionHandler.java:272)
+       at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:99)
+       at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:156)
+       at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+       at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+       at java.lang.Thread.run(Thread.java:680)
+Caused by: java.lang.RuntimeException: java.lang.ClassNotFoundException: com.hadoop.compression.lzo.LzoCodec
+       at org.apache.hadoop.hbase.io.hfile.Compression$Algorithm$1.getCodec(Compression.java:92)
+       at org.apache.hadoop.hbase.io.hfile.Compression$Algorithm.getCompressor(Compression.java:197)
+       at org.apache.hadoop.hbase.util.CompressionTest.testCompression(CompressionTest.java:84)
+       ... 9 more
+Caused by: java.lang.ClassNotFoundException: com.hadoop.compression.lzo.LzoCodec
+       at java.net.URLClassLoader$1.run(URLClassLoader.java:202)
+       at java.security.AccessController.doPrivileged(Native Method)
+       at java.net.URLClassLoader.findClass(URLClassLoader.java:190)
+       at java.lang.ClassLoader.loadClass(ClassLoader.java:306)
+       at sun.misc.Launcher$AppClassLoader.loadClass(Launcher.java:301)
+       at java.lang.ClassLoader.loadClass(ClassLoader.java:247)
+       at org.apache.hadoop.hbase.io.hfile.Compression$Algorithm$1.getCodec(Compression.java:87)
+       ... 11 more
+[...]
+2011-10-22 03:15:30,620 DEBUG org.apache.hadoop.hbase.master.handler.DeleteTableHandler: Waiting on region to clear regions in transition; mytable,,1319278131519.6eb6891a8b072402b5064f4cc68c210d. state=OPENING, ts=1319278483001
+2011-10-22 03:15:31,621 DEBUG org.apache.hadoop.hbase.master.handler.DeleteTableHandler: Waiting on region to clear regions in transition;
+mytable,,1319278131519.6eb6891a8b072402b5064f4cc68c210d. state=OPENING, ts=1319278483001
+[repeat message above indefinitely every 1s]
+I tried restarting HBase, no luck. How do I get rid of this table so I can recreate it without COMPRESSION => LZO?
+Workaround
+Change the schema for each family, restart HBase, drop the table.
+hbase(main):004:0> alter 'mytable', {NAME => 'fam1', COMPRESSION => 'NONE'}
+0 row(s) in 0.1160 seconds
+
+hbase(main):005:0> alter 'mytable', {NAME => 'fam2', COMPRESSION => 'NONE'}
+0 row(s) in 0.0480 seconds
+
+hbase(main):007:0> drop 'mytable'
+^C
+[hung forever]
+[restart HBase]
+hbase(main):001:0> disable 'mytable'
+0 row(s) in 2.5010 seconds
+
+hbase(main):002:0> drop 'mytable'
+0 row(s) in 1.1240 seconds
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Incomplete
+Affects_version:
+0.90.4
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Benoit Sigoure
+Create date:
+24/Oct/11 18:18
+Update date:
+11/Apr/15 01:23
+Resolved date:
+11/Apr/15 01:23

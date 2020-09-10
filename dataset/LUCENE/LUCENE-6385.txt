@@ -1,0 +1,54 @@
+Summary:
+NullPointerException from Highlighter.getBestFragment()
+Description:
+When testing against the 5.1 nightly snapshots I've come across a NullPointerException in highlighting when nothing would be highlighted. This does not happen with 5.0.
+java.lang.NullPointerException
+ at __randomizedtesting.SeedInfo.seed([3EDC6EB0FA552B34:9971866E394F5FD0]:0)
+ at org.apache.lucene.search.highlight.WeightedSpanTermExtractor.extractWeightedSpanTerms(WeightedSpanTermExtractor.java:311)
+ at org.apache.lucene.search.highlight.WeightedSpanTermExtractor.extract(WeightedSpanTermExtractor.java:151)
+ at org.apache.lucene.search.highlight.WeightedSpanTermExtractor.getWeightedSpanTerms(WeightedSpanTermExtractor.java:515)
+ at org.apache.lucene.search.highlight.QueryScorer.initExtractor(QueryScorer.java:219)
+ at org.apache.lucene.search.highlight.QueryScorer.init(QueryScorer.java:187)
+ at org.apache.lucene.search.highlight.Highlighter.getBestTextFragments(Highlighter.java:196)
+ at org.apache.lucene.search.highlight.Highlighter.getBestFragments(Highlighter.java:156)
+ at org.apache.lucene.search.highlight.Highlighter.getBestFragment(Highlighter.java:102)
+ at org.apache.lucene.search.highlight.Highlighter.getBestFragment(Highlighter.java:80)
+ at org.apache.lucene.search.highlight.MissesTest.testPhraseQuery(MissesTest.java:50)
+I've written a small unit test and used git bisect to narrow the regression to the following commit:
+commit 24e4eefaefb1837d1d4fa35f7669c2b264f872ac
+Author: Michael McCandless <mikemccand@apache.org>
+Date:   Tue Mar 31 08:48:28 2015 +0000
+
+    LUCENE-6308: cutover Spans to DISI, reuse ConjunctionDISI, use two-phased iteration
+    
+    git-svn-id: https://svn.apache.org/repos/asf/lucene/dev/branches/branch_5x@1670273 13f79535-47bb-0310-9956-ffa450edef68
+The problem looks quite simple, WeightedSpanTermExtractor.extractWeightedSpanTerms() needs an early return if SpanQuery.getSpans() returns null. All other callers check against this.
+Unit test and fix (against the regressed commit) attached.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+5.2
+Fix_version:
+5.2, 6.0
+Component:
+modules/highlighter
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Robert Muir
+Reporter:
+Terry Smith
+Create date:
+01/Apr/15 14:18
+Update date:
+09/May/16 18:39
+Resolved date:
+03/Apr/15 13:18

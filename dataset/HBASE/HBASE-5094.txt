@@ -1,0 +1,48 @@
+Summary:
+The META can hold an entry for a region with a different server name from the one actually in the AssignmentManager thus making the region inaccessible.
+Description:
+RegionState rit = this.services.getAssignmentManager().isRegionInTransition(e.getKey());
+            ServerName addressFromAM = this.services.getAssignmentManager()
+                .getRegionServerOfRegion(e.getKey());
+            if (rit != null && !rit.isClosing() && !rit.isPendingClose()) {
+              // Skip regions that were in transition unless CLOSING or
+              // PENDING_CLOSE
+              LOG.info("Skip assigning region " + rit.toString());
+            } else if (addressFromAM != null
+                && !addressFromAM.equals(this.serverName)) {
+              LOG.debug("Skip assigning region "
+                    + e.getKey().getRegionNameAsString()
+                    + " because it has been opened in "
+                    + addressFromAM.getServerName());
+              }
+In ServerShutDownHandler we try to get the address in the AM. This address is initially null because it is not yet updated after the region was opened .i.e. the CAll back after node deletion is not yet done in the master side.
+But removal from RIT is completed on the master side. So this will trigger a new assignment.
+So there is a small window between the online region is actually added in to the online list and the ServerShutdownHandler where we check the existing address in AM.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+26/Dec/11 06:43
+Update date:
+20/Nov/15 11:55
+Resolved date:
+03/Jan/12 04:28

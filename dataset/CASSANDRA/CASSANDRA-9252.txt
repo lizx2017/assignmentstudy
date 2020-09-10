@@ -1,0 +1,48 @@
+Summary:
+for DateTieredCompactionStrategy, TIMESTAMP_RESOLUTION_KEY sets wrong msxSSTableAge value if RESOLUTION is other than MILLISECONDS
+Description:
+I was trying to set 'timestamp_resolution' to MINUTES/HOURS/DAYS. it turned out maxSSTableAge was set as wrong value. In the code,
+    public DateTieredCompactionStrategyOptions(Map<String, String> options)
+    {
+        String optionValue = options.get(TIMESTAMP_RESOLUTION_KEY);
+        TimeUnit timestampResolution = optionValue == null ? DEFAULT_TIMESTAMP_RESOLUTION : TimeUnit.valueOf(optionValue);
+        optionValue = options.get(MAX_SSTABLE_AGE_KEY);
+        double fractionalDays = optionValue == null ? DEFAULT_MAX_SSTABLE_AGE_DAYS : Double.parseDouble(optionValue);
+        maxSSTableAge = Math.round(fractionalDays * timestampResolution.convert(1, TimeUnit.DAYS));
+ ...   }
+maxSSTableAge will be set as the value in "timestamp_resolution" unit, such as , with the following settings,
+'timestamp_resolution':'HOURS',
+'max_sstable_age_days':'7',
+'base_time_seconds':'3600'
+and I get:
+maxSSTableAge=168, baseTime=1
+while in the following routine, it expect maxSSTableAge as milliseconds
+static Iterable<SSTableReader> filterOldSSTables(List<SSTableReader> sstables, long maxSSTableAge, long now)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+2.0.15
+Component:
+None
+Label:
+dtcs
+Environment:
+linux, centos
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+mike
+Create date:
+27/Apr/15 22:15
+Update date:
+16/Apr/19 09:31
+Resolved date:
+28/Apr/15 07:22

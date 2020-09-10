@@ -1,0 +1,33 @@
+Summary:
+upgradesstables does not maintain levels for existing SSTables
+Description:
+Initially ran into this issue on a DSE 3.2 (C* 1.2) to DSE 4.0 (C* 2.0) upgrade, and then I was able to reproduce it when testing an upgrade from C* 2.0.5 to C* 2.1-beta so the problem still exists in the latest code.
+Basically after you've upgraded to the new version and run "nodetool upgradesstables" on a CF/table that has been using LCS, then all of the non-L0 SSTables will be changed to L0 in the upgraded SSTables. In other words, they don't maintain their level and will have to go through the compaction again. The problem is that if you've got thousands of non-L0 SSTables before the upgrade, then all of these files showing up in L0 will push the system to do STCS and start to build some huge L0 tables. If a user doesn't budget enough free space (for example, if they used the recommended guideline and only budgeted 10% of free space because LCS is in use), then this STCS in L0 effect will have them run out of space.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7
+Component:
+None
+Label:
+lcs
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Wei Deng
+Create date:
+31/Mar/14 13:50
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Apr/14 05:46

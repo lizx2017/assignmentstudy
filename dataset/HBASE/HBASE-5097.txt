@@ -1,0 +1,55 @@
+Summary:
+RegionObserver implementation whose preScannerOpen and postScannerOpen Impl return null can stall the system initialization through NPE
+Description:
+In HRegionServer.java openScanner()
+      r.prepareScanner(scan);
+      RegionScanner s = null;
+      if (r.getCoprocessorHost() != null) {
+        s = r.getCoprocessorHost().preScannerOpen(scan);
+      }
+      if (s == null) {
+        s = r.getScanner(scan);
+      }
+      if (r.getCoprocessorHost() != null) {
+        s = r.getCoprocessorHost().postScannerOpen(scan, s);
+      }
+If we dont have implemention for postScannerOpen the RegionScanner is null and so throwing nullpointer
+java.lang.NullPointerException
+ at java.util.concurrent.ConcurrentHashMap.put(ConcurrentHashMap.java:881)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.addScanner(HRegionServer.java:2282)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.openScanner(HRegionServer.java:2272)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Server.call(WritableRpcEngine.java:364)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1326)
+Making this defect as blocker.. Pls feel free to change the priority if am wrong. Also correct me if my way of trying out coprocessors without implementing postScannerOpen is wrong. Am just a learner.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.2, (2)
+Component:
+Coprocessors
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+27/Dec/11 06:41
+Update date:
+18/Sep/13 23:21
+Resolved date:
+03/Apr/12 04:01

@@ -1,0 +1,48 @@
+Summary:
+Do not enforce secure Hadoop for secure HBase
+Description:
+We should recommend and not enforce secure Hadoop underneath as a requirement to run secure HBase.
+Few of our customers have HBase clusters which expose only HBase services to outside the physical network and no other services (including ssh) are accessible from outside of such cluster.
+However they are forced to setup secure Hadoop and incur the penalty of security overhead at filesystem layer even if they do not need to.
+The following code tests for both secure HBase and secure Hadoop.
+org.apache.hadoop.hbase.security.User
+  /**
+   * Returns whether or not secure authentication is enabled for HBase.  Note that
+   * HBase security requires HDFS security to provide any guarantees, so this requires that
+   * both <code>hbase.security.authentication</code> and <code>hadoop.security.authentication</code>
+   * are set to <code>kerberos</code>.
+   */
+  public static boolean isHBaseSecurityEnabled(Configuration conf) {
+    return "kerberos".equalsIgnoreCase(conf.get(HBASE_SECURITY_CONF_KEY)) &&
+        "kerberos".equalsIgnoreCase(
+            conf.get(CommonConfigurationKeys.HADOOP_SECURITY_AUTHENTICATION));
+  }
+What is worse that if "hadoop.security.authentication" is not set to "kerberos" (undocumented at http://hbase.apache.org/book/security.html), all other configuration have no impact and HBase RPCs silently switch back to unsecured mode.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2, 0.94.11
+Fix_version:
+0.98.0, 0.94.12, 0.96.0
+Component:
+security
+Label:
+security
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aditya Kishore
+Reporter:
+Aditya Kishore
+Create date:
+10/Sep/13 00:29
+Update date:
+24/Sep/13 20:32
+Resolved date:
+11/Sep/13 21:09

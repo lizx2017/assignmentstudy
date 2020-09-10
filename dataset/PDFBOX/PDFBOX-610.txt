@@ -1,0 +1,41 @@
+Summary:
+Fonts should not be cached by PDFStreamEngine
+Description:
+org.apache.pdfbox.util.PDFStreamEngine
+Fonts are cached using variable 'private Map documentFontCache = new HashMap();'
+which is used in method 'processSubStream()' and the call 'sr.fonts = resources.getFonts(documentFontCache);
+The problem is that PDF documents can store a limited range of 'firstChar' and 'lastChar' (maybe just a space char), and then expand that range at a later point within the same page. When the font is cached, those updates are ignored.
+In particular, test 'http://www.encana.com/investor/financial/shareholder/pdfs/info-circular-french.pdf, pg 1'.
+Using font caching, the widths of the characters in the upper right corner of the page are reported as zero, and the text extraction and text merging is compromised.
+Without font caching, the widths are correct. There are other examples that cause the same problem.
+To fix the problem change the call in method 'processSubStream()' to:
+sr.fonts = resources.getFonts(null);
+There was some effort put into font caching. Unfortunately, it should not be used on unknown documents.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.8.0-incubator
+Fix_version:
+1.7.0
+Component:
+Text extraction
+Label:
+PDFStreamEngine font
+Environment:
+windows, linux
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Peter Costello
+Create date:
+07/Feb/10 06:06
+Update date:
+11/Feb/16 16:56
+Resolved date:
+22/Jan/12 13:25

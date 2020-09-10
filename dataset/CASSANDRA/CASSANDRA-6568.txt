@@ -1,0 +1,57 @@
+Summary:
+sstables incorrectly getting marked as "not live"
+Description:
+-rw-rw-r-- 14 cassandra cassandra 1.4G Nov 25 19:46 /data/sstables/data/ks/cf/ks-cf-ic-402383-Data.db
+-rw-rw-r-- 14 cassandra cassandra  13G Nov 26 00:04 /data/sstables/data/ks/cf/ks-cf-ic-402430-Data.db
+-rw-rw-r-- 14 cassandra cassandra  13G Nov 26 05:03 /data/sstables/data/ks/cf/ks-cf-ic-405231-Data.db
+-rw-rw-r-- 31 cassandra cassandra  21G Nov 26 08:38 /data/sstables/data/ks/cf/ks-cf-ic-405232-Data.db
+-rw-rw-r--  2 cassandra cassandra 2.6G Dec  3 13:44 /data/sstables/data/ks/cf/ks-cf-ic-434662-Data.db
+-rw-rw-r-- 14 cassandra cassandra 1.5G Dec  5 09:05 /data/sstables/data/ks/cf/ks-cf-ic-438698-Data.db
+-rw-rw-r--  2 cassandra cassandra 3.1G Dec  6 12:10 /data/sstables/data/ks/cf/ks-cf-ic-440983-Data.db
+-rw-rw-r--  2 cassandra cassandra  96M Dec  8 01:52 /data/sstables/data/ks/cf/ks-cf-ic-444041-Data.db
+-rw-rw-r--  2 cassandra cassandra 3.3G Dec  9 16:37 /data/sstables/data/ks/cf/ks-cf-ic-451116-Data.db
+-rw-rw-r--  2 cassandra cassandra 876M Dec 10 11:23 /data/sstables/data/ks/cf/ks-cf-ic-453552-Data.db
+-rw-rw-r--  2 cassandra cassandra 891M Dec 11 03:21 /data/sstables/data/ks/cf/ks-cf-ic-454518-Data.db
+-rw-rw-r--  2 cassandra cassandra 102M Dec 11 12:27 /data/sstables/data/ks/cf/ks-cf-ic-455429-Data.db
+-rw-rw-r--  2 cassandra cassandra 906M Dec 11 23:54 /data/sstables/data/ks/cf/ks-cf-ic-455533-Data.db
+-rw-rw-r--  1 cassandra cassandra 214M Dec 12 05:02 /data/sstables/data/ks/cf/ks-cf-ic-456426-Data.db
+-rw-rw-r--  1 cassandra cassandra 203M Dec 12 10:49 /data/sstables/data/ks/cf/ks-cf-ic-456879-Data.db
+-rw-rw-r--  1 cassandra cassandra  49M Dec 12 12:03 /data/sstables/data/ks/cf/ks-cf-ic-456963-Data.db
+-rw-rw-r-- 18 cassandra cassandra  20G Dec 25 01:09 /data/sstables/data/ks/cf/ks-cf-ic-507770-Data.db
+-rw-rw-r--  3 cassandra cassandra  12G Jan  8 04:22 /data/sstables/data/ks/cf/ks-cf-ic-567100-Data.db
+-rw-rw-r--  3 cassandra cassandra 957M Jan  8 22:51 /data/sstables/data/ks/cf/ks-cf-ic-569015-Data.db
+-rw-rw-r--  2 cassandra cassandra 923M Jan  9 17:04 /data/sstables/data/ks/cf/ks-cf-ic-571303-Data.db
+-rw-rw-r--  1 cassandra cassandra 821M Jan 10 08:20 /data/sstables/data/ks/cf/ks-cf-ic-574642-Data.db
+-rw-rw-r--  1 cassandra cassandra  18M Jan 10 08:48 /data/sstables/data/ks/cf/ks-cf-ic-574723-Data.db
+I tried to do a user defined compaction on sstables from November and got "it is not an active sstable". Live sstable count from jmx was about 7 while on disk there were over 20. Live vs total size showed about a ~50 GiB difference.
+Forcing a gc from jconsole had no effect. However, restarting the node resulted in live sstables/bytes increasing to match what was on disk. User compaction could now compact the November sstables. This cluster was last restarted in mid December.
+I'm not sure what affect "not live" had on other operations of the cluster. From the logs it seems that the files were sent at least at some point as part of repair, but I don't know if they were being being used for read requests or not. Because the problem that got me looking in the first place was poor performance I suspect they were used for reads (and the reads were slow because so many sstables were being read). I presume based on their age at the least they were being excluded from compaction.
+I'm not aware of any isLive() or getRefCount() to problematically confirm which nodes have this problem. In this cluster almost all columns have a 14 day TTL, based on the number of nodes with November sstables it appears to be occurring on a significant fraction of the nodes.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Chris Burroughs
+Create date:
+10/Jan/14 16:29
+Update date:
+16/Apr/19 09:31
+Resolved date:
+16/Oct/14 17:01

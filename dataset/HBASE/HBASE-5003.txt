@@ -1,0 +1,50 @@
+Summary:
+If the master is started with a wrong root dir, it gets stuck and can't be killed
+Description:
+Reported by a new user on IRC who tried to set hbase.rootdir to file:///~/hbase, the master gets stuck and cannot be killed. I tried something similar on my machine and it spins while logging:
+2011-12-09 16:11:17,002 WARN org.apache.hadoop.hbase.util.FSUtils: Unable to create version file at file:/bin/hbase, retrying: Mkdirs failed to create file:/bin/hbase
+2011-12-09 16:11:27,002 WARN org.apache.hadoop.hbase.util.FSUtils: Unable to create version file at file:/bin/hbase, retrying: Mkdirs failed to create file:/bin/hbase
+2011-12-09 16:11:37,003 WARN org.apache.hadoop.hbase.util.FSUtils: Unable to create version file at file:/bin/hbase, retrying: Mkdirs failed to create file:/bin/hbase
+The reason it cannot be stopped is that the master's main thread is stuck in there and will never be notified:
+"Master:0;su-jdcryans-01.local,51116,1323475535684" prio=5 tid=7f92b7a3c000 nid=0x1137ba000 waiting on condition [1137b9000]
+java.lang.Thread.State: TIMED_WAITING (sleeping)
+at java.lang.Thread.sleep(Native Method)
+at org.apache.hadoop.hbase.util.FSUtils.setVersion(FSUtils.java:297)
+at org.apache.hadoop.hbase.util.FSUtils.setVersion(FSUtils.java:268)
+at org.apache.hadoop.hbase.master.MasterFileSystem.checkRootDir(MasterFileSystem.java:339)
+at org.apache.hadoop.hbase.master.MasterFileSystem.createInitialFileSystemLayout(MasterFileSystem.java:128)
+at org.apache.hadoop.hbase.master.MasterFileSystem.<init>(MasterFileSystem.java:113)
+at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:435)
+at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:314)
+at org.apache.hadoop.hbase.master.HMasterCommandLine$LocalHMaster.run(HMasterCommandLine.java:218)
+at java.lang.Thread.run(Thread.java:680)
+It seems we should do a better handling of the exceptions we get in there, and die if we need to. It would make a better user experience.
+Maybe also do a check on hbase.rootdir before even starting the master.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.92.1, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Shaneal Manek
+Reporter:
+Jean-Daniel Cryans
+Create date:
+10/Dec/11 00:15
+Update date:
+05/Aug/14 20:11
+Resolved date:
+18/Feb/12 21:34

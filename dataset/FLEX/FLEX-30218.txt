@@ -1,0 +1,72 @@
+Summary:
+Unable to over-ride existing Flex method using QTP
+Description:
+Hello,
+I'm using QuickTest Professional 9.5 and Flex 3.x
+I am unable to over-ride the existing Click method for FlexCheckBox class object.
+"Object doesn't support this property or method: 'obj.Click'" when executing the user-defined function which overrides FlexCheckBox's Click method.
+You can reproduce the issue against Adobe's sample Flex application under the "Product" tab.
+Link: http://examples.adobe.com/flex2/inproduct/lcds/flexstore/flexstore.html
+User-defined function that is used to override FlexCheckBox's Click method:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Public Function MyClick (obj)
+lbl = obj.GetROProperty("label")
+cls = obj.GetROProperty("automationclassname")
+Reporter.ReportEvent micInfo, "Object Selected - " & cls, cls & " selected with label, " & lbl
+obj.Click
+End Function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Main Script:
+RegisterUserFunc "FlexCheckBox", "Click", "MyClick"
+Browser("FlexStore").FlexApplication("flexstore").FlexToggleButtonBar("_ToggleButtonBar1").Change "Products"
+Browser("FlexStore").FlexApplication("flexstore").FlexCanvas("Products").FlexCheckBox("Tri-Band").Click
+One additional note, if I instead associate the user-defined function to the FlexCheckBox class instead of overriding the Click method the function works.
+Working example:
+<User-defined function is the same as above>
+Main Script:
+RegisterUserFunc "FlexCheckBox", "MyClick", "MyClick"
+Browser("FlexStore").FlexApplication("flexstore").FlexToggleButtonBar("_ToggleButtonBar1").Change "Products"
+Browser("FlexStore").FlexApplication("flexstore").FlexCanvas("Products").FlexCheckBox("Tri-Band").MyClick
+My guess is that this is a defect.
+When a user-defined function contains the method that you are overriding the error that we are seeing occurs.
+In my example that fails, I override FlexCheckBox's Click method with MyClick function, but MyClick function contains the method I'm overriding.
+However if you look at QTP's help files for the UserRegisterFunc method, the example shows that this is possible.
+From QTP Help files for RegisterUserFunc:
+Function MySet (obj, x)
+dim y
+y = obj.GetROProperty("value")
+Reporter.ReportEvent micDone, "previous value", y
+MySet=obj.Set
+End Function
+RegisterUserFunc "WebEdit", "Set", "MySet"
+Browser("MercuryTours").Page("FindFlights").WebEdit("Country").Set "Canada"
+UnRegisterUserFunc "WebEdit", "Set"
+Please confirm whether this is a defect with the Flex Addin. If it is, when will this be fixed, and do you have any additional workarounds for this?
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+AgentAPI
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+08/Feb/10 11:32
+Update date:
+11/Aug/11 23:00
+Resolved date:
+

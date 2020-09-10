@@ -1,0 +1,38 @@
+Summary:
+Fix 2i on composite components omissions
+Description:
+There some edge-cases, not covered by CASSANDRA-5125, the attached patch fixes those:
+(Assuming CREATE TABLE test (pk0 int, pk1 int, ck0 int, ck1 int, val int, PRIMARY KEY ((pk0, pk1), ck0, ck1)))
+could not create a 2i on the first part of a composite partition key (pk0)
+if created, it couldn't work because of getKeyBounds() returning non-empty bounds
+could create an index on the first clustering key column (ck0), but it would never actually be triggered on reads
+queries like SELECT * FROM test WHERE pk0 = x AND pk1 = y AND ck1 = z would throw an exception because COCK.makeIndexColumnNameBuilder() couldn't handle empty provided columnName
+cqlsh could not describe any of these indexes because it was taking column aliases and key aliases from schema_columnfamilies and not reading them directly from schema_columns (had to do the related refactoring).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Aleksey Yeschenko
+Create date:
+06/Aug/13 16:03
+Update date:
+16/Apr/19 09:32
+Resolved date:
+12/Aug/13 10:58

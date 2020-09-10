@@ -1,0 +1,61 @@
+Summary:
+HBaseExecutorService needs to be multi-cluster friendly
+Description:
+While running TestReplication I bumped into:
+2010-06-16 16:44:07,576 DEBUG [IPC Server handler 3 on 62423] master.RegionManager(357): Created UNASSIGNED zNode test,,1276731846828.de5dcd3df0fbc58207ce6ccff9ff2870. in state M2ZK_REGION_OFFLINE
+2010-06-16 16:44:07,577 INFO  [RegionServer:0] regionserver.HRegionServer(511): MSG_REGION_OPEN: test,,1276731846828.de5dcd3df0fbc58207ce6ccff9ff2870.
+2010-06-16 16:44:07,577 INFO  [RegionServer:0.worker] regionserver.HRegionServer$Worker(1358): Worker: MSG_REGION_OPEN: test,,1276731846828.de5dcd3df0fbc58207ce6ccff9ff2870.
+2010-06-16 16:44:07,578 DEBUG [RegionServer:0.worker] regionserver.RSZookeeperUpdater(157): Updating ZNode /1/UNASSIGNED/de5dcd3df0fbc58207ce6ccff9ff2870 with [RS2ZK_REGION_OPENING] expected version = 0
+2010-06-16 16:44:07,580 DEBUG [main-EventThread] master.HMaster(1142): Event NodeDataChanged with state SyncConnected with path /1/UNASSIGNED/de5dcd3df0fbc58207ce6ccff9ff2870
+2010-06-16 16:44:07,580 DEBUG [main-EventThread] master.ZKMasterAddressWatcher(64): Got event NodeDataChanged with path /1/UNASSIGNED/de5dcd3df0fbc58207ce6ccff9ff2870
+2010-06-16 16:44:07,580 DEBUG [main-EventThread] master.ZKUnassignedWatcher(71): ZK-EVENT-PROCESS: Got zkEvent NodeDataChanged state:SyncConnected path:/1/UNASSIGNED/de5dcd3df0fbc58207ce6ccff9ff2870
+2010-06-16 16:44:07,580 INFO  [main-EventThread] regionserver.HRegionServer(379): Got ZooKeeper event, state: SyncConnected, type: NodeDataChanged, path: /1/UNASSIGNED/de5dcd3df0fbc58207ce6ccff9ff2870
+2010-06-16 16:44:07,581 DEBUG [RegionServer:0.worker] regionserver.HRegion(294): Creating region test,,1276731846828.de5dcd3df0fbc58207ce6ccff9ff2870.
+2010-06-16 16:44:07,582 DEBUG [MASTER_CLOSEREGION-master-1] handler.MasterOpenRegionHandler(70): Event = RS2ZK_REGION_OPENING, region = de5dcd3df0fbc58207ce6ccff9ff2870
+2010-06-16 16:44:07,582 DEBUG [MASTER_CLOSEREGION-master-1] handler.MasterOpenRegionHandler(81): NO-OP call to handling region opening event
+2010-06-16 16:44:07,589 INFO  [RegionServer:0.worker] regionserver.HRegion(369): region test,,1276731846828.de5dcd3df0fbc58207ce6ccff9ff2870. available; sequence id is 1
+2010-06-16 16:44:07,590 DEBUG [RegionServer:0.worker] regionserver.RSZookeeperUpdater(157): Updating ZNode /1/UNASSIGNED/de5dcd3df0fbc58207ce6ccff9ff2870 with [RS2ZK_REGION_OPENED] expected version = 1
+2010-06-16 16:44:07,591 DEBUG [main-EventThread] master.HMaster(1142): Event NodeDataChanged with state SyncConnected with path /1/UNASSIGNED/de5dcd3df0fbc58207ce6ccff9ff2870
+2010-06-16 16:44:07,591 DEBUG [main-EventThread] master.ZKMasterAddressWatcher(64): Got event NodeDataChanged with path /1/UNASSIGNED/de5dcd3df0fbc58207ce6ccff9ff2870
+2010-06-16 16:44:07,592 DEBUG [main-EventThread] master.ZKUnassignedWatcher(71): ZK-EVENT-PROCESS: Got zkEvent NodeDataChanged state:SyncConnected path:/1/UNASSIGNED/de5dcd3df0fbc58207ce6ccff9ff2870
+2010-06-16 16:44:07,591 INFO  [main-EventThread] regionserver.HRegionServer(379): Got ZooKeeper event, state: SyncConnected, type: NodeDataChanged, path: /1/UNASSIGNED/de5dcd3df0fbc58207ce6ccff9ff2870
+2010-06-16 16:44:07,593 DEBUG [MASTER_CLOSEREGION-master-1] handler.MasterOpenRegionHandler(70): Event = RS2ZK_REGION_OPENED, region = de5dcd3df0fbc58207ce6ccff9ff2870
+2010-06-16 16:44:07,594 DEBUG [MASTER_CLOSEREGION-master-1] handler.MasterOpenRegionHandler(96): RS 10.10.1.130,62425,1276731832950 has opened region de5dcd3df0fbc58207ce6ccff9ff2870
+2010-06-16 16:44:07,594 ERROR [MASTER_CLOSEREGION-master-1] server.NIOServerCnxn$Factory$1(81): Thread Thread[MASTER_CLOSEREGION-master-1,5,main] died
+java.lang.NullPointerException
+        at org.apache.hadoop.hbase.master.ServerManager.processRegionOpen(ServerManager.java:607)
+        at org.apache.hadoop.hbase.master.handler.MasterOpenRegionHandler.handleRegionOpenedEvent(MasterOpenRegionHandler.java:99)
+        at org.apache.hadoop.hbase.master.handler.MasterOpenRegionHandler.process(MasterOpenRegionHandler.java:75)
+        at org.apache.hadoop.hbase.executor.HBaseEventHandler.run(HBaseEventHandler.java:215)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:637)
+This looks very new. Assigning Karthik as he was there recently.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Karthik Ranganathan
+Reporter:
+Jean-Daniel Cryans
+Create date:
+17/Jun/10 00:04
+Update date:
+20/Nov/15 12:40
+Resolved date:
+22/Jun/10 18:30

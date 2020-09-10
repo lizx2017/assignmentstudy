@@ -1,0 +1,63 @@
+Summary:
+get_range_slice() behavior is inconsistent with get_slice() and multiget_slice() when super_column is set in ColumnParent
+Description:
+Here's an example using my python library ( http://github.com/vomjom/pycassa ):
+>>> import pycassa
+>>> connect = pycassa.connect()
+>>> cf = pycassa.ColumnFamily(connect, 'Test Keyspace', 'Test Super', super=True)
+>>> cf.insert('key1', {'2': {'sub3': 'val3', 'sub4': 'val4'}})
+>>> cf.get('key1')
+{'2': {'sub4': 'val4', 'sub3': 'val3'}}
+>>> cf.get('key1', super_column='2')
+{'sub4': 'val4', 'sub3': 'val3'}
+>>> cf.multiget(['key1'])
+{'key1': {'2':
+{'sub4': 'val4', 'sub3': 'val3'}
+}}
+>>> cf.multiget(['key1'], super_column='2')
+{'key1': {'sub4': 'val4', 'sub3': 'val3'}}
+>>> list(cf.get_range())
+[('key1', {'2': {'sub4': 'val4', 'sub3': 'val3'}})]
+>>> list(cf.get_range(super_column='2'))
+[('key1', {'2': {'sub4': 'val4', 'sub3': 'val3'}})]
+In the last case, I expected:
+[('key1',
+{'sub4': 'val4', 'sub3': 'val3'}
+)]
+If the super_column argument is supplied, then all of these make a ColumnParent with:
+cp = ColumnParent(column_family=self.column_family, super_column=super_column)
+Or basically, in the KeySlice returned by get_range_slice(), if super_column was set in the passed in the ColumnParent, the columns member of the KeySlice should be a list of respective SuperColumn.columns and not a list of SuperColumn.
+Another way to describe the problem:
+get_slice(), multiget_slice(), and get_range_slice() all return:
+list<ColumnOrSuperColumn> in their return values in some way or another.
+If super_column is set in the ColumnParent then:
+1. get_slice() and multiget_slice() return the list of SuperColumn.columns each wrapped in a ColumnOrSuperColumn
+2. The KeySlice in get_range_slice() returns a list of ONE SuperColumn wrapped in a ColumnOrSuperColumn
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.5
+Component:
+None
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jonathan Hseu
+Create date:
+22/Dec/09 14:23
+Update date:
+16/Apr/19 09:33
+Resolved date:
+26/Dec/09 13:43

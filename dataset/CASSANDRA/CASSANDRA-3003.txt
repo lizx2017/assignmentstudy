@@ -1,0 +1,37 @@
+Summary:
+Trunk single-pass streaming doesn't handle large row correctly
+Description:
+For normal column family, trunk streaming always buffer the whole row into memory. In uses
+  ColumnFamily.serializer().deserializeColumns(in, cf, true, true);
+on the input bytes.
+We must avoid this for rows that don't fit in the inMemoryLimit.
+Note that for regular column families, for a given row, there is actually no need to even recreate the bloom filter of column index, nor to deserialize the columns. It is enough to filter the key and row size to feed the index writer, but then simply dump the rest on disk directly. This would make streaming more efficient, avoid a lot of object creation and avoid the pitfall of big rows.
+Counters column family are unfortunately trickier, because each column needs to be deserialized (to mark them as 'fromRemote'). However, we don't need to do the double pass of LazilyCompactedRow for that. We can simply use a SSTableIdentityIterator and deserialize/reserialize input as it comes.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.0
+Component:
+None
+Label:
+streaming
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Sylvain Lebresne
+Create date:
+08/Aug/11 19:52
+Update date:
+16/Apr/19 09:32
+Resolved date:
+05/Sep/11 14:57

@@ -1,0 +1,145 @@
+Summary:
+Null pointer exception in doIndexing(ColumnIndexer.java:142)
+Description:
+INFO - Saved Token not found. Using 17570558338530880605478324248305304996
+INFO - Cassandra starting up...
+INFO - Standard1 has reached its threshold; switching in a fresh Memtable
+INFO - Enqueuing flush of Memtable(Standard1)@15830327
+INFO - Sorting Memtable(Standard1)@15830327
+INFO - Writing Memtable(Standard1)@15830327
+INFO - Completed flushing /spool/cassandra/data/Keyspace1/Standard1-1-Data.db
+INFO - Standard1 has reached its threshold; switching in a fresh Memtable
+INFO - Enqueuing flush of Memtable(Standard1)@22655307
+INFO - Sorting Memtable(Standard1)@22655307
+INFO - Writing Memtable(Standard1)@22655307
+ERROR - Error in executor futuretask
+java.util.concurrent.ExecutionException: java.lang.AssertionError
+at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor.logFutur
+eExceptions(DebuggableThreadPoolExecutor.java:95)
+at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor.afterExe
+cute(DebuggableThreadPoolExecutor.java:82)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExec
+utor.java:887)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor
+.java:907)
+at java.lang.Thread.run(Thread.java:619)
+Caused by: java.lang.AssertionError
+at org.apache.cassandra.db.ColumnIndexer.doIndexing(ColumnIndexer.java:1
+07)
+at org.apache.cassandra.db.ColumnIndexer.serialize(ColumnIndexer.java:62
+)
+at org.apache.cassandra.db.ColumnFamilySerializer.serializeWithIndexes(C
+olumnFamilySerializer.java:78)
+at org.apache.cassandra.db.Memtable.writeSortedContents(Memtable.java:22
+2)
+at org.apache.cassandra.db.ColumnFamilyStore$2$1.run(ColumnFamilyStore.j
+ava:934)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:44
+1)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExec
+utor.java:885)
+... 2 more
+INFO - Standard1 has reached its threshold; switching in a fresh Memtable
+INFO - Enqueuing flush of Memtable(Standard1)@14600171
+INFO - Sorting Memtable(Standard1)@14600171
+INFO - Writing Memtable(Standard1)@14600171
+INFO - Completed flushing /spool/cassandra/data/Keyspace1/Standard1-3-Data.db
+How to reproduce: Run perl script pointed below, three at once. In short, script just inserts a row and immediately removes it.
+#!/usr/local/bin/perl
+use lib qw(/usr/local/cassandra/interface/gen-perl/Cassandra /usr/local/cassandra/interface/gen-perl);
+use strict;
+use Cassandra;
+use Thrift::Socket;
+use Thrift::BinaryProtocol;
+use Thrift::FramedTransport;
+use Thrift::BufferedTransport;
+use Data::Dumper;
+use Time::HiRes qw( gettimeofday tv_interval );
+use Getopt::Std;
+my %opt;
+getopts('iu:t:rn:', %opt);
+my $socket = Thrift::Socket->new('localhost', 9160);
+$socket->setSendTimeout(1000);
+$socket->setRecvTimeout(5000);
+my $transport = Thrift::BufferedTransport->new($socket, 1024, 1024);
+my $protocol = Thrift::BinaryProtocol->new($transport);
+my $client = Cassandra::CassandraClient->new($protocol);
+$transport->open();
+eval {
+my $id=0;
+for(; {
+$id++;
+my $PID = sprintf("%040lld", int(1000000 * rand()));
+$client->batch_insert(
+'Keyspace1',
+$PID,
+{
+'Standard1' => _makeColumnList ({
+map
+{ $_=>'0'x(int(1 + 100 * rand())) }
+(0..int(1+10*rand()))
+})
+},
+Cassandra::ConsistencyLevel::ONE
+);
+$client->remove(
+'Keyspace1',
+$PID,
+Cassandra::ColumnPath->new(
+{ column_family=>'Standard1', }
+),
+time(),
+Cassandra::ConsistencyLevel::ONE
+);
+print "$id\n" if ($id%100 == 0);
+}
+};
+die Dumper($@) if ($@);
+$transport->close();
+sub _makeColumnList($$) {
+my ($row) = @_;
+my @cfmap;
+foreach my $k (keys %$row) {
+push @cfmap, Cassandra::ColumnOrSuperColumn->new({
+column=>Cassandra::Column->new({
+name=>$k,
+value=>$row->{$k},
+timestamp=>time(),
+})
+});
+}
+die if $#cfmap < 0;
+return @cfmap;
+}
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.4, 0.5
+Component:
+None
+Label:
+None
+Environment:
+freebsd, java 1.6
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Teodor Sigaev
+Create date:
+25/Sep/09 13:29
+Update date:
+16/Apr/19 09:33
+Resolved date:
+26/Sep/09 12:54

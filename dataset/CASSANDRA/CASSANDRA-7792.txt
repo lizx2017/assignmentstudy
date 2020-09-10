@@ -1,0 +1,47 @@
+Summary:
+Fix cqlsh null handling in COPY FROM
+Description:
+In create_insert_statement(), we have the following logic:
+if value != nullval:
+    if cqltype in ('ascii', 'text', 'timestamp', 'inet'):
+        rowmap[name] = protect_value(value)
+    else:
+        rowmap[name] = value
+elif name in clustering_key_columns and not type.empty_binary_ok:
+    rowmap[name] = 'blobAs%s(0x)' % cqltype.title()
+else:
+    rowmap[name] = 'null'
+The first problem is that we're inserting empty binaries when the type should not have empty binaries.
+However, it could also be considered incorrect that we insert empty binaries for clustering columns when we have something that matches the "null value". This is to avoid inserting nulls for clustering columns. Of course, users may actually want to insert empty strings for columns, but I think that if they want that behavior, changing the null value is the correct way to do that.
+I propose changing the "elif" statement to something like:
+elif name in primary_key_columns:
+    raise Exception("Nulls are not allowed in primary key columns")    
+I set the fix version for this to 2.1.0. If we're not comfortable making this entire change in 2.1.0, we should at least remove the "not" in the elif and make the other changes for 2.1.1
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.0
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Tyler Hobbs
+Create date:
+19/Aug/14 18:31
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Aug/14 19:56

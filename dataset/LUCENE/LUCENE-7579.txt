@@ -1,0 +1,42 @@
+Summary:
+Sorting on flushed segment
+Description:
+Today flushed segments built by an index writer with an index sort specified are not sorted. The merge is responsible of sorting these segments potentially with others that are already sorted (resulted from another merge).
+I'd like to investigate the cost of sorting the segment directly during the flush. This could make the merge faster since they are some cheap optimizations that can be done only if all segments to be merged are sorted.
+For instance the merge of the points could use the bulk merge instead of rebuilding the points from scratch.
+I made a small prototype which sort the segment on flush here:
+https://github.com/apache/lucene-solr/compare/master...jimczi:flush_sort
+The idea is simple, for points, norms, docvalues and terms I use the SortingLeafReader implementation to translate the values that we have in RAM in a sorted enumeration for the writers.
+For stored fields I use a two pass scheme where the documents are first written to disk unsorted and then copied to another file with the correct sorting. I use the same stored field format for the two steps and just remove the file produced by the first pass at the end of the process.
+This prototype has no implementation for index sorting that use term vectors yet. I'll add this later if the tests are good enough.
+Speaking of testing, I tried this branch on Michael McCandless benchmark scripts and compared master with index sorting against my branch with index sorting on flush. I tried with sparsetaxis and wikipedia and the first results are weird. When I use the SerialScheduler and only one thread to write the docs, index sorting on flush is slower. But when I use two threads the sorting on flush is much faster even with the SerialScheduler. I'll continue to run the tests in order to be able to share something more meaningful.
+The tests are passing except one about concurrent DV updates. I don't know this part at all so I did not fix the test yet. I don't even know if we can make it work with index sorting .
+Michael McCandless I would love to have your feedback about the prototype. Could you please take a look ? I am sure there are plenty of bugs, ... but I think it's a good start to evaluate the feasibility of this feature.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.5, 7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jim Ferenczi
+Create date:
+01/Dec/16 15:09
+Update date:
+31/Mar/17 17:05
+Resolved date:
+13/Feb/17 08:48

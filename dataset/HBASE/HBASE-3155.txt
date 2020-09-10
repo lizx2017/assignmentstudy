@@ -1,0 +1,46 @@
+Summary:
+HFile.appendMetaBlock() uses wrong comparator
+Description:
+We hit this exception last night...
+2010-10-26 01:20:20,056 INFO org.apache.hadoop.hbase.regionserver.StoreFile: Bloom added to HFile (...): 18752B, 13012/13601 (96%)
+2010-10-26 01:20:20,056 INFO org.apache.hadoop.hbase.regionserver.HRegion: aborted compaction on region 04,04c84c80,1286302852528.77d461b19c7f410041f1d03f4823ef8b. after 20mins, 43sec
+2010-10-26 01:20:20,056 ERROR org.apache.hadoop.hbase.regionserver.CompactSplitThread: Compaction failed for region 04,04c84c80,1286302852528.77d461b19c7f410041f1d03f4823ef8b.
+java.lang.ArrayIndexOutOfBoundsException: 17
+at org.apache.hadoop.hbase.util.Bytes.compareTo(Bytes.java:860)
+at org.apache.hadoop.hbase.KeyValue$KeyComparator.compareRows(KeyValue.java:1888)
+at org.apache.hadoop.hbase.KeyValue$KeyComparator.compare(KeyValue.java:1822)
+at org.apache.hadoop.hbase.io.hfile.HFile$Writer.appendMetaBlock(HFile.java:476)
+at org.apache.hadoop.hbase.regionserver.StoreFile$Writer.close(StoreFile.java:862)
+at org.apache.hadoop.hbase.regionserver.Store.compact(Store.java:896)
+at org.apache.hadoop.hbase.regionserver.Store.compact(Store.java:687)
+at org.apache.hadoop.hbase.regionserver.HRegion.compactStores(HRegion.java:858)
+at org.apache.hadoop.hbase.regionserver.HRegion.compactStores(HRegion.java:807)
+The problem is that appendMetaBlock() is using the wrong comparator. although the variable is called 'rawComparator', it's actually a normal comparator (KeyComparator) that defaults to RawComparator if not specified. All meta sorting needs to be done using the actual Bytes.RAW_COMPARATOR. This happened because >=2 things were inserted into meta.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Spiegelberg
+Reporter:
+Nicolas Spiegelberg
+Create date:
+26/Oct/10 18:46
+Update date:
+20/Nov/15 12:42
+Resolved date:
+27/Oct/10 13:45

@@ -1,0 +1,41 @@
+Summary:
+Snapshots with the same name are allowed to proceed concurrently
+Description:
+Snapshots with the same name (but on different tables) are allowed to proceed concurrently.
+This seems to be loop hole created by allowing multiple snapshots (on different tables) to run concurrently.
+There are two checks in SnapshotManager, but fail to catch this particular case.
+In isSnapshotCompleted(), we only check the completed snapshot directory.
+In isTakingSnapshot(), we only check for the same table name.
+The end result is the concurrently running snapshots with the same name are overlapping and messing up each other. For example, cleaning up the other's snapshot working directory in .hbase-snapshot/.tmp/snapshot-name.
+2013-08-29 18:25:13,443 ERROR org.apache.hadoop.hbase.master.snapshot.TakeSnapshotHandler: Failed taking snapshot { ss=mysnapshot table=TestTable type=FLUSH } due to exception:Couldn't read snapshot info from:hdfs://hdtest009:9000/hbase/.hbase-snapshot/.tmp/mysnapshot/.snapshotinfo
+org.apache.hadoop.hbase.snapshot.CorruptedSnapshotException: Couldn't read snapshot info from:hdfs://hdtest009:9000/hbase/.hbase-snapshot/.tmp/mysnapshot/.snapshotinfo
+        at org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils.readSnapshotInfo(SnapshotDescriptionUtils.java:321)
+        at org.apache.hadoop.hbase.master.snapshot.MasterSnapshotVerifier.verifySnapshotDescription(MasterSnapshotVerifier.java:123)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2, 0.94.11
+Fix_version:
+0.94.12, 0.96.0
+Component:
+snapshots
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jerry He
+Reporter:
+Jerry He
+Create date:
+30/Aug/13 20:38
+Update date:
+24/Sep/13 20:32
+Resolved date:
+03/Sep/13 17:55

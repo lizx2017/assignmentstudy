@@ -1,0 +1,33 @@
+Summary:
+Connection thrashing in multi-region ec2 during upgrade, due to messaging version
+Description:
+While debugging the upgrading scenario described in CASSANDRA-5660, I discovered the ITC.close() will reset the message protocol version of a peer node that disconnects. CASSANDRA-5660 has a full description of the upgrade path, but basically the Ec2MultiRegionSnitch will close connections on the publicIP addr to reconnect on the privateIp, and this causes ITC to drop the message protocol version of previously known nodes. I think we want to hang onto that version so that when the newer node (re-)connects to the lower node version, it passes the correct protocol version rather than the current version (too high for the older node),the connection attempt getting dropped, and going through the dance again.
+To clarify, the 'thrashing' is at a rather low volume, from what I observed. Anecdotaly, perhaps one connection per second gets turned over.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.6, 2.0 beta 1
+Component:
+None
+Label:
+ec2 ec2multiregionsn
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jason Brown
+Reporter:
+Jason Brown
+Create date:
+19/Jun/13 22:51
+Update date:
+16/Apr/19 09:32
+Resolved date:
+20/Jun/13 19:24

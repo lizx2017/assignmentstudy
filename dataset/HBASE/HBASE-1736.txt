@@ -1,0 +1,51 @@
+Summary:
+If RS can't talk to master, pause; more importantly, don't split (Currently we do and splits are lost and table is wounded)
+Description:
+What I saw was master shutting itself down because it had lost zk lease. Fine. The RS though doesn't look like it can deal with this situation. We'll see stuff like this:
+...failed on connection exception: java.net.ConnectException: Connection refused
+    at org.apache.hadoop.hbase.ipc.HBaseClient.wrapException(HBaseClient.java:744)
+    at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:722)
+    at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:328)
+    at $Proxy0.regionServerReport(Unknown Source)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:470)
+    at java.lang.Thread.run(Unknown Source)
+Caused by: java.net.ConnectException: Connection refused
+    at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+    at sun.nio.ch.SocketChannelImpl.finishConnect(Unknown Source)
+    at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:206)
+    at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:404)
+    at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.setupIOstreams(HBaseClient.java:305)
+    at org.apache.hadoop.hbase.ipc.HBaseClient.getConnection(HBaseClient.java:826)
+    at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:707)
+    ... 4 more
+... all over the regionserver as it tries to send heartbeat to master on this broken connection.
+On split, we close parent, add children to the catalog but then when we try to tell the master about the split, it fails. Means the children never get deployed. Meantime the parent is offline.
+This issue is about going through the regionserver and anytime it has a connection to master, make sure on fault that no damage is done the table and then that the regionserver puts a pause on splitting.
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+03/Aug/09 00:06
+Update date:
+16/Jul/14 18:52
+Resolved date:
+16/Jul/14 18:52

@@ -1,0 +1,62 @@
+Summary:
+Update javadoc for ConstantSizeRegionSplitPolicy class
+Description:
+When using hbase0.94.0 we met a strange problem.
+We config the 'hbase.hregion.max.filesize' to 100Gb (The recommed value to act as auto-split turn off).
+<property>
+  <name>hbase.hregion.max.filesize</name>
+  <value>107374182400</value>
+</property>
+Then we keep putting datas into a table.
+But when the data size far more less than 100Gb(about 500~600 uncompressed datas), the table auto splte to 2 regions...
+I change the log4j config to DEBUG, and saw logs below:
+2012-06-07 10:30:52,161 INFO org.apache.hadoop.hbase.regionserver.HRegion: Finished memstore flush of ~128.0m/134221272, currentsize=1.5m/1617744 for region FileStructIndex,,1339032525500.7b229abcd0785408251a579e9bdf49c8. in 3201ms, sequenceid=176387980, compaction requested=false
+2012-06-07 10:30:52,161 DEBUG org.apache.hadoop.hbase.regionserver.IncreasingToUpperBoundRegionSplitPolicy: ShouldSplit because info size=138657416, sizeToCheck=134217728, regionsWithCommonTable=1
+2012-06-07 10:30:52,161 DEBUG   org.apache.hadoop.hbase.regionserver.IncreasingToUpperBoundRegionSplitPolicy: ShouldSplit because info size=138657416, sizeToCheck=134217728, regionsWithCommonTable=1
+2012-06-07 10:30:52,240 DEBUG org.apache.hadoop.hbase.regionserver.CompactSplitThread: Split requested for FileStructIndex,,1339032525500.7b229abcd0785408251a579e9bdf49c8..  compaction_queue=(0:0), split_queue=0
+2012-06-07 10:30:52,265 INFO org.apache.hadoop.hbase.regionserver.SplitTransaction: Starting split of region FileStructIndex,,1339032525500.7b229abcd0785408251a579e9bdf49c8.
+2012-06-07 10:30:52,265 DEBUG org.apache.hadoop.hbase.regionserver.SplitTransaction: regionserver:60020-0x137c4929efe0001 Creating ephemeral node for 7b229abcd0785408251a579e9bdf49c8 in SPLITTING state
+2012-06-07 10:30:52,368 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x137c4929efe0001 Attempting to transition node 7b229abcd0785408251a579e9bdf49c8 from RS_ZK_REGION_SPLITTING to RS_ZK_REGION_SPLITTING
+2012-06-07 10:30:52,382 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x137c4929efe0001 Successfully transitioned node 7b229abcd0785408251a579e9bdf49c8 from RS_ZK_REGION_SPLITTING to RS_ZK_REGION_SPLITTING
+2012-06-07 10:30:52,410 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Closing FileStructIndex,,1339032525500.7b229abcd0785408251a579e9bdf49c8.: disabling compactions & flushes
+2012-06-07 10:30:52,410 DEBUG org.apache.hadoop.hbase.regionserver.HRegionServer: NotServingRegionException; FileStructIndex,,1339032525500.7b229abcd0785408251a579e9bdf49c8. is closing
+2012-06-07 10:30:52,411 DEBUG org.apache.hadoop.hbase.regionserver.HRegionServer: NotServingRegionException; FileStructIndex,,1339032525500.7b229abcd0785408251a579e9bdf49c8. is closing
+IncreasingToUpperBoundRegionSplitPolicy: ShouldSplit because info size=138657416, sizeToCheck=134217728
+I did not config splitPolicy for hbase, so it means IncreasingToUpperBoundRegionSplitPolicy is the default splitPolicy of 0.94.0
+After add
+<property>
+    <name>hbase.regionserver.region.split.policy</name>
+    <value>org.apache.hadoop.hbase.regionserver.ConstantSizeRegionSplitPolicy</value>
+</property>
+autosplit did not happen again and everything goes well.
+But we can still see javadoc on ConstantSizeRegionSplitPolicy, it says 'This is the default split policy'. Or even in the http://hbase.apache.org/book/regions.arch.html 9.7.4.1. Custom Split Policies, 'default split policy: ConstantSizeRegionSplitPolicy.'.
+Those may mistaken us that if we set hbase.hregion.max.filesize to 100Gb, than the auto-split can be almost shutdown.
+You may change those docs, and What more, in many scenerys, we actually need to control split manually（As you know when spliting the table are offline, reads and writes will fail）
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.0
+Fix_version:
+0.94.1
+Component:
+documentation
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+nneverwei
+Create date:
+07/Jun/12 05:59
+Update date:
+12/Oct/12 05:36
+Resolved date:
+14/Jun/12 20:33

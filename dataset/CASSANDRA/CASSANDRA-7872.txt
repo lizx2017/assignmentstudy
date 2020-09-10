@@ -1,0 +1,39 @@
+Summary:
+ensure compacted obsolete sstables are not open on node restart and nodetool refresh, even on sstable reference miscounting or deletion tasks are failed.
+Description:
+Since CASSANDRA-4436 compacted sstables are no more marked with COMPACTED_MARKER file. Instead after they are compacted, DataTracker calls SSTableReader.markObsolete(), but the actual deletion is happening later on SSTableReader.releaseReference().
+This reference counting is very fragile, it is very easy to introduce a hard-to-catch and rare bug, so this reference count never reaches 0 ( like CASSANDRA-6503 for example )
+This means, that very rarely obsolete sstable files are not removed from disk (but are not used anymore by cassandra to read data).
+If more than gc grace time has passed since sstable file was not removed from disk and operator issues either nodetool refresh or just reboots a node, these obsolete files are being discovered and open for read by a node. So deleted data is resurrected, being quickly spread by RR to whole cluster.
+Because consequences are very serious (even a single not removed obsolete sstable file could render your data useless) this patch makes sure no obsolete sstable file can be open for read by:
+1. Removing sstables on CFS init analyzing sstable generations (sstable is removed, if there are another sstable, listing this as ancestor)
+2. Reimplementing COMPACTED_MARKER file for sstable. This marker is created as soon as markObsolete is called. This is neccessary b/c generation info can be lost (when sstables compact to none)
+3. To remove sstables sooner then restart - reimplemented the good old GC phantom reference queue as well.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Oleg Anastasyev
+Reporter:
+Oleg Anastasyev
+Create date:
+03/Sep/14 18:15
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Jul/15 06:29

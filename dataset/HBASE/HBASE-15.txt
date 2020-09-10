@@ -1,0 +1,114 @@
+Summary:
+[hbase] Could not complete hdfs write out to flush file forcing regionserver restart
+Description:
+I've spent some time looking into this issue but there are not enough clues in the logs to tell where the problem is. Here's what I know.
+Two region servers went down last night, a minute apart, during Paul Saab's 6hr run inserting 300million rows into hbase. The regionservers went down to force rerun of hlog and avoid possible data loss after a failure writing memory flushes to hdfs.
+Here is the lead up to the failed flush:
+...
+2007-11-28 22:40:02,231 INFO hbase.HRegionServer - MSG_REGION_OPEN : regionname: postlog,img149/4699/133lm0.jpg,1196318393738, startKey: <img149/4699/133lm0.jpg>, tableDesc: {name: postlog, families: {cookie:=
+{name: cookie, max versions: 1, compression: NONE, in memory: false, max length: 2147483647, bloom filter: none}
+, ip:=
+{name: ip, max versions: 1, compression: NONE, in memory: false, max length: 2147483647, bloom filter: none}
+}}
+2007-11-28 22:40:02,242 DEBUG hbase.HStore - starting 1703405830/cookie (no reconstruction log)
+2007-11-28 22:40:02,741 DEBUG hbase.HStore - maximum sequence id for hstore 1703405830/cookie is 29077708
+2007-11-28 22:40:03,094 DEBUG hbase.HStore - starting 1703405830/ip (no reconstruction log)
+2007-11-28 22:40:03,852 DEBUG hbase.HStore - maximum sequence id for hstore 1703405830/ip is 29077708
+2007-11-28 22:40:04,138 DEBUG hbase.HRegion - Next sequence id for region postlog,img149/4699/133lm0.jpg,1196318393738 is 29077709
+2007-11-28 22:40:04,141 INFO hbase.HRegion - region postlog,img149/4699/133lm0.jpg,1196318393738 available
+2007-11-28 22:40:04,141 DEBUG hbase.HLog - changing sequence number from 21357623 to 29077709
+2007-11-28 22:40:04,141 INFO hbase.HRegionServer - MSG_REGION_OPEN : regionname: postlog,img149/7512/dscn4444lightenedfi3.jpg,1196318393739, startKey: <img149/7512/dscn4444lightenedfi3.jpg>, tableDesc: {name: postlog, families: {cookie:=
+{name: cookie, max versions: 1, compression: NONE, in memory: false, max length: 2147483647, bloom filter: none}
+, ip:=
+{name: ip, max versions: 1, compression: NONE, in memory: false, max length: 2147483647, bloom filter: none}
+}}
+2007-11-28 22:40:04,145 DEBUG hbase.HStore - starting 376748222/cookie (no reconstruction log)
+2007-11-28 22:40:04,223 DEBUG hbase.HStore - maximum sequence id for hstore 376748222/cookie is 29077708
+2007-11-28 22:40:04,277 DEBUG hbase.HStore - starting 376748222/ip (no reconstruction log)
+2007-11-28 22:40:04,353 DEBUG hbase.HStore - maximum sequence id for hstore 376748222/ip is 29077708
+2007-11-28 22:40:04,699 DEBUG hbase.HRegion - Next sequence id for region postlog,img149/7512/dscn4444lightenedfi3.jpg,1196318393739 is 29077709
+2007-11-28 22:40:04,701 INFO hbase.HRegion - region postlog,img149/7512/dscn4444lightenedfi3.jpg,1196318393739 available
+2007-11-28 22:40:34,427 DEBUG hbase.HRegionServer - flushing region postlog,img143/1310/yashrk3.jpg,1196317258704
+2007-11-28 22:40:34,428 DEBUG hbase.HRegion - Not flushing cache for region postlog,img143/1310/yashrk3.jpg,1196317258704: snapshotMemcaches() determined that there was nothing to do
+2007-11-28 22:40:55,745 DEBUG hbase.HRegionServer - flushing region postlog,img142/8773/1001417zc4.jpg,1196317258703
+2007-11-28 22:40:55,745 DEBUG hbase.HRegion - Not flushing cache for region postlog,img142/8773/1001417zc4.jpg,1196317258703: snapshotMemcaches() determined that there was nothing to do
+2007-11-28 22:41:04,144 DEBUG hbase.HRegionServer - flushing region postlog,img149/4699/133lm0.jpg,1196318393738
+2007-11-28 22:41:04,144 DEBUG hbase.HRegion - Started memcache flush for region postlog,img149/4699/133lm0.jpg,1196318393738. Size 74.7k
+2007-11-28 22:41:04,764 DEBUG hbase.HStore - Added 1703405830/ip/610047924323344967 with sequence id 29081563 and size 53.8k
+2007-11-28 22:41:04,902 DEBUG hbase.HStore - Added 1703405830/cookie/3147798053949544972 with sequence id 29081563 and size 41.3k
+2007-11-28 22:41:04,902 DEBUG hbase.HRegion - Finished memcache flush for region postlog,img149/4699/133lm0.jpg,1196318393738 in 758ms, sequenceid=29081563
+2007-11-28 22:41:04,902 DEBUG hbase.HStore - compaction for HStore postlog,img149/4699/133lm0.jpg,1196318393738/ip needed.
+2007-11-28 22:41:04,903 DEBUG hbase.HRegion - 1703405830/ip needs compaction
+2007-11-28 22:41:04,903 INFO hbase.HRegion - starting compaction on region postlog,img149/4699/133lm0.jpg,1196318393738
+2007-11-28 22:41:04,903 DEBUG hbase.HStore - started compaction of 4 files in /hbase/compaction.dir/hregion_1703405830/ip
+2007-11-28 22:41:04,905 DEBUG hbase.HRegionServer - flushing region postlog,img149/7512/dscn4444lightenedfi3.jpg,1196318393739
+2007-11-28 22:41:04,906 DEBUG hbase.HRegion - Started memcache flush for region postlog,img149/7512/dscn4444lightenedfi3.jpg,1196318393739. Size 133.1k
+2007-11-28 22:41:05,087 DEBUG hbase.HStore - Added 376748222/ip/8686640221458382286 with sequence id 29081604 and size 95.8k
+2007-11-28 22:41:05,419 FATAL hbase.HRegionServer - Replay of hlog required. Forcing server restart
+org.apache.hadoop.hbase.DroppedSnapshotException: java.io.IOException: Could not complete write to file /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/data by DFSClient_-1010714652
+at org.apache.hadoop.dfs.NameNode.complete(NameNode.java:323)
+at sun.reflect.GeneratedMethodAccessor13.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:379)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:596)
+at org.apache.hadoop.hbase.HRegion.internalFlushcache(HRegion.java:920)
+at org.apache.hadoop.hbase.HRegion.flushcache(HRegion.java:807)
+at org.apache.hadoop.hbase.HRegionServer$Flusher.run(HRegionServer.java:451)
+...
+Over in the namenode, I see the following related to the deleted file:
+2007-11-28 22:40:48,546 DEBUG dfs.StateChange - DIR NameNode.mkdirs: /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411
+2007-11-28 22:40:48,546 DEBUG dfs.StateChange - DIR* NameSystem.mkdirs: /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411
+2007-11-28 22:40:48,546 DEBUG dfs.StateChange - DIR* FSDirectory.mkdirs: created directory /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411
+2007-11-28 22:40:48,552 DEBUG dfs.StateChange - DIR NameNode.create: file /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/data for DFSClient_-1010714652 at XX.XX.XX.29
+2007-11-28 22:40:48,552 DEBUG dfs.StateChange - DIR* NameSystem.startFile: file /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/data for DFSClient_-1010714652 at XX.XX.XX.29
+2007-11-28 22:40:48,552 DEBUG dfs.StateChange - DIR* FSDirectory.addFile: /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/data is added to the file system
+2007-11-28 22:40:48,552 DEBUG dfs.StateChange - DIR* NameSystem.startFile: add /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/data to namespace for DFSClient_-1010714652
+2007-11-28 22:40:48,557 DEBUG dfs.StateChange - DIR NameNode.create: file /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/index for DFSClient_-1010714652 at XX.XX.XX.29
+2007-11-28 22:40:48,557 DEBUG dfs.StateChange - DIR* NameSystem.startFile: file /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/index for DFSClient_-1010714652 XX.XX.XX.29
+2007-11-28 22:40:48,558 DEBUG dfs.StateChange - DIR* FSDirectory.addFile: /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/index is added to the file system
+2007-11-28 22:40:48,558 DEBUG dfs.StateChange - DIR* NameSystem.startFile: add /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/index to namespace for DFSClient_-1010714652
+2007-11-28 22:40:48,573 DEBUG dfs.StateChange - BLOCK NameNode.addBlock: file /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/data for DFSClient_-1010714652
+2007-11-28 22:40:48,573 DEBUG dfs.StateChange - BLOCK* NameSystem.getAdditionalBlock: file /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/data for DFSClient_-1010714652
+2007-11-28 22:40:48,573 DEBUG dfs.StateChange - DIR* FSDirectory.addFile: /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/data with blk_-6398846109350112398 block is added to the in-memory file system
+2007-11-28 22:40:48,573 INFO dfs.StateChange - BLOCK* NameSystem.allocateBlock: /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/data. blk_-6398846109350112398
+.....
+2007-11-28 22:40:48,717 DEBUG dfs.StateChange - DIR NameNode.delete: /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411
+2007-11-28 22:40:48,717 DEBUG dfs.StateChange - DIR* NameSystem.delete: /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411
+2007-11-28 22:40:48,717 DEBUG dfs.StateChange - DIR* FSDirectory.delete: /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411
+2007-11-28 22:40:48,717 DEBUG dfs.StateChange - DIR* FSDirectory.unprotectedDelete: /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411 is removed
+....
+2007-11-28 22:40:48,826 DEBUG dfs.StateChange - DIR NameNode.complete: /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/data for DFSClient_-1010714652
+2007-11-28 22:40:48,826 DEBUG dfs.StateChange - DIR* NameSystem.completeFile: /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/data for DFSClient_-1010714652
+2007-11-28 22:40:48,827 WARN dfs.StateChange - DIR* NameSystem.completeFile: failed to complete /hbase/hregion_376748222/cookie/mapfiles/3557442410867103411/data because dir.getFileBlocks() is null and pendingFile is null
+Only delete I see is on compaction completion but reading code doesn't look like its possible for deletes to be confused.
+Will add extra logging to see if I can figure how the delete is coming about.
+(We've fixed a similar problem before when compactions were done at region level)
+Status:
+RESOLVED
+Priority:
+Trivial
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+29/Nov/07 23:58
+Update date:
+21/Jan/09 23:11
+Resolved date:
+21/Jan/09 23:11

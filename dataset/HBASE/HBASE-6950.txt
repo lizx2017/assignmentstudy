@@ -1,0 +1,42 @@
+Summary:
+TestAcidGuarantees system test now flushes too aggressively
+Description:
+HBASE-6552 caused the TestAcidGuarantees system test to flush more aggressively, because flushes are where ACID problems have occurred in the past.
+After some more cluster testing, it seems like this too aggressive; my clusters eventually can't keep up with the number of flushes/compactions and start getting SocketTimeoutExceptions. We could try to optimize the flushes/compactions, but since this workload would never occur in practice, I don't think it is worth the effort. Instead, let's just only flush once a minute. This is arbitrary, but seems to work.
+Here is my comment in the (upcoming) patch:
+// Flushing has been a source of ACID violations previously (see HBASE-2856), so ideally,
+// we would flush as often as possible.  On a running cluster, this isn't practical:
+// (1) we will cause a lot of load due to all the flushing and compacting
+// (2) we cannot change the flushing/compacting related Configuration options to try to
+// alleviate this
+// (3) it is an unrealistic workload, since no one would actually flush that often.
+// Therefore, let's flush every minute to have more flushes than usual, but not overload
+// the running cluster.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.92.2, 0.94.2, 0.95.2
+Fix_version:
+0.95.0
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gregory Chanan
+Reporter:
+Gregory Chanan
+Create date:
+04/Oct/12 21:22
+Update date:
+23/Sep/13 18:30
+Resolved date:
+05/Oct/12 00:04

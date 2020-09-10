@@ -1,0 +1,42 @@
+Summary:
+Rolling restart RSs scenario, regions could stay in OPENING state
+Description:
+Keep Master up all the time, do rolling restart of RSs like this - stop RS1, wait for 2 seconds, stop RS2, start RS1, wait for 2 seconds, stop RS3, start RS2, wait for 2 seconds, etc. Region sometimes can just stay in OPENING state even after timeoutmonitor period.
+2011-09-19 08:10:33,131 WARN org.apache.hadoop.hbase.master.AssignmentManager: While timing out a region in state OPENING, found ZK node in unexpected state: RS_ZK_REGION_FAILED_OPEN
+The issue - RS was shutdown when a region is being opened, it was transitioned to RS_ZK_REGION_FAILED_OPEN in ZK. In timeoutmonitor, it didn't take care of RS_ZK_REGION_FAILED_OPEN.
+processOpeningState
+...
+else if (dataInZNode.getEventType() != EventType.RS_ZK_REGION_OPENING &&
+LOG.warn("While timing out a region in state OPENING, "
++ "found ZK node in unexpected state: "
++ dataInZNode.getEventType());
+return;
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ming Ma
+Reporter:
+Ming Ma
+Create date:
+19/Sep/11 23:22
+Update date:
+20/Nov/15 11:52
+Resolved date:
+23/Sep/11 16:48

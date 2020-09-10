@@ -1,0 +1,48 @@
+Summary:
+Replication related failures on trunk after HBASE-5453
+Description:
+HBASE-5453 added this line:
+return ClusterId.parseFrom(data).toString();
+in function:
+public static String readClusterIdZNode(ZooKeeperWatcher watcher)
+but this is not implemented, so you get log messages like:
+2012-05-21 16:46:31,256 ERROR [RegionServer:0;cloudera-vm,60456,1337643971995-EventThread] zookeeper.ClientCnxn$EventThread(523): Error while calling watcher
+java.lang.IllegalArgumentException: Invalid UUID string: org.apache.hadoop.hbase.ClusterId@5563d208
+at java.util.UUID.fromString(UUID.java:204)
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.init(ReplicationSource.java:192)
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager.getReplicationSource(ReplicationSourceManager.java:328)
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager.addSource(ReplicationSourceManager.java:206)
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager$PeersWatcher.nodeChildrenChanged(ReplicationSourceManager.java:505)
+at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.process(ZooKeeperWatcher.java:300)
+at org.apache.zookeeper.ClientCnxn$EventThread.processEvent(ClientCnxn.java:521)
+at org.apache.zookeeper.ClientCnxn$EventThread.run(ClientCnxn.java:497)
+2012-05-21 16:46:31,256 ERROR [RegionServer:0;cloudera-vm,50926,1337643981835-EventThread] zookeeper.ClientCnxn$EventThread(523): Error while calling watcher
+and replication fails because the ClusterId does not match what is expected. Patch coming soon.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gregory Chanan
+Reporter:
+Gregory Chanan
+Create date:
+22/May/12 00:01
+Update date:
+23/Sep/13 18:31
+Resolved date:
+23/May/12 23:51

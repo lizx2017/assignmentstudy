@@ -1,0 +1,44 @@
+Summary:
+Repair version gating will do the wrong thing in rc/beta dev builds
+Description:
+The version check gate in AnticompactionTask will fail with -betaX-SNAPSHOT and -rcX-SNAPSHOT builds. As SystemKeyspace.getReleaseVersion will return null for those. This means dtests and anyone else testing with dev builds will be getting the wrong repair behavior.
+AnticompactionTask.java
+        SemanticVersion peerVersion = SystemKeyspace.getReleaseVersion(neighbor);
+        if (peerVersion != null && peerVersion.compareTo(VERSION_CHECKER) > 0)
+        {
+            MessagingService.instance().sendRR(acr.createMessage(), neighbor, new AnticompactionCallback(this), TimeUnit.DAYS.toMillis(1), true);
+        }
+        else
+        {
+            MessagingService.instance().sendOneWay(acr.createMessage(), neighbor);
+            // immediately return after sending request
+            set(neighbor);
+        }
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 rc1
+Component:
+Legacy/Streaming and Messaging
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Jeremiah Jordan
+Create date:
+20/May/15 14:15
+Update date:
+16/Apr/19 09:31
+Resolved date:
+26/May/15 15:51

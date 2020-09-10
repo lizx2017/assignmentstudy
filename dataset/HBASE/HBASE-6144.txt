@@ -1,0 +1,56 @@
+Summary:
+Master mistakenly splits live server's HLog file
+Description:
+RS abcdn0590 is live, but Master does not have it on its onlineserver list. So, Master put up the hlog for splitting as shown in the Master log below:
+2012-05-17 21:43:57,692 INFO org.apache.hadoop.hbase.master.SplitLogManager: task /hbase/splitlog/hdfs%3A%2F%2Fnamenode.xyz.com%2Fhbase%2F.logs%2Fabcdn0590.xyz.com%2C60020%2C1337315957185-splitting%2Fabcdn0590.xyz.com%252C60020%252C1337315957185.1337315957711 acquired by abcdn0770.xyz.com,60020,1337315956278. 
+After splitting succeeded, Master deleted the file:
+2012-05-17 21:43:58,721 DEBUG org.apache.hadoop.hbase.master.SplitLogManager$DeleteAsyncCallback: deleted /hbase/splitlog/hdfs%3A%2F%2Fnamenode.xyz.com%2Fhbase%2F.logs%2Fabcdn0590.xyz.com%2C60020%2C1337315957185-splitting%2Fabcdn0590.xyz.com%252C60020%252C1337315957185.1337315957711
+RS abcdn0590 lost the lease to RS abcdn0770, and try to do a Log Roller which closes the current hlog, and create a new one, as shown in the namenode log:
+2012-05-17 21:43:58,422 INFO org.apache.hadoop.hdfs.server.namenode.FSNamesystem: commitBlockSynchronization(newblock=blk_2867982016684075739_12741027, file=/hbase/.logs/abcdn0590.xyz.com,60020,1337315957185-splitting/abcdn0590.xyz.com%2C60020%2C1337315957185.1337315957711, newgenerationstamp=12911920, newlength=134, newtargets=[10.115.13.24:50010, 10.115.15.46:50010, 10.115.15.23:50010]) successful
+2012-05-17 21:43:59,883 INFO org.apache.hadoop.hdfs.StateChange: BLOCK* NameSystem.allocateBlock: /hbase/.logs/abcdn0590.xyz.com,60020,1337315957185/abcdn0590.xyz.com%2C60020%2C1337315957185.1337316238882. blk_3811725326431482476_12913541{blockUCState=UNDER_CONSTRUCTION, primaryNodeIndex=-1, replicas=[ReplicaUnderConstruction[10.115.13.24:50010|RBW], ReplicaUnderConstruction[10.115.17.18:50010|RBW], ReplicaUnderConstruction[10.115.17.15:50010|RBW]]}
+When RS 0590 try to close the old hlog 1337315957711, it received fatal error below due to the original hlog is already deleted. The fatal error will cause RS abcdn0590 to shutdown itself later.
+2012-05-17 21:43:58,889 ERROR org.apache.hadoop.hbase.master.HMaster: Region server ^@^@abcdn0590.xyz.com,60020,1337315957185 reported a fatal error:
+ABORTING region server abcdn0590.xyz.com,60020,1337315957185: IOE in log roller
+Cause:
+java.io.FileNotFoundException: File does not exist: hdfs://namenode.xyz.com/hbase/.logs/abcdn0590.xyz.com,60020,1337315957185/abcdn0590.xyz.com%2C60020%2C1337315957185.1337315957711
+        at org.apache.hadoop.hdfs.DistributedFileSystem.getFileStatus(DistributedFileSystem.java:742)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.rollWriter(HLog.java:583)
+        at org.apache.hadoop.hbase.regionserver.LogRoller.run(LogRoller.java:94)
+RS abcdn0590 shutdown at around 21:44. But in the /hbase/.logs dir, it left two sub folder for the RS abcdn0590 with the same startcode 1337315957185 , they are
+· /hbase/.logs/abcdn0590.xyz.com,60020,1337315957185-splitting/
+· /hbase/.logs/abcdn0590.xyz.com,60020,1337315957185/
+Later on, at around 21:46:30, Master retry log splitting, this time, it still consider RS abcdn0590 as dead RS and try to put up its hlog for others to grab and split. It finds the folder /hbase/.logs/abcdn0590.xyz.com,60020,1337315957185/, and the first step it does is to rename it to adding suffix of –splitting. However, the same folder already exist. The rename function does not handle the case where the destination folder already exist, instead, the behavior is putting the src folder under the dst folder, so the path structure looks like dst/src/file. In our case, It is /hbase/.logs.20120518.1204/abcdn0590.xyz.com,60020,1337315957185-splitting/abcdn0590.xyz.com,60020,1337315957185/abcdn0590.xyz.com%2C60020%2C1337315957185.1337316238882.
+This is from the master log, we can see that two folders for the same RS 0590 at same startcode exists:
+2012-05-17 21:46:30,749 INFO org.apache.hadoop.hbase.master.MasterFileSystem: Log folder hdfs://namenode.xyz.com/hbase/.logs/abcdn0590.xyz.com,60020,1329941607395-splitting doesn't belong to a known region server, splitting
+2012-05-17 21:46:30,749 INFO org.apache.hadoop.hbase.master.MasterFileSystem: Log folder hdfs://namenode.xyz.com/hbase/.logs/abcdn0590.xyz.com,60020,1337315957185 doesn't belong to a known region server, splitting
+2012-05-17 21:46:30,749 INFO org.apache.hadoop.hbase.master.MasterFileSystem: Log folder hdfs://namenode.xyz.com/hbase/.logs/abcdn0590.xyz.com,60020,1337315957185-splitting doesn't belong to a known region server, splitting
+ 
+2012-05-17 21:46:30,962 DEBUG org.apache.hadoop.hbase.master.MasterFileSystem: Renamed region directory: hdfs://namenode.xyz.com/hbase/.logs/abcdn0590.xyz.com,60020,1337315957185-splitting
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.92.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ted Yu
+Create date:
+01/Jun/12 02:32
+Update date:
+11/Apr/15 01:33
+Resolved date:
+11/Apr/15 01:33

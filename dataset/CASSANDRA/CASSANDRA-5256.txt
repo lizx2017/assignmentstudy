@@ -1,0 +1,77 @@
+Summary:
+"Memory was freed" AssertionError During Major Compaction
+Description:
+When initiating a major compaction with `./nodetool -h localhost compact`, an AssertionError is thrown in the CompactionExecutor from o.a.c.io.util.Memory:
+ERROR [CompactionExecutor:41495] 2013-02-14 14:38:35,720 CassandraDaemon.java (line 133) Exception in thread Thread[CompactionExecutor:41495,1,RMI Runtime]
+java.lang.AssertionError: Memory was freed
+at org.apache.cassandra.io.util.Memory.checkPosition(Memory.java:146)
+at org.apache.cassandra.io.util.Memory.getLong(Memory.java:116)
+at org.apache.cassandra.io.compress.CompressionMetadata.chunkFor(CompressionMetadata.java:176)
+at org.apache.cassandra.io.compress.CompressedRandomAccessReader.reBuffer(CompressedRandomAccessReader.java:88)
+at org.apache.cassandra.io.util.RandomAccessReader.read(RandomAccessReader.java:327)
+at java.io.RandomAccessFile.readInt(RandomAccessFile.java:755)
+at java.io.RandomAccessFile.readLong(RandomAccessFile.java:792)
+at org.apache.cassandra.utils.BytesReadTracker.readLong(BytesReadTracker.java:114)
+at org.apache.cassandra.db.ColumnSerializer.deserializeColumnBody(ColumnSerializer.java:101)
+at org.apache.cassandra.db.OnDiskAtom$Serializer.deserializeFromSSTable(OnDiskAtom.java:92)
+at org.apache.cassandra.db.ColumnFamilySerializer.deserializeColumnsFromSSTable(ColumnFamilySerializer.java:149)
+at org.apache.cassandra.io.sstable.SSTableIdentityIterator.getColumnFamilyWithColumns(SSTableIdentityIterator.java:235)
+at org.apache.cassandra.db.compaction.PrecompactedRow.merge(PrecompactedRow.java:109)
+at org.apache.cassandra.db.compaction.PrecompactedRow.<init>(PrecompactedRow.java:93)
+at org.apache.cassandra.db.compaction.CompactionController.getCompactedRow(CompactionController.java:162)
+at org.apache.cassandra.db.compaction.CompactionIterable$Reducer.getReduced(CompactionIterable.java:76)
+at org.apache.cassandra.db.compaction.CompactionIterable$Reducer.getReduced(CompactionIterable.java:57)
+at org.apache.cassandra.utils.MergeIterator$ManyToOne.consume(MergeIterator.java:114)
+at org.apache.cassandra.utils.MergeIterator$ManyToOne.computeNext(MergeIterator.java:97)
+at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:143)
+at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:138)
+at org.apache.cassandra.db.compaction.CompactionTask.runWith(CompactionTask.java:158)
+at org.apache.cassandra.io.util.DiskAwareRunnable.runMayThrow(DiskAwareRunnable.java:48)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+at org.apache.cassandra.db.compaction.CompactionTask.execute(CompactionTask.java:71)
+at org.apache.cassandra.db.compaction.CompactionManager$6.runMayThrow(CompactionManager.java:342)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+—
+I've invoked the `nodetool compact` three times; this occurred after each. The node has been up for a couple days accepting writes and has not been restarted.
+Here's the server's log since it was started a few days ago: https://gist.github.com/cscotta/4956472/raw/95e7cbc68de1aefaeca11812cbb98d5d46f534e8/cassandra.log
+Here's the code being used to issue writes to the datastore: https://gist.github.com/cscotta/20cbd36c2503c71d06e9
+—
+Configuration: One node, one keyspace, one column family. ~60 writes/second of data with a TTL of 86400, zero reads. Stock cassandra.yaml.
+Keyspace DDL:
+create keyspace jetpack;
+use jetpack;
+create column family Metrics with key_validation_class = 'UTF8Type' and comparator = 'IntegerType';
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.2
+Component:
+None
+Label:
+compaction
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+C. Scott Andreas
+Create date:
+14/Feb/13 21:17
+Update date:
+16/Apr/19 09:32
+Resolved date:
+20/Feb/13 13:39

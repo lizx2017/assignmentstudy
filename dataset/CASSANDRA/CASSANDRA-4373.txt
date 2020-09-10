@@ -1,0 +1,47 @@
+Summary:
+Gossip can surreptitiously mark a node UP twice without marking it DOWN
+Description:
+As evidenced by dtests:
+ INFO [GossipStage:1] 2012-06-25 17:19:21,999 Gossiper.java (line 770) Node /127.0.0.2 has restarted, now UP
+ INFO [GossipStage:1] 2012-06-25 17:19:22,000 Gossiper.java (line 738) InetAddress /127.0.0.2 is now UP
+ INFO [GossipStage:1] 2012-06-25 17:19:22,001 StorageService.java (line 1103) Node /127.0.0.2 state jump to normal
+ INFO [GossipStage:1] 2012-06-25 17:19:22,002 Gossiper.java (line 770) Node /127.0.0.3 has restarted, now UP
+ INFO [GossipStage:1] 2012-06-25 17:19:22,004 Gossiper.java (line 738) InetAddress /127.0.0.3 is now UP
+ INFO [GossipStage:1] 2012-06-25 17:19:22,005 StorageService.java (line 1103) Node /127.0.0.3 state jump to normal
+ INFO [RMI TCP Connection(2)-50.57.224.92] 2012-06-25 17:19:24,809 StorageService.java (line 1933) Starting repair command #1, repairing 3 ranges.
+ INFO [AntiEntropySessions:1] 2012-06-25 17:19:24,818 AntiEntropyService.java (line 620) [repair #d21b8bd0-bf13-11e1-0000-fe8ebeead9ff] new session: will sync /127.0.0.1, /127.0.0.2, /127.0.0.3 on range (Token(bytes[00]),Token(bytes[0113427455640312821154458202477256070484])] for ks.[cf]
+ INFO [AntiEntropySessions:1] 2012-06-25 17:19:24,823 AntiEntropyService.java (line 825) [repair #d21b8bd0-bf13-11e1-0000-fe8ebeead9ff] requesting merkle trees for cf (to [/127.0.0.2, /127.0.0.3, /127.0.0.1])
+ INFO [GossipStage:1] 2012-06-25 17:19:24,925 Gossiper.java (line 770) Node /127.0.0.3 has restarted, now UP
+ INFO [GossipStage:1] 2012-06-25 17:19:24,926 Gossiper.java (line 738) InetAddress /127.0.0.3 is now UP
+ INFO [GossipStage:1] 2012-06-25 17:19:24,926 StorageService.java (line 1103) Node /127.0.0.3 state jump to normal
+ERROR [AntiEntropySessions:1] 2012-06-25 17:19:24,927 AntiEntropyService.java (line 670) [repair #d21b8bd0-bf13-11e1-0000-fe8ebeead9ff] session completed with the following error
+java.io.IOException: Endpoint /127.0.0.3 died
+It appears that given nodes X, Y, and Z, X sees Z as up via Y even though Z is still down, but the FD does not ever mark it down. Later when Z actually does come up, this triggers another handleMajorStateChange as a restart, which causes an onRestart event, which in turn fails the repair even though it succeeds.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+1.1.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Brandon Williams
+Create date:
+25/Jun/12 22:36
+Update date:
+16/Apr/19 09:32
+Resolved date:
+26/Jun/12 17:50

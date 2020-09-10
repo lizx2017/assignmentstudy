@@ -1,0 +1,50 @@
+Summary:
+MultiSearcher does not work with MultiTermQuery or PrefixQuery
+Description:
+The multiSearch class reuses Query objects. Unfortunately some Query sub-classes
+initialize the search with terms from the index that they are first used on.
+This means that subsequent uses on other indexes can result in missing hits.
+For example subclasses of MultiTermQuery pre "populate" their terms from the
+first index. If this query is used again then the terms are not reset so the
+query is in effect done over terms extracted from the 1st index and not the 2nd.
+So the query
+a*b
+when expanded using terms from the first index as
+a1b a2b a3b
+and it is this query that is performed multiple times.
+If a second index has the terms
+a1b a2b a3b a4b a5b
+then potential results are missing. The latter two terms are not considered in
+the search.
+This can easily be seen by "reversing" the order of Searcher objects in a
+MultiSearcher query. Different results can be displayed depending on the ordering.
+The solution would be to allow queries to be "reset" - thus removing the cache
+terms objects.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.2
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Andy Thomas
+Create date:
+16/Sep/02 05:23
+Update date:
+27/May/06 01:35
+Resolved date:
+27/May/06 01:35

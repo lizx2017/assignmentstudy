@@ -1,0 +1,54 @@
+Summary:
+RejectedExecutionException when stopping a node after drain
+Description:
+The following exception is caused by the BatchlogManager trying to enqueue a task in the shutdown postflush executor:
+ERROR 14:49:50,580 Exception in thread Thread[BatchlogTasks:1,5,main]
+java.util.concurrent.RejectedExecutionException: ThreadPoolExecutor has shut down
+ at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor$1.rejectedExecution(DebuggableThreadPoolExecutor.java:61)
+ at java.util.concurrent.ThreadPoolExecutor.reject(ThreadPoolExecutor.java:821)
+ at java.util.concurrent.ThreadPoolExecutor.execute(ThreadPoolExecutor.java:1372)
+ at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor.execute(DebuggableThreadPoolExecutor.java:145)
+ at java.util.concurrent.AbstractExecutorService.submit(AbstractExecutorService.java:110)
+ at org.apache.cassandra.db.ColumnFamilyStore.forceFlush(ColumnFamilyStore.java:855)
+ at org.apache.cassandra.db.ColumnFamilyStore.forceBlockingFlush(ColumnFamilyStore.java:869)
+ at org.apache.cassandra.db.BatchlogManager.cleanup(BatchlogManager.java:345)
+ at org.apache.cassandra.db.BatchlogManager.replayAllFailedBatches(BatchlogManager.java:197)
+ at org.apache.cassandra.db.BatchlogManager$1.runMayThrow(BatchlogManager.java:96)
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+ at org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor$UncomplainingRunnable.run(DebuggableScheduledThreadPoolExecutor.java:75)
+ at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+ at java.util.concurrent.FutureTask.runAndReset(FutureTask.java:304)
+ at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$301(ScheduledThreadPoolExecutor.java:178)
+ at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:293)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:744)
+It is harmless, but generates a lot of noise in the logs, which makes debugging for actual problems harder.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.17, 2.0.7, 2.1 beta2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergio Bossa
+Reporter:
+Sergio Bossa
+Create date:
+11/Apr/14 14:43
+Update date:
+16/Apr/19 09:31
+Resolved date:
+11/Apr/14 18:04

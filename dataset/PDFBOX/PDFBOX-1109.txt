@@ -1,0 +1,65 @@
+Summary:
+Data corruption related to scratch file use
+Description:
+PDFBox uses a scratch file to reduce memory consumption. However, there is no mechanism that prevents two PDStreams from writing to the scratch file at the same time. When this happens, the resulting PDF contains garbage in some streams. This problem occurred several times to me (e.g. when writing to an image stream while constructing a page).
+Reproducing the bug
+*******************
+One can easily reproduce the bug. Open file AddImageToPDF.java and move the following line:
+PDPageContentStream contentStream =
+new PDPageContentStream(doc, page, true, true);
+immediately after the line in which the PDPage object is fetched:
+PDPage page =
+(PDPage)doc.getDocumentCatalog().getAllPages().get( 0 );
+With this modification, one will still get a PDF file, but Acrobat Reader will report that the image could not be processed. BTW, the files AddImageToPDF.java and ImageToPDF.java are almost identical. One of them should be deleted.
+Bug-Fix
+*******
+The problem can be solved by using a scratch file that is divided into pages (e.g. of 4 KB). Each PDStream in the scratch file is then associated with a list of pages. This list grows as more data is written to the stream.
+The bug fix requires minimal changes to the existing code. The very nice RandomAccess interface made this very easy.
+Here is what needs to be changed:
+Add the attached "PagedMultiRandomAccessFile.java" to the I/O package
+Change COSDocument.getScratchFile() to return a RandomAccess
+instance provided by PagedMultiRandomAccessFile:
+private PagedMultiRandomAccessFile scratchFile = null;
+[...]
+public COSDocument(File scratchDir) throws IOException
+{ tmpFile = File.createTempFile("pdfbox", "tmp", scratchDir); scratchFile = new PagedMultiRandomAccessFile( new RandomAccessFile(tmpFile, "rw")); }
+public COSDocument(RandomAccess file)
+{ // scratchFile = file; throw new RuntimeException("Not yet implemented."); //$NON-NLS-1$ }
+[...]
+/**
+Returns a new scratch file.
+*
+@return the newly created scratch file
+*/
+public RandomAccess getScratchFile() { return scratchFile.getNewRandomAcess(); }
+One of the COSDocument constructors takes a RandomAccess file. This constructor is only called in a single location, namely, in method PDFParser.parse(). I am not sure if the RandomAccess parameter provided here is really a scratch file. Someone will have to decide what to do with this one.
+The code has been throughly tested and has been used in the production of several books without any problems.
+In the attachment please find the code. There is also a JUnit test that was used to debug my code. I have added an Apache license header and adopted PDFBox's code style. Feel free to make any desired changes.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Invalid
+Affects_version:
+1.8.7, 2.0.0
+Fix_version:
+2.0.0
+Component:
+Parsing, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Stefan Mücke
+Create date:
+29/Aug/11 19:44
+Update date:
+02/Mar/15 12:07
+Resolved date:
+02/Mar/15 12:05

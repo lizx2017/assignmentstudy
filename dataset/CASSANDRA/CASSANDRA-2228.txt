@@ -1,0 +1,68 @@
+Summary:
+Race conditions when reinitialisating nodes (OOM + Nullpointer)
+Description:
+I had a corrupt system table which wouldn't compact anymore and I deleted the files and restarted cassandra and let it take the same token/ip address.
+I experienced the same errors when I'm adding a newly installed node under the same token/ip address before calling repair.
+1)
+After a few seconds/minutes, I get a OOM error:
+INFO [FlushWriter:1] 2011-02-23 16:40:28,958 Memtable.java (line 164) Completed flushing /cassandra/data/system/Schema-f-15-Data.db (8037 bytes)
+INFO [MigrationStage:1] 2011-02-23 16:40:28,965 Migration.java (line 133) Applying migration 3e30e76b-1e3f-11e0-8369-5a9c1faed4ae Add keyspace: table_userentriesrep factor:3rep strategy:SimpleStrategy{org.apache.cassandra.config.CFMetaData@58925d9[cfId=1024,tableName=table_userentries,cfName=table_userentries,cfType=Standard,comparator=org.apache.cassandra.db.marshal.BytesType@b44dff0,subcolumncomparator=<null>,comment=,rowCacheSize=0.0,keyCacheSize=200000.0,readRepairChance=0.0,gcGraceSeconds=86400,defaultValidator=org.apache.cassandra.db.marshal.BytesType@b44dff0,minCompactionThreshold=4,maxCompactionThreshold=32,rowCacheSavePeriodInSeconds=0,keyCacheSavePeriodInSeconds=3600,memtableFlushAfterMins=60,memtableThroughputInMb=64,memtableOperationsInMillions=10.0,column_metadata={}], org.apache.cassandra.config.CFMetaData@11ab7246[cfId=1025,tableName=table_userentries,cfName=table_userentries_meta,cfType=Standard,comparator=org.apache.cassandra.db.marshal.BytesType@b44dff0,subcolumncomparator=<null>,comment=,rowCacheSize=0.0,keyCacheSize=200000.0,readRepairChance=0.0,gcGraceSeconds=86400,defaultValidator=org.apache.cassandra.db.marshal.BytesType@b44dff0,minCompactionThreshold=4,maxCompactionThreshold=32,rowCacheSavePeriodInSeconds=0,keyCacheSavePeriodInSeconds=3600,memtableFlushAfterMins=60,memtableThroughputInMb=64,memtableOperationsInMillions=10.0,column_metadata={}]}
+INFO [MigrationStage:1] 2011-02-23 16:40:28,965 ColumnFamilyStore.java (line 666) switching in a fresh Memtable for Migrations at CommitLogContext(file='/cassandra/commitlog/CommitLog-1298475572022.log', position=226075)
+INFO [MigrationStage:1] 2011-02-23 16:40:28,966 ColumnFamilyStore.java (line 977) Enqueuing flush of Memtable-Migrations@2121008793(12529 bytes, 1 operations)
+INFO [FlushWriter:1] 2011-02-23 16:40:28,966 Memtable.java (line 157) Writing Memtable-Migrations@2121008793(12529 bytes, 1 operations)
+INFO [MigrationStage:1] 2011-02-23 16:40:28,966 ColumnFamilyStore.java (line 666) switching in a fresh Memtable for Schema at CommitLogContext(file='/cassandra/commitlog/CommitLog-1298475572022.log', position=226075)
+INFO [MigrationStage:1] 2011-02-23 16:40:28,967 ColumnFamilyStore.java (line 977) Enqueuing flush of Memtable-Schema@139610466(8370 bytes, 15 operations)
+INFO [ScheduledTasks:1] 2011-02-23 16:40:28,972 StatusLogger.java (line 89) table_sourcedetection.table_sourcedetection 0,0 0/0 0/200000
+ERROR [FlushWriter:1] 2011-02-23 16:41:01,240 AbstractCassandraDaemon.java (line 114) Fatal exception in thread Thread[FlushWriter:1,5,main]
+java.lang.OutOfMemoryError: Java heap space
+at java.nio.HeapByteBuffer.<init>(HeapByteBuffer.java:39)
+at java.nio.ByteBuffer.allocate(ByteBuffer.java:312)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:126)
+at org.apache.cassandra.io.sstable.SSTableWriter.<init>(SSTableWriter.java:75)
+at org.apache.cassandra.db.Memtable.writeSortedContents(Memtable.java:158)
+at org.apache.cassandra.db.Memtable.access$000(Memtable.java:51)
+at org.apache.cassandra.db.Memtable$1.runMayThrow(Memtable.java:176)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+2) If I restart then, I'm getting an Nullpointer exception. The OOM error will only appear once.
+ERROR [main] 2011-02-23 16:42:32,782 AbstractCassandraDaemon.java (line 333) Exception encountered during startup.
+java.lang.NullPointerException
+at java.util.concurrent.ConcurrentHashMap.get(ConcurrentHashMap.java:768)
+at org.apache.cassandra.gms.Gossiper.addLocalApplicationState(Gossiper.java:925)
+at org.apache.cassandra.service.MigrationManager.passiveAnnounce(MigrationManager.java:105)
+at org.apache.cassandra.service.MigrationManager.applyMigrations(MigrationManager.java:161)
+at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:185)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:316)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:79)
+Killing and restarting the node multiple times will eventually "fix" these errors.
+Steps to reproduce. Remove complete data directory and restart node with same token/ip.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+Thibaut
+Create date:
+23/Feb/11 15:50
+Update date:
+16/Apr/19 09:33
+Resolved date:
+03/Mar/11 22:59

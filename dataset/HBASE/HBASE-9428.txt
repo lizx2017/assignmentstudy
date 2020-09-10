@@ -1,0 +1,47 @@
+Summary:
+Regex filters are at least an order of magnitude slower since 0.94.3
+Description:
+I found this issue after debugging a performance problem on an OpenTSDB cluster, it was basically unusable after an upgrade from 0.94.2 to 0.94.6. It was caused by HBASE-7279 (ping Lars Hofhansl).
+The easiest way to see it is to run a simple 1 client PE:
+$ ./bin/hbase org.apache.hadoop.hbase.PerformanceEvaluation sequentialWrite 1
+Then in the shell do a filter scan (flush the table first and make sure if fits in your blockcache if you want stable numbers).
+Pre HBASE-7279:
+hbase(main):028:0> scan 'TestTable', {FILTER => "(RowFilter (=, 'regexstring:0000055872') )"}
+ROW                                                 COLUMN+CELL                                                                                                                                         
+ 0000055872                                         column=info:data, timestamp=1378248850191, value=(blanked)                                                                                                                                    
+1 row(s) in 1.2780 seconds
+Post HBASE-7279
+hbase(main):037:0* scan 'TestTable', {FILTER => "(RowFilter (=, 'regexstring:0000055872') )"}
+ROW                                                 COLUMN+CELL                                                                                                                                         
+ 0000055872                                         column=info:data, timestamp=1378248850191, value=(blanked)                                                                                                                                      
+1 row(s) in 24.2940 seconds
+I tried a bunch of 0.94, up to 0.94.11, and the tip of 0.96. They are all slow like this.
+It seems that since that jira went in we do a lot more row matching, and running the regex gets super expensive.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.94.12, 0.96.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Jean-Daniel Cryans
+Create date:
+04/Sep/13 00:49
+Update date:
+08/Oct/13 02:41
+Resolved date:
+04/Sep/13 18:46

@@ -1,0 +1,34 @@
+Summary:
+Ensure early reopening has no overlap with replaced files
+Description:
+When introducing CASSANDRA-6916 we permitted the early opened files to overlap with the files they were replacing by one DecoratedKey, as this permitted a few minor simplifications. Unfortunately this breaks assumptions in LeveledCompactionScanner, that are causing the intermittent unit test failures: http://cassci.datastax.com/job/trunk_utest/1330/testReport/junit/org.apache.cassandra.db.compaction/LeveledCompactionStrategyTest/testValidationMultipleSSTablePerLevel/
+This patch by itself does not fix the bug, but fixes the described aspect of it, by ensuring the replaced and replacing files never overlap. This is achieved first by always selecting the replaced file start as the next key present in the file greater than the last key in the new file(s). If there is no such key, however, there is no data to return for the reader, but to permit abort and atomic replacement at the end of a macro compaction action, we must keep the file in the DataTracker for replacement purposes, but not return it to consumers (esp. as many assume a non-empty range). For this I have introduced a new OpenReason called SHADOWED, and a DataTracker.View.shadowed collection of sstables, that tracks those we still consider to be in the live set, but from which we no longer answer any queries.
+CASSANDRA-8744 (and then CASSANDRA-8750) then ensures that these bounds are honoured, so that we never break the assumption that files in LCS never overlap.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Marcus Eriksson
+Create date:
+26/Jan/15 14:17
+Update date:
+16/Apr/19 09:31
+Resolved date:
+11/Feb/15 15:33

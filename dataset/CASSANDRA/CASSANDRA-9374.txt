@@ -1,0 +1,57 @@
+Summary:
+Remove thrift dependency in stress schema creation
+Description:
+With CASSANDRA-9319 the thrift server is turned off by default, which makes stress no longer work out of the box. Even though stress uses native CQL3 by default, there is still some remaining piece that uses thrift for schema creation.
+This is what you get by default now:
+$ JAVA_HOME=~/fab/java ~/fab/stress/default/tools/bin/cassandra-stress write n=19000000 -rate threads=300 -node blade-11-4a,blade-11-3a,blade-11-2a
+Exception in thread "main" java.lang.RuntimeException: org.apache.thrift.transport.TTransportException: java.net.ConnectException: Connection refused
+        at org.apache.cassandra.stress.settings.StressSettings.getRawThriftClient(StressSettings.java:144)
+        at org.apache.cassandra.stress.settings.StressSettings.getRawThriftClient(StressSettings.java:110)
+        at org.apache.cassandra.stress.settings.SettingsSchema.createKeySpacesThrift(SettingsSchema.java:111)
+        at org.apache.cassandra.stress.settings.SettingsSchema.createKeySpaces(SettingsSchema.java:59)
+        at org.apache.cassandra.stress.settings.StressSettings.maybeCreateKeyspaces(StressSettings.java:205)
+        at org.apache.cassandra.stress.StressAction.run(StressAction.java:55)
+        at org.apache.cassandra.stress.Stress.main(Stress.java:109)
+Caused by: org.apache.thrift.transport.TTransportException: java.net.ConnectException: Connection refused
+        at org.apache.thrift.transport.TSocket.open(TSocket.java:187)
+        at org.apache.thrift.transport.TFramedTransport.open(TFramedTransport.java:81)
+        at org.apache.cassandra.thrift.TFramedTransportFactory.openTransport(TFramedTransportFactory.java:41)
+        at org.apache.cassandra.stress.settings.StressSettings.getRawThriftClient(StressSettings.java:124)
+        ... 6 more
+Caused by: java.net.ConnectException: Connection refused
+        at java.net.PlainSocketImpl.socketConnect(Native Method)
+        at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:339)
+        at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+        at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+        at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)
+        at java.net.Socket.connect(Socket.java:579)
+        at org.apache.thrift.transport.TSocket.open(TSocket.java:182)
+        ... 9 more
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+T Jake Luciani
+Reporter:
+Ryan McGuire
+Create date:
+13/May/15 16:48
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/May/15 13:40

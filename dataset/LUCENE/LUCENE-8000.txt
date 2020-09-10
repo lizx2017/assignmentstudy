@@ -1,0 +1,57 @@
+Summary:
+Document Length Normalization in BM25Similarity correct?
+Description:
+Length of individual documents only counts the number of positions of a document since discountOverlaps defaults to true.
+ @Override
+  public final long computeNorm(FieldInvertState state) {
+    final int numTerms = discountOverlaps ? state.getLength() - state.getNumOverlap() : state.getLength();
+    int indexCreatedVersionMajor = state.getIndexCreatedVersionMajor();
+    if (indexCreatedVersionMajor >= 7) {
+      return SmallFloat.intToByte4(numTerms);
+    } else {
+      return SmallFloat.floatToByte315((float) (1 / Math.sqrt(numTerms)));
+    }
+  }}
+Measureing document length this way seems perfectly ok for me. What bothers me is that
+average document length is based on sumTotalTermFreq for a field. As far as I understand that sums up totalTermFreqs for all terms of a field, therefore counting positions of terms including those that overlap.
+ protected float avgFieldLength(CollectionStatistics collectionStats) {
+    final long sumTotalTermFreq = collectionStats.sumTotalTermFreq();
+    if (sumTotalTermFreq <= 0) {
+      return 1f;       // field does not exist, or stat is unsupported
+    } else {
+      final long docCount = collectionStats.docCount() == -1 ? collectionStats.maxDoc() : collectionStats.docCount();
+      return (float) (sumTotalTermFreq / (double) docCount);
+    }
+  }
+}
+Are we comparing apples and oranges in the final scoring?
+I haven't run any benchmarks and I am not sure whether this has a serious effect. It just means that documents that have synonyms or in my use case different normal forms of tokens on the same position are shorter and therefore get higher scores than they should and that we do not use the whole spectrum of relative document lenght of BM25.
+I think for BM25 discountOverlaps should default to false.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Christoph Goller
+Create date:
+19/Oct/17 15:13
+Update date:
+23/Oct/17 08:17
+Resolved date:
+

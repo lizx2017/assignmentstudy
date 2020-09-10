@@ -1,0 +1,203 @@
+Summary:
+Removing a file from index does not remove all references to file.
+Description:
+If I walk though a list of files and remove them from
+the index, it appears as only half of the references are
+really removed.
+I have included the java class I use to create and update
+the index below. If you have any questions, please let me
+know. I can also provide the intellij plugin (with
+source) that does the indexing if you want to use it
+for debugging.
+In the source below, if I index all the ANT manual API's, and
+do a search for "Ant", I get 531 hits. After doing the remove
+operation where I remove all the ant manuals docs from the
+index, I get around 260 hits. On windows, I sometimes continue
+to get 531 hits.
+If this ends up being unreadable...just email me for the file:
+/*
+Created by IntelliJ IDEA.
+User: rvestal
+Date: Jun 11, 2002
+Time: 8:52:43 PM
+To change template for new class use
+Code Style | Class Templates options (Tools | IDE Options).
+*/
+package org.intellij.plugins.docPlugin.tools.finder;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import java.io.*;
+import java.util.Iterator;
+import java.util.Vector;
+/**
+Runs a javadoc indexer on a thread.
+*/
+public class Indexer
+extends Thread {
+/** The initiating search pane. **/
+private IndexerTab mIndexTab;
+/** The vector of files to add to the index **/
+private Vector mFilesToAdd;
+/** The vector of files to remove from the index **/
+private Vector mFilesToRemove;
+/** The index dir **/
+private String mIndexDir;
+/**
+Constructor
+@param pane The initiating search pane.
+@param filesToAdd The files to add to the index.
+@param filesToRemove The files to remove from the index.
+*/
+public Indexer( IndexerTab pane, Vector filesToAdd,
+Vector filesToRemove, String indexDir ) { mIndexTab = pane; mFilesToAdd = filesToAdd; mFilesToRemove = filesToRemove; mIndexDir = indexDir; }
+/**
+If this thread was constructed using a separate
+<code>Runnable</code> run object, then that
+<code>Runnable</code> object's <code>run</code> method is called;
+otherwise, this method does nothing and returns.
+<p>
+Subclasses of <code>Thread</code> should override this method.
+*/
+public void run() {
+File indexDir = new File( mIndexDir );
+if ( !indexDir.exists() ) { indexDir.mkdirs(); }
+removeFiles();
+addFiles();
+mIndexTab.updateIndexingProgress( mFilesToAdd.size() +
+mFilesToRemove.size() + 3, "" );
+mIndexTab.doneIndexing();
+}
+/**
+Add a set of files to the index.
+*/
+private void addFiles() {
+IndexWriter writer = null;
+try {
+try
+{ writer = new IndexWriter( mIndexDir, new StandardAnalyzer(), false ); }
+catch ( FileNotFoundException ex )
+{ writer = new IndexWriter( mIndexDir, new StandardAnalyzer(), true ); }
+for ( int ix = 0; ix < mFilesToAdd.size(); ix++ ) {
+File file = (File) mFilesToAdd.get( ix );
+mIndexTab.updateIndexingProgress( ix + mFilesToRemove.size(),
+formDisplayString(
+file.getAbsolutePath() ) );
+writer.addDocument( JavadocIndexerDocument.createDocument(
+file ) );
+if ( mIndexTab.isIndexingCanceled() )
+{ break; }
+}
+} catch ( Exception ex )
+{ ex.printStackTrace(); } finally {
+if ( writer != null ) {
+try { writer.optimize(); writer.close(); } catch ( Exception ex ) { ex.printStackTrace(); }
+}
+}
+}
+
+
+/**
+* remove files from the index.
+*
+* todo Investigate why this doesn't remove ALL references...seems to only
+remove half.
+*/
+private void removeFiles() {
+if ( mFilesToRemove.size() == 0 ) { return; }
+
+Directory directory = null;
+IndexReader reader = null;
+try {
+directory = FSDirectory.getDirectory( mIndexDir, false );
+try { reader = IndexReader.open( directory ); } catch ( FileNotFoundException ex ) { return; }
+removeFilesFromReader( reader );
+} catch ( Exception ex ) { ex.printStackTrace(); }
+if ( reader != null ) {
+try
+{ reader.close(); }
+catch ( IOException e )
+{ e.printStackTrace(); }
+}
+if ( directory != null ) {
+try { directory.close(); } catch ( Exception e ) { e.printStackTrace(); }
+}
+}
+/**
+Remove the files from the reader.
+@param reader The index reader
+@throws IOException on error
+*/
+private void removeFilesFromReader( IndexReader reader )
+throws IOException {
+int count = 0;
+for ( Iterator iterator = mFilesToRemove.iterator(); iterator.hasNext
+(); ) {
+String path = ( (File) iterator.next()).getAbsolutePath();
+deleteIndiciesForPath( reader, path );
+mIndexTab.updateIndexingProgress( ++count, "Removing "
++ formDisplayString(
+path ) );
+if ( mIndexTab.isIndexingCanceled() )
+{ break; }
+}
+}
+/**
+Delete the indicies in the search stuff for a specific file.
+@param reader The index reader.
+@param path The path to remove from the index
+@throws IOException on error
+*/
+private void deleteIndiciesForPath( IndexReader reader, String path )
+throws IOException {
+int numDocs = reader.numDocs();
+for ( int ix = 0; ix < numDocs; ix++ ) {
+if ( !reader.isDeleted( ix ) )
+Unknown macro: { String docPath = JavadocIndexerDocument.getPath( reader.document( ix ) ); if ( docPath.indexOf( path ) != -1 ) { reader.delete( ix ); break; } }
+}
+}
+/**
+Form a display string to pass to the progress dialog.
+@param path The path to the file being indexed.
+@return A display string for the path.
+*/
+private String formDisplayString( String path ) {
+if ( path.length() > 36 ) {
+int endIndex = path.indexOf( '/', 6 );
+if ( endIndex == -1 ) { endIndex = path.indexOf( '\\', 6 ); }
+if ( endIndex != -1 )
+Unknown macro: { String newPath = path.substring( 0, endIndex + 1 ); newPath += "..."; int lastIndex = path.lastIndexOf( '/', path.length() - 29 ); if ( lastIndex == -1 ) { lastIndex = path.lastIndexOf( '\\', path.length() - 29 ); } if ( lastIndex < 0 ) { lastIndex = Math.max( 6, path.length() - 29 ); } newPath += path.substring( lastIndex, path.length() ); return newPath; }
+}
+return path;
+}
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Incomplete
+Affects_version:
+1.2
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Rick Vestal
+Create date:
+17/Jun/02 07:38
+Update date:
+02/Jun/11 22:05
+Resolved date:
+27/May/06 01:35

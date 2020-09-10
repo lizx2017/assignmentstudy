@@ -1,0 +1,55 @@
+Summary:
+Changing column type from int to bigint or vice versa causes decoding errors.
+Description:
+cqlsh:dbsite> create table testint (id uuid, bestof bigint, primary key (id) );
+cqlsh:dbsite> insert into testint (id, bestof ) values (49d30f84-a409-4433-ad60-eb9c1a06b7bb, 1376399966);
+cqlsh:dbsite> insert into testint (id, bestof ) values (6cab4798-ad29-4419-bd59-308f9ec3bc44, 1376389800);
+cqlsh:dbsite> insert into testint (id, bestof ) values (685bb9ff-a4fe-4e47-95eb-f6a353d9e179, 1376390400);
+cqlsh:dbsite> insert into testint (id, bestof ) values (a848f832-5ded-4ef7-bf4b-7db561564c57, 1376391000);
+cqlsh:dbsite> select * from testint ;
+id | bestof
+-------------------------------------+-----------
+a848f832-5ded-4ef7-bf4b-7db561564c57 | 1376391000
+49d30f84-a409-4433-ad60-eb9c1a06b7bb | 1376399966
+6cab4798-ad29-4419-bd59-308f9ec3bc44 | 1376389800
+685bb9ff-a4fe-4e47-95eb-f6a353d9e179 | 1376390400
+cqlsh:dbsite> alter table testint alter bestof TYPE int;
+cqlsh:dbsite> select * from testint ;
+id | bestof
+-------------------------------------+----------------------------
+a848f832-5ded-4ef7-bf4b-7db561564c57 | '\x00\x00\x00\x00R\n\x0fX'
+49d30f84-a409-4433-ad60-eb9c1a06b7bb | '\x00\x00\x00\x00R\n2^'
+6cab4798-ad29-4419-bd59-308f9ec3bc44 | '\x00\x00\x00\x00R\n\n\xa8'
+685bb9ff-a4fe-4e47-95eb-f6a353d9e179 | '\x00\x00\x00\x00R\n\r\x00'
+Failed to decode value '\x00\x00\x00\x00R\n\x0fX' (for column 'bestof') as int: unpack requires a string argument of length 4
+Failed to decode value '\x00\x00\x00\x00R\n2^' (for column 'bestof') as int: unpack requires a string argument of length 4
+2 more decoding errors suppressed.
+I realize that going from BIGINT to INT would cause overflow if a column contained a number larger than 2^31-1, it is at least technically possible to go in the other direction. I also understand that rewriting all the data in the correct format would be a very expensive operation on a large column family, but if that's not something we want to allow we should explicitly disallow changing data types if the table has any rows.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.9
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+J.B. Langston
+Create date:
+13/Aug/13 14:22
+Update date:
+16/Apr/19 09:32
+Resolved date:
+26/Aug/13 16:01

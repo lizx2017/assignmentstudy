@@ -1,0 +1,138 @@
+Summary:
+Read repair happens on every quorum read
+Description:
+I have a 3 node cluster with a replication factor of 2, running on 0.4
+RC1. I've set both my read and write consistency levels to use a
+quorum.
+I'm observing that quorum reads keep invoking read repair and log
+DigestMismatchExceptions from the StorageProxy. In the absence of any
+additional inserts, I'd expect that read repair would happen at most
+once before the 2 nodes responsible for the data both have fresh views
+of the data.
+Here's what I see in my debug log for one machine on two consecutive
+quorum reads for the data. I get similar messages when querying any
+of the 3 nodes. Similar messages are logged on subsequent queries for
+the exact same row/column. The issue happens when reading both
+supercolumns or columns. Restarting the cluster has no effect.
+DEBUG [pool-1-thread-1] 2009-09-26 00:26:20,317 CassandraServer.java
+(line 305) multiget
+DEBUG [pool-1-thread-1] 2009-09-26 00:26:20,360 StorageProxy.java
+(line 375) strongread reading data for
+SliceByNamesReadCommand(table='Analytics', key='test',
+columnParent='QueryPath(columnFamilyName='Domain',
+superColumnName='null', co\
+lumnName='null')', columns=[www.ooyala.com,]) from 17@172.16.130.130:7000
+DEBUG [pool-1-thread-1] 2009-09-26 00:26:20,365 StorageProxy.java
+(line 382) strongread reading digest for
+SliceByNamesReadCommand(table='Analytics', key='test',
+columnParent='QueryPath(columnFamilyName='Domain',
+superColumnName='null', \
+columnName='null')', columns=[www.ooyala.com,]) from 18@172.16.130.131:7000
+DEBUG [ROW-READ-STAGE:1] 2009-09-26 00:26:20,380 ReadVerbHandler.java
+(line 100) Read key test; sending response to
+EEF5BCFF-D592-F1DE-6DEE-B74029218A29@172.16.130.130:7000
+DEBUG [RESPONSE-STAGE:1] 2009-09-26 00:26:20,387
+ResponseVerbHandler.java (line 34) Processing response on a callback
+from EEF5BCFF-D592-F1DE-6DEE-B74029218A29@172.16.130.130:7000
+DEBUG [RESPONSE-STAGE:2] 2009-09-26 00:26:20,449
+ResponseVerbHandler.java (line 34) Processing response on a callback
+from EEF5BCFF-D592-F1DE-6DEE-B74029218A29@172.16.130.131:7000
+DEBUG [pool-1-thread-1] 2009-09-26 00:26:20,474
+ReadResponseResolver.java (line 84) Response deserialization time : 0
+ms.
+DEBUG [pool-1-thread-1] 2009-09-26 00:26:20,474
+ReadResponseResolver.java (line 84) Response deserialization time : 0
+ms.
+INFO [pool-1-thread-1] 2009-09-26 00:26:20,475 StorageProxy.java
+(line 411) DigestMismatchException: test
+DEBUG [ROW-READ-STAGE:2] 2009-09-26 00:26:20,477 ReadVerbHandler.java
+(line 100) Read key test; sending response to 19@172.16.130.130:7000
+DEBUG [RESPONSE-STAGE:3] 2009-09-26 00:26:20,478
+ResponseVerbHandler.java (line 34) Processing response on a callback
+from 19@172.16.130.130:7000
+DEBUG [RESPONSE-STAGE:4] 2009-09-26 00:26:20,480
+ResponseVerbHandler.java (line 34) Processing response on a callback
+from 19@172.16.130.131:7000
+DEBUG [pool-1-thread-1] 2009-09-26 00:26:20,481
+ReadResponseResolver.java (line 84) Response deserialization time : 0
+ms.
+DEBUG [pool-1-thread-1] 2009-09-26 00:26:20,481
+ReadResponseResolver.java (line 84) Response deserialization time : 0
+ms.
+INFO [pool-1-thread-1] 2009-09-26 00:26:20,482
+ReadResponseResolver.java (line 148) resolve: 1 ms.
+DEBUG [pool-1-thread-2] 2009-09-26 00:27:22,099 CassandraServer.java
+(line 305) multiget
+DEBUG [pool-1-thread-2] 2009-09-26 00:27:22,100 StorageProxy.java
+(line 375) strongread reading data for
+SliceByNamesReadCommand(table='Analytics', key='test',
+columnParent='QueryPath(columnFamilyName='Domain',
+superColumnName='null', co\
+lumnName='null')', columns=[www.ooyala.com,]) from 224@172.16.130.130:7000
+DEBUG [pool-1-thread-2] 2009-09-26 00:27:22,100 StorageProxy.java
+(line 382) strongread reading digest for
+SliceByNamesReadCommand(table='Analytics', key='test',
+columnParent='QueryPath(columnFamilyName='Domain',
+superColumnName='null', \
+columnName='null')', columns=[www.ooyala.com,]) from 225@172.16.130.131:7000
+DEBUG [ROW-READ-STAGE:1] 2009-09-26 00:27:22,103 ReadVerbHandler.java
+(line 100) Read key test; sending response to
+CD1A7545-F759-1CA7-4D17-87FA4A16E2E4@172.16.130.130:7000
+DEBUG [RESPONSE-STAGE:1] 2009-09-26 00:27:22,103
+ResponseVerbHandler.java (line 34) Processing response on a callback
+from CD1A7545-F759-1CA7-4D17-87FA4A16E2E4@172.16.130.130:7000
+DEBUG [RESPONSE-STAGE:2] 2009-09-26 00:27:22,107
+ResponseVerbHandler.java (line 34) Processing response on a callback
+from CD1A7545-F759-1CA7-4D17-87FA4A16E2E4@172.16.130.131:7000
+DEBUG [pool-1-thread-2] 2009-09-26 00:27:22,108
+ReadResponseResolver.java (line 84) Response deserialization time : 1
+ms.
+DEBUG [pool-1-thread-2] 2009-09-26 00:27:22,108
+ReadResponseResolver.java (line 84) Response deserialization time : 0
+ms.
+INFO [pool-1-thread-2] 2009-09-26 00:27:22,109 StorageProxy.java
+(line 411) DigestMismatchException: test
+DEBUG [ROW-READ-STAGE:2] 2009-09-26 00:27:22,114 ReadVerbHandler.java
+(line 100) Read key test; sending response to 226@172.16.130.130:7000
+DEBUG [RESPONSE-STAGE:3] 2009-09-26 00:27:22,114
+ResponseVerbHandler.java (line 34) Processing response on a callback
+from 226@172.16.130.130:7000
+DEBUG [RESPONSE-STAGE:4] 2009-09-26 00:27:22,205
+ResponseVerbHandler.java (line 34) Processing response on a callback
+from 226@172.16.130.131:7000
+DEBUG [pool-1-thread-2] 2009-09-26 00:27:22,206
+ReadResponseResolver.java (line 84) Response deserialization time : 0
+ms.
+DEBUG [pool-1-thread-2] 2009-09-26 00:27:22,206
+ReadResponseResolver.java (line 84) Response deserialization time : 0
+ms.
+INFO [pool-1-thread-2] 2009-09-26 00:27:22,207
+ReadResponseResolver.java (line 148) resolve: 1 ms.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Edmond Lau
+Create date:
+28/Sep/09 21:28
+Update date:
+16/Apr/19 09:33
+Resolved date:
+30/Sep/09 21:23

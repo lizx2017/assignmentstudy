@@ -1,0 +1,57 @@
+Summary:
+Switch Stress from using math3.pair because it is unserializable
+Description:
+Stress uses org.apache.commons.math3.util.Pair to hold information in settings because eventually it is used in commons.math3.distributions. This makes the settings unserializable so we can't run with StressDemon.
+/bin/cassandra-stress user no_warmup "ops(insert=1)" n=10000 profile=cqlstress-example.yaml -sendto 127.0.0.1
+Exception in thread "main" java.io.NotSerializableException: org.apache.commons.math3.util.Pair
+ at java.io.ObjectOutputStream.writeObject0(ObjectOutputStream.java:1183)
+ at java.io.ObjectOutputStream.writeObject(ObjectOutputStream.java:347)
+at java.util.ArrayList.writeObject(ArrayList.java:742)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+ at java.lang.reflect.Method.invoke(Method.java:606)
+ at java.io.ObjectStreamClass.invokeWriteObject(ObjectStreamClass.java:988)
+ at java.io.ObjectOutputStream.writeSerialData(ObjectOutputStream.java:1495)
+ at java.io.ObjectOutputStream.writeOrdinaryObject(ObjectOutputStream.java:1431)
+ at java.io.ObjectOutputStream.writeObject0(ObjectOutputStream.java:1177)
+ at java.io.ObjectOutputStream.defaultWriteFields(ObjectOutputStream.java:1547)
+ at java.io.ObjectOutputStream.writeSerialData(ObjectOutputStream.java:1508)
+ at java.io.ObjectOutputStream.writeOrdinaryObject(ObjectOutputStream.java:1431)
+ at java.io.ObjectOutputStream.writeObject0(ObjectOutputStream.java:1177)
+ at java.io.ObjectOutputStream.defaultWriteFields(ObjectOutputStream.java:1547)
+ at java.io.ObjectOutputStream.writeSerialData(ObjectOutputStream.java:1508)
+ at java.io.ObjectOutputStream.writeOrdinaryObject(ObjectOutputStream.java:1431)
+ at java.io.ObjectOutputStream.writeObject0(ObjectOutputStream.java:1177)
+ at java.io.ObjectOutputStream.writeObject(ObjectOutputStream.java:347)
+ at org.apache.cassandra.stress.Stress.main(Stress.java:78)
+Control-C caught. Canceling running action and shutting down...
+To fix this we can pass around serializable pairs and convert to commons.math3 pairs before we actually pass the objects to the distribution code.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Russell Spitzer
+Reporter:
+Russell Spitzer
+Create date:
+16/Jul/14 22:50
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Aug/14 20:50

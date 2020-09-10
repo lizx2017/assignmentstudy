@@ -1,0 +1,50 @@
+Summary:
+CliClient does not log root cause exception when catch it from executeCLIStatement
+Description:
+When executing a statement from the cassandra-cli (with --debug) , if an exception is thrown from one of the cases in side the executeCLIStatement method, the root cause is swallowed. For specific case such as the InvalidRequestException or the SchemaDisagreementException, just the message itself maybe enough, but for the general Exception case, without the root cause, it could be difficult to debug the issue.
+For example, we have seen exception like:
+null
+java.lang.RuntimeException
+at org.apache.cassandra.cli.CliClient.executeCLIStatement(CliClient.java:209)
+at org.apache.cassandra.cli.CliMain.processStatement(CliMain.java:223)
+at org.apache.cassandra.cli.CliMain.main(CliMain.java:351)
+the null there would most likely indicate this is a NPE (though it could still be any Exception with null message). By adding a initCause to the caught exception, we could see the root cause, eg:
+null
+java.lang.RuntimeException
+        at org.apache.cassandra.cli.CliClient.executeCLIStatement(CliClient.java:212)
+        at org.apache.cassandra.cli.CliMain.processStatement(CliMain.java:223)
+        at org.apache.cassandra.cli.CliMain.main(CliMain.java:351)
+Caused by: java.lang.NullPointerException
+        at org.apache.cassandra.cli.CliClient.describeKeySpace(CliClient.java:1336)
+        at org.apache.cassandra.cli.CliClient.executeShowKeySpaces(CliClient.java:1166)
+        at org.apache.cassandra.cli.CliClient.executeCLIStatement(CliClient.java:170)
+        ... 2 more
+submitting a patch here that would add the initCause to all caught exceptions here. But the most important one is the general Exception case.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.2
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jackson Chung
+Reporter:
+Jackson Chung
+Create date:
+07/Jun/11 18:01
+Update date:
+16/Apr/19 09:32
+Resolved date:
+06/Jul/11 13:17

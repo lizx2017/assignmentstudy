@@ -1,0 +1,66 @@
+Summary:
+bad classapth for 'sstablerepairedset' in 'cassandra-tools' package
+Description:
+The script 'sstablerepairedset' is not ready out of the box for debian distro, maybe due to the refactoring of CASSANDRA-7160 to pack out tools from the bin directory.
+Actually in 'sstablerepairedset' the classapth is calculated with:
+if [ "x$CLASSPATH" = "x" ]; then
+    
+    # execute from the build dir.
+    if [ -d `dirname $0`/../../build/classes ]; then
+        for directory in `dirname $0`/../../build/classes/*; do
+            CLASSPATH=$CLASSPATH:$directory
+        done
+    else
+        if [ -f `dirname $0`/../lib/stress.jar ]; then
+            CLASSPATH=`dirname $0`/../lib/stress.jar
+        fi
+    fi
+
+    for jar in `dirname $0`/../../lib/*.jar; do
+        CLASSPATH=$CLASSPATH:$jar
+    done
+fi
+Whereas in other scripts from the 'bin/tools', the classpath is calculated with:
+if [ "x$CASSANDRA_INCLUDE" = "x" ]; then
+    for include in "`dirname "$0"`/cassandra.in.sh" \
+                   "$HOME/.cassandra.in.sh" \
+                   /usr/share/cassandra/cassandra.in.sh \
+                   /usr/local/share/cassandra/cassandra.in.sh \
+                   /opt/cassandra/cassandra.in.sh; do
+        if [ -r "$include" ]; then
+            . "$include"
+            break
+        fi
+    done
+elif [ -r "$CASSANDRA_INCLUDE" ]; then
+    . "$CASSANDRA_INCLUDE"
+fi
+I think that a little refactoring could be good to extract the common part of these scripts like the computation of the CLASSPATH and the set of JAVA_HOME.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.14, 2.2.6, 3.0.5
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+debian
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Clément Lardeur
+Create date:
+15/Jun/15 08:55
+Update date:
+16/Apr/19 09:31
+Resolved date:
+22/Mar/16 21:11

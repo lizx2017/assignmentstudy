@@ -1,0 +1,36 @@
+Summary:
+Backward compatibility fixes for 0.92
+Description:
+Attached are 3 patches that are necessary to allow compatibility between HBase 0.90.x (and previous releases) and HBase 0.92.0.
+First of all, I'm well aware that 0.92.0 RC4 has been thumbed up by a lot of people and would probably wind up being released as 0.92.0 tomorrow, so I sincerely apologize for creating this issue so late in the process. I spent a lot of time trying to work around the quirks of 0.92 but once I realized that with a few very quasi-trivial changes compatibility would be made significantly easier, I immediately sent these 3 patches to Stack, who suggested I create this issue.
+The first patch is required as without it clients sending a 0.90-style RPC to a 0.92-style server causes the server to die uncleanly. It seems that 0.92 ships with -XX:OnOutOfMemoryError="kill -9 %p", and when a 0.92 server fails to deserialize a 0.90-style RPC, it attempts to allocate a large buffer because it doesn't read fields of 0.90-style RPCs properly. This allocation attempt immediately triggers an OOME, which causes the JVM to die abruptly of a SIGKILL. So whenever a 0.90.x client attempts to connect to HBase, it kills whichever RS is hosting the -ROOT- region.
+The second patch fixes a bug introduced by HBASE-2002, which added support for letting clients specify what "protocol" they want to speak. If a client doesn't properly specify what protocol to use, the connection's protocol field will be left null, which causes any subsequent RPC on that connection to trigger an NPE in the server, even though the connection was successfully established from the client's point of view. The fix is to simply give the connection a default protocol, by assuming the client meant to speak to a RegionServer.
+The third patch fixes an oversight that slipped in HBASE-451, where a change to HbaseObjectWritable caused all the codes used to serialize Writables to shift by one. This was carefully avoided in other changes such as HBASE-1502, which cleanly removed entries for HMsg and HMsg[], so I don't think this breakage in HBASE-451 was intended.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+IPC/RPC
+Label:
+backwards-compatibil
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benoit Sigoure
+Reporter:
+Benoit Sigoure
+Create date:
+16/Jan/12 00:32
+Update date:
+20/Nov/15 11:54
+Resolved date:
+16/Jan/12 19:35

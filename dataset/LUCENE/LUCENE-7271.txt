@@ -1,0 +1,62 @@
+Summary:
+Cleanup jira's concept of 'master' and '6.0'
+Description:
+Jira's concept of "Fix Version: master" is currently screwed up, as noted & discussed in this mailing list thread...
+http://mail-archives.apache.org/mod_mbox/lucene-dev/201604.mbox/%3Calpine.DEB.2.11.1604131529140.15570@tray%3E
+The current best plan of attack (summary) is:
+use Jira's "Merge Versions" feature to merge master into 6.0
+add a new master (7.0) to use moving forward
+manually audit/fix the fixVersion of some clean up issues as needed.
+I'm using this issue to track this work.
+Detailed Check list of planned steps:
+S1: Generate a CSV report listing all resolved/closed Jira's with 'fixVersion=master AND fixVersion=6.1'
+https://issues.apache.org/jira/issues/?jql=project%20in%20%28LUCENE%2C%20SOLR%29%20AND%20status%20in%20%28Resolved%2C%20Closed%29%20AND%20fixVersion%20%3D%20master%20AND%20fixVersion%20%3D%206.1%20ORDER%20BY%20resolved%20DESC%2C%20key%20DESC
+currently about ~100 issues
+The operating assumption is that any non-resolved issues should have the fixVersion set correctly if/when they are resolved in the future
+S2: Generate two CSV reports containing all issues that match these 2 queries for fixVersion=master and fixVersion=6.0
+master: https://issues.apache.org/jira/issues/?jql=project%20in%20%28LUCENE%2C%20SOLR%29%20AND%20fixVersion%20%3D%20master%20ORDER%20BY%20key%20DESC
+6.0: https://issues.apache.org/jira/issues/?jql=project%20in%20%28LUCENE%2C%20SOLR%29%20AND%20fixVersion%20%3D%206.0%20ORDER%20BY%20key%20DESC
+these reports can be attached to this issue (LUCENE-7271) for posterity in case people want to later review what the state of any issue was before this whole process was started and versions were changed/merged
+S3: Use Jira's "Merge Versions" feature to merge "master" into "6.0"
+This needs to be done distinctly for both LUCENE and SOLR
+S4: Add a new "master (7.0)" version to Jira
+This needs to be done distinctly for both LUCENE and SOLR
+S5: audit every issue in the CSV file from S1 above to determine if/when the issue should get fixVersion="master (7.0)" added to it or fixVersion="6.0" removed from it:
+if it only ever had commits to master (ie: before branch_6x was made on March 2nd) then no action needed.
+if it has distinct commits to both master after branch_6x was made on March 2nd, then fixVersion="master (7.0)" should definitely be added.
+if it has no commits to branch_6_0, and the only commits to branch_6x are after branch_6_0 was created on March 3rd, then fixVersion="6.0" should be removed.
+if there are no obvious commits in the issue comments, then sanity check why it has any fixVersion at all (can't reproduce? dup? etc...)
+S6: Audit CHANGES.txt & git commits and replace fixVersion=6.0 with fixVersion="master (7.0)" on the handful of issues where appropriate in case they fell through the cracks in S5:
+Look at the 7.0 section of lucene/CHANGES.txt & solr/CHANGES.txt for new features
+currently only 1 jira mentioned in either files in 7.0 section
+Use git co releases/lucene-solr/6.0.0 && git cherry -v master | egrep '^+' to find changesets on master that were not included in 6.0
+currently ~40 commits
+before removing fixVersion=6.0 from any of these issues, sanity check if this is a deprecation type situation (involving diff commits in both 6.0 and master) in which case fixVersion="master (7.0)" should be added in addition to fixVersion=6.0
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Hoss Man
+Reporter:
+Hoss Man
+Create date:
+04/May/16 02:16
+Update date:
+11/May/16 01:38
+Resolved date:
+11/May/16 00:13

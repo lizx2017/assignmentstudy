@@ -1,0 +1,35 @@
+Summary:
+HLog writer can do 1-2 sync operations after lease has been recovered for split process.
+Description:
+TestHLogSplit.testLogCannotBeWrittenOnceParsed is failing.
+This test starts a thread that writes one edit to the log, syncs and counts. During this, a HLog.splitLog operation is started. splitLog recovers the log lease before reading the log, so that the original regionserver could not wake up and write after the split process started.
+The test compares the number of edits reported by the split process and by the writer thread. Writer thread (called zombie in the test) should report <= than the splitLog (sync() might raise after the last edit gets written and the edit won't get counted by zombie thread). However it appears that the zombie counts 1-2 more edits. So it looks like it can sync without a lease.
+This might be a hdfs-0.20 related issue.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.95.0
+Component:
+Filters
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Todd Lipcon
+Reporter:
+Cosmin Lehene
+Create date:
+01/Jun/10 17:57
+Update date:
+15/Oct/13 04:46
+Resolved date:
+16/Nov/12 23:54

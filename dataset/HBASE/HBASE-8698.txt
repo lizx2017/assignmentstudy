@@ -1,0 +1,82 @@
+Summary:
+potential thread creation in MetaScanner.metaScan
+Description:
+MetaScanner.metaScan() creates an instance of HTable per call. The constructur used creates a new ThreadPoolExecutor. The executor itself will not create a thread unless it's pool is used. I am not sure if the HTable instance in question ever uses it's pool. But if so, this could become a big performance issue. Logging an issue at Lars's request. mail list chain below.
+-------------------------------------
+Indeed. That is bad.
+I cannot see a clean fix immediately, but we need to look at this.
+Mind filing a ticket, Kireet?
+– Lars
+________________________________
+From: Kireet <kireet-Teh5dPVPL8nQT0dZR+AlfA@public.gmane.org>
+To: public-user-50Pas4EWwPEyzMRdD/IqWQ-wOFGN7rlS/M9smdsby/KFg@public.gmane.org
+Sent: Friday, May 31, 2013 11:58 AM
+Subject: Re: HConnectionManager$HConnectionImplementation.locateRegionInMeta
+Even if I initiate the call via a pooled htable, the MetaScanner seems
+to use a concrete HTable instance. The constructor invoked seems to
+create a java ThreadPoolExecutor. I am not 100% sure but I think as long
+as nothing is submitted to the ThreadPoolExecutor it won't create any
+threads. I just wanted to confirm this was the case. I do see the
+connection is shared.
+--Kireet
+On 5/30/13 7:38 PM, Ted Yu wrote:
+> HTablePool$**PooledHTable is a wrapper around HTable.
+>
+> Here is how HTable obtains a connection:
+>
+> public HTable(Configuration conf, final byte[] tableName, final
+> ExecutorService pool)
+> throws IOException {
+> this.connection = HConnectionManager.getConnection(conf);
+>
+> Meaning the connection is a shared one based on certain key/value pairs
+> from conf.
+>
+> bq. So every call to batch will create a new thread?
+>
+> I don't think so.
+>
+> On Thu, May 30, 2013 at 11:28 AM, Kireet <kireet-Teh5dPVPL8nQT0dZR+AlfA-XMD5yJDbdMReXY1tMh2IBg@public.gmane.org> wrote:
+>
+>>
+>>
+>> Thanks, will give it a shot. So I should download 0.94.7 (latest stable)
+>> and run the patch tool on top with the backport? This is a little new to me.
+>>
+>> Also, I was looking at the stack below. From my reading of the code, the
+>> HTable.batch() call will always cause the prefetch call to occur, which
+>> will cause a new HTable object to get created. The constructor used in
+>> creating a new thread pool. So every call to batch will create a new
+>> thread? Or the HTable's thread pool never gets used as the pool is only
+>> used for writes? I think I am missing something but just want to confirm.
+>>
+>> Thanks
+>> Kireet
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.7
+Fix_version:
+0.98.0, 0.95.2, 0.94.11
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Kireet Reddy
+Create date:
+06/Jun/13 15:24
+Update date:
+21/Aug/13 00:08
+Resolved date:
+28/Jul/13 06:04

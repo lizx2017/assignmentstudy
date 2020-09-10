@@ -1,0 +1,59 @@
+Summary:
+Tree doesn't show selected item when remote ArrayCollection updated
+Description:
+problem with the ADG based grid/tree controls and shows up with Alex's TreeDMV component. From looking at the code quickly, I think the issue is that AdvancedDataGrid maintains its own selection criteria "cellSelectionData" which is a map using uid as the key. This data structure gets out of date when the "uid" property changes on an item in the grid, even if a property change event is fired indicating it changed.
+This same bug was fixed in the ListBase.as file with code like:
+else if (ce.kind == CollectionEventKind.UPDATE)
+{
+// trace("ListBase collectionEvent UPDATE");
+selectedUID = selectedItem ? itemToUID(selectedItem) : null;
+len = ce.items.length;
+for (i = 0; i < len; i++)
+{
+if (ce.items[i].property == "uid")
+{
+oldUID = ce.items[i].oldValue;
+sd = selectedData[oldUID];
+if (sd)
+{
+sd.data = ce.items[i].target;
+delete selectedData[oldUID];
+selectedData[ce.items[i].newValue] = sd;
+if (selectedUID == oldUID)
+{
+_selectedItem = sd.data;
+dispatchEvent(new FlexEvent(FlexEvent.VALUE_COMMIT));
+}
+}
+}
+}
+}
+I think similar logic needs to be added to ADG to fix this problem. For efficiency, DMS uses that uid property to store the combined identity values and ids are assigned on the server after the instance has been created. To make the api simple, the first instance with a given id is "the" instance so we don't want to replace the entire instance with a new one as it would break application code so we need the ability to update the uid on an existing instance.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+Adobe Flex SDK Previ
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+15/Jan/08 19:28
+Update date:
+11/Mar/08 01:44
+Resolved date:
+16/Jan/08 04:29

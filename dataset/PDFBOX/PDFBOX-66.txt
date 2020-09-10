@@ -1,0 +1,79 @@
+Summary:
+TextPosition.width incorrect if text is rotated
+Description:
+[imported from SourceForge]
+http://sourceforge.net/tracker/index.php?group_id=78314&atid=552832&aid=1228171
+Originally submitted by yves_bussard on 2005-06-27 04:38.
+Hi Ben,
+I noticed that if a text is rotated, then it's widht is
+not calculated correctly. This is because you only look
+at the page rotation rather than the transformation
+matrix. I.e. the page may not have a rotation but the
+text itself may be rotated (e.g. because the text
+transformation matrix contains a rotation).
+You do this just before calling showCharacter() at the
+end of the method showString(). I fixed this in my
+version by using the following method to retrieve the
+rotation:
+/**
+Returns the current absolute rotation of the text.
+@param ctm the current transformation matrix.
+@param textTransformationMatrix the transformation
+matrix
+of the text.
+@return the current absolute rotation of the text. The
+returned value is one of 0, 90, 180, 270
+*/
+protected int getTextRotation (
+Matrix ctm, Matrix textTransformationMatrix
+) {
+// compute the rotation
+Matrix m=(Matrix) textTransformationMatrix.clone();
+m.multiply(ctm);
+float a= m.getValue(0,0);
+float b= m.getValue(0,1);
+float c= m.getValue(1,0);
+float d= m.getValue(1,1);
+int rotation=0;
+if (Math.abs(a * d) > Math.abs(b * c)) { rotation= (d>0) ? 0 : 180; }
+else
+{ rotation= (c<0) ? 90 : 270; }
+return rotation;
+}
+I'm using the rotation returned by this method instead
+of the pageRotation to calculate the
+totalStringDisplacement. Also, you may want to add the
+handling of a 180 rotation.
+I don't know if somehow we have to take the
+pageRotation in consideration or whether this is
+already included in the CTM.
+cheers
+Yves
+Status:
+CLOSED
+Priority:
+
+Resolution:
+Duplicate
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Anonymous
+Create date:
+27/Jun/05 11:38
+Update date:
+21/Oct/09 10:01
+Resolved date:
+18/Nov/08 00:36

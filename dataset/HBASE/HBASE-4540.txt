@@ -1,0 +1,53 @@
+Summary:
+OpenedRegionHandler is not enforcing atomicity of the operation it is performing
+Description:
+-> OpenedRegionHandler has not yet deleted the znode of the region R1 opened by RS1.
+-> RS1 goes down.
+-> Servershutdownhandler assigns the region R1 to RS2.
+-> The znode of R1 is moved to OFFLINE state by master or OPENING state by RS2 if RS2 has started opening the region.
+-> Now the first OpenedRegionHandler tries to delete the znode thinking its in OPENED state but fails.
+-> Though it fails it removes the node from RIT and adds RS1 as the owner of R1 in master's memory.
+-> Now when RS2 completes opening the region the master is not able to open the region as already the reigon has been deleted from RIT.
+Master
+======
+2011-10-05 20:49:45,301 INFO org.apache.hadoop.hbase.master.handler.ServerShutdownHandler: Finished processing of shutdown of linux146,60020,1317827727647
+2011-10-05 20:49:54,177 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because 1 region(s) in transition: {3e69d628a8bd8e9b7c5e7a2a6e03aad9=t1,,1317827883842.3e69d628a8bd8e9b7c5e7a2a6e03aad9. state=PENDING_OPEN, ts=1317827985272, server=linux76,60020,1317827746847}
+2011-10-05 20:49:57,720 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=M_ZK_REGION_OFFLINE, server=linux76,60000,1317827742012, region=3e69d628a8bd8e9b7c5e7a2a6e03aad9
+2011-10-05 20:50:14,501 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x132d3dc13090023 Deleting existing unassigned node for 3e69d628a8bd8e9b7c5e7a2a6e03aad9 that is in expected state RS_ZK_REGION_OPENED
+2011-10-05 20:50:14,505 WARN org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x132d3dc13090023 Attempting to delete unassigned node 3e69d628a8bd8e9b7c5e7a2a6e03aad9 in RS_ZK_REGION_OPENED state but node is in RS_ZK_REGION_OPENING state
+
+After the region is opened in RS2
+=================================
+2011-10-05 20:50:48,066 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=linux76,60020,1317827746847, region=3e69d628a8bd8e9b7c5e7a2a6e03aad9, which is more than 15 seconds late
+2011-10-05 20:50:48,290 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received OPENING for region 3e69d628a8bd8e9b7c5e7a2a6e03aad9 from server linux76,60020,1317827746847 but region was in  the state null and not in expected PENDING_OPEN or OPENING states
+2011-10-05 20:50:53,743 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=linux76,60020,1317827746847, region=3e69d628a8bd8e9b7c5e7a2a6e03aad9
+2011-10-05 20:50:54,182 DEBUG org.apache.hadoop.hbase.master.CatalogJanitor: Scanned 1 catalog row(s) and gc'd 0 unreferenced parent region(s)
+2011-10-05 20:50:54,397 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received OPENING for region 3e69d628a8bd8e9b7c5e7a2a6e03aad9 from server linux76,60020,1317827746847 but region was in  the state null and not in expected PENDING_OPEN or OPENING states
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+05/Oct/11 09:37
+Update date:
+20/Nov/15 11:52
+Resolved date:
+14/Oct/11 04:14

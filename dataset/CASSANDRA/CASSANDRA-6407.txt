@@ -1,0 +1,53 @@
+Summary:
+CQL/Thrift request hangs forever when querying more than certain amount of data
+Description:
+I have a table like this (slightly simplified for clarity):
+CREATE TABLE my_test_table (
+  uid  uuid,
+  d_id  uuid,
+  a_id  uuid, 
+  c_id text,
+  i_id blob, 
+  data text,
+  PRIMARY KEY ((uid, d_id, a_id), c_id, i_id)
+);
+I have created about over a hundred (117 to be specific) of sample entities with the same row key and different clustering keys. Each has a blob of approximately 4Kb.
+I have tried to fetch all of them with a query like this via CQLSH:
+select * from my_test_table where uid=44338526-7aac-4640-bcde-0f4663c07572 and a_id=00000000-0000-4000-0000-000000000002 and d_id=00000000-0000-1e64-0000-000000000001 and c_id='list-2'
+This query simply hangs in CQLSH, it does not return at all until I abort it.
+Then I started playing with LIMIT clause and found that this query returns instantly (with good data) when I use LIMIT 55 but hangs forever when I use LIMIT 56.
+Then I tried to just query all "i_id" values like this:
+select i_id from my_test_table where uid=44338526-7aac-4640-bcde-0f4663c07572 and a_id=00000000-0000-4000-0000-000000000002 and d_id=00000000-0000-1e64-0000-000000000001 and c_id='list-2'
+And this query returns instantly with the complete set of 117 values. So I started thinking that it must be something about the total size of the response, not the number of results or the number of columns to be fetches in slices. And I have tried another test:
+select cdata from my_test_table where uid=44338526-7aac-4640-bcde-0f4663c07572 and a_id=00000000-0000-4000-0000-000000000002 and d_id=00000000-0000-1e64-0000-000000000001 and c_id='list-2' LIMIT 63
+This query returns instantly but if I change the limit to 64 it hangs forever. Since my blob is about 4Kb for each entity it seems like the query hangs when the total size of the response exceeds 252..256Kb. Looks quite suspicious especially because 256Kb is such a particular number. I am wondering if this has something to do with the result paging.
+I did not test if the issue is reproducible outside of CQLSH but I do recall that I observed somewhat similar behavior when fetching relatively large data sets.
+I can consistently reproduce this problem on my cluster. I am also attaching the jstack output that I have captured when CQLSH was hanging on one of these queries.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.5
+Component:
+None
+Label:
+None
+Environment:
+linux, java 1.7
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Nikolai Grigoriev
+Create date:
+26/Nov/13 19:55
+Update date:
+16/Apr/19 09:31
+Resolved date:
+11/Jan/14 01:28

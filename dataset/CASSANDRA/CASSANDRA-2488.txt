@@ -1,0 +1,50 @@
+Summary:
+cqlsh errors on comments that end with a semicolon
+Description:
+Commented-out lines that end in a semicolon cause an error.
+Examples:
+cqlsh> – CREATE KEYSPACE ELE WITH replication_factor = 3 AND strategy_class = SimpleStrategy AND strategy_options:replication_factor=3;
+Bad Request: line 0:-1 no viable alternative at input '<EOF>'
+cqlsh> – CREATE KEYSPACE ELE WITH replication_factor = 3 AND strategy_class = SimpleStrategy AND strategy_options:replication_factor=3
+...
+...
+... ;
+Bad Request: line 2:0 no viable alternative at input ';'
+cqlsh> – ;
+Bad Request: line 0:-1 no viable alternative at input '<EOF>'
+cqlsh> --;
+Bad Request: line 0:-1 no viable alternative at input '<EOF>'
+As long as there's a line with valid CQL before the semicolon, things work fine though.
+I'm pretty sure the problem is on line 75 of cqlsh:
+if not line.endswith(";"):
+self.set_prompt(Shell.continue_prompt)
+return None
+A quick workaround would be to kill the pretty continue prompt. A more involved fix would detect whether or not the semicolon was in a comment. This is harder than it sounds, since /* and */ allow multi-line comments.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8 beta 1
+Component:
+Legacy/Tools
+Label:
+cql
+Environment:
+
+Attachment number:
+0
+Assignee:
+Eric Evans
+Reporter:
+Geoff Greer
+Create date:
+15/Apr/11 22:25
+Update date:
+16/Apr/19 09:33
+Resolved date:
+19/Apr/11 17:54

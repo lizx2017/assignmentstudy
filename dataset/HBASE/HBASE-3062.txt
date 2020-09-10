@@ -1,0 +1,60 @@
+Summary:
+ZooKeeper KeeperException$ConnectionLossException is a "recoverable" exception; we should retry a while on server startup at least.
+Description:
+On startup of daemons we'll sometimes fail (new master) with something like the following:
+2010-09-30 23:38:36,979 INFO org.apache.hadoop.hbase.zookeeper.ZKUtil: regionserver60020 opening connection to ZooKeeper with quorum (sv2borg182:20001,sv2borg181:20001,sv2borg180:20001)
+2010-09-30 23:38:36,979 INFO org.apache.zookeeper.ZooKeeper: Initiating client connection, connectString=sv2borg182:20001,sv2borg181:20001,sv2borg180:20001 sessionTimeout=60000 watcher=regionserver60020
+2010-09-30 23:38:36,980 INFO org.apache.zookeeper.ClientCnxn: Opening socket connection to server sv2borg182/10.20.20.182:20001
+2010-09-30 23:38:36,980 INFO org.apache.zookeeper.ClientCnxn: Socket connection established to sv2borg182/10.20.20.182:20001, initiating session
+2010-09-30 23:38:36,981 INFO org.apache.zookeeper.ClientCnxn: Unable to read additional data from server sessionid 0x0, likely server has closed socket, closing socket connection and attempting reconnect
+2010-09-30 23:38:37,083 ERROR org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher: regionserver60020 Unexpected KeeperException creating base node
+org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /hbase
+    at org.apache.zookeeper.KeeperException.create(KeeperException.java:90)
+    at org.apache.zookeeper.KeeperException.create(KeeperException.java:42)
+    at org.apache.zookeeper.ZooKeeper.create(ZooKeeper.java:637)
+    at org.apache.hadoop.hbase.zookeeper.ZKUtil.createAndFailSilent(ZKUtil.java:807)
+    at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.<init>(ZooKeeperWatcher.java:107)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.initializeZooKeeper(HRegionServer.java:438)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.initialize(HRegionServer.java:420)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.<init>(HRegionServer.java:305)
+    at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+    at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:39)
+    at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:27)
+    at java.lang.reflect.Constructor.newInstance(Constructor.java:513)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.constructRegionServer(HRegionServer.java:2436)
+    at org.apache.hadoop.hbase.regionserver.HRegionServerCommandLine.start(HRegionServerCommandLine.java:60)
+    at org.apache.hadoop.hbase.regionserver.HRegionServerCommandLine.run(HRegionServerCommandLine.java:75)
+    at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:65)
+    at org.apache.hadoop.hbase.util.ServerCommandLine.doMain(ServerCommandLine.java:76)
+    at org.apache.hadoop.hbase.regionserver.HRegionServer.main(HRegionServer.java:2460)
+I'll see it over on master too the odd time.
+Currently we fail out (though in above case, because of order in which we do startup the regionserver actually hung up because RPC was started before zk)
+We should retry this error some at least on startup because its 'recoverable' (See http://wiki.apache.org/hadoop/ZooKeeper/ErrorHandling). In fact, we should probably retry always until we get a session expired.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+01/Oct/10 04:59
+Update date:
+20/Nov/15 12:43
+Resolved date:
+09/Oct/10 17:55

@@ -1,0 +1,57 @@
+Summary:
+Handle null regions to flush in HLog.cleanOldLogs
+Description:
+Note from Kannan
+findMemstoresWithEditsEqualOrOlderThan() can return NULL it seems like. And we don't check NULL, before "region.length".
+regions = findMemstoresWithEditsEqualOrOlderThan(this.outputfiles.firstKey(),
+this.lastSeqWritten);
+StringBuilder sb = new StringBuilder();
+for (int i = 0; i < regions.length; i++) {
+===
+Stack Trace
+2010-11-15 19:19:54,258 DEBUG org.apache.hadoop.hbase.io.hfile.LruBlockCache: LRU Stats: total=6.1 GB, free=1.71 GB, max=7.81 GB, blocks=385740, accesses=7020255, hits=6329399, hitRatio=90.15%%, cachingAccesses=6765050, cachingHits=6329399, cachingHitsRatio=93.56%%, evictions=1, evicted=49911, evictedPerRun=49911.0
+2010-11-15 19:21:05,204 INFO org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogWriter: Using syncFs – HDFS-200
+2010-11-15 19:21:05,211 INFO org.apache.hadoop.hbase.regionserver.wal.HLog: Roll /PUMAHBASE001-SNC5-HBASE/.logs/pumahbase042.snc5.facebook.com,60020,1289856892583/10.38.28.57%3A60020.1289877154987, entries=649004, filesize=255069060. New hlog /PUMAHBASE001-SNC5-HBASE/.logs/pumahbase042.snc5.facebook.com,60020,1289856892583/10.38.28.57%3A60020.1289877665062
+2010-11-15 19:21:05,222 ERROR org.apache.hadoop.hbase.regionserver.LogRoller: Log rolling failed
+java.lang.NullPointerException
+at org.apache.hadoop.hbase.regionserver.wal.HLog.cleanOldLogs(HLog.java:648)
+at org.apache.hadoop.hbase.regionserver.wal.HLog.rollWriter(HLog.java:528)
+at org.apache.hadoop.hbase.regionserver.LogRoller.run(LogRoller.java:94)
+2010-11-15 19:21:05,226 FATAL org.apache.hadoop.hbase.regionserver.HRegionServer: ABORTING region server serverName=pumahbase042.snc5.facebook.com,60020,1289856892583, load=(requests=3476, regions=40, usedHeap=8388, maxHeap=15987): Log rolling failed
+java.lang.NullPointerException
+at org.apache.hadoop.hbase.regionserver.wal.HLog.cleanOldLogs(HLog.java:648)
+at org.apache.hadoop.hbase.regionserver.wal.HLog.rollWriter(HLog.java:528)
+at org.apache.hadoop.hbase.regionserver.LogRoller.run(LogRoller.java:94)
+2010-11-15 19:21:05,227 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Dump of metrics: request=1264.5834, regions=40, stores=70, storefiles=98, storefileIndexSize=35, memstoreSize=83, compactionQueueSize=0, usedHeap=8370, maxHeap=15987, blockCacheSize=6593768536, blockCacheFree=1788154792, blockCacheCount=388283, blockCacheHitRatio=90, blockCacheHitCachingRatio=93
+2010-11-15 19:21:05,227 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: STOPPED: Log rolling failed
+2010-11-15 19:21:05,227 INFO org.apache.hadoop.hbase.regionserver.LogRoller: LogRoller exiting.
+2010-11-15 19:21:07,255 INFO org.apache.hadoop.ipc.HBaseServer: Stopping server on 60020
+===
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0, 0.92.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Kannan Muthukkaruppa
+Reporter:
+Prakash Khemani
+Create date:
+16/Nov/10 20:22
+Update date:
+20/Nov/15 12:42
+Resolved date:
+18/Nov/10 00:55

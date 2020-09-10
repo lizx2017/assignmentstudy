@@ -1,0 +1,69 @@
+Summary:
+Spellchecker don't find suggestion for concrete misspelled 6 letter words
+Description:
+Debugging Solr spellchecker (IndexBasedSpellchecker, delegating on lucene Spellchecker) behaviour i think i found a bug when the input is a 6 letter word:
+george
+anthem
+argued
+fluent
+Due to the getMin() and getMax() the grams indexed for these terms are 3 and 4. So, the fields would be something like this:
+for "george"
+start3: "geo"
+start4: "geor"
+end3: "rge"
+end4: "orge"
+3: "geo", "eor", "org", "rge"
+4: "geor", "eorg", "orge"
+for "anthem"
+start3: "ant"
+start4: "anth"
+end3: "tem"
+end4: "them"
+The problem shows up when the user swap 3rd a 4th characters, misspelling the word like this:
+geroge
+anhtem
+The queries generated for this terms are: (SHOULD boolean queries)
+for "geroge"
+start3: "ger"
+start4: "gero"
+end3: "oge"
+end4: "roge"
+3: "ger", "ero", "rog", "oge"
+4: "gero", "erog", "roge"
+for "anhtem"
+start3: "anh"
+start4: "anht"
+end3: "tem"
+end4: "htem"
+3: "anh", "nht", "hte", "tem"
+4: "anht", "nhte", "htem"
+So, as you can see, this kind of misspelling never matches the suitable suggestions although the edit distance is 0.95555556.
+I think getMin(int l) and getMax(int l) should return 2 and 3, respectively, for l==6. Debugging other values i did not found any problem with any kind of misspelling.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+3.6, 4.0, 4.1
+Fix_version:
+None
+Component:
+modules/spellchecker
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Samuel García Martín
+Create date:
+21/Feb/13 21:26
+Update date:
+21/Feb/13 21:31
+Resolved date:
+

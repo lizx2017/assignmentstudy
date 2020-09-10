@@ -1,0 +1,120 @@
+Summary:
+HConnectionManager.listTables() doesn't return broken tables
+Description:
+We saw this in our integration test log - packageindex table was 'broekn':
+2010-11-19 05:12:42,216 Thread-20 ERROR [StripedHBaseTable] Could not create packageindex
+org.apache.hadoop.hbase.TableExistsException: org.apache.hadoop.hbase.TableExistsException: packageindex
+ at org.apache.hadoop.hbase.master.HMaster.createTable(HMaster.java:799)
+ at org.apache.hadoop.hbase.master.HMaster.createTable(HMaster.java:763)
+ at sun.reflect.GeneratedMethodAccessor25.invoke(Unknown Source)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:657)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:998)
+...
+2010-11-19 05:12:42,218 Thread-20 INFO  [HBasePackageIndexTableMapperNew] Creating table packageindex - Done
+2010-11-19 05:12:42,235 Thread-20 INFO  [CodecPool] Got brand-new decompressor
+2010-11-19 05:12:42,262 Thread-20 INFO  [HBasePackageIndexTableMapperNew] OnClose called
+2010-11-19 05:12:42,263 Thread-20 WARN  [LocalJobRunner] job_local_0001
+org.apache.hadoop.hbase.TableNotFoundException: packageindex
+ at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.locateRegionInMeta(HConnectionManager.java:698)
+ at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.locateRegion(HConnectionManager.java:634)
+ at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.locateRegion(HConnectionManager.java:601)
+ at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:134)
+ at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:112)
+In HConnectionManager.listTables():
+           byte[] value = result.getValue(CATALOG_FAMILY,
+REGIONINFO_QUALIFIER);
+           HRegionInfo info = null;
+           if (value != null) {
+             info = Writables.getHRegionInfo(value);
+           }
+           // Only examine the rows where the startKey is zero length
+           if (info != null && info.getStartKey().length == 0) {
+             uniqueTables.add(info.getTableDesc());
+           }
+For a broken table, there would be a row in .META (see below). but the table wouldn't be included in uniqueTables.
+We need a way for listTables() to mark the broken table and return it so that master.jsp can show the table in prominent way.
+ packageindex,E70888DD48276D column=info:regioninfo, timestamp=1290188566363, value=REGION => {NAME => 'packag
+ FAD4D26FEB08DC7045,12901630 eindex,E70888DD48276DFAD4D26FEB08DC7045,1290163034864', STARTKEY => 'E70888DD4827
+ 34864                       6DFAD4D26FEB08DC7045', ENDKEY => 'E83A8362462AF0D097810F96ED7103C2', ENCODED => 2
+                             080544777, OFFLINE => true, TABLE => {{NAME => 'packageindex', FAMILIES => [{NAME
+                              => 'i', COMPRESSION => 'GZ', VERSIONS => '1', TTL => '31536000', BLOCKSIZE => '6
+                             5536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}, {NAME => 'u', COMPRESSION =>
+                             'GZ', VERSIONS => '1', TTL => '31536000', BLOCKSIZE => '65536', IN_MEMORY => 'fal
+                             se', BLOCKCACHE => 'true'}]}}
+Here is what led to broken table in our cluster.
+2010-11-19 12:49:23,067 main INFO [PackageIndexTableTest]
+[10:57am] tyu: Deleting packageindex content ...
+From hbase-hadoop-regionserver-us01-ciqps1-grid05.ciq.com.log:
+2010-11-19 12:49:41,119 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Caches flushed, doing commit now (which includes update scanners)
+2010-11-19 12:49:41,121 INFO org.apache.hadoop.hbase.regionserver.HRegion: Finished memstore flush of ~16.0k for region .META.,,1 in 83ms, sequence id=48465684, compaction requested=true
+2010-11-19 12:49:41,121 DEBUG org.apache.hadoop.hbase.regionserver.CompactSplitThread: Compaction requested for region .META.,,1/1028785192 because: regionserver/10.202.50.105:60020.cacheFlusher
+2010-11-19 12:54:11,353 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Scanner 6416258050001207387 lease expired
+2010-11-19 12:54:11,353 DEBUG org.apache.hadoop.hbase.io.hfile.LruBlockCache: Cache Stats: Sizes: Total=633.5422MB (664317096), Free=161.05789MB (168881432), Max=794.60004MB (833198528), Counts: Blocks=75276, Access=90464772, Hit=86854034, Miss=3610738, Evictions=222, Evicted=2121113, Ratios: Hit Ratio=96.00868225097656%, Miss Ratio=3.9913196116685867%, Evicted/Run=9554.5634765625
+2010-11-19 12:54:11,353 WARN org.apache.hadoop.hbase.util.Sleeper: We slept 269945ms, ten times longer than scheduled: 10000
+2010-11-19 12:54:11,353 DEBUG org.apache.hadoop.hbase.io.hfile.LruBlockCache: Cache Stats: Sizes: Total=633.5422MB (664317096), Free=161.05789MB (168881432), Max=794.60004MB (833198528), Counts: Blocks=75276, Access=90464772, Hit=86854034, Miss=3610738, Evictions=222, Evicted=2121113, Ratios: Hit Ratio=96.00868225097656%, Miss Ratio=3.9913196116685867%, Evicted/Run=9554.5634765625
+2010-11-19 12:54:11,353 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Scanner -1270857692790249130 lease expired
+2010-11-19 12:54:11,354 DEBUG org.apache.hadoop.hbase.io.hfile.LruBlockCache: Cache Stats: Sizes: Total=633.5422MB (664317096), Free=161.05789MB (168881432), Max=794.60004MB (833198528), Counts: Blocks=75276, Access=90464772, Hit=86854034, Miss=3610738, Evictions=222, Evicted=2121113, Ratios: Hit Ratio=96.00868225097656%, Miss Ratio=3.9913196116685867%, Evicted/Run=9554.5634765625
+...
+2010-11-19 12:54:11,354 WARN org.apache.zookeeper.ClientCnxn: Exception closing session 0x12c520945433100 to sun.nio.ch.SelectionKeyImpl@78317d11
+java.io.IOException: TIMED OUT
+        at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:906)
+2010-11-19 12:54:11,391 WARN org.apache.zookeeper.ClientCnxn: Exception closing session 0x12c520945432f46 to sun.nio.ch.SelectionKeyImpl@727d3468
+java.io.IOException: TIMED OUT
+        at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:906)
+2010-11-19 12:54:11,354 ERROR org.apache.hadoop.hbase.regionserver.HRegionServer:
+org.apache.hadoop.hbase.UnknownScannerException: Name: 6416258050001207387 on us01-ciqps1-grid05.carrieriq.com,60020,1290003836762
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.next(HRegionServer.java:1885)
+        at sun.reflect.GeneratedMethodAccessor12.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:657)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:998)
+2010-11-19 12:54:11,354 ERROR org.apache.hadoop.hbase.regionserver.HRegionServer:
+org.apache.hadoop.hbase.UnknownScannerException: Name: -1270857692790249130 on us01-ciqps1-grid05.carrieriq.com,60020,1290003836762
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.next(HRegionServer.java:1885)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.next(HRegionServer.java:1873)
+        at sun.reflect.GeneratedMethodAccessor5.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:657)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:998)
+2010-11-19 12:54:11,354 WARN org.apache.hadoop.hbase.regionserver.HRegionServer: unable to report to master for 270306 milliseconds - retrying
+2010-11-19 12:54:11,415 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 16 on 60020, call next(6416258050001207387, 100) from 10.202.36.42:37477: error: org.apache.hadoop.hbase.UnknownScannerException: Name: 6416258050001207387 on us01-ciqps1-grid05.carrieriq.com,60020,1290003836762
+org.apache.hadoop.hbase.UnknownScannerException: Name: 6416258050001207387 on us01-ciqps1-grid05.carrieriq.com,60020,1290003836762
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.next(HRegionServer.java:1885)
+        at sun.reflect.GeneratedMethodAccessor12.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:657)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:998)
+...
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+0.20.6
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ted Yu
+Create date:
+19/Nov/10 19:30
+Update date:
+16/Jul/14 23:17
+Resolved date:
+16/Jul/14 23:17

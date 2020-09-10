@@ -1,0 +1,85 @@
+Summary:
+Wrong counters values when RF > 1
+Description:
+I have got a CF that contains many counters of some events. When I'm at RF = 1 and simulate 10 events, they are well counted.
+However, when I switch to a RF = 3, my counter show a wrong value that sometimes change when requested twice (it can return 7, then 5 instead of 10 all the time).
+I first thought that it was a problem of CL because I seem to remember that I read once that I had to use CL.One for reads and writes with counters. So I tried with CL.One, without success...
+/-------------------------------------------------- CODE -------------------------------------------------------/
+$servers = array("ec2-xxx-xxx-xxx-xxx.eu-west-1.compute.amazonaws.com",
+"ec2-yyy-yyy-yyy-yyy.eu-west-1.compute.amazonaws.com",
+"ec2-zzz-zzz-zzz-zzz.eu-west-1.compute.amazonaws.com",
+"ec2-aaa-aaa-aaa-aaa.eu-west-1.compute.amazonaws.com",
+"ec2-bbb-bbb-bbb-bbb.eu-west-1.compute.amazonaws.com");
+$pool = new ConnectionPool("mykeyspace", $servers);
+$stats_test = new ColumnFamily($pool, 'stats_test',
+$read_consistency_level=cassandra_ConsistencyLevel::ONE,
+$write_consistency_level=cassandra_ConsistencyLevel::ONE);
+$time = date( 'YmdH', time());
+for($i=0; $i<10; $i++){
+for($c=1; $c<=3; $c++)
+{ $stats_test->add($c, $time.':test'); }
+$counts = $stats_test->multiget(array(1,2,3));
+echo('Counter1: '.$counts[1][$time.':test']."\n");
+echo('Counter2: '.$counts[2][$time.':test']."\n");
+echo('Counter3: '.$counts[3][$time.':test']."\n\n");
+}
+/-------------------------------- END OF CODE -------------------------------------------------------------------------/
+/-------------------------------------------------- OUTPUT ------------------------------------------------------------/
+Counter1: 1
+Counter2: 1
+Counter3: 1
+Counter1: 2
+Counter2: 2
+Counter3: 2
+Counter1: 3
+Counter2: 3
+Counter3: 3
+Counter1: 3
+Counter2: 4
+Counter3: 4
+Counter1: 4
+Counter2: 5
+Counter3: 3
+Counter1: 5
+Counter2: 6
+Counter3: 3
+Counter1: 6
+Counter2: 7
+Counter3: 4
+Counter1: 4
+Counter2: 8
+Counter3: 7
+Counter1: 5
+Counter2: 9
+Counter3: 8
+Counter1: 8
+Counter2: 4
+Counter3: 9
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+phpcassa, amazon
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Alain RODRIGUEZ
+Create date:
+07/Nov/11 18:52
+Update date:
+16/Apr/19 09:32
+Resolved date:
+11/Nov/11 18:05

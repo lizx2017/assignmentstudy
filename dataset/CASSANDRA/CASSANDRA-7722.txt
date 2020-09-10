@@ -1,0 +1,61 @@
+Summary:
+IndexOutOfBoundsException when combining token() with PK inequality in where clause
+Description:
+The following reproduces the problem:
+cqlsh> create keyspace if not exists test WITH replication = {'class': 'SimpleStrategy' , 'replication_factor': '1'};
+cqlsh> create table test.cf (pk int, value text, primary key(pk));
+cqlsh> select * from test.cf where token(pk) < 0 and pk > 0;
+This causes:
+ERROR 14:39:09,395 Error occurred during processing of message.
+java.lang.IndexOutOfBoundsException
+ at java.nio.Buffer.checkIndex(Buffer.java:538)
+ at java.nio.HeapByteBuffer.getLong(HeapByteBuffer.java:410)
+ at org.apache.cassandra.utils.ByteBufferUtil.toLong(ByteBufferUtil.java:421)
+ at org.apache.cassandra.dht.Murmur3Partitioner$1.fromByteArray(Murmur3Partitioner.java:162)
+ at org.apache.cassandra.cql3.statements.SelectStatement.getTokenBound(SelectStatement.java:663)
+ at org.apache.cassandra.cql3.statements.SelectStatement.getKeyBounds(SelectStatement.java:379)
+ at org.apache.cassandra.cql3.statements.SelectStatement.getRangeCommand(SelectStatement.java:367)
+ at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:206)
+ at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:61)
+ at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:158)
+ at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:175)
+ at org.apache.cassandra.thrift.CassandraServer.execute_cql3_query(CassandraServer.java:1958)
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4486)
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4470)
+ at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:39)
+ at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:39)
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:201)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:744)
+on the node and:
+TSocket read 0 bytes
+on the client
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.11
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Mike Adamson
+Create date:
+08/Aug/14 13:42
+Update date:
+16/Apr/19 09:31
+Resolved date:
+25/Aug/14 14:42

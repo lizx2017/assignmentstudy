@@ -1,0 +1,50 @@
+Summary:
+TableServers.isMasterRunning() skips checking master status if master field is not null
+Description:
+We call HBaseAdmin.isMasterRunning() to see if client has connection with HBase.
+While going over TableServers.isMasterRunning() in HConnectionManager, I see this:
+public boolean isMasterRunning() {
+if (this.master == null) {
+try
+{ getMaster(); }
+catch (MasterNotRunningException e)
+{ return false; }
+}
+return true;
+}
+When isMasterRunning() is called the first time, if master is obtained successfully, master field would contain reference to HMasterInterface. Subsequent calls to isMasterRunning() wouldn't throw MasterNotRunningException even if master server stops responding to clients.
+I think master.isMasterRunning() should be called if master isn't null.
+J-D pointed out that:
+I think this method wasn't updated when we moved to Zookeeper (since
+in pre-0.20, dead master = dead cluster), also looking at when this is
+called, I only see it from HMerge and HBaseAdmin.isMasterRunning()...
+which in turn isn't called anywhere in the java code (I think we call
+it in the shell tho).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.3
+Fix_version:
+0.90.0
+Component:
+Client
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ted Yu
+Create date:
+29/Mar/10 21:34
+Update date:
+20/Nov/15 12:41
+Resolved date:
+01/Sep/10 18:41

@@ -1,0 +1,61 @@
+Summary:
+After Bootstrap or Replace node startup, EXPIRING_MAP_REAPER is shutdown and cannot be restarted, causing callbacks to collect indefinitely
+Description:
+Since ExpiringMap.shutdown() shuts down the static executor service, it cannot be restarted (and in fact reset() makes no attempt to do so). As such callbacks that receive no response are never removed from the map, and eventually either than server will run out of memory or will loop around the integer space and start reusing messageids that have not been expired, causing assertions to be thrown and messages to fail to be sent. It appears that this situation only arises on bootstrap or node replacement, as MessagingService is shutdown before being attached to the listen address.
+This can cause the following errors to begin occurring in the log:
+ERROR [Native-Transport-Requests:7636] 2014-03-28 13:32:10,638 ErrorMessage.java (line 222) Unexpected exception during request
+java.lang.AssertionError: Callback already exists for id -1665979622! (CallbackInfo(target=/10.106.160.84, callback=org.apache.cassandra.service.WriteResponseHandler@5d36d8ea, serializer=org.apache.cassandra.db.WriteResponse$WriteResponseSerializer@6ed37f0b))
+at org.apache.cassandra.net.MessagingService.addCallback(MessagingService.java:549)
+at org.apache.cassandra.net.MessagingService.sendRR(MessagingService.java:601)
+at org.apache.cassandra.service.StorageProxy.mutateCounter(StorageProxy.java:984)
+at org.apache.cassandra.service.StorageProxy.mutate(StorageProxy.java:449)
+at org.apache.cassandra.service.StorageProxy.mutateWithTriggers(StorageProxy.java:524)
+at org.apache.cassandra.cql3.statements.ModificationStatement.executeWithoutCondition(ModificationStatement.java:521)
+at org.apache.cassandra.cql3.statements.ModificationStatement.execute(ModificationStatement.java:505)
+at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:188)
+at org.apache.cassandra.cql3.QueryProcessor.processPrepared(QueryProcessor.java:358)
+at org.apache.cassandra.transport.messages.ExecuteMessage.execute(ExecuteMessage.java:131)
+at org.apache.cassandra.transport.Message$Dispatcher.messageReceived(Message.java:304)
+at org.jboss.netty.handler.execution.ChannelUpstreamEventRunnable.doRun(ChannelUpstreamEventRunnable.java:43)
+at org.jboss.netty.handler.execution.ChannelEventRunnable.run(ChannelEventRunnable.java:67)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+at java.lang.Thread.run(Thread.java:744)
+ERROR [ReplicateOnWriteStage:102766] 2014-03-28 13:32:10,638 CassandraDaemon.java (line 196) Exception in thread Thread[ReplicateOnWriteStage:102766,5,main]
+java.lang.AssertionError: Callback already exists for id -1665979620! (CallbackInfo(target=/10.106.160.84, callback=org.apache.cassandra.service.WriteResponseHandler@3bdb1a75, serializer=org.apache.cassandra.db.WriteResponse$WriteResponseSerializer@6ed37f0b))
+at org.apache.cassandra.net.MessagingService.addCallback(MessagingService.java:549)
+at org.apache.cassandra.net.MessagingService.sendRR(MessagingService.java:601)
+at org.apache.cassandra.service.StorageProxy.sendToHintedEndpoints(StorageProxy.java:806)
+at org.apache.cassandra.service.StorageProxy$8$1.runMayThrow(StorageProxy.java:1074)
+at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1896)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+at java.lang.Thread.run(Thread.java:744)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7, 2.1 beta2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Keith Wright
+Create date:
+28/Mar/14 13:39
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Apr/14 20:17

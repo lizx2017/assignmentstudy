@@ -1,0 +1,83 @@
+Summary:
+upgradesstables strips active data from sstables
+Description:
+From the discussion here: http://mail-archives.apache.org/mod_mbox/cassandra-user/201207.mbox/%3CCAOac0GCtyDqS6ocuHOuQqre4re5wKj3o-ZpUZGkGsjCHzDVbTA%40mail.gmail.com%3E
+We are trying to migrate a 0.8.8 cluster to 1.1.2 by migrating the sstables from the 0.8.8 ring to a parallel 1.1.2 ring. However, every time we run the `nodetool upgradesstables` step we find it removes active data from our CFs – leading to lost data in our application.
+The steps we took were:
+1. Bring up a 1.1.2 ring in the same AZ/data center configuration with
+tokens matching the corresponding nodes in the 0.8.8 ring.
+2. Create the same keyspace on 1.1.2.
+3. Create each CF in the keyspace on 1.1.2.
+4. Flush each node of the 0.8.8 ring.
+5. Rsync each non-compacted sstable from 0.8.8 to the corresponding node in
+1.1.2.
+6. Move each 0.8.8 sstable into the 1.1.2 directory structure by renaming the file to the /cassandra/data/<keyspace>/<cf>/<keyspace>-<cf>... format. For example, for the keyspace "Metrics" and CF "epochs_60" we get:
+"cassandra/data/Metrics/epochs_60/Metrics-epochs_60-g-941-Data.db".
+7. On each 1.1.2 node run `nodetool -h localhost refresh Metrics <CF>` for each CF in the keyspace. We notice that storage load jumps accordingly.
+8. On each 1.1.2 node run `nodetool -h localhost upgradesstables`.
+Afterwards we would test the validity of the data by comparing it with data from the original 0.8.8 ring. After an upgradesstables command the data was always incorrect.
+With further testing we found that we could successfully use scrub to convert our sstables without data loss. However, any invocation of upgradesstables causes active data to be culled from the sstables:
+INFO [CompactionExecutor:4] 2012-07-24 04:27:36,837 CompactionTask.java (line 109) Compacting [SSTableReader(path='/raid0/cassandra/data/Metrics/metrics_900/Metrics-metrics_900-hd-51-Data.db')]
+INFO [CompactionExecutor:4] 2012-07-24 04:27:51,090 CompactionTask.java (line 221) Compacted to [/raid0/cassandra/data/Metrics/metrics_900/Metrics-metrics_900-hd-58-Data.db,]. 60,449,155 to 2,578,102 (~4% of original) bytes for 4,002 keys at 0.172562MB/s. Time: 14,248ms.
+These are the steps we've tried:
+WORKS refresh -> scrub
+WORKS refresh -> scrub -> major compaction
+WORKS refresh -> scrub -> cleanup
+WORKS refresh -> scrub -> repair
+FAILS refresh -> upgradesstables
+FAILS refresh -> scrub -> upgradesstables
+FAILS refresh -> scrub -> repair -> upgradesstables
+FAILS refresh -> scrub -> major compaction -> upgradesstables
+We have fewer than 143 million row keys in the CFs we're testing and none
+of the *-Filter.db files are > 10MB, so I don't believe this is our
+problem: https://issues.apache.org/jira/browse/CASSANDRA-3820
+The keyspace is defined as:
+Keyspace: Metrics:
+Replication Strategy: org.apache.cassandra.locator.NetworkTopologyStrategy
+Durable Writes: true
+Options: [us-east:3]
+And the column family that we tested with is defined as:
+ColumnFamily: metrics_900
+Key Validation Class: org.apache.cassandra.db.marshal.UTF8Type
+Default column value validator: org.apache.cassandra.db.marshal.BytesType
+Columns sorted by: org.apache.cassandra.db.marshal.CompositeType(org.apache.cassandra.db.marshal.LongType,org.apache.cassandra.db.marshal.UTF8Type,org.apache.cassandra.db.marshal.UTF8Type)
+GC grace seconds: 0
+Compaction min/max thresholds: 4/32
+Read repair chance: 0.1
+DC Local Read repair chance: 0.0
+Replicate on write: true
+Caching: KEYS_ONLY
+Bloom Filter FP chance: default
+Built indexes: []
+Compaction Strategy: org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy
+Compression Options:
+sstable_compression: org.apache.cassandra.io.compress.SnappyCompressor
+All rows have a TTL of 30 days and a gc_grace=0 so it's possible that a small number of older columns would be removed during a compaction/scrub/upgradesstables step. However, the majority should still be kept as their TTL's have not expired yet.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.11, 1.1.3
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Mike Heffner
+Create date:
+24/Jul/12 21:23
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Jul/12 08:46

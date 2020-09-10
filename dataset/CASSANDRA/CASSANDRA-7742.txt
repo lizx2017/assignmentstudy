@@ -1,0 +1,34 @@
+Summary:
+Mutated ColumnFamily is not available to per-row indexes during update
+Description:
+PerRowSecondaryIndex implementations are updated when SecondaryIndexManager.Updater.updateRowLevelIndexes is called from AtomicBTreeColumns.addAllWithSizeDelta. The StandardUpdater implementation does this by passing the key and cf from the incoming Mutation to the PRSI.index() method. However, the StandardUpdater instance created in Keyspace.apply() does not wrap the Mutation's cf as it is obtained using the wrong factory method. This results in the cf passed to the PRSI always being null.
+This isn't caught by PerRowSecondaryIndexTest because the stub index implementation there only verifies that the latest version of the cf can be obtained by the index reading from the base cf.
+Attaching a trivial patch to obtain an Updater which does wrap the mutated cf and also fix the test so it verifies both of the actual arguments passed to PRSI.index
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Sam Tunnicliffe
+Create date:
+11/Aug/14 14:05
+Update date:
+16/Apr/19 09:31
+Resolved date:
+12/Aug/14 00:36

@@ -1,0 +1,57 @@
+Summary:
+add then drop Keyspace without putting anything in it causes exception
+Description:
+The following from python causes an exception on apache-cassandra-2010-08-10_13-08-19-bin.tar.gz and a bunch of earlier builds in the 0.7 line:
+socket = TSocket.TSocket(host, 9160)
+transport = TTransport.TFramedTransport(socket)
+protocol = TBinaryProtocol.TBinaryProtocolAccelerated(transport)
+client = Cassandra.Client(protocol)
+transport.open()
+try:
+client.describe_keyspace(dbName)
+except NotFoundException, e:
+keyspaceDef = KsDef(name=dbName,
+strategy_class='org.apache.cassandra.locator.RackUnawareStrategy',
+replication_factor=replicationFactor,
+cf_defs=[])
+client.set_keyspace('system')
+client.system_add_keyspace(keyspaceDef)
+try:
+client.describe_keyspace(dbName)
+client.set_keyspace('system')
+client.system_drop_keyspace(dbName)
+except NotFoundException, e:
+pass
+The system_drop_keyspace throws:
+InvalidRequestException(why='java.util.concurrent.ExecutionException:
+java.lang.NullPointerException')
+If I put a system_add_column_family in the middle it doesn't crash.
+I think this broke sometime after apache-cassandra-2010-07-06_13-27-21
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 2
+Component:
+None
+Label:
+None
+Environment:
+linux, windows
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+Jeremiah Jordan
+Create date:
+11/Aug/10 15:33
+Update date:
+16/Apr/19 09:33
+Resolved date:
+13/Aug/10 18:01

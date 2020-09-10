@@ -1,0 +1,47 @@
+Summary:
+Stuck in regionsInTransition because rebalance came in at same time as a split
+Description:
+Saw this doing cluster tests:
+2010-09-25 21:31:48,212 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because regions in transition: {73781e505e452221c9cd0e03585eb5d1=usertable,user800184056, 
+128...
+Here's the problem:
+2010-09-25 08:16:48,186 INFO org.apache.hadoop.hbase.master.HMaster: balance hri=usertable,user800184056,1285397376525.73781e505e452221c9cd0e03585eb5d1., src=su184,60020,      
+1285371621579, dest=sv2borg189,60020,1285371621577
+
+2010-09-25 08:16:48,186 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region usertable,user800184056,1285397376525.                               
+73781e505e452221c9cd0e03585eb5d1. (offlining)
+
+2010-09-25 08:16:52,656 INFO org.apache.hadoop.hbase.master.ServerManager: Received REGION_SPLIT: usertable,user800184056,1285397376525.73781e505e452221c9cd0e03585eb5d1.:           
+Daughters; usertable,user800184056,1285402609029.c05825561e7ea3cc6507c70bfb21541a., usertable,user804024623,1285402609029.28f64903a7875bdafc1e7ee344b225b0.
+2010-09-25 08:17:11,414 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out:  usertable,user800184056,1285397376525.                              
+73781e505e452221c9cd0e03585eb5d1. state=PENDING_CLOSE, ts=1285402608186
+....just as we were doing a balance, the region split.
+Over on RS, I see the split starting up and then in comes the balance 'close' message. By the time the close handler runs on regionserver the split is well underway and close handler actually doesn't find an online region to split.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+25/Sep/10 21:46
+Update date:
+20/Nov/15 12:41
+Resolved date:
+27/Sep/10 21:02

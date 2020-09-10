@@ -1,0 +1,98 @@
+Summary:
+HFileReaderV1 caching the same parent META block could cause server abort when splitting
+Description:
+If the hfile's version is 1 now, when splitting, two daughters would loadBloomfilter concurrently in the open progress. Because their META block is the same one(parent's META block), the following expection would be thrown when doing HFileReaderV1#getMetaBlock
+java.io.IOException: Failed null-daughterOpener=af73f8c9a9b409531ac211a9a7f92eba
+ at org.apache.hadoop.hbase.regionserver.SplitTransaction.openDaughters(SplitTransaction.java:367)
+ at org.apache.hadoop.hbase.regionserver.SplitTransaction.execute(SplitTransaction.java:453)
+ at org.apache.hadoop.hbase.regionserver.TestSplitTransaction.testWholesomeSplit(TestSplitTransaction.java:225)
+ at org.apache.hadoop.hbase.regionserver.TestSplitTransaction.testWholesomeSplitWithHFileV1(TestSplitTransaction.java:203)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:45)
+ at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:15)
+ at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:42)
+ at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:20)
+ at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:28)
+ at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:30)
+ at org.junit.rules.TestWatcher$1.evaluate(TestWatcher.java:47)
+ at org.junit.rules.RunRules.evaluate(RunRules.java:18)
+ at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:263)
+ at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:68)
+ at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:47)
+ at org.junit.runners.ParentRunner$3.run(ParentRunner.java:231)
+ at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:60)
+ at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:229)
+ at org.junit.runners.ParentRunner.access$000(ParentRunner.java:50)
+ at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:222)
+ at org.junit.runners.ParentRunner.run(ParentRunner.java:300)
+ at org.eclipse.jdt.internal.junit4.runner.JUnit4TestReference.run(JUnit4TestReference.java:49)
+ at org.eclipse.jdt.internal.junit.runner.TestExecution.run(TestExecution.java:38)
+ at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:467)
+ at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:683)
+ at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.run(RemoteTestRunner.java:390)
+ at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.main(RemoteTestRunner.java:197)
+Caused by: java.io.IOException: java.io.IOException: java.lang.RuntimeException: Cached an already cached block
+ at org.apache.hadoop.hbase.regionserver.HRegion.initializeRegionInternals(HRegion.java:540)
+ at org.apache.hadoop.hbase.regionserver.HRegion.initialize(HRegion.java:463)
+ at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:3784)
+ at org.apache.hadoop.hbase.regionserver.SplitTransaction.openDaughterRegion(SplitTransaction.java:506)
+ at org.apache.hadoop.hbase.regionserver.SplitTransaction$DaughterOpener.run(SplitTransaction.java:486)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: java.io.IOException: java.lang.RuntimeException: Cached an already cached block
+ at org.apache.hadoop.hbase.regionserver.Store.loadStoreFiles(Store.java:424)
+ at org.apache.hadoop.hbase.regionserver.Store.<init>(Store.java:271)
+ at org.apache.hadoop.hbase.regionserver.HRegion.instantiateHStore(HRegion.java:2918)
+ at org.apache.hadoop.hbase.regionserver.HRegion$2.call(HRegion.java:516)
+ at org.apache.hadoop.hbase.regionserver.HRegion$2.call(HRegion.java:1)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ ... 1 more
+Caused by: java.lang.RuntimeException: Cached an already cached block
+ at org.apache.hadoop.hbase.io.hfile.LruBlockCache.cacheBlock(LruBlockCache.java:271)
+ at org.apache.hadoop.hbase.io.hfile.HFileReaderV1.getMetaBlock(HFileReaderV1.java:258)
+ at org.apache.hadoop.hbase.io.hfile.HFileReaderV1.getGeneralBloomFilterMetadata(HFileReaderV1.java:689)
+ at org.apache.hadoop.hbase.regionserver.StoreFile$Reader.loadBloomfilter(StoreFile.java:1564)
+ at org.apache.hadoop.hbase.regionserver.StoreFile$Reader.access$1(StoreFile.java:1558)
+ at org.apache.hadoop.hbase.regionserver.StoreFile.open(StoreFile.java:571)
+ at org.apache.hadoop.hbase.regionserver.StoreFile.createReader(StoreFile.java:606)
+ at org.apache.hadoop.hbase.regionserver.Store$1.call(Store.java:395)
+ at org.apache.hadoop.hbase.regionserver.Store$1.call(Store.java:1)
+ ... 8 more
+We could reproduce the problem through the attached test patch,
+It would happen when cluster upgrading from 0.90.x to 0.94.x or 0.92.x
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.0
+Fix_version:
+0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+31/Jul/12 06:22
+Update date:
+23/Sep/13 18:30
+Resolved date:
+02/Oct/12 21:33

@@ -1,0 +1,121 @@
+Summary:
+Stack overflow when reading data ingested through SSTableLoader
+Description:
+I created an empty table:
+CREATE TABLE test.kv (
+    key int PRIMARY KEY,
+    value text
+) WITH bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'min_threshold': '4', 'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99.0PERCENTILE';
+Then I loaded some rows into it using CqlSSTableWriter and SSTableLoader (programmatically, doing it the same way as BulkLoader is doing it). The streaming finished with no errors.
+I can even read all the data back with cqlsh:
+cqlsh> SELECT key, value FROM test.kv;
+....
+ 3405 | foo3405
+ 5504 | foo5504
+ 3476 | foo3476
+ 2542 | foo2542
+ 6931 | foo6931
+
+---MORE---
+(10000 rows)
+However, filtering by token fails:
+cqlsh> SELECT key, value FROM test.kv WHERE token(key) > 854443789258213092;
+OperationTimedOut: errors={}, last_host=127.0.0.1
+cqlsh> 
+Server log repors a StackOverflowException:
+WARN  15:10:05  Uncaught exception on thread Thread[SharedPool-Worker-2,5,main]: {}
+java.lang.StackOverflowError: null
+ at java.nio.charset.CharsetDecoder.implReplaceWith(CharsetDecoder.java:302) ~[na:1.7.0_75]
+ at java.nio.charset.CharsetDecoder.replaceWith(CharsetDecoder.java:288) ~[na:1.7.0_75]
+ at java.nio.charset.CharsetDecoder.<init>(CharsetDecoder.java:203) ~[na:1.7.0_75]
+ at java.nio.charset.CharsetDecoder.<init>(CharsetDecoder.java:226) ~[na:1.7.0_75]
+ at sun.nio.cs.UTF_8$Decoder.<init>(UTF_8.java:84) ~[na:1.7.0_75]
+ at sun.nio.cs.UTF_8$Decoder.<init>(UTF_8.java:81) ~[na:1.7.0_75]
+ at sun.nio.cs.UTF_8.newDecoder(UTF_8.java:68) ~[na:1.7.0_75]
+ at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:152) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.serializers.AbstractTextSerializer.deserialize(AbstractTextSerializer.java:39) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.serializers.AbstractTextSerializer.deserialize(AbstractTextSerializer.java:26) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.marshal.AbstractType.getString(AbstractType.java:82) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.cql3.ColumnIdentifier.<init>(ColumnIdentifier.java:54) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.composites.CompoundSparseCellNameType.idFor(CompoundSparseCellNameType.java:169) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.composites.CompoundSparseCellNameType.makeWith(CompoundSparseCellNameType.java:177) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.composites.AbstractCompoundCellNameType.fromByteBuffer(AbstractCompoundCellNameType.java:106) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.composites.AbstractCType$Serializer.deserialize(AbstractCType.java:397) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.composites.AbstractCType$Serializer.deserialize(AbstractCType.java:381) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.OnDiskAtom$Serializer.deserializeFromSSTable(OnDiskAtom.java:75) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.AbstractCell$1.computeNext(AbstractCell.java:52) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.AbstractCell$1.computeNext(AbstractCell.java:46) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:143) ~[guava-16.0.1.jar:na]
+ at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:138) ~[guava-16.0.1.jar:na]
+ at org.apache.cassandra.io.sstable.SSTableIdentityIterator.hasNext(SSTableIdentityIterator.java:116) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.filter.QueryFilter$2.getNext(QueryFilter.java:172) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.filter.QueryFilter$2.hasNext(QueryFilter.java:155) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.filter.SliceQueryFilter.collectReducedColumns(SliceQueryFilter.java:203) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.filter.QueryFilter.collateColumns(QueryFilter.java:107) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.filter.QueryFilter.collateOnDiskAtom(QueryFilter.java:81) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.RowIteratorFactory$2.getReduced(RowIteratorFactory.java:99) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.RowIteratorFactory$2.getReduced(RowIteratorFactory.java:71) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.utils.MergeIterator$ManyToOne.consume(MergeIterator.java:117) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.utils.MergeIterator$ManyToOne.computeNext(MergeIterator.java:100) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:143) ~[guava-16.0.1.jar:na]
+ at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:138) ~[guava-16.0.1.jar:na]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:1996) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+ at org.apache.cassandra.db.ColumnFamilyStore$8.computeNext(ColumnFamilyStore.java:2007) ~[cassandra-all-2.1.3.248.jar:2.1.3.248]
+This problem doesn't happen if the table data was inserted using the standard write path, i.e. with INSERTs/UPDATEs.
+Cassandra version:
+branch: 2.1
+commit: 3f6ad3c9886c01c2cdaed6cad10c6f0672004473
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+None
+Label:
+None
+Environment:
+c*
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Piotr Kołaczkowski
+Create date:
+10/Mar/15 15:23
+Update date:
+16/Apr/19 09:31
+Resolved date:
+17/Mar/15 23:00

@@ -1,0 +1,52 @@
+Summary:
+When compaction is interrupted, it leaves locked, undeletable files
+Description:
+During tests of new features of 2.1 like:
+incremental repairs
+leveled compaction
+I interrupted a compaction, which left the following ERROR in the system.log
+org.apache.cassandra.db.compaction.CompactionInterruptedException: Compaction interrupted: Compaction@152e6e70-1975-11e4-ba09-61f0d75c60c6(xx, xxx, 378505918/1993581634)bytes
+at org.apache.cassandra.db.compaction.CompactionTask.runWith(CompactionTask.java:174)
+at org.apache.cassandra.io.util.DiskAwareRunnable.runMayThrow(DiskAwareRunnable.java:48)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+at org.apache.cassandra.db.compaction.CompactionTask.executeInternal(CompactionTask.java:74)
+at org.apache.cassandra.db.compaction.AbstractCompactionTask.execute(AbstractCompactionTask.java:59)
+at org.apache.cassandra.db.compaction.CompactionManager$BackgroundCompactionTask.run(CompactionManager.java:235)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471) ~[na:1.7.0_09]
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:334) ~[na:1.7.0_09]
+at java.util.concurrent.FutureTask.run(FutureTask.java:166) ~[na:1.7.0_09]
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110) ~[na:1.7.0_09]
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603) [na:1.7.0_09]
+at java.lang.Thread.run(Thread.java:722) [na:1.7.0_09]
+Right after that, a cascade of reoccurring errors was being emitted till the restart:
+ERROR [NonPeriodicTasks:1] 2014-08-19 13:38:41,258 SSTableDeletingTask.java:81 - Unable to delete /grid/data04/cassandra/data/xx/xxx-152e6e70197511e4ba0961f0d75c60c6/xx-xxx-ka-55058-Data.db (it will be removed on server restart; we'll also retry after GC)
+which made this node blinking (noted from the other nodes gossiper log entries).
+After restart, the node is healthy and fully operational.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.0
+Component:
+Local/Compaction
+Label:
+compaction
+Environment:
+redhat, jna, jbod
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Scooletz
+Create date:
+20/Aug/14 12:11
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/Aug/14 08:49

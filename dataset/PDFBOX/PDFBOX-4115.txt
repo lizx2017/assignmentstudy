@@ -1,0 +1,51 @@
+Summary:
+Problem creating PDF with German text using embedded Type1 (PFB) font
+Description:
+When creating a PDF and adding text using a PostScript Type1 font (e.g. the attached n019003l.pfb but also others), an error occurs when the text contains German characters.
+The error occurs with e.g. the character "ä" (adieresis) and other similar umlaut characters; it does not occur with "ß" (germandbls).
+Using an embedded TTF seems to work fine but when I load the PFB like this:
+InputStream pfb = new FileInputStream(fontFile);
+font = new PDType1Font(document, pfb);
+I get an encoding error whenever I try to print an "ä" to the page:
+java.lang.IllegalArgumentException: U+00E4 ('adieresis') is not available in this font NimbusSanL-Regu (generic: NimbusSanL-Regu) encoding: built-in (Type 1)
+If I specify a different encoding (WinANSI) when loading the font:
+InputStream pfb = new FileInputStream(fontFile);
+font = new PDType1Font(document, pfb, new WinAnsiEncoding());
+then the exception is not thrown, but I just have an empty space in place of the "ä".
+I have tried to look into the code, in particular I have played around with the class PDType1FontEmbedder.
+When the FontBox object Type1Font is created by the parser in the following line of code:
+type1 = Type1Font.createWithPFB(pfbBytes);
+I have tried to look into the charstring dictionary:
+type1.getCharStringsDict()
+and, by iterating through the set keys, can see that "adieresis" is in there.
+However, when using the default encoding from the font (i.e. by passing "null" to the PDType1FontEmbedder), the resulting encoding that is obtained by the following line of code:
+fontEncoding = Type1Encoding.fromFontBox(type1.getEncoding());
+does not contain "adieresis" (or other "compound" characters), but just "dieresis".
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.8
+Fix_version:
+2.0.9, 3.0.0 PDFBox
+Component:
+FontBox
+Label:
+type1 type1font
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tamir Hassan
+Create date:
+18/Feb/18 07:54
+Update date:
+24/Mar/18 09:41
+Resolved date:
+18/Feb/18 12:46

@@ -1,0 +1,63 @@
+Summary:
+HBaseAdmin.stopRegionServer do not stop the region server
+Description:
+Please running this example:
+public class Test {
+public static void main(String[] args) throws Exception
+{ HBaseAdmin admin = new HBaseAdmin(HBaseConfiguration.create()); admin.stopRegionServer("your.rs.hostname:60020"); }
+}
+then, you can see:
+Exception in thread "main" java.lang.RuntimeException: The interface org.apache.hadoop.hbase.Stoppable
+at org.apache.hadoop.hbase.ipc.Invocation.<init>(Invocation.java:61)
+at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Invoker.invoke(WritableRpcEngine.java:151)
+at $Proxy2.stop(Unknown Source)
+at org.apache.hadoop.hbase.client.HBaseAdmin.stopRegionServer(HBaseAdmin.java:1492)
+at Test.main(Test.java:7)
+Caused by: java.lang.NoSuchFieldException: VERSION
+at java.lang.Class.getField(Class.java:1520)
+at org.apache.hadoop.hbase.ipc.Invocation.<init>(Invocation.java:57)
+... 4 more
+When invoking the "HBaseAdmin.stopRegionServer" method，
+we obtain a "proxy" for org.apache.hadoop.hbase.ipc.HRegionInterface，
+(HRegionInterface extends org.apache.hadoop.hbase.Stoppable)
+but the "stop" method declared in Stoppable.
+In the constructor of "org.apache.hadoop.hbase.ipc.Invocation"，
+the "method" argument is "public abstract void org.apache.hadoop.hbase.Stoppable.stop(java.lang.String)"，
+so, "method.getDeclaringClass()" is "org.apache.hadoop.hbase.Stoppable"，
+but, the "Stoppable" interface no "VERSION" field.
+[fix suggestion]:
+Override the "stop" method in org.apache.hadoop.hbase.ipc.HRegionInterface as follows:
+==================================
+@Override
+public void stop(String why);
+of courese, another attempt is ok.
+(e.g. declare "VERSION" field in Stoppable interface，
+then modify some code fragment of Invocation and org.apache.hadoop.hbase.ipc.WritableRpcEngine.Server)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+IPC/RPC
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Honghua Zhu
+Create date:
+11/Dec/11 05:54
+Update date:
+20/Nov/15 11:54
+Resolved date:
+11/Dec/11 23:05

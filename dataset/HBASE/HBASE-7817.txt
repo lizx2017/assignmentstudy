@@ -1,0 +1,40 @@
+Summary:
+Suggested JDWP debug options in hbase-env.sh are wrong
+Description:
+In the default hbase-env.sh in trunk, there's a section for lines you can uncomment to enable JDWP remote debugging:
+    # Enable remote JDWP debugging of major HBase processes. Meant for Core Developers 
+    # export HBASE_MASTER_OPTS=" -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=8070"
+    # export HBASE_REGIONSERVER_OPTS="$HBASE_REGIONSERVER_OPTS -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=8071"
+    # export HBASE_THRIFT_OPTS="$HBASE_THRIFT_OPTS -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=8072"
+    # export HBASE_ZOOKEEPER_OPTS="$HBASE_ZOOKEEPER_OPTS -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=8073"
+However, this is wrong (at least, if you're starting from local source), because somewhere in the chain of start-hbase.sh, it sources hbase-env.sh more than once, which has the effect of including these options twice, which makes the JVM barf on startup, saying
+"ERROR: Cannot load this JVM TI agent twice, check your java command line for duplicate jdwp options. Error occurred during initialization of VM; agent library failed to init: jdwp".
+Removing the first re-included instance of $HBASE_MASTER_OPTS (etc.) solves the problem. This should either be changed in the default or these scripts shouldn't source hbase-env.sh multiple times I think.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.4
+Fix_version:
+0.98.0, 0.94.7, 0.95.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Vasu Mariyala
+Reporter:
+Ian Varley
+Create date:
+11/Feb/13 19:06
+Update date:
+27/Apr/13 15:55
+Resolved date:
+04/Apr/13 20:58

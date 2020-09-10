@@ -1,0 +1,179 @@
+Summary:
+COSVisitorException: The handle is invalid
+Description:
+If I save a PDF document in a method of an application class, I get a COSVisitorException: The handle is invalid.
+--------------------------------------------------------------------------------------------------
+I found that I no longer get this exception if I do not close the
+PDDocument "DrawingDoc" in the method "addDrawing".
+However, I do get a warning:
+java.lang.Throwable: Warning: You did not close the PDF Document
+at org.apache.pdfbox.cos.COSDocument.finalize(COSDocument.java:391)
+at java.lang.ref.Finalizer.invokeFinalizeMethod(Native Method)
+at java.lang.ref.Finalizer.runFinalizer(Finalizer.java:83)
+at java.lang.ref.Finalizer.access$100(Finalizer.java:14)
+at java.lang.ref.Finalizer$FinalizerThread.run(Finalizer.java:160)
+Alan
+--------------------------------------------------
+From: "Alan Thomas" <jalanthomas@verizon.net>
+Sent: Monday, July 27, 2009 6:13 AM
+To: <pdfbox-users@incubator.apache.org>
+Subject: Re: COSVisitorException: The handle is invalid
+> It was created by adding pages from other PDF documents, like below.
+>
+> Is there anything wrong with returning a PDDocument from the method
+> addDrawing like I am doing?
+>
+>
+> Alan
+>
+> PDDocument OutputDoc = null;
+> . . .
+>
+> OutputDoc = new PDDocument();
+> . . .
+> copyPage(OutputDoc, page);
+> . . .
+> OutputDoc = addDrawing(OutputDoc,
+> DrawingsDir.getName(), Barcode);
+> . . .
+> finally
+> {
+> try
+> {
+> // Save and close the output file
+> if (OutputDoc != null)
+>
+{ > System.out.println("OutPath = " + OutPath); > OutputDoc.save(OutPath); > }
+> OutputDoc.close();
+> . . .
+>
+> using these methods I created:
+>
+> private void copyPage( PDDocument doc, PDPage page) throws Exception
+>
+{ > PDPage imported = doc.importPage(page); > imported.setCropBox(page.findCropBox()); > imported.setMediaBox(page.findMediaBox()); > imported.setResources(page.findResources()); > imported.setRotation(page.findRotation()); > }
+>
+> private PDDocument addDrawing( PDDocument OutDoc, String
+> DrawingsDirName,
+> String barcode)
+> {
+> PDDocument DrawingDoc = null;
+>
+> try
+> {
+> . . .
+> List pages = DrawingDoc.getDocumentCatalog().getAllPages();
+>
+> for (Object obj : pages)
+>
+{ > PDPage page = (PDPage)obj; > copyPage(OutDoc, page); > }
+> }
+> catch (Exception e)
+>
+{ > e.printStackTrace(); > }
+> finally
+> {
+> try
+>
+{ > DrawingDoc.close(); > return OutDoc; > }
+> catch (Exception e)
+>
+{ > return OutDoc; > }
+> }
+> }
+>
+>
+> --------------------------------------------------
+> From: "Andreas Lehmkühler" <andreas@lehmi.de>
+> Sent: Monday, July 27, 2009 5:15 AM
+> To: <pdfbox-users@incubator.apache.org>
+> Subject: Re: COSVisitorException: The handle is invalid
+>
+>> Hi Alan,
+>>
+>> how did you create your pdf?
+>>
+>> BR
+>> Andreas Lehmkühler
+>>
+>> ----- original Nachricht --------
+>>
+>> Betreff: COSVisitorException: The handle is invalid
+>> Gesendet: Mo, 27. Jul 2009
+>> Von: Alan Thomas<jalanthomas@verizon.net>
+>>
+>>> Hi. When I save a PDF document in my application, I get a
+>>> COSVisitorException: "The handle is invalid".
+>>>
+>>> However, I do not see anything wrong with it. I show the error,
+>>> the
+>>> string I am giving the PDDocument.save() method, and the code that
+>>> attempts
+>>> to save the file.
+>>>
+>>> Any idea what I am doing wrong? Thanks, Alan
+>>>
+>>> OutPath = C:\Users\Alan\Documents\My Stuff\X Y Z Stuff\Application\Java
+>>> App
+>>> Test\New Folder\InsertedPages 2.pdf
+>>>
+>>> org.apache.pdfbox.exceptions.COSVisitorException: The handle is invalid
+>>> at
+>>> org.apache.pdfbox.pdfwriter.COSWriter.visitFromStream(COSWriter.java:939)
+>>> at org.apache.pdfbox.cos.COSStream.accept(COSStream.java:201)
+>>> at org.apache.pdfbox.cos.COSObject.accept(COSObject.java:206)
+>>> at
+>>> org.apache.pdfbox.pdfwriter.COSWriter.doWriteObject(COSWriter.java:430)
+>>> at
+>>> org.apache.pdfbox.pdfwriter.COSWriter.doWriteBody(COSWriter.java:361)
+>>> at
+>>> org.apache.pdfbox.pdfwriter.COSWriter.visitFromDocument(COSWriter.java:768)
+>>> at
+>>> org.apache.pdfbox.cos.COSDocument.accept(COSDocument.java:361)
+>>> at
+>>> org.apache.pdfbox.pdfwriter.COSWriter.write(COSWriter.java:1070)
+>>> at
+>>> org.apache.pdfbox.pdmodel.PDDocument.save(PDDocument.java:787)
+>>> at
+>>> org.apache.pdfbox.pdmodel.PDDocument.save(PDDocument.java:768)
+>>>
+>>>
+>>> // Save and close the output file
+>>> if (OutputDoc != null)
+>>>
+{ >>> System.out.println("OutPath = " + OutPath); >>> OutputDoc.save(OutPath); >>> }
+>>> OutputDoc.close();
+>>>
+>>
+>> — original Nachricht Ende ----
+>>
+>>
+>
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+0.8.0-incubator
+Fix_version:
+None
+Component:
+PDModel
+Label:
+None
+Environment:
+windows
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+James A. Thomas
+Create date:
+28/Jul/09 19:38
+Update date:
+15/Oct/14 10:34
+Resolved date:
+15/Oct/14 10:34

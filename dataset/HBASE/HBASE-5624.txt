@@ -1,0 +1,48 @@
+Summary:
+Aborting regionserver when splitting region, may cause daughter region not assigned by ServerShutdownHandler.
+Description:
+If one region is splitting when regionserver is stoping.
+The following code may executed in SplitTransaction#openDaughters.
+// TODO: Is this check needed here?
+    if (stopped || stopping) {
+      // add 2nd daughter first (see HBASE-4335)
+      MetaEditor.addDaughter(server.getCatalogTracker(),
+          b.getRegionInfo(), null);
+      MetaEditor.addDaughter(server.getCatalogTracker(),
+          a.getRegionInfo(), null);
+      LOG.info("Not opening daughters " +
+          b.getRegionInfo().getRegionNameAsString() +
+          " and " +
+          a.getRegionInfo().getRegionNameAsString() +
+          " because stopping=" + stopping + ", stopped=" + stopped);
+    } 
+So, for the two daughter regions, their location are both null in .META.
+When ServerShutdownHandler process the dead server, it will not assign these two daughter regions since their location(info:server) are null in .META. by MetaReader.getServerUserRegions().
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.2, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+23/Mar/12 05:02
+Update date:
+12/Oct/12 05:35
+Resolved date:
+23/Mar/12 21:20

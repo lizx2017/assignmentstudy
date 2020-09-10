@@ -1,0 +1,50 @@
+Summary:
+CompositeBreakIterator is brittle under ICU4J upgrade.
+Description:
+We use lucene-analyzers-icu version 6.6.0 in our project. Lucene 6.6.0 is built against ICU4J version 56.1, but our use case requires us to use the latest version of ICU4J, 59.1.
+The problem that we have encountered is that CompositeBreakIterator.getBreakIterator(int scriptCode) throws an ArrayIndexOutOfBoundsException for script codes higher than 167. In ICU4J 56.1 the highest possible script code is 166, but in ICU4j 59.1 it is 174.
+Internally, CompositeBreakIterator is creating an array of size UScript.CODE_LIMIT, but the value of CODE_LIMIT from ICU4J 56.1 is being baked into the bytecode by the compiler. So even after overriding the version of the ICU4J dependency to 59.1 in our project, this array will still be size 167, which is too small.
+final class CompositeBreakIterator {
+  private final ICUTokenizerConfig config;
+  private final BreakIteratorWrapper wordBreakers[] = new BreakIteratorWrapper[UScript.CODE_LIMIT];
+Output of javap run on CompositeBreakIterator.class from lucene-analyzers-icu-6.6.0.jar
+Compiled from "CompositeBreakIterator.java"
+final class org.apache.lucene.analysis.icu.segmentation.CompositeBreakIterator {
+  org.apache.lucene.analysis.icu.segmentation.CompositeBreakIterator(org.apache.lucene.analysis.icu.segmentation.ICUTokenizerConfig);
+    descriptor: (Lorg/apache/lucene/analysis/icu/segmentation/ICUTokenizerConfig;)V
+    Code:
+       0: aload_0
+       1: invokespecial #1                  // Method java/lang/Object."<init>":()V
+       4: aload_0
+       5: sipush        167
+       8: anewarray     #3                  // class org/apache/lucene/analysis/icu/segmentation/BreakIteratorWrapper
+In our case, the ArrayIndexOutOfBoundsException was triggered when we encountered a stray character of the Bhaiksuki script (script code 168) in a chunk of text that we processed.
+CompositeBreakIterator can be made more resilient by changing the type of wordBreakers from an array to a Map and no longer relying on the value of UScript.CODE_LIMIT.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+6.6
+Fix_version:
+7.1, 8.0
+Component:
+modules/analysis
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Chris Koenig
+Create date:
+01/Aug/17 17:38
+Update date:
+17/Oct/17 11:03
+Resolved date:
+08/Aug/17 01:33

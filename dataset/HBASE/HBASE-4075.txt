@@ -1,0 +1,70 @@
+Summary:
+A bug in TestZKBasedOpenCloseRegion
+Description:
+The following two test cases was executed orderly:
+1.TestZKBasedOpenCloseRegion#testCloseRegion()
+2.TestZKBasedOpenCloseRegion#testRSAlreadyProcessingRegion()
+I found the problem while the two test cases used the same region with little possibility. The following describtion called the region as RegionA
+(1). Region-A was closed in the test of "testCloseRegion". And it was trying to be opening at the end of "testCloseRegion".
+   2011-06-20 08:14:24,967 DEBUG [main-EventThread] master.AssignmentManager(374): Handling transition=RS_ZK_REGION_OPENING, server=linux1.site,41784,1308528851644, region=5251635727486eb97dfbe6f953c587c3
+   2011-06-20 08:14:24,967 DEBUG [RS_OPEN_REGION-linux1.site,41784,1308528851644-2] regionserver.HRegion(311): Instantiated TestZKBasedOpenCloseRegion,ccc,1308528860373.5251635727486eb97dfbe6f953c587c3.
+   2011-06-20 08:14:24,986 INFO  [Thread-397] master.TestZKBasedOpenCloseRegion(213): Done with testCloseRegion
+(2). The region next test case used was just the same region which was opening:
+   2011-06-20 08:14:25,012 INFO  [main] master.TestZKBasedOpenCloseRegion(139): .META.,,1.1028785192
+   2011-06-20 08:14:25,013 INFO  [main] master.TestZKBasedOpenCloseRegion(139): TestZKBasedOpenCloseRegion,ccc,1308528860373.5251635727486eb97dfbe6f953c587c3.
+(3) In test case 2, the code of "while (!reopenEventProcessed.get())" got an un-expect OPENED event from the prev opening.
+    EventHandlerListener openListener =
+    new ReopenEventListener(hri.getRegionNameAsString(),
+          reopenEventProcessed, EventType.RS_ZK_REGION_OPENED);
+    cluster.getMaster().executorService.
+      registerListener(EventType.RS_ZK_REGION_OPENED, openListener);
+
+    // now ask the master to move the region to hr1, will fail
+    TEST_UTIL.getHBaseAdmin().move(hri.getEncodedNameAsBytes(),
+        Bytes.toBytes(hr1.getServerName()));
+    
+    while (!reopenEventProcessed.get()) {
+      Threads.sleep(100);
+    }
+   2011-06-20 08:14:25,032 DEBUG [MASTER_OPEN_REGION-linux1.site:34061-4] handler.OpenedRegionHandler(108): Opened region TestZKBasedOpenCloseRegion,ccc,1308528860373.5251635727486eb97dfbe6f953c587c3. on linux1.site,41784,1308528851644
+   2011-06-20 08:14:25,033 INFO  [MASTER_OPEN_REGION-linux1.site:34061-4] master.TestZKBasedOpenCloseRegion$ReopenEventListener(170): afterProcess(org.apache.hadoop.hbase.master.handler.OpenedRegionHandler@711185e7)
+   2011-06-20 08:14:25,033 INFO  [MASTER_OPEN_REGION-linux1.site:34061-4] master.TestZKBasedOpenCloseRegion$ReopenEventListener(172): Finished processing RS_ZK_REGION_OPENED
+So it think the region was opened, but really not.
+(4) So the test failed.
+   java.lang.reflect.UndeclaredThrowableException
+    at $Proxy24.move(Unknown Source)
+    at org.apache.hadoop.hbase.client.HBaseAdmin.move(HBaseAdmin.java:978)
+    at org.apache.hadoop.hbase.master.TestZKBasedOpenCloseRegion.testRSAlreadyProcessingRegion(TestZKBasedOpenCloseRegion.java:291)
+    
+ Caused by: org.apache.hadoop.ipc.RemoteException: org.apache.hadoop.hbase.UnknownRegionException: 5251635727486eb97dfbe6f953c587c3
+    at org.apache.hadoop.hbase.master.HMaster.move(HMaster.java:725)
+ 
+Exchange the position of the two test cases will solve the problem.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.90.4
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jieshan Bean
+Reporter:
+Jieshan Bean
+Create date:
+07/Jul/11 09:44
+Update date:
+20/Nov/15 11:55
+Resolved date:
+13/Jul/11 05:17

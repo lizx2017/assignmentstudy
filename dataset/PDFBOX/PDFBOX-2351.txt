@@ -1,0 +1,45 @@
+Summary:
+/XRefStm content missing in saved file
+Description:
+Do this:
+open the file immo-kurier_arsenal_93x62.pdf, PDFBOX-1577.pdf, PDFBOX-1756-436857.pdf, PDFBOX-2251-070075.pdf, test-landscape2.pdf or any file that has an /XRefStm with loadNonSeq
+call getDocumentCatalog()
+save to another file
+open that file with loadNonSeq()
+java.io.IOException: Error: Expected a long type at offset 688, instead got 'ï»¿"'
+ at org.apache.pdfbox.pdfparser.BaseParser.readLong(BaseParser.java:1718)
+ at org.apache.pdfbox.pdfparser.BaseParser.readObjectNumber(BaseParser.java:1645)
+ at org.apache.pdfbox.pdfparser.NonSequentialPDFParser.parseXrefObjStream(NonSequentialPDFParser.java:548)
+ at org.apache.pdfbox.pdfparser.NonSequentialPDFParser.initialParse(NonSequentialPDFParser.java:410)
+ at org.apache.pdfbox.pdfparser.NonSequentialPDFParser.parse(NonSequentialPDFParser.java:794)
+ at org.apache.pdfbox.pdmodel.PDDocument.loadNonSeq(PDDocument.java:1156)
+The saved file still has the old /XRefStm value, but no content. I debugged a bit, it is confusing - the /XRefStm is never read, instead the /Prev is used, which leads to an old-style xref table. When saving, the existing /XRefStm value is kept in doWriteXRef() even if PDFBox "believes" it has no XRefStream. But doWriteXRefInc() is smarter and deletes the item if there is no XRefStream.
+I haven't tested it with 1.8. We should test it if there's a fix.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+1.8.8, 2.0.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Tilman Hausherr
+Create date:
+15/Sep/14 15:32
+Update date:
+13/Dec/14 14:15
+Resolved date:
+12/Oct/14 17:48

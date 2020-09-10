@@ -1,0 +1,47 @@
+Summary:
+dynamic snitch + read repair off can cause LOCAL_QUORUM reads to return spurious UnavailableException
+Description:
+When Read Repair is off, we want to avoid doing requests to more nodes than necessary to satisfy the ConsistencyLevel. ReadCallback does this here:
+        this.endpoints = repair || resolver instanceof RowRepairResolver
+                       ? endpoints
+                       : endpoints.subList(0, Math.min(endpoints.size(), blockfor)); // min so as to not throw exception until assureSufficient is called
+You can see that it is assuming that the "endpoints" list is sorted in order of preferred-ness for the read.
+Then the LOCAL_QUORUM code in DatacenterReadCallback checks to see if we have enough nodes to do the read:
+        int localEndpoints = 0;
+        for (InetAddress endpoint : endpoints)
+        {
+            if (localdc.equals(snitch.getDatacenter(endpoint)))
+                localEndpoints++;
+        }
+
+        if (localEndpoints < blockfor)
+            throw new UnavailableException();
+So if repair is off (so we truncate our endpoints list) AND dynamic snitch has decided that nodes in another DC are to be preferred over local ones, we'll throw UE even if all the replicas are healthy.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.8, 0.8.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jonathan Ellis
+Create date:
+07/Jul/11 19:22
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Jul/11 16:38

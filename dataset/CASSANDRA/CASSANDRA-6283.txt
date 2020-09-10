@@ -1,0 +1,40 @@
+Summary:
+Windows 7 data files kept open / can't be deleted after compaction.
+Description:
+Files cannot be deleted, patch CASSANDRA-5383 (Win7 deleting problem) doesn't help on Win-7 on Cassandra 2.0.2. Even 2.1 Snapshot is not running. The cause is: Opened file handles seem to be lost and not closed properly. Win 7 blames, that another process is still using the file (but its obviously cassandra). Only restart of the server makes the files deleted. But after heavy using (changes) of tables, there are about 24K files in the data folder (instead of 35 after every restart) and Cassandra crashes. I experiminted and I found out, that a finalizer fixes the problem. So after GC the files will be deleted (not optimal, but working fine). It runs now 2 days continously without problem. Possible fix/test:
+I wrote the following finalizer at the end of class org.apache.cassandra.io.util.RandomAccessReader:
+RandomAccessReader.java
+@Override
+protected void finalize() throws Throwable {
+ deallocate();
+ super.finalize();
+}
+Can somebody test / develop / patch it? Thx.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7, 2.1.0, 2.2.0 beta 1
+Component:
+Legacy/Local Write-Read Paths, Local/Compaction
+Label:
+Windows compaction
+Environment:
+windows 7, java 1.7
+Attachment number:
+0
+Assignee:
+Joshua McKenzie
+Reporter:
+Andreas Schnitzerling
+Create date:
+01/Nov/13 12:52
+Update date:
+16/Apr/19 09:32
+Resolved date:
+01/May/14 00:11

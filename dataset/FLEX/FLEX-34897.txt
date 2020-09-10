@@ -1,0 +1,52 @@
+Summary:
+Scope is wrong when calling member function from a variable reference
+Description:
+In Flash Player, when you save a reference to a member function in a variable, you can call the function reference, and "this" will still be bound to the instance where it came from.
+public class Test
+{
+public function Test()
+{ this.func(); var func:Function = this.func; func(); }
+private function func():void
+{ trace(this); //in Flash, "this" will always be an instance of Test }
+}
+Basically, in the code above, the two calls to func() will behave the same in Flash Player. However, in the current implementation of the transpiler, that behavior is lost. When the variable reference to the function is called, "this" ends up referring to the global window object instead.
+JavaScript function objects have a bind() function that let's you set what "this" will refer to when the function is called:
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/bind
+After modifying my code to use bind(), the two calls to func() will behave the same:
+public function Test()
+{
+this["func"] = this.func.bind(this);
+this.func();
+var func:Function = this.func;
+func();
+}
+Would it be possible for the transpiler to automatically bind all member functions to the correct scope to preserve the behavior that AS3 developers expect?
+Event listeners are the typical use case where you'd pass a reference to a member function somewhere else where a reference needs to be saved in a variable. AS3 in Flash Player makes this easy by automatically binding all member functions to the instance. JavaScript usually requires some manual intervention to get event listeners to be called with the right scope.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Apache FalconJX 0.5.
+Fix_version:
+Apache FalconJX 0.5.
+Component:
+FalconJX
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Harui
+Reporter:
+Josh Tynjala
+Create date:
+28/Jun/15 21:31
+Update date:
+14/Nov/16 16:25
+Resolved date:
+30/Jun/15 05:19

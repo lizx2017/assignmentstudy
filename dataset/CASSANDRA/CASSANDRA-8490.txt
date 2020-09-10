@@ -1,0 +1,43 @@
+Summary:
+DISTINCT queries with LIMITs or paging are incorrect when partitions are deleted
+Description:
+Using paging demo code from https://github.com/PatrickCallaghan/datastax-paging-demo
+The code creates and populates a table with 1000 entries and pages through them with setFetchSize set to 100. If we then delete one entry with 'cqlsh':
+cqlsh:datastax_paging_demo> delete from datastax_paging_demo.products  where productId = 'P142'; (The specified productid is number 6 in the resultset.)
+and run the same query ("Select * from") again we get:
+[com.datastax.paging.Main.main()] INFO  com.datastax.paging.Main - Paging demo took 0 secs. Total Products : 999
+which is what we would expect.
+If we then change the "select" statement in dao/ProductDao.java (line 70) from "Select * from " to "Select DISTINCT productid from " we get this result:
+[com.datastax.paging.Main.main()] INFO  com.datastax.paging.Main - Paging demo took 0 secs. Total Products : 99
+So it looks like the tombstone stops the paging behaviour. Is this a bug?
+DEBUG [Native-Transport-Requests:788] 2014-12-16 10:09:13,431 Message.java (line 319) Received: QUERY Select DISTINCT productid from datastax_paging_demo.products, v=2
+DEBUG [Native-Transport-Requests:788] 2014-12-16 10:09:13,434 AbstractQueryPager.java (line 98) Fetched 99 live rows
+DEBUG [Native-Transport-Requests:788] 2014-12-16 10:09:13,434 AbstractQueryPager.java (line 115) Got result (99) smaller than page size (100), considering pager exhausted
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.12, 2.1.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Frank Limstrand
+Create date:
+16/Dec/14 09:13
+Update date:
+16/Apr/19 09:31
+Resolved date:
+09/Jan/15 17:23

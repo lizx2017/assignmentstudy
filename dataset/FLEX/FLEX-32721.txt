@@ -1,0 +1,53 @@
+Summary:
+Border skin sometimes dissappears from AdvancedDataGrid
+Description:
+Steps to reproduce:
+1. compile attached mxml
+2. show and hide dataGrid
+Actual Results:
+Border goes missing when component re-added to the stage
+Expected Results:
+Border does not go missing
+Workaround (if any):
+override protected function layoutChrome(unscaledWidth:Number, unscaledHeight:Number):void
+{
+super.layoutChrome( unscaledWidth, unscaledHeight );
+_layoutChromeCalled = true;
+}
+override protected function updateDisplayList( w : Number, h : Number ) : void
+{
+_layoutChromeCalled = false;
+super.updateDisplayList( w, h );
+if( !_layoutChromeCalled )layoutChrome( w, h )
+}
+Explanation:
+When the ADG is re-added to the stage ScrollControlBase.styleChanged is called with styleProp == null. This throws away the border and creates a new one. createBorder calls invalidateDisplayList.
+When updateDisplayList is called AdvancedListBase.updateDisplayList returns without calling super.updateDisplayList as the size of the component has not changed and none of the other conditions evaluate to true. ScrollControlBase.updateDisplayList, which is not called in this case would call layoutChrome which would correctly size the border.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+Apache Flex 4.10.0
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Justin Mclean
+Reporter:
+Adobe JIRA
+Create date:
+12/Mar/10 06:46
+Update date:
+29/May/13 08:05
+Resolved date:
+29/May/13 08:05

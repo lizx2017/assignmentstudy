@@ -1,0 +1,67 @@
+Summary:
+Handle case where we open META, ROOT has been closed but znode location not deleted yet, and try to update META location in ROOT
+Description:
+Carrying over from HBASE-3159, I ran into a case with TestRollingRestart with META and ROOT failing concurrently. This is how it played out:
+META is closed on an RS that has been stopped:
+2010-10-27 22:47:27,709 DEBUG [RS_CLOSE_META-192.168.0.44,59709,1288244829038-0] handler.CloseRegionHandler(128): Closed region .META.,,1.1028785192
+Then ROOT is closed on a different RS that has been stopped:
+2010-10-27 22:47:28,863 DEBUG [RS_CLOSE_ROOT-192.168.0.44,59662,1288244792380-0] handler.CloseRegionHandler(128): Closed region -ROOT-,,0.70236052
+A running RS is assigned META (the master isn't even aware yet that root has been closed, it is processing shutdown for RS 59709 but not yet received expired node for 59662):
+2010-10-27 22:47:29,095 DEBUG [MASTER_META_SERVER_OPERATIONS-192.168.0.44:59629-0] master.AssignmentManager(908): No previous transition plan for .META.,,1.1028785192 so generated a random one; hri=.META.,,1.1028785192, src=, dest=192.168.0.44,59735,1288244843993; 3 (online=3, exclude=null) available servers
+2010-10-27 22:47:29,095 DEBUG [MASTER_META_SERVER_OPERATIONS-192.168.0.44:59629-0] master.AssignmentManager(802): Assigning region .META.,,1.1028785192 to 192.168.0.44,59735,1288244843993
+...
+2010-10-27 22:47:29,123 DEBUG [RS_OPEN_META-192.168.0.44,59735,1288244843993-0] handler.OpenRegionHandler(69): Processing open of .META.,,1.1028785192
+After finishing the open of META, the RS goes to update location in ROOT and gets:
+2010-10-27 22:47:29,208 ERROR [RS_OPEN_META-192.168.0.44,59735,1288244843993-0] executor.EventHandler(154): Caught throwable while processing event M_RS_OPEN_META
+java.lang.NullPointerException: No server for -ROOT-
+ at org.apache.hadoop.hbase.catalog.MetaEditor.updateMetaLocation(MetaEditor.java:127)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.postOpenDeployTasks(HRegionServer.java:1271)
+ at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:156)
+ at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:151)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:680)
+This doesn't actually kill the RS, it's just a caught exception up in the generic EventHandler. But we get left in a weird state. Eventually master does the right thing and times-out the OPENING:
+2010-10-27 22:48:15,694 INFO  [192.168.0.44:59629.timeoutMonitor] master.AssignmentManager$TimeoutMonitor(1444): Regions in transition timed out:  .META.,,1.1028785192 state=PENDING_OPEN, ts=1288244865700
+2010-10-27 22:48:15,694 INFO  [192.168.0.44:59629.timeoutMonitor] master.AssignmentManager$TimeoutMonitor(1454): Region has been PENDING_OPEN for too long, reassigning region=.META.,,1.1028785192
+But it chooses to assign it back to the same person because the plan is still there:
+2010-10-27 22:48:15,702 DEBUG [192.168.0.44:59629.timeoutMonitor] master.AssignmentManager(916): Using preexisting plan=hri=.META.,,1.1028785192, src=, dest=192.168.0.44,59735,1288244843993
+2010-10-27 22:48:15,702 DEBUG [192.168.0.44:59629.timeoutMonitor] master.AssignmentManager(802): Assigning region .META.,,1.1028785192 to 192.168.0.44,59735,1288244843993
+But then the RS doesn't open it because it's actually already open on that server. We fail the ROOT edit but then don't close the region out.
+2010-10-27 22:48:15,805 INFO  [IPC Server handler 3 on 59735] regionserver.HRegionServer(1952): Received request to open region: .META.,,1.1028785192
+2010-10-27 22:48:15,807 DEBUG [RS_OPEN_META-192.168.0.44,59735,1288244843993-0] handler.OpenRegionHandler(69): Processing open of .META.,,1.1028785192
+2010-10-27 22:48:15,807 WARN  [RS_OPEN_META-192.168.0.44,59735,1288244843993-0] handler.OpenRegionHandler(84): Attempting open of .META.,,1.1028785192 but it's already online on this server
+This continues indefinitely, once every minute.
+1. Address the race condition when we get the connection to the root server (could exist for meta too). The blocking call thinks we have a location but then when we get the cached location and don't get one.
+2. If we do get this NPE writing to root (or maybe meta too), we should not just throw the exception all the way up to the EventHandler and log it and continue. That just stops our META_OPEN in it's tracks. We complete the open but just not the edit. We don't roll-back in any way.
+3. If the master is assigning stuff out and a region says, hey, I'm already hosting this region... something must be up. In this case, it would not have been good for the RS to tell the master that it was already hosting it because it was missing the root edit. So maybe if this happens, the master asks the RS to close the region in question? Dunno.
+Probably more issues to think about around this
+This seems to be extremely rare. I have been running this TestRollingRestart script constantly and this only happens when I do a concurrent kill of the server hosting ROOT and then server hosting META, and then only sometimes, it does work more times than not.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+Jonathan Gray
+Create date:
+28/Oct/10 16:24
+Update date:
+20/Nov/15 12:43
+Resolved date:
+30/Oct/10 17:04

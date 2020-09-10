@@ -1,0 +1,54 @@
+Summary:
+countPendingHints JMX operation is returning garbage for the key
+Description:
+countPendingHints JMX operation should return a map from key: endpoint IP address to value: number of pending hints. It is returning garbage for the key (looks like binary data concerning the hint itself). The value looks correct.
+Steps to reproduce:
+1) Set up a two-node cluster.
+2) Disable gossip on the second node.
+`nodetool ring` output from node 1:
+Address DC Rack Status State Load Effective-Ownership Token
+85070591730234615865843651857942052864
+192.168.1.162 datacenter1 rack1 Up Normal 21.46 KB 100.00% 0
+192.168.1.130 datacenter1 rack1 Down Normal 6.67 KB 100.00% 85070591730234615865843651857942052864
+3) While the second node is still down, create a keyspace with RF=2 and a CF within this keyspace. Then insert two records into the CF:
+Connected to Test Cluster at 192.168.1.162:9160.
+[cqlsh 2.2.0 | Cassandra 1.1.2 | CQL spec 2.0.0 | Thrift protocol 19.32.0]
+Use HELP for help.
+cqlsh> create KEYSPACE demo WITH strategy_class = 'SimpleStrategy' AND strategy_options:replication_factor = 2;
+cqlsh> use demo;
+cqlsh:demo> create table users (username varchar primary key, password varchar);
+cqlsh:demo> insert into users (username, password) values (scott, tiger);
+cqlsh:demo> insert into users (username, password) values (root, password);
+4) Use a JMX client to execute the countPendingHints operation:
+jblangston:~ jblangston$ java -jar cmdline-jmxclient-0.10.3.jar - localhost:7199 org.apache.cassandra.db:type=HintedHandoffManager countPendingHints
+08/22/2012 14:21:37 -0500 org.archive.jmx.Client countPendingHints:
+{@B^h ?? ?[b??scottdemoscott?????password?ߞHtigerdemoF ?P?? ?[b??rootdemoroot?????password?ߞ?Wpassworddemo=2}
+5) Notice the output. The value (2) is correct but the key is garbage instead of an endpoint IP address.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.12, 1.1.5
+Component:
+None
+Label:
+datastax_qa
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+J.B. Langston
+Create date:
+22/Aug/12 19:29
+Update date:
+16/Apr/19 09:32
+Resolved date:
+28/Aug/12 14:32

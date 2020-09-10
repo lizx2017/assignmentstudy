@@ -1,0 +1,55 @@
+Summary:
+Assertion error when compacting large row with map//list field or range tombstone
+Description:
+Hi,
+So in a couple of clusters we're hitting this problem when compacting large rows with a schema which contains the map data-type.
+Here is an example of the error:
+java.lang.AssertionError: incorrect row data size 87776427 written to /cassandra/X/Y/X-Y-tmp-ic-2381-Data.db; correct is 87845952
+org.apache.cassandra.io.sstable.SSTableWriter.append(SSTableWriter.java:162)
+org.apache.cassandra.db.compaction.CompactionTask.runWith(CompactionTask.java:163)
+org.apache.cassandra.io.util.DiskAwareRunnable.runMayThrow(DiskAwareRunnable.java:48)
+org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+org.apache.cassandra.db.compaction.CompactionTask.executeInternal(CompactionTask.java:58) 
+org.apache.cassandra.db.compaction.AbstractCompactionTask.execute(AbstractCompactionTask.java:60) 
+org.apache.cassandra.db.compaction.CompactionManager$BackgroundCompactionTask.run(CompactionManager.java:208)
+I have a python script which reproduces the problem, by just writing lots of data to a single partition key with a schema that contains the map data-type.
+I added some debug logging and found that the difference in bytes seen in the reproduction (255) was due to the following pieces of data being written:
+DEBUG [CompactionExecutor:3] 2014-07-13 00:38:42,891 ColumnIndex.java (line 168) DATASIZE writeOpenedMarker columnIndex: org.apache.cassandra.db.ColumnIndex$Builder@6678a9d0 firstColumn: [java.nio.HeapByteBuffer[pos=0 lim=34 cap=34], java.nio.HeapByteBuffer[pos=0 lim=34 cap=34]](deletedAt=1405237116014999, localDeletion=1405237116) startPosition: 262476 endPosition: 262561 diff: 85 
+DEBUG [CompactionExecutor:3] 2014-07-13 00:38:43,007 ColumnIndex.java (line 168) DATASIZE writeOpenedMarker columnIndex: org.apache.cassandra.db.ColumnIndex$Builder@6678a9d0 firstColumn: org.apache.cassandra.db.Column@3e5b5939 startPosition: 328157 endPosition: 328242 diff: 85 
+DEBUG [CompactionExecutor:3] 2014-07-13 00:38:44,159 ColumnIndex.java (line 168) DATASIZE writeOpenedMarker columnIndex: org.apache.cassandra.db.ColumnIndex$Builder@6678a9d0 firstColumn: org.apache.cassandra.db.Column@fc3299b startPosition: 984105 endPosition: 984190 diff: 85
+So looking at the code you can see that there are extra range tombstones written on the column index border (in ColumnIndex where tombstoneTracker.writeOpenedMarker is called) which aren't accounted for in LazilyCompactedRow.columnSerializedSize.
+This is where the difference comes from in the assertion error, so the solution is just to account for this data.
+I have a patch which does just this, by keeping track of the extra data written out via tombstoneTracker.writeOpenedMarker in ColumnIndex and adding it back to the dataSize in LazilyCompactedRow.java, where it serialises out the row size.
+After applying the patch the reproduction stops producing the AssertionError.
+I know this is not a problem in 2.0 + because of singe pass compaction, however there are lots of 1.2 clusters out there still which might run into this.
+Please let me know if you've any questions.
+Thanks,
+Matt
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.19
+Component:
+None
+Label:
+compaction map
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Matt Byrd
+Create date:
+15/Jul/14 00:09
+Update date:
+16/Apr/19 09:31
+Resolved date:
+16/Jul/14 21:02

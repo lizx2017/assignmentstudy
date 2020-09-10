@@ -1,0 +1,40 @@
+Summary:
+HBaseClient#call could hang
+Description:
+In HBaseClient#call, we have
+    connection.sendParam(call);                 // send the parameter
+    boolean interrupted = false;
+    //noinspection SynchronizationOnLocalVariableOrMethodParameter
+    synchronized (call) {
+      while (!call.done) {
+        try {
+          call.wait();                           // wait for the result
+sendParam could do nothing if the connection is closed right after the call is added into the queue. Since the connection is closed, we won't get any response, therefore, we won't get any notify call. So we will keep waiting here for something won't happen.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.10
+Fix_version:
+0.94.11
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Jimmy Xiang
+Create date:
+26/Jul/13 21:52
+Update date:
+21/Aug/13 00:08
+Resolved date:
+29/Jul/13 00:54

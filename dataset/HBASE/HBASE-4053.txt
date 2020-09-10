@@ -1,0 +1,47 @@
+Summary:
+Most of the regions were added into AssignmentManager#servers twice
+Description:
+Here's the scenario of how did the problem happened:
+1. When HMaster start, all regionservers checkin ok, and count of regions out on cluster is 10083, which is the actual region number count.
+2. Then OpenedRegionHandler#process received zookeeper's events, and added 9923 regions to the hris list.
+but the 9923 regions already exists, force added.
+3. The LoadBalancer get the wrong Region numbers of 20006 (10083 + 9923).
+AssignmentManager#addToServers method:
+private void addToServers(final HServerInfo hsi, final HRegionInfo hri) {
+List<HRegionInfo> hris = servers.get(hsi);
+if (hris == null)
+{ hris = new ArrayList<HRegionInfo>(); servers.put(hsi, hris); }
+hris.add(hri); // Same region was double added here
+}
+logs:
+2011-06-27 16:13:06,845 INFO org.apache.hadoop.hbase.master.ServerManager: Exiting wait on regionserver(s) to checkin; count=3, stopped=false, count of regions out on cluster=10083
+2011-06-27 16:13:17,334 INFO org.apache.hadoop.hbase.master.AssignmentManager: Failed-over master needs to process 9923 regions in transition
+2011-06-27 16:21:45,135 DEBUG org.apache.hadoop.hbase.master.LoadBalancer: Balance parameter: numRegions=20006, numServers=3, max=6669, min=6668
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.90.4
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Jieshan Bean
+Create date:
+01/Jul/11 09:02
+Update date:
+20/Nov/15 11:55
+Resolved date:
+06/Jul/11 19:10

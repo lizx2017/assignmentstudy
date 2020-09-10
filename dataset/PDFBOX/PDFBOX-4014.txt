@@ -1,0 +1,53 @@
+Summary:
+Malformed/pathological/malicious input can lead to infinite looping
+Description:
+Tilman Hausherr writes
+See this issue:
+https://bugs.chromium.org/p/chromium/issues/detail?id=450971
+look for "pdfium-loop2.pdf".
+I haven't created an issue, because this could be relevant to security.
+To reproduce the bug with PDFBox, do this:
+PDDocument document = PDDocument.load(new
+File("pdfium-loop2.pdf"));
+new PDFRenderer(document).renderImage(0);
+For maven you need
+<dependency>
+<groupId>org.apache.pdfbox</groupId>
+<artifactId>pdfbox</artifactId>
+<version>2.0.8</version>
+</dependency>
+and of course jbig2.
+An analysis shows that two circumstances contribute to the problem:
+T.88 section E.2.10 specifies that MQ encoded data can be minimized if trailing data contains "just boring stuff, i.e. 1-bits". Thus, an infinite sequence of MQ encoded decisions can be encoded in a finite number of bytes.
+T.88 section 6.4.5 3c specifies that the condition for terminating the decoding of a text region strip is the occurrence of the OOB symbol as a symbol's S coordinate.
+If a JBIG2 stream contains a strip that uses #1 yielding a stream of S coordinates that never contain OOB during the decoding phase for #2, an infinite loop results, as text region decoding has no other terminating condition.
+The result is "just" a denial of service. No risk of buffer overruns etc. is associated with the issue.
+A similar issue exists with symbol dictionary decoding. However in this case decoding will not enter an infinite loop due to an array index out of bounds exception that is thrown once more symbols than expected have been decoded.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+3.0.0 JBIG2
+Fix_version:
+3.0.0 JBIG2
+Component:
+JBIG2
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jörg Henne
+Reporter:
+Jörg Henne
+Create date:
+16/Nov/17 12:20
+Update date:
+06/Feb/18 18:26
+Resolved date:
+06/Feb/18 18:26

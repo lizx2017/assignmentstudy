@@ -1,0 +1,67 @@
+Summary:
+Non-null paging state returned if last page
+Description:
+When retrieving the next page from the result of a simple statement, the result will return a non-null paging state even if it's the last page of the query. This only happens if it's the last page, and the results of the last page exactly matches the paging size.
+Schema:
+      CREATE KEYSPACE simplex WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3};
+      USE simplex;
+      CREATE TABLE test (k text, v int, PRIMARY KEY (k, v));
+      INSERT INTO test (k, v) VALUES ('a', 0);
+      INSERT INTO test (k, v) VALUES ('b', 1);
+      INSERT INTO test (k, v) VALUES ('c', 2);
+      INSERT INTO test (k, v) VALUES ('d', 3);
+      INSERT INTO test (k, v) VALUES ('e', 4);
+Query:
+      result  = session.execute("SELECT * FROM test", page_size: 5)
+
+      loop do
+        puts "last page? #{result.last_page?}"
+        puts "page size: #{result.size}"
+
+        result.each do |row|
+          puts row
+        end
+        puts ""
+
+        break if result.last_page?
+        result = result.next_page
+      end
+Result:
+      last page? false
+      page size: 5
+      {"k"=>"a", "v"=>0}
+      {"k"=>"c", "v"=>2}
+      {"k"=>"m", "v"=>12}
+      {"k"=>"f", "v"=>5}
+      {"k"=>"o", "v"=>14}
+      
+      last page? true
+      page size: 0
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+ruby, c*
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Kishan Karunaratne
+Create date:
+26/Feb/15 18:55
+Update date:
+16/Apr/19 09:31
+Resolved date:
+28/Feb/15 00:00

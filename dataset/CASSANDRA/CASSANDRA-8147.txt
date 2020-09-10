@@ -1,0 +1,43 @@
+Summary:
+Secondary indexing of map keys does not work properly when mixing contains and contains_key
+Description:
+If you have a table with a map column and an index on the map key selecting data using a contains key and a contains will not return the expected data.
+The problem can be reproduced using the following unit test:
+    @Test
+    public void testMapKeyContainsAndValueContains() throws Throwable
+    {
+        createTable("CREATE TABLE %s (account text, id int, categories map<text,text>, PRIMARY KEY (account, id))");
+        createIndex("CREATE INDEX ON %s(keys(categories))");
+
+        execute("INSERT INTO %s (account, id , categories) VALUES (?, ?, ?)", "test", 5, map("lmn", "foo"));
+
+        assertRows(execute("SELECT * FROM %s WHERE account = ? AND id = ? AND categories CONTAINS KEY ? AND categories CONTAINS ? ALLOW FILTERING", "test", 5, "lmn", "foo"), row("test", 5, map("lmn", "foo")));  
+    }
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.2
+Component:
+Feature/2i Index, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Benjamin Lerer
+Create date:
+20/Oct/14 13:47
+Update date:
+16/Apr/19 09:31
+Resolved date:
+04/Nov/14 16:40

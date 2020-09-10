@@ -1,0 +1,58 @@
+Summary:
+dns.interface property causes malformed parsing for 'lo'
+Description:
+I have a seed application that is executed via maven and runs a
+single JVM ApplicationStarter that starts up hdfs, regionserver, hmaster
+threads. It does some seeding then shuts those down in reverse order.
+So this isn't a typical way of running hbase to be sure. However it has
+always worked until I upgraded to HBase 0.90.0.
+I didn't notice it when I was originally testing 0.90.0 because it only
+seems to be happening on our EC2.small build server node when I run this
+particular seeder.
+Running the same thing locally on my mac works.
+Attached is the error output starting from when the HRegionServer.stop() is
+called to when HMaster.shutdown() is called and it starts looping forever in
+letRegionServersShutdown().
+It looks like RegionServerTracker is getting to "RegionServer ephemeral node
+deleted, processing expiration" but then because it can't get the
+HServerInfo it doesn't follow-through with actually expiring it.
+The reason it can't get the HServerInfo is because it is looking for "localhost." instead of "localhost".
+My /etc/hosts file was vanilla. But when I removed the following form hbase-site.xml:
+<property>
+<name>hbase.master.dns.interface</name>
+<value>lo</value>
+</property>
+<property>
+<name>hbase.regionserver.dns.interface</name>
+<value>lo</value>
+</property>
+The issue went away.
+So something about the "lo" interface isn't getting parsed right on that particular machine (An EC2 M.small running Ubuntu 9).
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+master, (1)
+Label:
+delete
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+James Kennedy
+Create date:
+22/Jan/11 01:06
+Update date:
+10/Jan/15 02:01
+Resolved date:
+10/Jan/15 02:01

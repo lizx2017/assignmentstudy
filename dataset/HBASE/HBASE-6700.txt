@@ -1,0 +1,58 @@
+Summary:
+[replication] empty znodes created during queue failovers aren't deleted
+Description:
+Please check code below
+ReplicationSourceManager.java
+// NodeFailoverWorker class
+public void run() {
+{
+    ...
+
+      LOG.info("Moving " + rsZnode + "'s hlogs to my queue");
+      SortedMap<String, SortedSet<String>> newQueues =
+          zkHelper.copyQueuesFromRS(rsZnode);   // Node create here*
+      zkHelper.deleteRsQueues(rsZnode); 
+      if (newQueues == null || newQueues.size() == 0) {
+        return;  
+      }
+    ...
+}
+
+
+  public void closeRecoveredQueue(ReplicationSourceInterface src) {
+    LOG.info("Done with the recovered queue " + src.getPeerClusterZnode());
+    this.oldsources.remove(src);
+    this.zkHelper.deleteSource(src.getPeerClusterZnode(), false);  // Node delete here*
+  }
+So from code we can see if newQueues == null or newQueues.size() == 0, Failover replication Source will never start and the failover zk node will never deleted.
+eg below failover node will never be delete:
+[zk: 10.232.98.77:2181(CONNECTED) 16] ls /hbase-test3-repl/replication/rs/dw93.kgb.sqa.cm4,60020,1346337383956/1-dw93.kgb.sqa.cm4,60020,1346309263932-dw91.kgb.sqa.cm4,60020,1346307150041-dw89.kgb.sqa.cm4,60020,1346307911711-dw93.kgb.sqa.cm4,60020,1346312019213-dw88.kgb.sqa.cm4,60020,1346311774939-dw89.kgb.sqa.cm4,60020,1346312314229-dw93.kgb.sqa.cm4,60020,1346312524307-dw88.kgb.sqa.cm4,60020,1346313203367-dw89.kgb.sqa.cm4,60020,1346313944402-dw88.kgb.sqa.cm4,60020,1346314214286-dw91.kgb.sqa.cm4,60020,1346315119613-dw93.kgb.sqa.cm4,60020,1346314186436-dw88.kgb.sqa.cm4,60020,1346315594396-dw89.kgb.sqa.cm4,60020,1346315909491-dw92.kgb.sqa.cm4,60020,1346315315634-dw89.kgb.sqa.cm4,60020,1346316742242-dw93.kgb.sqa.cm4,60020,1346317604055-dw92.kgb.sqa.cm4,60020,1346318098972-dw91.kgb.sqa.cm4,60020,1346317855650-dw93.kgb.sqa.cm4,60020,1346318532530-dw92.kgb.sqa.cm4,60020,1346318573238-dw89.kgb.sqa.cm4,60020,1346321299040-dw91.kgb.sqa.cm4,60020,1346321304393-dw92.kgb.sqa.cm4,60020,1346325755894-dw89.kgb.sqa.cm4,60020,1346326520895-dw91.kgb.sqa.cm4,60020,1346328246992-dw92.kgb.sqa.cm4,60020,1346327290653-dw93.kgb.sqa.cm4,60020,1346337303018-dw91.kgb.sqa.cm4,60020,1346337318929
+[] // empty node will never be deleted
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.1
+Fix_version:
+0.94.3, 0.95.0
+Component:
+Replication
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+terry zhang
+Reporter:
+terry zhang
+Create date:
+31/Aug/12 06:38
+Update date:
+26/Feb/13 08:20
+Resolved date:
+29/Oct/12 23:46

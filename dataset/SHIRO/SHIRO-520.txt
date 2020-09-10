@@ -1,0 +1,52 @@
+Summary:
+Multiple Set-Cookie headers for the same cookie
+Description:
+When stopping an old session and starting a new one in the same API request like
+public boolean login() {
+  SecurityUtils.getSubject()
+  session.stop()
+  UsernamePasswordToken token = new UsernamePasswordToken(username, plaintextPassword);
+  subject.login(token);
+}
+the response headers will include two Set-Cookie entries, one which removes the old session id (value=deleteMe and expiryTime=<in the past>) and one which sets the new session id. This seems to have been fine previously but for example Safari on iOS 8 seems to reverse the order of them when handling the response and effectively making it impossible to stay authenticated.
+According to http://tools.ietf.org/html/rfc6265, "Servers SHOULD NOT include more than one Set-Cookie header field in the same response with the same cookie-name.". If they do, the client can/will just override the cookie value from subsequent Set-Cookie headers. Sending multiple Set-Cookie headers would then make the correct functionality be dependent on the client sorting the headers correctly which brings us to (from the same RFC)
+2. The user agent SHOULD sort the cookie-list in the following
+order:
+Cookies with longer paths are listed before cookies with
+shorter paths.
+Among cookies that have equal-length path fields, cookies with
+earlier creation-times are listed before cookies with later
+creation-times.
+NOTE: Not all user agents sort the cookie-list in this order, but
+this order reflects common practice when this document was
+written, and, historically, there have been servers that
+(erroneously) depended on this order.
+For (just a little) more context, see http://shiro-user.582556.n2.nabble.com/Regarding-multiple-Set-Cookie-headers-and-Safari-on-iOS-8-td7580252.html.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+1.2.1, 1.2.2
+Fix_version:
+None
+Component:
+Web
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Sebastian Ganslandt
+Create date:
+29/Sep/14 08:14
+Update date:
+29/Sep/14 08:57
+Resolved date:
+

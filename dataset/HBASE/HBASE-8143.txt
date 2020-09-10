@@ -1,0 +1,73 @@
+Summary:
+HBase on Hadoop 2 with local short circuit reads (ssr) causes OOM
+Description:
+We've run into an issue with HBase 0.94 on Hadoop2, with SSR turned on that the memory usage of the HBase process grows to 7g, on an -Xmx3g, after some time, this causes OOM for the RSs.
+Upon further investigation, I've found out that we end up with 200 regions, each having 3-4 store files open. Under hadoop2 SSR, BlockReaderLocal allocates DirectBuffers, which is unlike HDFS 1 where there is no direct buffer allocation.
+It seems that there is no guards against the memory used by local buffers in hdfs 2, and having a large number of open files causes multiple GB of memory to be consumed from the RS process.
+This issue is to further investigate what is going on. Whether we can limit the memory usage in HDFS, or HBase, and/or document the setup.
+Possible mitigation scenarios are:
+Turn off SSR for Hadoop 2
+Ensure that there is enough unallocated memory for the RS based on expected # of store files
+Ensure that there is lower number of regions per region server (hence number of open files)
+Stack trace:
+org.apache.hadoop.hbase.DroppedSnapshotException: region: IntegrationTestLoadAndVerify,yC^P\xD7\x945\xD4,1363388517630.24655343d8d356ef708732f34cfe8946.
+        at org.apache.hadoop.hbase.regionserver.HRegion.internalFlushcache(HRegion.java:1560)
+        at org.apache.hadoop.hbase.regionserver.HRegion.internalFlushcache(HRegion.java:1439)
+        at org.apache.hadoop.hbase.regionserver.HRegion.flushcache(HRegion.java:1380)
+        at org.apache.hadoop.hbase.regionserver.MemStoreFlusher.flushRegion(MemStoreFlusher.java:449)
+        at org.apache.hadoop.hbase.regionserver.MemStoreFlusher.flushOneForGlobalPressure(MemStoreFlusher.java:215)
+        at org.apache.hadoop.hbase.regionserver.MemStoreFlusher.access$500(MemStoreFlusher.java:63)
+        at org.apache.hadoop.hbase.regionserver.MemStoreFlusher$FlushHandler.run(MemStoreFlusher.java:237)
+        at java.lang.Thread.run(Thread.java:662)
+Caused by: java.lang.OutOfMemoryError: Direct buffer memory
+        at java.nio.Bits.reserveMemory(Bits.java:632)
+        at java.nio.DirectByteBuffer.<init>(DirectByteBuffer.java:97)
+        at java.nio.ByteBuffer.allocateDirect(ByteBuffer.java:288)
+        at org.apache.hadoop.hdfs.util.DirectBufferPool.getBuffer(DirectBufferPool.java:70)
+        at org.apache.hadoop.hdfs.BlockReaderLocal.<init>(BlockReaderLocal.java:315)
+        at org.apache.hadoop.hdfs.BlockReaderLocal.newBlockReader(BlockReaderLocal.java:208)
+        at org.apache.hadoop.hdfs.DFSClient.getLocalBlockReader(DFSClient.java:790)
+        at org.apache.hadoop.hdfs.DFSInputStream.getBlockReader(DFSInputStream.java:888)
+        at org.apache.hadoop.hdfs.DFSInputStream.blockSeekTo(DFSInputStream.java:455)
+        at org.apache.hadoop.hdfs.DFSInputStream.readWithStrategy(DFSInputStream.java:645)
+        at org.apache.hadoop.hdfs.DFSInputStream.read(DFSInputStream.java:689)
+        at java.io.DataInputStream.readFully(DataInputStream.java:178)
+        at org.apache.hadoop.hbase.io.hfile.FixedFileTrailer.readFromStream(FixedFileTrailer.java:312)
+        at org.apache.hadoop.hbase.io.hfile.HFile.pickReaderVersion(HFile.java:543)
+        at org.apache.hadoop.hbase.io.hfile.HFile.createReaderWithEncoding(HFile.java:589)
+        at org.apache.hadoop.hbase.regionserver.StoreFile$Reader.<init>(StoreFile.java:1261)
+        at org.apache.hadoop.hbase.regionserver.StoreFile.open(StoreFile.java:512)
+        at org.apache.hadoop.hbase.regionserver.StoreFile.createReader(StoreFile.java:603)
+        at org.apache.hadoop.hbase.regionserver.Store.validateStoreFile(Store.java:1568)
+        at org.apache.hadoop.hbase.regionserver.Store.commitFile(Store.java:845)
+        at org.apache.hadoop.hbase.regionserver.Store.access$500(Store.java:109)
+        at org.apache.hadoop.hbase.regionserver.Store$StoreFlusherImpl.commit(Store.java:2209)
+        at org.apache.hadoop.hbase.regionserver.HRegion.internalFlushcache(HRegion.java:1541)
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.94.7, 0.95.0
+Fix_version:
+0.98.0, 0.96.1
+Component:
+hadoop2
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Enis Soztutar
+Create date:
+19/Mar/13 03:04
+Update date:
+16/Dec/13 18:46
+Resolved date:
+26/Nov/13 21:43

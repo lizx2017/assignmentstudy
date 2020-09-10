@@ -1,0 +1,476 @@
+Summary:
+irregular NPE In ImageIOUtils.addResolution
+Description:
+We're having an issue with PDFBox within out test suite where it sometimes throws an NPE and sometimes does not.
+Background
+We have a PDF File within our test suite that has JBIG2 encoded images. We have the JAI and JAI-ImageIO extensions installed with JAVA, but do not have a JBIG2 extension installed as discussed in PDFBOX-1067 as we need to keep with an Apache 2.0 license and cannot include the GPL3.0 jbig2-imageio.
+Issue
+Our issue, to be clear is not that we cannot handle the JBIG2 encoded images, but instead, that we're sometimes getting NPEs thrown by the system and sometimes not. (which makes it seem like it's possibly a race condition).
+The NPE we're seeing is:
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,752 0    [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{q}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,762 10   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Q}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,762 10   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{q}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,763 11   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,763 11   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,763 11   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{622}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,765 13   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{800}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,766 14   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{re}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,766 14   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{W}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,766 14   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{n}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,769 17   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{q}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,769 17   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{622.8001}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,770 18   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,770 18   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,770 18   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{800.6401}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,770 18   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,772 20   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,772 20   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{cm}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,772 20   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{Im1}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,778 26   [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Do}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,806 54   [main ] (PDPixelMap.java:309) org.apache.pdfbox.pdmodel.graphics.xobject.PDPixelMap - ColorModel: IndexColorModel: #pixelBits = 1 numComponents = 3 color space = java.awt.color.ICC_ColorSpace@3b568fbc transparency = 1 transIndex   = -1 has alpha = false isAlphaPre = false
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,808 56   [main ] (Invoke.java:93) org.apache.pdfbox.util.operator.pagedrawer.Invoke - imageWidth: 1730  imageHeight: 2224
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,874 122  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Q}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,874 122  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{3}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,875 123  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tr}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,875 123  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,875 123  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.05}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,875 123  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,876 124  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{35.7233}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,876 124  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,876 124  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,876 124  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{32.6}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,877 125  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{137.14}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,877 125  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{572.41}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,877 125  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,877 125  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT1}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,878 126  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:32 DEBUG 2014-01-11 16:24:32,878 126  [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:33 DEBUG 2014-01-11 16:24:33,774 1022 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{The }
+build 11-Jan-2014 16:24:33 DEBUG 2014-01-11 16:24:33,775 1023 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:33 INFO  2014-01-11 16:24:33,994 1242 [main ] (PDTrueTypeFont.java:474) org.apache.pdfbox.pdmodel.font.PDTrueTypeFont - Using font Serif.bold instead
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,033 1281 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,033 1281 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,038 1286 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,038 1286 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,038 1286 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.0396}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,038 1286 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,039 1287 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{32.6}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,039 1287 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,039 1287 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,039 1287 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{32.6}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,039 1287 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{208.37}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,040 1288 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{572.41}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,040 1288 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,040 1288 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,047 1295 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,048 1296 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,048 1296 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{Archeology }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,048 1296 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,079 1327 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,080 1328 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,080 1328 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,080 1328 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,080 1328 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.05}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,083 1331 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,083 1331 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{38.8128}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,084 1332 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,084 1332 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,084 1332 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{35.1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,084 1332 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{139.29}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,085 1333 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{514.45}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,085 1333 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,085 1333 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,085 1333 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,088 1336 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,089 1337 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{of }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,091 1339 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 INFO  2014-01-11 16:24:34,093 1341 [main ] (PDTrueTypeFont.java:474) org.apache.pdfbox.pdmodel.font.PDTrueTypeFont - Using font Serif.plain instead
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,098 1346 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,107 1355 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,108 1356 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,108 1356 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,108 1356 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.0191}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,108 1356 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,108 1356 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{35.1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,111 1359 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,111 1359 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,112 1360 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{35.1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,112 1360 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{178.71}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,112 1360 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{514.45}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,112 1360 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,113 1361 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,113 1361 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,113 1361 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,113 1361 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{Lake }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,115 1363 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,117 1365 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,120 1368 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,120 1368 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,120 1368 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,120 1368 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.0213}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,121 1369 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,121 1369 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{35.1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,121 1369 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,121 1369 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,121 1369 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{35.1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,122 1370 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{260.4579}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,122 1370 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{514.45}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,122 1370 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,122 1370 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,122 1370 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,123 1371 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,123 1371 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{Mead }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,123 1371 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,125 1373 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,125 1373 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,126 1374 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,126 1374 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,126 1374 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.0223}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,126 1374 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,127 1375 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{32.6}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,127 1375 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,127 1375 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,127 1375 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{32.6}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,127 1375 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{137.39}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,128 1376 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{456.13}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,128 1376 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,128 1376 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,128 1376 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,128 1376 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,129 1377 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{National }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,129 1377 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,132 1380 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,132 1380 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,133 1381 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,133 1381 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,133 1381 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.0138}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,133 1381 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,133 1381 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{32.6}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,134 1382 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,134 1382 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,134 1382 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{32.6}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,134 1382 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{269.8112}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,134 1382 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{456.13}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,135 1383 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,135 1383 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,135 1383 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,135 1383 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,135 1383 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{Recreation }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,136 1384 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,139 1387 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,141 1389 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,142 1390 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,142 1390 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,142 1390 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.05}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,142 1390 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,142 1390 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{32.9266}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,143 1391 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,143 1391 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,143 1391 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{32.6}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,143 1391 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{137.81}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,143 1391 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{404.29}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,144 1392 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,144 1392 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,144 1392 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,144 1392 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,144 1392 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{Area }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,145 1393 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,153 1401 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,159 1407 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,160 1408 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,160 1408 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,160 1408 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.05}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,160 1408 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,160 1408 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{24.4513}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,160 1408 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,161 1409 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,161 1409 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,161 1409 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{136.75}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,161 1409 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{319.68}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,161 1409 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,162 1410 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,162 1410 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,162 1410 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,162 1410 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{An }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,162 1410 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,164 1412 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,164 1412 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,164 1412 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,165 1413 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,165 1413 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.0234}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,165 1413 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,165 1413 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,165 1413 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,166 1414 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,166 1414 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,166 1414 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{173.11}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,166 1414 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{319.68}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,166 1414 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,167 1415 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,171 1419 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,171 1419 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,172 1420 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{Assessment }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,172 1420 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,176 1424 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,179 1427 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,179 1427 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,180 1428 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,180 1428 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.023}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,180 1428 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,180 1428 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,180 1428 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,181 1429 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,181 1429 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,181 1429 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{132.2302}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,181 1429 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{94.689}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,181 1429 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,182 1430 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,182 1430 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,182 1430 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,182 1430 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{National }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,182 1430 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,189 1437 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,189 1437 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,189 1437 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,194 1442 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,194 1442 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.05}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,195 1443 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,195 1443 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.7968}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,195 1443 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,195 1443 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,195 1443 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,195 1443 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{222.01}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,196 1444 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{94.68}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,196 1444 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,196 1444 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,196 1444 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,196 1444 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,197 1445 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{Park }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,197 1445 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,199 1447 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,203 1451 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,203 1451 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,204 1452 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,204 1452 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.004}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,204 1452 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,204 1452 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,204 1452 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,205 1453 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,205 1453 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,205 1453 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{273.89}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,205 1453 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{94.68}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,205 1453 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,206 1454 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,206 1454 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,206 1454 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,206 1454 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{Service }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,206 1454 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,209 1457 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,215 1463 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,215 1463 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,216 1464 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,216 1464 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{-0.035}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,216 1464 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,216 1464 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{21.2481}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,216 1464 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,217 1465 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,217 1465 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,217 1465 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{131.37}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,217 1465 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{69.13}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,217 1465 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,218 1466 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,218 1466 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,218 1466 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,218 1466 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{U. }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,218 1466 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,220 1468 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,223 1471 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,223 1471 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,224 1472 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,224 1472 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{-0.035}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,224 1472 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,224 1472 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{21.9974}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,224 1472 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,225 1473 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,225 1473 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,225 1473 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{154.03}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,225 1473 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{69.13}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,225 1473 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,226 1474 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,226 1474 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,226 1474 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,226 1474 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{S. }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,231 1479 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,233 1481 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,233 1481 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,233 1481 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,233 1481 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,233 1481 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.05}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,234 1482 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,234 1482 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.7742}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,234 1482 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,234 1482 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,234 1482 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,235 1483 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{178.08}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,235 1483 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{69.13}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,235 1483 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,235 1483 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,235 1483 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,236 1484 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,236 1484 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{Department }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,236 1484 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,245 1493 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,245 1493 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,245 1493 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,245 1493 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,246 1494 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.05}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,246 1494 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,246 1494 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{25.4579}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,246 1494 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,250 1498 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,251 1499 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,251 1499 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{306.47}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,251 1499 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{69.13}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,251 1499 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,251 1499 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,252 1500 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,252 1500 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,252 1500 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{of }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,252 1500 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,254 1502 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,254 1502 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,254 1502 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,254 1502 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,254 1502 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.0373}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,255 1503 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,259 1507 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,259 1507 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,263 1511 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,263 1511 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,263 1511 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{332.58}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,263 1511 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{69.13}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,263 1511 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,264 1512 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,264 1512 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,264 1512 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,264 1512 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{the }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,264 1512 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,266 1514 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,266 1514 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,270 1518 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,270 1518 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{BT}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,270 1518 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{0.05}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,275 1523 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,275 1523 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.5584}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,276 1524 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,276 1524 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,276 1524 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{23.4}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,276 1524 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{369.19}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,276 1524 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSFloat{69.13}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,277 1525 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tm}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,277 1525 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSName{TT2}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,277 1525 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{1}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,277 1525 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tf}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,277 1525 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSString{Interior }
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,278 1526 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tj}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,281 1529 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: COSInt{0}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,281 1529 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Tc}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,282 1530 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{ET}
+build 11-Jan-2014 16:24:34 DEBUG 2014-01-11 16:24:34,282 1530 [main ] (PDFStreamEngine.java:260) org.apache.pdfbox.util.PDFStreamEngine - processing substream token: PDFOperator{Q}
+build 11-Jan-2014 16:24:34 INFO  2014-01-11 16:24:34,282 1530 [main ] (PDFImageWriter.java:135) org.apache.pdfbox.util.PDFImageWriter - Writing: /home/bamboo/current/temp/TDAR-TRUNK3-JOB1/pia-09-lame-1980-small1.jpg
+build 11-Jan-2014 16:24:34 ERROR 2014-01-11 16:24:34,291 1539 [main ] (PDFJBIG2TestCase.java:55) org.tdar.utils.PDFJBIG2TestCase - encountered NPE
+build 11-Jan-2014 16:24:34 java.lang.NullPointerException
+build 11-Jan-2014 16:24:34  at org.apache.pdfbox.util.ImageIOUtil.addResolution(ImageIOUtil.java:211)
+build 11-Jan-2014 16:24:34  at org.apache.pdfbox.util.ImageIOUtil.createMetadata(ImageIOUtil.java:204)
+build 11-Jan-2014 16:24:34  at org.apache.pdfbox.util.ImageIOUtil.writeImage(ImageIOUtil.java:158)
+build 11-Jan-2014 16:24:34  at org.apache.pdfbox.util.ImageIOUtil.writeImage(ImageIOUtil.java:114)
+build 11-Jan-2014 16:24:34  at org.apache.pdfbox.util.ImageIOUtil.writeImage(ImageIOUtil.java:81)
+build 11-Jan-2014 16:24:34  at org.apache.pdfbox.util.PDFImageWriter.writeImage(PDFImageWriter.java:136)
+build 11-Jan-2014 16:24:34  at org.tdar.utils.PDFJBIG2TestCase.testJBIG2(PDFJBIG2TestCase.java:50)
+build 11-Jan-2014 16:24:34  at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+build 11-Jan-2014 16:24:34  at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+build 11-Jan-2014 16:24:34  at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+build 11-Jan-2014 16:24:34  at java.lang.reflect.Method.invoke(Method.java:606)
+build 11-Jan-2014 16:24:34  at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:47)
+build 11-Jan-2014 16:24:34  at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+build 11-Jan-2014 16:24:34  at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:44)
+build 11-Jan-2014 16:24:34  at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+build 11-Jan-2014 16:24:34  at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:271)
+build 11-Jan-2014 16:24:34  at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:70)
+build 11-Jan-2014 16:24:34  at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:50)
+build 11-Jan-2014 16:24:34  at org.junit.runners.ParentRunner$3.run(ParentRunner.java:238)
+build 11-Jan-2014 16:24:34  at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:63)
+build 11-Jan-2014 16:24:34  at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:236)
+build 11-Jan-2014 16:24:34  at org.junit.runners.ParentRunner.access$000(ParentRunner.java:53)
+build 11-Jan-2014 16:24:34  at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:229)
+build 11-Jan-2014 16:24:34  at org.junit.runners.ParentRunner.run(ParentRunner.java:309)
+build 11-Jan-2014 16:24:34  at org.apache.maven.surefire.junit4.JUnit4Provider.execute(JUnit4Provider.java:264)
+build 11-Jan-2014 16:24:34  at org.apache.maven.surefire.junit4.JUnit4Provider.executeTestSet(JUnit4Provider.java:153)
+build 11-Jan-2014 16:24:34  at org.apache.maven.surefire.junit4.JUnit4Provider.invoke(JUnit4Provider.java:124)
+build 11-Jan-2014 16:24:34  at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+build 11-Jan-2014 16:24:34  at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+build 11-Jan-2014 16:24:34  at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+build 11-Jan-2014 16:24:34  at java.lang.reflect.Method.invoke(Method.java:606)
+build 11-Jan-2014 16:24:34  at org.apache.maven.surefire.util.ReflectionUtils.invokeMethodWithArray2(ReflectionUtils.java:208)
+build 11-Jan-2014 16:24:34  at org.apache.maven.surefire.booter.ProviderFactory$ProviderProxy.invoke(ProviderFactory.java:156)
+build 11-Jan-2014 16:24:34  at org.apache.maven.surefire.booter.ProviderFactory.invokeProvider(ProviderFactory.java:82)
+build 11-Jan-2014 16:24:34  at org.apache.maven.plugin.surefire.InPluginVMSurefireStarter.runSuitesInProcess(InPluginVMSurefireStarter.java:82)
+build 11-Jan-2014 16:24:34  at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeProvider(AbstractSurefireMojo.java:942)
+build 11-Jan-2014 16:24:34  at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeAfterPreconditionsChecked(AbstractSurefireMojo.java:822)
+build 11-Jan-2014 16:24:34  at org.apache.maven.plugin.surefire.AbstractSurefireMojo.execute(AbstractSurefireMojo.java:720)
+build 11-Jan-2014 16:24:34  at org.apache.maven.plugin.DefaultBuildPluginManager.executeMojo(DefaultBuildPluginManager.java:106)
+build 11-Jan-2014 16:24:34  at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:208)
+build 11-Jan-2014 16:24:34  at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:153)
+build 11-Jan-2014 16:24:34  at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:145)
+build 11-Jan-2014 16:24:34  at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject(LifecycleModuleBuilder.java:84)
+build 11-Jan-2014 16:24:34  at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject(LifecycleModuleBuilder.java:59)
+build 11-Jan-2014 16:24:34  at org.apache.maven.lifecycle.internal.LifecycleStarter.singleThreadedBuild(LifecycleStarter.java:183)
+build 11-Jan-2014 16:24:34  at org.apache.maven.lifecycle.internal.LifecycleStarter.execute(LifecycleStarter.java:161)
+build 11-Jan-2014 16:24:34  at org.apache.maven.DefaultMaven.doExecute(DefaultMaven.java:317)
+build 11-Jan-2014 16:24:34  at org.apache.maven.DefaultMaven.execute(DefaultMaven.java:152)
+build 11-Jan-2014 16:24:34  at org.apache.maven.cli.MavenCli.execute(MavenCli.java:555)
+build 11-Jan-2014 16:24:34  at org.apache.maven.cli.MavenCli.doMain(MavenCli.java:214)
+build 11-Jan-2014 16:24:34  at org.apache.maven.cli.MavenCli.main(MavenCli.java:158)
+build 11-Jan-2014 16:24:34  at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+build 11-Jan-2014 16:24:34  at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+build 11-Jan-2014 16:24:34  at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+build 11-Jan-2014 16:24:34  at java.lang.reflect.Method.invoke(Method.java:606)
+build 11-Jan-2014 16:24:34  at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced(Launcher.java:289)
+build 11-Jan-2014 16:24:34  at org.codehaus.plexus.classworlds.launcher.Launcher.launch(Launcher.java:229)
+build 11-Jan-2014 16:24:34  at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode(Launcher.java:415)
+build 11-Jan-2014 16:24:34  at org.codehaus.plexus.classworlds.launcher.Launcher.main(Launcher.java:356)
+build 11-Jan-2014 16:24:34 Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 2.664 sec <<< FAILURE! - in org.tdar.utils.PDFJBIG2TestCase
+build 11-Jan-2014 16:24:34 testJBIG2(org.tdar.utils.PDFJBIG2TestCase)  Time elapsed: 2.438 sec  <<< FAILURE!
+build 11-Jan-2014 16:24:34 java.lang.AssertionError: encountered NPE in proccessing JBIG2 file
+build 11-Jan-2014 16:24:34  at org.junit.Assert.fail(Assert.java:88)
+build 11-Jan-2014 16:24:34  at org.tdar.utils.PDFJBIG2TestCase.testJBIG2(PDFJBIG2TestCase.java:56)
+build 11-Jan-2014 16:24:34 
+I'm attaching the PDF that's causing the issue.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Duplicate
+Affects_version:
+1.8.3
+Fix_version:
+None
+Component:
+Utilities
+Label:
+None
+Environment:
+java 1.7, linux
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+adam brin
+Create date:
+11/Jan/14 23:26
+Update date:
+13/Jan/14 21:38
+Resolved date:
+13/Jan/14 21:38

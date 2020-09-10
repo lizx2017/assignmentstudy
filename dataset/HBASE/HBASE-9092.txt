@@ -1,0 +1,35 @@
+Summary:
+OpenRegion could be ignored by mistake
+Description:
+Looked into failed test: http://54.241.6.143/job/HBase-0.95/org.apache.hbase$hbase-server/721/testReport/
+In this test run, several tests in TestAssignmentManagerOnCluster failed. Most of them timed out because the first failure testOpenFailedUnrecoverable used too much resource in deleting the table.
+http://54.241.6.143/job/HBase-0.95/org.apache.hbase$hbase-server/721/testReport/org.apache.hadoop.hbase.master/TestAssignmentManagerOnCluster/testOpenFailedUnrecoverable/
+The reason testOpenFailedUnrecoverable failed is that the second openRegion call was ignored since the previous open call was still going on and stayed in OpenRegionHandler#doCleanUpOnFailedOpen for too long (perhaps thread scheduling issue). The second openRegion call was skipped since the region was still in the middle of opening. However, the failed_open event was already processed by master. Therefore the region stuck in transition and the delete table went no where. It is a similar issue as we ran into before while for that time, the region was closing.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.2
+Component:
+Region Assignment
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Jimmy Xiang
+Create date:
+30/Jul/13 20:36
+Update date:
+23/Sep/13 19:22
+Resolved date:
+01/Aug/13 18:56

@@ -1,0 +1,61 @@
+Summary:
+Hinted handoffs isn't delivered if/when HintedHandOffManager ends up in invalid state.
+Description:
+Running Cassandra 1.0.3.
+I've done some testing with 2 nodes (node A, node B), replication factor 2.
+I take node A down, writing some data to node B and then take node A up.
+Sometimes hints aren't delivered when node A comes up.
+I've done some debugging in org.apache.cassandra.db.HintedHandOffManager and sometimes node B ends up in a strange state in method org.apache.cassandra.db.HintedHandOffManager.deliverHints(final InetAddress to), where org.apache.cassandra.db.HintedHandOffManager.queuedDeliveries already has node A in it's Set and therefore no hints will ever be delivered to node A.
+The only reason for this that I can see is that in org.apache.cassandra.db.HintedHandOffManager.deliverHintsToEndpoint(InetAddress endpoint) the hintStore.isEmpty() check returns true and the endpoint (node A) isn't removed from org.apache.cassandra.db.HintedHandOffManager.queuedDeliveries. Then no hints will ever be delivered again until node B is restarted.
+During what conditions will hintStore.isEmpty() return true?
+Shouldn't the hintStore.isEmpty() check be inside the try {} finally{} clause, removing the endpoint from queuedDeliveries in the finally block?
+public void deliverHints(final InetAddress to)
+{
+    logger_.debug("deliverHints to {}", to);
+    if (!queuedDeliveries.add(to))
+        return;
+    .......
+}
+private void deliverHintsToEndpoint(InetAddress endpoint) 
+    throws IOException, DigestMismatchException, InvalidRequestException, TimeoutException, InterruptedException
+{
+     ColumnFamilyStore hintStore = Table.open(Table.SYSTEM_TABLE).getColumnFamilyStore(HINTS_CF);
+     if (hintStore.isEmpty())
+         return; // nothing to do, don't confuse users by logging a no-op handoff
+     try
+     {
+         ......
+     }
+     finally
+     {
+         queuedDeliveries.remove(endpoint);
+     }
+}
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Fredrik Larsson Stigbäck
+Create date:
+01/Dec/11 10:42
+Update date:
+16/Apr/19 09:32
+Resolved date:
+02/Dec/11 10:45

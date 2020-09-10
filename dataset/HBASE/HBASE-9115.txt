@@ -1,0 +1,120 @@
+Summary:
+HTableInterface.append operation may overwrites values
+Description:
+I use Hbase Java API and I try to append values Bytes.toBytes("one two") and Bytes.toBytes(" three") in 3 columns.
+Only for 2 out of these 3 columns the result is "one two three".
+Output from the hbase shell:
+ 
+hbase(main):008:0* scan "mytesttable"
+ROW                                    COLUMN+CELL                                                                                                    
+ mytestRowKey                          column=TestA:dlbytes, timestamp=1375436156140, value=one two three                                             
+ mytestRowKey                          column=TestA:tbytes, timestamp=1375436156140, value=one two three                                              
+ mytestRowKey                          column=TestA:ulbytes, timestamp=1375436156140, value= three                                                    
+1 row(s) in 0.0280 seconds
+My test code:
+Database.java
+import static org.junit.Assert.*;
+
+import java.io.IOException;
+ 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.Test;
+
+...
+
+    @Test
+    public void testAppend() throws IOException {
+        byte [] rowKey = Bytes.toBytes("mytestRowKey");
+        byte [] column1 = Bytes.toBytes("ulbytes");
+        byte [] column2 = Bytes.toBytes("dlbytes");
+        byte [] column3 = Bytes.toBytes("tbytes");
+        String part11 = "one two";
+        String part12 = " three";
+        String cFamily = "TestA";
+        String TABLE = "mytesttable";
+        Configuration conf = HBaseConfiguration.create();
+
+        HTablePool pool = new HTablePool(conf, 10);
+        HBaseAdmin admin = new HBaseAdmin(conf);
+        
+        if(admin.tableExists(TABLE)){
+            admin.disableTable(TABLE);
+            admin.deleteTable(TABLE);
+        }
+        
+        HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE);
+        HColumnDescriptor hcd = new HColumnDescriptor(cFamily);
+        hcd.setMaxVersions(1);
+        tableDescriptor.addFamily(hcd);
+        admin.createTable(tableDescriptor);
+
+        HTableInterface table = pool.getTable(TABLE);
+        
+        Append a = new Append(rowKey);
+        a.setReturnResults(false);
+        a.add(Bytes.toBytes(cFamily), column1, Bytes.toBytes(part11));
+        a.add(Bytes.toBytes(cFamily), column2, Bytes.toBytes(part11));
+        a.add(Bytes.toBytes(cFamily), column3, Bytes.toBytes(part11));
+        table.append(a);
+        a = new Append(rowKey);
+        a.add(Bytes.toBytes(cFamily), column1, Bytes.toBytes(part12));
+        a.add(Bytes.toBytes(cFamily), column2, Bytes.toBytes(part12));
+        a.add(Bytes.toBytes(cFamily), column3, Bytes.toBytes(part12));
+        Result result = table.append(a);
+
+        byte [] resultForColumn1 = result.getValue(Bytes.toBytes(cFamily), column1);
+        byte [] resultForColumn2 = result.getValue(Bytes.toBytes(cFamily), column2);
+        byte [] resultForColumn3 = result.getValue(Bytes.toBytes(cFamily), column3);
+        if (resultForColumn1 == null || resultForColumn2 == null || resultForColumn3 == null)
+            System.out.println("The DB table contains these values but they are never given back, strange...");
+        else {
+            assertEquals(0, Bytes.compareTo(Bytes.toBytes(part11 + part12),
+                    resultForColumn1));
+            assertEquals(0, Bytes.compareTo(Bytes.toBytes(part11 + part12),
+                    resultForColumn2));
+            assertEquals(0, Bytes.compareTo(Bytes.toBytes(part11 + part12),
+                    resultForColumn3));
+        }
+        HTable t = new HTable(conf, TABLE);   
+        Get getOperation = new Get(rowKey);
+        getOperation.addColumn(Bytes.toBytes(cFamily), column1);
+        Result res = t.get(getOperation);           
+        assertEquals(0, Bytes.compareTo(Bytes.toBytes(part11 + part12), res.getValue(Bytes.toBytes(cFamily), column1)));
+      }
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.10
+Fix_version:
+0.98.0, 0.95.2, 0.94.11
+Component:
+None
+Label:
+None
+Environment:
+MAC OS X 10.8.4, Hbase in the pseudo-distributed mode, hadoop v1.2.0, Hbase Java API based client. hdfs-site.xml : <configuration> <property> <name> dfs.replication </name> <value> 1 </value> </property> <property> <name> dfs.support.append </name> <value> true </value> </property> </configuration> hbase-site.xml : <configuration> <property> <name> hbase.rootdir </name> <value> hdfs://localhost:9000/hbase </value> </property> <property> <name> hbase.cluster.distributed </name> <value> true </value> </property> <property> <name> hbase.zookeeper.quorum </name> <value> localhost </value> </property> <property> <name> dfs.support.append </name> <value> true </value> </property> </configuration>
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Aleksandr B
+Create date:
+02/Aug/13 11:16
+Update date:
+21/Aug/13 00:08
+Resolved date:
+05/Aug/13 02:29

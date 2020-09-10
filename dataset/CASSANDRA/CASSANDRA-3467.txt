@@ -1,0 +1,110 @@
+Summary:
+get_slice, super column family with UUIDType as column comparator
+Description:
+get_slice with more than one column selected by predicate fails, when comparator is set to (Lexical|Time)UUIDType and more than one column is being selected.
+// Sample data:
+create column family A with column_type = Super and comparator = LexicalUUIDType and subcomparator = UTF8Type and default_validation_class = UTF8Type;
+set A[ascii('key')][lexicaluuid('b139337e-fb6d-41e1-a868-1db7f2a52a42')]['a'] = 'A';
+set A[ascii('key')][lexicaluuid('b139337e-fb6d-41e1-a868-1db7f2a52a42')]['b'] = 'B';
+set A[ascii('key')][lexicaluuid('b139337e-fb6d-41e1-a868-1db7f2a52a42')]['c'] = 'C';
+set A[ascii('key')][lexicaluuid('b139337e-fb6d-41e1-a868-1db7f2a52a42')]['d'] = 'D';
+set A[ascii('key')][lexicaluuid('b139337e-fb6d-41e1-a868-1db7f2a52a42')]['e'] = 'E';
+
+// Failed call
+$client->get_slice(
+    'key', 
+    new ColumnParent(array(
+        'column_family'=>'A', 
+        'super_column'=>base64_decode('sTkzfvttQeGoaB238qUqQg==')
+    )), 
+    new SlicePredicate(array(
+        'column_names'=>array('a', 'b')
+    )), 
+    1
+);
+
+// Exception thrown
+ERROR [ReadStage:302] 2011-11-07 21:29:30,339 AbstractCassandraDaemon.java (line 133) Fatal exception in thread Thread[ReadStage:302,5,main]
+java.lang.RuntimeException: java.lang.IndexOutOfBoundsException
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1269)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: java.lang.IndexOutOfBoundsException
+ at java.nio.Buffer.checkIndex(Buffer.java:520)
+ at java.nio.HeapByteBuffer.getLong(HeapByteBuffer.java:391)
+ at org.apache.cassandra.utils.UUIDGen.getUUID(UUIDGen.java:67)
+ at org.apache.cassandra.db.marshal.LexicalUUIDType.compare(LexicalUUIDType.java:58)
+ at org.apache.cassandra.db.marshal.LexicalUUIDType.compare(LexicalUUIDType.java:31)
+ at java.util.TreeMap.put(TreeMap.java:530)
+ at java.util.TreeSet.add(TreeSet.java:238)
+ at java.util.AbstractCollection.addAll(AbstractCollection.java:305)
+ at java.util.TreeSet.addAll(TreeSet.java:295)
+ at org.apache.cassandra.db.CollationController.collectTimeOrderedData(CollationController.java:98)
+ at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:61)
+ at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1278)
+ at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1164)
+ at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1131)
+ at org.apache.cassandra.db.Table.getRow(Table.java:378)
+ at org.apache.cassandra.db.SliceByNamesReadCommand.getRow(SliceByNamesReadCommand.java:58)
+ at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:797)
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1265)
+ ... 3 more
+
+// This works though
+$client->get_slice(
+    'key', 
+    new ColumnParent(array(
+        'column_family'=>'A', 
+        'super_column'=>base64_decode('sTkzfvttQeGoaB238qUqQg==')
+    )), 
+    new SlicePredicate(array(
+        'column_names'=>array('a')
+    )), 
+    1
+);
+
+// This works too
+$client->get_slice('key', 
+ new ColumnParent(array(
+  'column_family'=>'A', 
+  'super_column'=>base64_decode('sTkzfvttQeGoaB238qUqQg==')
+ )), 
+ new SlicePredicate(array(
+  'slice_range'=>new SliceRange(array(
+   'start'=>'', 
+   'finish'=>'',
+   'reversed'=>false,
+   'count'=>100
+  ))
+ )), 1);
+Regards
+ales
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.3
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Rick Branson
+Reporter:
+alesl
+Create date:
+07/Nov/11 20:33
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Nov/11 18:03

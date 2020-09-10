@@ -1,0 +1,67 @@
+Summary:
+HTable.coprocessorExec (and possibly coprocessorProxy) does not work with dynamically loaded coprocessors (from hdfs or local system), because the RPC system tries to deserialize an unknown class.
+Description:
+Loading coprocessors jars from hdfs works fine. I load it from the shell, after setting the attribute, and it gets loaded:
+INFO org.apache.hadoop.hbase.regionserver.HRegion: Setting up tabledescriptor config now ...
+INFO org.apache.hadoop.hbase.coprocessor.CoprocessorHost: Class com.MyCoprocessorClass needs to be loaded from a file - hdfs://localhost:9000/coproc/rt-      >0.0.1-SNAPSHOT.jar.
+INFO org.apache.hadoop.hbase.coprocessor.CoprocessorHost: loadInstance: com.MyCoprocessorClass
+INFO org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost: RegionEnvironment createEnvironment
+DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Registered protocol handler: region=t1,,1322572939753.6409aee1726d31f5e5671a59fe6e384f. protocol=com.MyCoprocessorClassProtocol
+INFO org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost: Load coprocessor com.MyCoprocessorClass from HTD of t1 successfully.
+The problem is that this coprocessors simply extends BaseEndpointCoprocessor, with a dynamic method. When calling this method from the client with HTable.coprocessorExec, I get errors on the HRegionServer, because the call cannot be deserialized from writables.
+The problem is that Exec tries to do an "early" resolve of the coprocessor class. The coprocessor class is loaded, but it is in the context of the HRegionServer / HRegion. So, the call fails:
+2011-12-02 00:34:17,348 ERROR org.apache.hadoop.hbase.io.HbaseObjectWritable: Error in readFields
+java.io.IOException: Protocol class com.MyCoprocessorClassProtocol not found
+  at org.apache.hadoop.hbase.client.coprocessor.Exec.readFields(Exec.java:125)
+  at org.apache.hadoop.hbase.io.HbaseObjectWritable.readObject(HbaseObjectWritable.java:575)
+  at org.apache.hadoop.hbase.ipc.Invocation.readFields(Invocation.java:105)
+  at org.apache.hadoop.hbase.ipc.HBaseServer$Connection.processData(HBaseServer.java:1237)
+  at org.apache.hadoop.hbase.ipc.HBaseServer$Connection.readAndProcess(HBaseServer.java:1167)
+  at org.apache.hadoop.hbase.ipc.HBaseServer$Listener.doRead(HBaseServer.java:703)
+  at org.apache.hadoop.hbase.ipc.HBaseServer$Listener$Reader.doRunLoop(HBaseServer.java:495)
+  at org.apache.hadoop.hbase.ipc.HBaseServer$Listener$Reader.run(HBaseServer.java:470)
+  at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+  at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+  at java.lang.Thread.run(Thread.java:680)
+Caused by: java.lang.ClassNotFoundException: com.MyCoprocessorClassProtocol
+  at java.net.URLClassLoader$1.run(URLClassLoader.java:202)
+  at java.security.AccessController.doPrivileged(Native Method)
+  at java.net.URLClassLoader.findClass(URLClassLoader.java:190)
+  at java.lang.ClassLoader.loadClass(ClassLoader.java:306)
+  at sun.misc.Launcher$AppClassLoader.loadClass(Launcher.java:301)
+  at java.lang.ClassLoader.loadClass(ClassLoader.java:247)
+  at java.lang.Class.forName0(Native Method)
+  at java.lang.Class.forName(Class.java:247)
+  at org.apache.hadoop.conf.Configuration.getClassByName(Configuration.java:943)
+  at org.apache.hadoop.hbase.client.coprocessor.Exec.readFields(Exec.java:122)
+  ... 10 more
+Probably the correct way to fix this is to make Exec really smart, so that it knows all the class definitions loaded in CoprocessorHost(s).
+I created a small patch that simply doesn't resolve the class definition in the Exec, instead passing it as string down to the HRegion layer. This layer knows all the definitions, and simply loads it by name.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0, 0.94.0
+Component:
+Coprocessors
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andrei Dragomir
+Reporter:
+Andrei Dragomir
+Create date:
+04/Dec/11 07:22
+Update date:
+12/Oct/12 05:35
+Resolved date:
+10/Dec/11 00:05

@@ -1,0 +1,102 @@
+Summary:
+SELECT with IN on final column of composite and compound primary key fails
+Description:
+I have a failing sequence where I specify an IN constraint on the final int column of the composite primary key and an IN constraint on the final String column of the compound primary key and no rows are returned, when rows should be returned.
+CREATE TABLE IF NOT EXISTS sr2 (siteID TEXT, partition INT, listID BIGINT, emailAddr TEXT, emailCrypt TEXT, createDate TIMESTAMP, removeDate TIMESTAMP, removeImportID BIGINT, properties TEXT, PRIMARY KEY ((siteID, listID, partition), createDate, emailCrypt) ) WITH CLUSTERING ORDER BY (createDate DESC, emailCrypt DESC)  AND compression = {'sstable_compression' : 'SnappyCompressor'} AND compaction = {'class' : 'SizeTieredCompactionStrategy'};
+insert into sr2 (siteID, listID, partition, emailAddr, emailCrypt, createDate) values ('4ca4f79e-3ab2-41c5-ae42-c7009736f1d5', 34, 1, 'xyzzy', '5fe7719229092cdde4526afbc65c900c', '2014-04-28T14:05:59.236-0500');
+insert into sr2 (siteID, listID, partition, emailAddr, emailCrypt, createDate) values ('4ca4f79e-3ab2-41c5-ae42-c7009736f1d5', 34, 2, 'noname', '97bf28af2ca9c498d6e47237bb8680bf', '2014-04-28T14:05:59.236-0500');
+select emailCrypt, emailAddr from sr2 where siteID = '4ca4f79e-3ab2-41c5-ae42-c7009736f1d5' and listID = 34 and partition = 2 and createDate = '2014-04-28T14:05:59.236-0500' and emailCrypt = '97bf28af2ca9c498d6e47237bb8680bf';
+
+ emailcrypt                       | emailaddr
+----------------------------------+-----------
+ 97bf28af2ca9c498d6e47237bb8680bf |    noname
+
+(1 rows)
+
+select emailCrypt, emailAddr  from sr2 where siteID = '4ca4f79e-3ab2-41c5-ae42-c7009736f1d5' and listID = 34 and partition = 1 and createDate = '2014-04-28T14:05:59.236-0500' and emailCrypt = '5fe7719229092cdde4526afbc65c900c';
+
+
+ emailcrypt                       | emailaddr
+----------------------------------+-----------
+ 5fe7719229092cdde4526afbc65c900c |     xyzzy
+
+(1 rows)
+
+select emailCrypt, emailAddr from sr2 where siteID = '4ca4f79e-3ab2-41c5-ae42-c7009736f1d5' and listID = 34 and partition IN (1,2) and createDate = '2014-04-28T14:05:59.236-0500' and emailCrypt IN ('97bf28af2ca9c498d6e47237bb8680bf','5fe7719229092cdde4526afbc65c900c');
+
+(0 rows)
+
+cqlsh:test_multiple_in> select * from sr2;
+
+ siteid                               | listid | partition | createdate                               | emailcrypt | emailaddr                        | properties | removedate | re
+moveimportid
+--------------------------------------+--------+-----------+------------------------------------------+------------+----------------------------------+------------+------------+---
+-------------
+ 4ca4f79e-3ab2-41c5-ae42-c7009736f1d5 |     34 |         2 | 2014-04-28 14:05:59Central Daylight Time |     noname | 97bf28af2ca9c498d6e47237bb8680bf |       null |       null |
+        null
+ 4ca4f79e-3ab2-41c5-ae42-c7009736f1d5 |     34 |         1 | 2014-04-28 14:05:59Central Daylight Time |      xyzzy | 5fe7719229092cdde4526afbc65c900c |       null |       null |
+        null
+
+(2 rows)
+
+select emailCrypt, emailAddr from sr2 where siteID = '4ca4f79e-3ab2-41c5-ae42-c7009736f1d5' and listID = 34 and partition IN (1,2) and createDate = '2014-04-28T14:05:59.236-0500' and emailCrypt IN ('97bf28af2ca9c498d6e47237bb8680bf','5fe7719229092cdde4526afbc65c900c');
+
+(0 rows)
+
+select emailCrypt, emailAddr from sr2 where siteID = '4ca4f79e-3ab2-41c5-ae42-c7009736f1d5' and listID = 34 and partition = 1 and createDate = '2014-04-28T14:05:59.236-0500' and emailCrypt IN ('97bf28af2ca9c498d6e47237bb8680bf','5fe7719229092cdde4526afbc65c900c');
+
+(0 rows)
+
+select emailCrypt, emailAddr from sr2 where siteID = '4ca4f79e-3ab2-41c5-ae42-c7009736f1d5' and listID = 34 and partition = 2 and createDate = '2014-04-28T14:05:59.236-0500' and emailCrypt IN ('97bf28af2ca9c498d6e47237bb8680bf','5fe7719229092cdde4526afbc65c900c');
+
+(0 rows)
+
+select emailCrypt, emailAddr from sr2 where siteID = '4ca4f79e-3ab2-41c5-ae42-c7009736f1d5' and listID = 34 and partition IN (1,2) and createDate = '2014-04-28T14:05:59.236-0500' and emailCrypt IN ('97bf28af2ca9c498d6e47237bb8680bf','5fe7719229092cdde4526afbc65c900c');
+
+(0 rows)
+
+cqlsh:test_multiple_in> select emailCrypt, emailAddr from sr2 where siteID = '4ca4f79e-3ab2-41c5-ae42-c7009736f1d5' and listID = 34 and partition IN (1,2) and createDate = '2014-04-28T14:05:59.236-0500' and emailCrypt IN ('97bf28af2ca9c498d6e47237bb8680bf');
+
+ emailcrypt                       | emailaddr
+----------------------------------+-----------
+ 97bf28af2ca9c498d6e47237bb8680bf |    noname
+
+(1 rows)
+
+cqlsh:test_multiple_in> select emailCrypt, emailAddr from sr2 where siteID = '4ca4f79e-3ab2-41c5-ae42-c7009736f1d5' and listID = 34 and partition IN (1,2) and createDate = '2014-04-28T14:05:59.236-0500' and emailCrypt IN ('5fe7719229092cdde4526afbc65c900c');
+
+ emailcrypt                       | emailaddr
+----------------------------------+-----------
+ 5fe7719229092cdde4526afbc65c900c |     xyzzy
+
+(1 rows)
+As you can see, when I specify IN on the final primary column, no rows are returned, even when I specify equality on the partition column. If I use IN to constrain the partition column but simple equality on the final column, one row is returned for each of the possible values.
+This appears to be a variation on Cassandra-6327 but with a String as the final primary key column. I initially saw this with a blob as the final primary key column, so the issue is not exclusive to String. When I tried a real simple case with ints throughout, that worked fine.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.17
+Component:
+None
+Label:
+None
+Environment:
+datastax
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Bill Mitchell
+Create date:
+28/Apr/14 22:52
+Update date:
+16/Apr/19 09:31
+Resolved date:
+29/May/14 10:53

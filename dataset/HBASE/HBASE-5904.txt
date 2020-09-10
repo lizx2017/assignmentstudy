@@ -1,0 +1,35 @@
+Summary:
+is_enabled from shell returns differently from pre- and post- HBASE-5155
+Description:
+If I launch an hbase shell that uses HBase and ZooKeeper without HBASE-5155, against HBase servers with HBASE-5155, then is_enabled for a table always returns false even if the table is considered enabled by the servers from the logs. If I then do the same thing but with an HBase shell and ZooKeeper with HBASE-5155, then is_enabled returns as expected.
+If I launch an HBase shell that uses HBase and ZooKeeper without HBASE-5155, against HBase servers also without HBASE-5155, then is_enabled works as you'd expect. But if I then do the same thing but with an HBase shell and ZooKeeper with HBASE-5155, then is_enabled returns false even though the table is considered enabled by the servers from the logs.
+Additionally, if I then try to enable the table from the HBASE-5155-containing shell, it hangs because the ZooKeeper code waits for the ZNode to be updated with "ENABLED" in the data field, but what actually happens is that the ZNode gets deleted since the servers are running without HBASE-5155.
+I think the culprit is that the indication of how a table is considered enabled inside ZooKeeper has changed with HBASE-5155. Before HBASE-5155, a table was considered enabled if the ZNode for it did not exist. After HBASE-5155, a table is considered enabled if the ZNode for it exists and has "ENABLED" in its data. I think the current code is incompatible when running clients and servers where one side has HBASE-5155 and the other side does not.
+Status:
+RESOLVED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.6
+Fix_version:
+0.90.7
+Component:
+Zookeeper
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+David S. Wang
+Reporter:
+David S. Wang
+Create date:
+30/Apr/12 15:45
+Update date:
+27/Jun/12 13:11
+Resolved date:
+27/Jun/12 13:11

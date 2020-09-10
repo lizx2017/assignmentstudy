@@ -1,0 +1,49 @@
+Summary:
+HBase shell still using deprecated methods removed in HBASE-4436
+Description:
+The patch applied in HBASE-4622 (subtask of HBASE-4436) to remove deprecated methods seems to have missed some usage of those methods by the HBase shell. At least src/main/ruby/hbase/admin.rb is still using some of the removed methods, breaking some shell commands:
+hbase(main):007:0> alter 'privatetable', { NAME => 'f1', VERSIONS => 2}
+
+ERROR: wrong number of arguments (3 for 2)
+Backtrace: /usr/lib/hbase/bin/../bin/../lib/ruby/hbase/admin.rb:344:in `alter'
+           org/jruby/RubyArray.java:1572:in `each'
+           /usr/lib/hbase/bin/../bin/../lib/ruby/hbase/admin.rb:317:in `alter'
+           /usr/lib/hbase/bin/../bin/../lib/ruby/shell/commands/alter.rb:79:in `command'
+           /usr/lib/hbase/bin/../bin/../lib/ruby/shell/commands.rb:68:in `format_simple_command'
+           /usr/lib/hbase/bin/../bin/../lib/ruby/shell/commands/alter.rb:78:in `command'
+           /usr/lib/hbase/bin/../bin/../lib/ruby/shell/commands.rb:31:in `command_safe'
+           /usr/lib/hbase/bin/../bin/../lib/ruby/shell/commands.rb:74:in `translate_hbase_exceptions'
+           /usr/lib/hbase/bin/../bin/../lib/ruby/shell/commands.rb:31:in `command_safe'
+           /usr/lib/hbase/bin/../bin/../lib/ruby/shell.rb:110:in `command'
+           (eval):2:in `alter'
+This trace translates to the line:
+  @admin.modifyColumn(table_name, column_name, descriptor)
+which is calling one of the removed methods.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.92.0, 0.94.0
+Fix_version:
+0.92.0
+Component:
+shell
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Helmling
+Reporter:
+Gary Helmling
+Create date:
+16/Nov/11 00:12
+Update date:
+20/Nov/15 11:55
+Resolved date:
+17/Nov/11 23:39

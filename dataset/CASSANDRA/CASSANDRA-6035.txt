@@ -1,0 +1,69 @@
+Summary:
+Prepared statements are broken in native protocol v2
+Description:
+Pulling this ticket over from: https://datastax-oss.atlassian.net/browse/JAVA-177
+Using Java Driver 2.0.0-beta1, this fails:
+Session#prepareStatement("CREATE KEYSPACE test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3}")
+This works with Java Driver 1.0.3.
+The client side stack:
+Caused by: com.datastax.driver.core.exceptions.DriverInternalError: An unexpected error occured server side on /127.0.0.3: java.lang.ArrayIndexOutOfBoundsException: 30
+        at com.datastax.driver.core.Responses$Error.asException(Responses.java:85)
+        at com.datastax.driver.core.Session.toPreparedStatement(Session.java:281)
+        at com.datastax.driver.core.Session.prepare(Session.java:187)
+The server side stack:
+ INFO [FlushWriter:16] 2013-09-14 00:41:02,882 Memtable.java (line 422) Completed flushing /home/blair/.ccm/cassandra-2.0.0-168-gd2c67a1/node3
+/data/system/local/system-local-jb-127-Data.db (80 bytes) for commitlog position ReplayPosition(segmentId=1379132442754, position=712508)
+ INFO [CompactionExecutor:69] 2013-09-14 01:20:42,701 AutoSavingCache.java (line 250) Saved KeyCache (325 items) in 255 ms
+ INFO [CompactionExecutor:70] 2013-09-14 05:20:42,665 AutoSavingCache.java (line 250) Saved KeyCache (325 items) in 218 ms
+ INFO [CompactionExecutor:71] 2013-09-14 09:20:42,678 AutoSavingCache.java (line 250) Saved KeyCache (325 items) in 217 ms
+ERROR [Native-Transport-Requests:3009] 2013-09-14 10:53:38,724 ErrorMessage.java (line 222) Unexpected exception during request
+java.lang.ArrayIndexOutOfBoundsException: 30
+        at org.jboss.netty.buffer.BigEndianHeapChannelBuffer.setInt(BigEndianHeapChannelBuffer.java:98)
+        at org.jboss.netty.buffer.AbstractChannelBuffer.writeInt(AbstractChannelBuffer.java:422)
+        at org.apache.cassandra.cql3.ResultSet$Metadata$Codec.encode(ResultSet.java:368)
+        at org.apache.cassandra.cql3.ResultSet$Metadata$Codec.encode(ResultSet.java:320)
+        at org.apache.cassandra.transport.messages.ResultMessage$Prepared$1.encode(ResultMessage.java:261)
+        at org.apache.cassandra.transport.messages.ResultMessage$Prepared$1.encode(ResultMessage.java:239)
+        at org.apache.cassandra.transport.messages.ResultMessage$1.encode(ResultMessage.java:49)
+        at org.apache.cassandra.transport.messages.ResultMessage$1.encode(ResultMessage.java:39)
+        at org.apache.cassandra.transport.Message$ProtocolEncoder.encode(Message.java:279)
+        at org.jboss.netty.handler.codec.oneone.OneToOneEncoder.doEncode(OneToOneEncoder.java:66)
+        at org.jboss.netty.handler.codec.oneone.OneToOneEncoder.handleDownstream(OneToOneEncoder.java:59)
+        at org.jboss.netty.handler.execution.ExecutionHandler.handleDownstream(ExecutionHandler.java:186)
+        at org.jboss.netty.channel.Channels.write(Channels.java:704)
+        at org.jboss.netty.channel.Channels.write(Channels.java:671)
+        at org.jboss.netty.channel.AbstractChannel.write(AbstractChannel.java:248)
+        at org.apache.cassandra.transport.Message$Dispatcher.messageReceived(Message.java:311)
+        at org.jboss.netty.handler.execution.ChannelUpstreamEventRunnable.doRun(ChannelUpstreamEventRunnable.java:43)
+        at org.jboss.netty.handler.execution.ChannelEventRunnable.run(ChannelEventRunnable.java:67)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:724)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.1
+Component:
+None
+Label:
+None
+Environment:
+ubuntu, java 1.7
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Blair Zajac
+Create date:
+16/Sep/13 18:48
+Update date:
+16/Apr/19 09:32
+Resolved date:
+17/Sep/13 13:48

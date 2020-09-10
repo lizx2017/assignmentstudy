@@ -1,0 +1,61 @@
+Summary:
+Blocking for ten minutes at a time
+Description:
+I've been testing running biggish MR jobs uploading into hbase. My jobs consistently fail with child task timing out its ten minute period. Adding logging, was able to see that we're actual stuck in a commit. Following the thread of the row we're committing, I see this in the log:
+...
+2008-09-03 18:37:03,446 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Flush requested on TestTable,0029377106,1220466998108
+2008-09-03 18:37:03,446 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memcache flush for region TestTable,0029377106,1220466998108. Current region memcache size 64.0m
+2008-09-03 18:37:03,446 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 1 on 60020' on region TestTable,0029377106,1220466998108: Memcache size 64.0m is >= than blocking 64.0m size
+2008-09-03 18:37:13,450 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region TestTable,0029377106,1220466998108 'IPC Server handler 1 on 60020'
+2008-09-03 18:37:16,089 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 16 on 60020' on region TestTable,0029377106,1220466998108: Memcache size 64.0m is >= than blocking 64.0m size
+2008-09-03 18:37:16,090 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 1 on 60020' on region TestTable,0029377106,1220466998108: Memcache size 64.0m is >= than blocking 64.0m size
+2008-09-03 18:37:16,090 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 4 on 60020' on region TestTable,0029377106,1220466998108: Memcache size 64.0m is >= than blocking 64.0m size
+2008-09-03 18:37:16,090 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 6 on 60020' on region TestTable,0029377106,1220466998108: Memcache size 64.0m is >= than blocking 64.0m size
+2008-09-03 18:37:16,090 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 2 on 60020' on region TestTable,0029377106,1220466998108: Memcache size 64.0m is >= than blocking 64.0m size
+2008-09-03 18:37:16,090 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 12 on 60020' on region TestTable,0029377106,1220466998108: Memcache size 64.0m is >= than blocking 64.0m size
+2008-09-03 18:37:16,090 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 9 on 60020' on region TestTable,0029377106,1220466998108: Memcache size 64.0m is >= than blocking 64.0m size
+2008-09-03 18:37:16,091 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 7 on 60020' on region TestTable,0029377106,1220466998108: Memcache size 64.0m is >= than blocking 64.0m size
+2008-09-03 18:37:21,984 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Finished memcache flush for region TestTable,0029377106,1220466998108 in 18538ms, sequence id=2852547, compaction requested=false
+2008-09-03 18:47:06,241 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memcache flush for region TestTable,0029377106,1220466998108. Current region memcache size 64.0m
+2008-09-03 18:47:10,031 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Finished memcache flush for region TestTable,0029377106,1220466998108 in 3790ms, sequence id=2919208, compaction requested=true
+2008-09-03 18:47:10,031 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region TestTable,0029377106,1220466998108 'IPC Server handler 9 on 60020'
+2008-09-03 18:47:10,031 DEBUG org.apache.hadoop.hbase.regionserver.CompactSplitThread: Compaction requested for region: TestTable,0029377106,1220466998108
+2008-09-03 18:47:10,031 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region TestTable,0029377106,1220466998108 'IPC Server handler 12 on 60020'
+2008-09-03 18:47:10,032 INFO org.apache.hadoop.hbase.regionserver.HRegion: starting compaction on region TestTable,0029377106,1220466998108
+2008-09-03 18:47:10,032 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region TestTable,0029377106,1220466998108 'IPC Server handler 7 on 60020'
+2008-09-03 18:47:10,035 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region TestTable,0029377106,1220466998108 'IPC Server handler 6 on 60020'
+2008-09-03 18:47:10,035 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region TestTable,0029377106,1220466998108 'IPC Server handler 4 on 60020'
+2008-09-03 18:47:10,035 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region TestTable,0029377106,1220466998108 'IPC Server handler 2 on 60020'
+2008-09-03 18:47:10,037 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region TestTable,0029377106,1220466998108 'IPC Server handler 16 on 60020'
+2008-09-03 18:47:10,043 INFO org.apache.hadoop.hbase.regionserver.HRegion: Unblocking updates for region TestTable,0029377106,1220466998108 'IPC Server handler 1 on 60020'
+2008-09-03 18:47:18,403 INFO org.apache.hadoop.hbase.regionserver.HRegion: compaction completed on region TestTable,0029377106,1220466998108 in 8sec
+...
+Notice how we're blocked for ten minutes until new flush runs. My guess is that the flush that is going on concurrent with the blocking is clearing the flag
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+03/Sep/08 21:37
+Update date:
+21/Aug/09 23:00
+Resolved date:
+21/Aug/09 23:00

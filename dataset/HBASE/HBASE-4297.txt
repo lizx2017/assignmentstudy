@@ -1,0 +1,45 @@
+Summary:
+TableMapReduceUtil overwrites user supplied options
+Description:
+Job configuration is overwritten by hbase-default and hbase-site in TableMapReduceUtil.initTable(Mapper|Reducer)Job, causing unexpected behavior in the following code:
+Configuration conf = HBaseConfiguration.create();
+
+// change keyvalue size
+conf.setInt("hbase.client.keyvalue.maxsize", 20971520);
+
+Job job = new Job(conf, ...);
+
+TableMapReduceUtil.initTableMapperJob(...);
+
+// the job doesn't have the option changed, uses it from hbase-site or hbase-default
+job.submit();
+Although in this case it could be fixed by moving the set() after initTableMapperJob(), in case where user wants to change some option using GenericOptionsParser and -D this is impossible, making this cool feature useless.
+In the 0.20.x era this code behaved as expected. The solution of this problem should be that we don't overwrite the options, but just read them if they are missing.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.5
+Component:
+mapreduce
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jan Lukavsky
+Create date:
+30/Aug/11 07:43
+Update date:
+20/Nov/15 11:54
+Resolved date:
+08/Sep/11 15:53

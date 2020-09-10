@@ -1,0 +1,93 @@
+Summary:
+Standalone HBase-0.92.1 fails to start master when coexisting with Hadoop-1.0.1, unnecessarily trying connecting to namenode.
+Description:
+I want to run a standalone HBase instance for development test purpose, which requires no HDFS. It works well on my server. However, when I add a hadoop directory into my server, HBase seems to notice that change and try to connect to Hadoop's namenode. The failures of HBase's connecting to Hadoop NameNode cause MHBase fail to start.
+I extracted HBase-0.92.1 to my home directory:
+~/hbase -> ~/hbase-0.92.1
+In configuration file ~/hbase/config/hbase-site.xml, I set HBase to standalone mode and specify the data directory it uses.
+<configuration>
+<property>
+<name>hbase.rootdir</name>
+<value>file:///home/jianwen/.hbase.data</value>
+</property>
+</configuration>
+Then I start HBase service with start-hbase.sh, enter HBase shell. Tests go well.
+But things change when I install Hadoop into the same server. Hadoop-1.0.1 lies in my home directory too.
+~/hadoop -> ~/hadoop-1.0.1
+In configuration file ~/hadoop/config/core-site.xml, I set Hadoop to run in a pseudo distributed environment and specify the data directory for HDFS.
+<configuration>
+<property>
+<name>hadoop.tmp.dir</name>
+<value>/home/jianwen/.hdfs.data</value>
+<description>A base for other temporary directories.</description>
+</property>
+<property>
+<name>fs.default.name</name>
+<value>hdfs://localhost:9000</value>
+</property>
+</configuration>
+Then I format namenode, start hadoop service, run some MapReduce test programs, such as Pi, grep, et al. Hadoop works on my pesudo distributed environment. Then I stop hadoop service.
+Since I add hadoop in my home directory, HBase fails to start. HBase log shows that HBase tries to connect to Hadoop NameNode when starting up, then fails. That's ridiculous because HBase in standalone mode should have NOTHING about NameNode and HDFS.
+In summary, there may be two problems:
+Standalone HBase attempts to connect to Hadoop NameNode at starting up when hadoop directory is co-located in home.
+Not stating in HBase's configuration files, HBase seems to implicitly search hadoop directory around it and read the configuration information, such as NameNode in file core-site.xml. This unclear behavior confuses me a lot.
+Log for standalone HBase starting up:
+...
+2012-04-22 11:50:41,078 DEBUG org.apache.hadoop.hbase.master.LogCleaner: Add log cleaner in chain: org.apache.hadoop.hbase.master.TimeToLiveLogCleaner
+2012-04-22 11:50:41,115 INFO org.mortbay.log: Logging to org.slf4j.impl.Log4jLoggerAdapter(org.mortbay.log) via org.mortbay.log.Slf4jLog
+2012-04-22 11:50:41,160 INFO org.apache.hadoop.http.HttpServer: Added global filtersafety (class=org.apache.hadoop.http.HttpServer$QuotingInputFilter)
+2012-04-22 11:50:41,165 INFO org.apache.hadoop.http.HttpServer: Port returned by webServer.getConnectors()[0].getLocalPort() before open() is -1. Opening the listener on 60010
+2012-04-22 11:50:41,165 INFO org.apache.hadoop.http.HttpServer: listener.getLocalPort() returned 60010 webServer.getConnectors()[0].getLocalPort() returned 60010
+2012-04-22 11:50:41,165 INFO org.apache.hadoop.http.HttpServer: Jetty bound to port 60010
+2012-04-22 11:50:41,165 INFO org.mortbay.log: jetty-6.1.26
+2012-04-22 11:50:41,548 INFO org.mortbay.log: Started SelectChannelConnector@0.0.0.0:60010
+2012-04-22 11:50:41,548 DEBUG org.apache.hadoop.hbase.master.HMaster: Started service threads
+2012-04-22 11:50:41,790 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 0 time(s).
+2012-04-22 11:50:42,792 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 1 time(s).
+2012-04-22 11:50:43,050 INFO org.apache.hadoop.hbase.master.ServerManager: Waiting on regionserver(s) to checkin
+2012-04-22 11:50:43,794 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 2 time(s).
+2012-04-22 11:50:44,551 INFO org.apache.hadoop.hbase.master.ServerManager: Waiting on regionserver(s) to checkin
+2012-04-22 11:50:44,795 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 3 time(s).
+2012-04-22 11:50:45,796 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 4 time(s).
+2012-04-22 11:50:46,052 INFO org.apache.hadoop.hbase.master.ServerManager: Waiting on regionserver(s) to checkin
+2012-04-22 11:50:46,798 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 5 time(s).
+2012-04-22 11:50:47,554 INFO org.apache.hadoop.hbase.master.ServerManager: Waiting on regionserver(s) to checkin
+2012-04-22 11:50:47,800 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 6 time(s).
+2012-04-22 11:50:48,801 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 7 time(s).
+2012-04-22 11:50:49,055 INFO org.apache.hadoop.hbase.master.ServerManager: Waiting on regionserver(s) to checkin
+2012-04-22 11:50:49,803 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 8 time(s).
+2012-04-22 11:50:50,556 INFO org.apache.hadoop.hbase.master.ServerManager: Waiting on regionserver(s) to checkin
+2012-04-22 11:50:50,805 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 9 time(s).
+2012-04-22 11:50:50,806 ERROR org.apache.hadoop.hbase.master.HMasterCommandLine: Failed to start master
+java.net.ConnectException: Call to localhost/127.0.0.1:9000 failed on connection exception: java.net.ConnectException: Connection refused
+at org.apache.hadoop.ipc.Client.wrapException(Client.java:1095)
+at org.apache.hadoop.ipc.Client.call(Client.java:1071)
+...
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+0.92.1
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+linux, java
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jianwen WEI
+Create date:
+22/Apr/12 06:03
+Update date:
+05/Aug/14 20:12
+Resolved date:
+21/Aug/13 20:45

@@ -1,0 +1,44 @@
+Summary:
+size of row in spanned index entries does not include key bytes
+Description:
+from Anty on the mailing list,
+In source code of 0.6.1 ,in SSTableWriter,
+private void afterAppend(DecoratedKey decoratedKey, long dataPosition, int dataSize) throws IOException
+{ String diskKey = partitioner.convertToDiskFormat(decoratedKey); bf.add(diskKey); lastWrittenKey = decoratedKey; long indexPosition = indexFile.getFilePointer(); indexFile.writeUTF(diskKey); indexFile.writeLong(dataPosition); if (logger.isTraceEnabled()) logger.trace("wrote " + decoratedKey + " at " + dataPosition); if (logger.isTraceEnabled()) logger.trace("wrote index of " + decoratedKey + " at " + indexPosition); indexSummary.maybeAddEntry(decoratedKey, dataPosition, dataSize, indexPosition, indexFile.getFilePointer()); }
+the value of "dataSize" is the length of value( column family) ,not including the length of key.
+but in the method loadIndexFile() of SStableReader
+...
+else
+{ input.readUTF(); nextDataPosition = input.readLong(); input.seek(nextIndexPosition); }
+indexSummary.maybeAddEntry(decoratedKey, dataPosition, nextDataPosition - dataPosition, indexPosition, nextIndexPosition);
+}
+indexSummary.complete();
+the value of nextDataPosition - dataPosition is the length of key and value ,not just the length of value .
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jonathan Ellis
+Create date:
+05/May/10 22:54
+Update date:
+16/Apr/19 09:33
+Resolved date:
+10/May/10 14:36

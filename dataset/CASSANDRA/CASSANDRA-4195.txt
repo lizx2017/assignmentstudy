@@ -1,0 +1,69 @@
+Summary:
+error in log when upgrading multi-node cluster to 1.1
+Description:
+I upgraded a cluster from 1.0.9 to 1.1.0. The following message shows up in the logs for all but the first node.
+ERROR [GossipStage:1] 2012-04-30 07:37:06,986 AbstractCassandraDaemon.java (line 139) Fatal exception in thread Thread[GossipStage:1,5,main]
+java.lang.UnsupportedOperationException: Not a time-based UUID                  
+    at java.util.UUID.timestamp(UUID.java:331)                                  
+    at org.apache.cassandra.service.MigrationManager.updateHighestKnown(MigrationManager.java:121)
+    at org.apache.cassandra.service.MigrationManager.rectify(MigrationManager.java:99)
+    at org.apache.cassandra.service.MigrationManager.onAlive(MigrationManager.java:83)
+    at org.apache.cassandra.gms.Gossiper.markAlive(Gossiper.java:806)           
+    at org.apache.cassandra.gms.Gossiper.handleMajorStateChange(Gossiper.java:849)
+    at org.apache.cassandra.gms.Gossiper.applyStateLocally(Gossiper.java:908)   
+    at org.apache.cassandra.gms.GossipDigestAck2VerbHandler.doVerb(GossipDigestAck2VerbHandler.java:62)
+    at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:59)
+    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+    at java.lang.Thread.run(Thread.java:679)
+this dtest demonstrates the issue. It was added to the cassandra-dtest repository as upgrade_to_11_test:
+from dtest import Tester, debug 
+from tools import * 
+ 
+class TestUpgradeTo1_1(Tester): 
+ 
+    def upgrade_test(self): 
+        self.num_rows = 0 
+        cluster = self.cluster 
+ 
+        # Forcing cluster version on purpose 
+        cluster.set_cassandra_dir(cassandra_version='1.0.9') 
+ 
+        cluster.populate(3).start() 
+        time.sleep(1) 
+ 
+        for node in cluster.nodelist():     
+            node.flush() 
+            time.sleep(.5) 
+            node.stop(wait_other_notice=True) 
+            node.set_cassandra_dir(cassandra_version='1.1.0') 
+            node.start(wait_other_notice=True) 
+            time.sleep(.5)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.11
+Component:
+None
+Label:
+None
+Environment:
+ccm, dtest, ubuntu
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Tyler Patterson
+Create date:
+30/Apr/12 14:17
+Update date:
+16/Apr/19 09:32
+Resolved date:
+11/Jul/12 22:00

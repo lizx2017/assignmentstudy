@@ -1,0 +1,36 @@
+Summary:
+memtable.updateLiveRatio() is blocking, causing insane latencies for writes
+Description:
+Reproduce by just starting a fresh cassandra with a heap large enough for live ratio calculation (which is O) to be insanely slow, and then running ./bin/stress -d host -n100000000 -t10. With a large enough heap and default flushing behavior this is bad enough that stress gets timeouts.
+Example ("blocked for" is my debug log added around submit()):
+ INFO [MemoryMeter:1] 2012-03-09 15:07:30,857 Memtable.java (line 198) CFS(Keyspace='Keyspace1', ColumnFamily='Standard1') liveRatio is 8.89014894083727 (just-counted was 8.89014894083727).  calculation took 28273ms for 1320245 columns
+ WARN [MutationStage:8] 2012-03-09 15:07:30,857 Memtable.java (line 209) submit() blocked for: 231135
+The calling code was written assuming a RejectedExecutionException is thrown, but it's not because DebuggableThreadPoolExecutor installs a blocking rejection handler.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Peter Schuller
+Reporter:
+Peter Schuller
+Create date:
+09/Mar/12 15:10
+Update date:
+16/Apr/19 09:32
+Resolved date:
+11/Apr/12 18:27

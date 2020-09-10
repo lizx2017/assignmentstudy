@@ -1,0 +1,39 @@
+Summary:
+Double play of OpenedRegionHandler for a single region; fails second time through and aborts Master
+Description:
+Here is master log with annotations: http://people.apache.org/~stack/master.txt
+Region in question is:
+b8827a67a9d446f345095d25e1f375f7
+The running code is doctored in that I've added in a bit of logging – zk in particular – and I've also removed what I thought was a provocation of this condition, reassign inside in an assign if server has gone away when we try the open rpc (Turns out we have the condition even w/o this code in place).
+The log starts where the region in question timesout in RIT.
+We assign it to 186.
+Notice how we see 'Handling transition' for this region TWICE. This means two OpenedRegionHandlers will be scheduled – and so the failure to delete a znode already gone.
+As best I can tell, the watcher for this region is triggered once only – which is odd because how then the double scheduling of OpenedRegionHandler but also, why am I not seeing OPENING, OPENING, OPENED and only what I presume is an OPENED?
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+stack
+Create date:
+27/Oct/10 05:53
+Update date:
+20/Nov/15 12:41
+Resolved date:
+28/Oct/10 21:33

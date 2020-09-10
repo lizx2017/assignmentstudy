@@ -1,0 +1,90 @@
+Summary:
+using relative truststore path, per client_encryption_options example, throws java.io.FileNotFoundException
+Description:
+Reading the example given in the default cassandra.yaml, it seems the truststore path accepts relative paths. However, doing so results in a
+file not found exception. Using the absolute path works without issue.
+Config snippet:
+# enable or disable client/server encryption.
+client_encryption_options:
+    enabled: true
+    #keystore: conf/.keystore
+    keystore: /etc/cassandra/conf/cassandra-02/keystore
+    #keystore_password: cassandra
+    keystore_password: password
+    require_client_auth: true
+    # Set trustore and truststore_password if require_client_auth is true
+    #truststore: conf/.truststore
+    #truststore_password: cassandra
+    truststore: /etc/cassandra/conf/cassandra-02/truststore
+    truststore_password: password
+    # More advanced defaults below:
+    # protocol: TLS
+    # algorithm: SunX509
+    # store_type: JKS
+    # cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA]
+Log snippet:
+ INFO [main] 2014-09-10 18:53:24,118 CassandraDaemon.java (line 575) No gossip backlog; proceeding
+DEBUG [main] 2014-09-10 18:53:24,166 Slf4JLogger.java (line 32) Using select timeout of 500
+DEBUG [main] 2014-09-10 18:53:24,166 Slf4JLogger.java (line 32) Epoll-bug workaround enabled = false
+ INFO [main] 2014-09-10 18:53:24,201 Server.java (line 147) Enabling encrypted CQL connections between client and server
+ERROR [main] 2014-09-10 18:53:24,255 CassandraDaemon.java (line 513) Exception encountered during startup
+java.lang.RuntimeException: Failed to setup secure pipeline
+        at org.apache.cassandra.transport.Server$SecurePipelineFactory.<init>(Server.java:289)
+        at org.apache.cassandra.transport.Server.run(Server.java:148)
+        at org.apache.cassandra.transport.Server.start(Server.java:108)
+        at org.apache.cassandra.service.CassandraDaemon.start(CassandraDaemon.java:443)
+        at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:509)
+        at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:585)
+Caused by: java.io.IOException: Error creating the initializing the SSL Context
+        at org.apache.cassandra.security.SSLFactory.createSSLContext(SSLFactory.java:124)
+        at org.apache.cassandra.transport.Server$SecurePipelineFactory.<init>(Server.java:285)
+        ... 5 more
+Caused by: java.io.FileNotFoundException: conf/cassandra-02/truststore (No such file or directory)
+        at java.io.FileInputStream.open(Native Method)
+        at java.io.FileInputStream.<init>(FileInputStream.java:146)
+        at java.io.FileInputStream.<init>(FileInputStream.java:101)
+        at org.apache.cassandra.security.SSLFactory.createSSLContext(SSLFactory.java:105)
+        ... 6 more
+ INFO [StorageServiceShutdownHook] 2014-09-10 18:53:24,269 Gossiper.java (line 1279) Announcing shutdown
+DEBUG [GossipTasks:1] 2014-09-10 18:53:24,660 DebuggableThreadPoolExecutor.java (line 245) Task cancelled
+java.util.concurrent.CancellationException
+        at java.util.concurrent.FutureTask.report(FutureTask.java:121)
+        at java.util.concurrent.FutureTask.get(FutureTask.java:188)
+        at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor.extractThrowable(DebuggableThreadPoolExecutor.java:237)
+        at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor.logExceptionsAfterExecute(DebuggableThreadPoolExecutor.java:201)
+        at org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor.afterExecute(DebuggableScheduledThreadPoolExecutor.java:46)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1153)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:745)
+ INFO [StorageServiceShutdownHook] 2014-09-10 18:53:26,269 MessagingService.java (line 683) Waiting for messaging service to quiesce
+DEBUG [StorageServiceShutdownHook] 2014-09-10 18:53:26,270 MessagingService.java (line 928) Closing accept() thread
+DEBUG [ACCEPT-cassandra-02.adaptiveapps.com/192.168.10.205] 2014-09-10 18:53:26,272 MessagingService.java (line 909) Asynchronous close seen by server thread
+ INFO [ACCEPT-cassandra-02.adaptiveapps.com/192.168.10.205] 2014-09-10 18:53:26,272 MessagingService.java (line 923) MessagingService has terminated the accept() thread
+Status:
+OPEN
+Priority:
+Low
+Resolution:
+Unresolved
+Affects_version:
+
+Fix_version:
+None
+Component:
+Local/Config
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+satish babu krishnamoorthy
+Reporter:
+Chester Knapp
+Create date:
+10/Sep/14 19:20
+Update date:
+16/Apr/19 09:31
+Resolved date:
+

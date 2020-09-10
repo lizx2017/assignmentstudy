@@ -1,0 +1,76 @@
+Summary:
+Repair range validation is too strict
+Description:
+From what I can tell the calculation (using the -pr option) and validation of tokens for repairing ranges is broken. Or at least should be improved. Using an example with ccm:
+Nodetool ring:
+Datacenter: dc1
+==========
+Address    Rack        Status State   Load            Owns                Token
+                                                                          -10
+127.0.0.1  r1          Up     Normal  188.96 KB       50.00%              -9223372036854775808
+127.0.0.2  r1          Up     Normal  194.77 KB       50.00%              -10
+
+Datacenter: dc2
+==========
+Address    Rack        Status State   Load            Owns                Token
+                                                                          0
+127.0.0.4  r1          Up     Normal  160.58 KB       0.00%               -9223372036854775798
+127.0.0.3  r1          Up     Normal  139.46 KB       0.00%               0
+Schema:
+CREATE KEYSPACE system_traces WITH replication = {
+  'class': 'NetworkTopologyStrategy',
+  'dc2': '2',
+  'dc1': '2'
+};
+Repair -pr:
+[Nicks-MacBook-Pro:21:35:58 cassandra-2.0] cassandra$ bin/nodetool -p 7100 repair -pr system_traces
+[2014-05-28 21:36:01,977] Starting repair command #12, repairing 1 ranges for keyspace system_traces
+[2014-05-28 21:36:02,207] Repair session f984d290-e6d9-11e3-9edc-5f8011daec21 for range (0,-9223372036854775808] finished
+[2014-05-28 21:36:02,207] Repair command #12 finished
+[Nicks-MacBook-Pro:21:36:02 cassandra-2.0] cassandra$ bin/nodetool -p 7200 repair -pr system_traces
+[2014-05-28 21:36:14,086] Starting repair command #1, repairing 1 ranges for keyspace system_traces
+[2014-05-28 21:36:14,406] Repair session 00bd45b0-e6da-11e3-98fc-5f8011daec21 for range (-9223372036854775798,-10] finished
+[2014-05-28 21:36:14,406] Repair command #1 finished
+Note that repairing both nodes in dc1, leaves very small ranges unrepaired. For example (-10,0]. Repairing the 'primary range' in dc2 will repair those small ranges. Maybe that is the behavior we want but it seems counterintuitive.
+The behavior when manually trying to repair the full range of 127.0.0.01 definitely needs improvement though.
+Repair command:
+[Nicks-MacBook-Pro:21:50:44 cassandra-2.0] cassandra$ bin/nodetool -p 7100 repair -st -10 -et -9223372036854775808 system_traces
+[2014-05-28 21:50:55,803] Starting repair command #17, repairing 1 ranges for keyspace system_traces
+[2014-05-28 21:50:55,804] Starting repair command #17, repairing 1 ranges for keyspace system_traces
+[2014-05-28 21:50:55,804] Repair command #17 finished
+[Nicks-MacBook-Pro:21:50:56 cassandra-2.0] cassandra$ echo $?
+1
+system.log:
+ERROR [Thread-96] 2014-05-28 21:40:05,921 StorageService.java (line 2621) Repair session failed:
+java.lang.IllegalArgumentException: Requested range intersects a local range but is not fully contained in one; this would lead to imprecise repair
+The actual output of the repair command doesn't really indicate that there was an issue. Although the command does return with a non zero exit status.
+The error here is invisible if you are using the synchronous jmx repair api. It will appear as though the repair completed successfully.
+Personally, I believe that should be a valid repair command. For the system_traces keyspace, 127.0.0.1 is responsible for this range (and I would argue the 'primary range' of the node).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.9
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Nick Bailey
+Create date:
+29/May/14 02:58
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Jun/14 16:35

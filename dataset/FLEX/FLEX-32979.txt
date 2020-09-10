@@ -1,0 +1,89 @@
+Summary:
+Plotting a curved line in a chart will throw a run time error if all of the data points in a data provider have the same x/y values
+Description:
+Steps to reproduce:
+1. Run following code
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx" >
+<mx:LineChart width="100%" height="100%">
+<mx:series>
+<mx:LineSeries form="curve" xField="a" yField="b" dataProvider="{[
+{a:1,b:1}
+,
+{a:1,b:1}
+]}"/>
+</mx:series>
+</mx:LineChart>
+</s:Application>
+Actual Results:
+TypeError: Error #1010: A term is undefined and has no properties.
+at mx.charts.chartClasses::GraphicsUtilities$/drawPolyLine()[E:\dev\4.x\frameworks\projects\datavisualization\src\mx\charts\chartClasses\GraphicsUtilities.as:327]
+at mx.charts.renderers::LineRenderer/updateDisplayList()[E:\dev\4.x\frameworks\projects\datavisualization\src\mx\charts\renderers\LineRenderer.as:119]
+at mx.skins::ProgrammaticSkin/validateDisplayList()[E:\dev\4.x\frameworks\projects\framework\src\mx\skins\ProgrammaticSkin.as:503]
+at mx.managers::LayoutManager/validateDisplayList()[E:\dev\4.x\frameworks\projects\framework\src\mx\managers\LayoutManager.as:663]
+at mx.managers::LayoutManager/doPhasedInstantiation()[E:\dev\4.x\frameworks\projects\framework\src\mx\managers\LayoutManager.as:718]
+at mx.managers::LayoutManager/doPhasedInstantiationCallback()[E:\dev\4.x\frameworks\projects\framework\src\mx\managers\LayoutManager.as:1072]
+Expected Results:
+No RTE, Chart to display.
+Workaround (if any):
+current workaround is to set our own line renderer on line series instances, which traps the exception. This fix is not ideal since there is a small chance we may end up swallowing genuine errors with problems in our own code/data:
+public class CustomLineRenderer extends LineRenderer
+{
+override protected function updateDisplayList(unscaledWidth:Number,
+unscaledHeight:Number):void
+{
+// The line renderer uses mx.charts.chartClasses.GraphicsUtilities to plot a curve.
+// This class has a bug when rendering curves, if it manages to receive render data too
+// early in the creation of the chart.
+//
+// Our work around here is to trap the runtime error, since the chart will successfully render
+// on the next frame.
+try
+{ super.updateDisplayList(unscaledWidth,unscaledHeight); }
+catch(e:Error)
+{ // We are swallowing this error so we don't take out the entire layout manager. }
+}
+}
+Identified Cause:
+The drawPolyLine method in mx.charts.chartClassess.GraphicsUtilities class contains a loop to skip over coincident points when dealing with curved lines:
+start = originalStart;
+var innerEnd:int = end - incr;
+// Check for coincident points at the head of the list.
+// We'll skip over any of those
+while (start != end)
+{
+if (pts[start + incr][hProp] != pts[start][hProp] ||
+pts[start + incr][vProp] != pts[start][vProp])
+{ break; }
+start += incr;
+}
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.5 (
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+27/May/11 02:37
+Update date:
+11/Sep/11 23:29
+Resolved date:
+

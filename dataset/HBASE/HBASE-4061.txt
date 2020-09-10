@@ -1,0 +1,69 @@
+Summary:
+getTableDirs is missing directories to skip
+Description:
+The getTableDirs() is missing extra checks:
+  public static List<Path> getTableDirs(final FileSystem fs, final Path rootdir)
+  throws IOException {
+    // presumes any directory under hbase.rootdir is a table
+    FileStatus [] dirs = fs.listStatus(rootdir, new DirFilter(fs));
+    List<Path> tabledirs = new ArrayList<Path>(dirs.length);
+    for (FileStatus dir: dirs) {
+      Path p = dir.getPath();
+      String tableName = p.getName();
+      if (tableName.equals(HConstants.HREGION_LOGDIR_NAME) ||
+          tableName.equals(Bytes.toString(HConstants.ROOT_TABLE_NAME)) ||
+          tableName.equals(Bytes.toString(HConstants.META_TABLE_NAME)) ||
+          tableName.equals(HConstants.HREGION_OLDLOGDIR_NAME) ) {
+        continue;
+      }
+      tabledirs.add(p);
+    }
+    return tabledirs;
+  }
+It needs to also skip
+.tmp
+.corrupt
+splitlog
+A broader check should be performed to make sure it is all covered.
+The missing .corrupt check causes for example:
+2011-07-05 11:34:33,364 WARN org.apache.hadoop.hbase.master.HMaster: Failed getting all descriptors
+java.io.FileNotFoundException: No status for hdfs://localhost:8020/hbase/.corrupt
+        at org.apache.hadoop.hbase.util.FSUtils.getTableInfoModtime(FSUtils.java:888)
+        at org.apache.hadoop.hbase.util.FSTableDescriptors.get(FSTableDescriptors.java:122)
+        at org.apache.hadoop.hbase.util.FSTableDescriptors.getAll(FSTableDescriptors.java:149)
+        at org.apache.hadoop.hbase.master.HMaster.getHTableDescriptors(HMaster.java:1429)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Server.call(WritableRpcEngine.java:312)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1065)
+Not sure yet why others do not have this issue, could be me being on trunk and fiddling?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+util
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Lars George
+Create date:
+05/Jul/11 09:43
+Update date:
+20/Nov/15 11:54
+Resolved date:
+06/Jul/11 20:44

@@ -1,0 +1,45 @@
+Summary:
+Fix for HBASE-6160, META entries from daughters can be deleted before parent entries, shouldn't compare HRegionInfo's
+Description:
+Our nightlies discovered that the patch for HBASE-6160 did not actually fix the issue of "META entries from daughters can be deleted before parent entries". Instead of reopening the HBASE-6160, it is cleaner to track it here.
+The original issue is:
+HBASE-5986 fixed and issue, where the client sees the META entry for the parent, but not the children. However, after the fix, we have seen the following issue in tests:
+Region A is split to -> B, C
+Region B is split to -> D, E
+After some time, META entry for B is deleted since it is not needed anymore, but META entry for Region A stays in META (C still refers it). In this case, the client throws RegionOfflineException for B.
+The problem with the fix seems to be that we keep and compare HRegionInfo's in the HashSet at CatalogJanitor.java#scan(), but HRI that are compared are not equal.
+HashSet<HRegionInfo> parentNotCleaned = new HashSet<HRegionInfo>(); //regions whose parents are still around
+      for (Map.Entry<HRegionInfo, Result> e : splitParents.entrySet()) {
+        if (!parentNotCleaned.contains(e.getKey()) && cleanParent(e.getKey(), e.getValue())) {
+          cleaned++;
+        } else {
+...
+In the above case, Meta row for region A will contain a serialized version of B that is not offline. However Meta row for region B will contain a serialized version of B that is offline (MetaEditor.offlineParentInMeta() does that). So the deserialized version we put to HashSet and the deserialized version we query contains() from HashSet are different in the offline field, thus HRI.equals() fail.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.1, 0.94.2, 0.95.2
+Fix_version:
+0.94.2
+Component:
+Client, regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Enis Soztutar
+Reporter:
+Enis Soztutar
+Create date:
+18/Aug/12 01:45
+Update date:
+07/Apr/13 04:49
+Resolved date:
+25/Aug/12 00:23

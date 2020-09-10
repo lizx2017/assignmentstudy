@@ -1,0 +1,41 @@
+Summary:
+Regions not assigned after HBASE-2694 went in
+Description:
+Looking into the Hudson failure, http://hudson.zones.apache.org/hudson/view/HBase/job/HBase-TRUNK/1339/ at the failing org.apache.hadoop.hbase.client.TestFromClientSide.testRegionCachePreWarm test, I seem to be seeing a case of regions being added to UNASSIGNED up in zk but then subsequently nothing. Adjacent regions are being similarily added but these are being assigned out. Somethings up. It seems to be causing the above test failure.
+Its hard to see in the logs....
+Grep for this line:
+LOG.info("Starting testRegionCachePreWarm");
+The unit test then does TEST_UTIL.createMultiRegions.
+You'll see all regions being created and then they UNASSIGNED znodes are created. Grep for the 'eee' row from testCachePrewarm table (be careful, there is also logging for testCachePrewarm2 in this log).
+The last thing you'll see is:
+2010-06-19 19:34:39,628 DEBUG [RegionManager.metaScanner] master.RegionManager(1006): Created UNASSIGNED zNode testCachePrewarm,eee,1276976076048.557068905bf2abfe84a5e49953a23c02. in state M2ZK_REGION_OFFLINE
+For ddd and fff, you'll see those assigned out.
+Maybe the test is not hanging about long enough but wonder why its skipped?
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Todd Lipcon
+Reporter:
+stack
+Create date:
+20/Jun/10 02:31
+Update date:
+20/Nov/15 12:40
+Resolved date:
+22/Jun/10 00:32

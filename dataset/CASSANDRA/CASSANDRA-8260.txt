@@ -1,0 +1,46 @@
+Summary:
+Replacing a node can leave the old node in system.peers on the replacement
+Description:
+Here's what happens:
+Nodes: X, Y, Z. Z replaces Y which is dead.
+0. Replacement finishes
+1. Z removes Y, quarantines and evicts (that is, removes the state)
+2. X sees the replacement, quarantines, but keeps state
+3. 60s elapses
+4. quarantine on Z expires
+5. X sends syn to Z, repopulates Y endpoint state and persists to system.peers, but Z sees the conflict and does not update tMD for Y.
+6. FatClient timer on Z starts counting.
+7. quarantine on X expires, fat client has been idle, evicts and re-quarantines
+8. 30s elapses
+9. Fat client timeout occurs on Z, evicts and re-quarantines
+10. 30s elapses
+11. quarantine on X expires, so it never gets repopulated with Y since Z already removed it
+It's important to note here that there is a small but relevant gap between steps 1 and 2, which then correlates to steps 4 and 5, and step 5 is where the problem occurs. This also explains why it looks related to RING_DELAY, since the quarantine is RING_DELAY * 2, but Y never quarantines and the fat client timeout is RING_DELAY, effectively making the discrepancy near equal to RING_DELAY in the end.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.12
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Brandon Williams
+Create date:
+05/Nov/14 19:10
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Dec/14 16:38

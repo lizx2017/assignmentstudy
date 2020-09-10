@@ -1,0 +1,60 @@
+Summary:
+TestReplicationQueueFailover (and Compressed) can fail because the recovered queue gets stuck on ClosedByInterruptException
+Description:
+Looking at this build: https://builds.apache.org/job/hbase-0.95-on-hadoop2/173/testReport/org.apache.hadoop.hbase.replication/TestReplicationQueueFailoverCompressed/queueFailover/
+The only thing I can find that went wrong is that the recovered queue was not completely done because the source fails like this:
+2013-07-10 11:53:51,538 INFO  [Thread-1259] regionserver.ReplicationSource$2(799): Slave cluster looks down: Call to hemera.apache.org/140.211.11.27:38614 failed on local exception: java.nio.channels.ClosedByInterruptException
+And just before that it got:
+2013-07-10 11:53:51,290 WARN  [ReplicationExecutor-0.replicationSource,2-hemera.apache.org,43669,1373457208379] regionserver.ReplicationSource(661): Can't replicate because of an error on the remote cluster: 
+org.apache.hadoop.hbase.ipc.RemoteWithExtrasException(org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException): org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException: Failed 1594 actions: FailedServerException: 1594 times, 
+ at org.apache.hadoop.hbase.client.AsyncProcess$BatchErrors.makeException(AsyncProcess.java:158)
+ at org.apache.hadoop.hbase.client.AsyncProcess$BatchErrors.access$500(AsyncProcess.java:146)
+ at org.apache.hadoop.hbase.client.AsyncProcess.getErrors(AsyncProcess.java:692)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.processBatchCallback(HConnectionManager.java:2106)
+ at org.apache.hadoop.hbase.client.HTable.batchCallback(HTable.java:689)
+ at org.apache.hadoop.hbase.client.HTable.batchCallback(HTable.java:697)
+ at org.apache.hadoop.hbase.client.HTable.batch(HTable.java:682)
+ at org.apache.hadoop.hbase.replication.regionserver.ReplicationSink.batch(ReplicationSink.java:239)
+ at org.apache.hadoop.hbase.replication.regionserver.ReplicationSink.replicateEntries(ReplicationSink.java:161)
+ at org.apache.hadoop.hbase.replication.regionserver.Replication.replicateLogEntries(Replication.java:173)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.replicateWALEntry(HRegionServer.java:3735)
+ at org.apache.hadoop.hbase.protobuf.generated.AdminProtos$AdminService$2.callBlockingMethod(AdminProtos.java:14402)
+ at org.apache.hadoop.hbase.ipc.RpcServer.call(RpcServer.java:2122)
+ at org.apache.hadoop.hbase.ipc.RpcServer$Handler.run(RpcServer.java:1829)
+
+ at org.apache.hadoop.hbase.ipc.RpcClient.call(RpcClient.java:1369)
+ at org.apache.hadoop.hbase.ipc.RpcClient.callBlockingMethod(RpcClient.java:1573)
+ at org.apache.hadoop.hbase.ipc.RpcClient$BlockingRpcChannelImplementation.callBlockingMethod(RpcClient.java:1630)
+ at org.apache.hadoop.hbase.protobuf.generated.AdminProtos$AdminService$BlockingStub.replicateWALEntry(AdminProtos.java:15177)
+ at org.apache.hadoop.hbase.protobuf.ReplicationProtbufUtil.replicateWALEntry(ReplicationProtbufUtil.java:94)
+ at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.shipEdits(ReplicationSource.java:642)
+ at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.run(ReplicationSource.java:376)
+I wonder what's closing the socket with an interrupt, it seems it still needs to replicate more data. I'll start by adding the stack trace for the message when it fails to replicate on a "local exception". Also I found a thread that wasn't shutdown properly that I'm going to fix to help with debugging.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+10/Jul/13 19:13
+Update date:
+13/Aug/13 21:59
+Resolved date:
+13/Aug/13 21:59

@@ -1,0 +1,51 @@
+Summary:
+CqlParser throws StackOverflowError on bigger batch operation
+Description:
+We are seeing a problem with CQL3/Cassandra 1.2.8 where a large batch operation causes the CqlParser to throw a StackOverflowError (-Xss180k initially, then -Xss325k).
+Shouldn't a batch be processed iteratively to avoid having to bump stack sizes to unreasonably large values?
+Here is more info from the original problem description:
+<<<
+It looks like the CqlParser in 1.2.8 (probably 1.2.x, but i didn't look) is implemented recursively in such a way that large batch statements blow up the stack. We, of course on a Friday night, have a particular piece of code that's hitting a degenerate case that creates a batch of inserts with a VERY large number of collection items, and it manifests as a StackOverflow coming out the cass servers:
+java.lang.StackOverflowError
+at org.apache.cassandra.cql3.CqlParser.value(CqlParser.java:5266)
+at org.apache.cassandra.cql3.CqlParser.term(CqlParser.java:5627)
+at org.apache.cassandra.cql3.CqlParser.set_tail(CqlParser.java:4807)
+at org.apache.cassandra.cql3.CqlParser.set_tail(CqlParser.java:4813)
+at org.apache.cassandra.cql3.CqlParser.set_tail(CqlParser.java:4813)
+at org.apache.cassandra.cql3.CqlParser.set_tail(CqlParser.java:4813)
+at org.apache.cassandra.cql3.CqlParser.set_tail(CqlParser.java:4813)
+at org.apache.cassandra.cql3.CqlParser.set_tail(CqlParser.java:4813)
+at org.apache.cassandra.cql3.CqlParser.set_tail(CqlParser.java:4813)
+...
+I think in the short term I can give up the atomicity of a batch in this code and kind of suck it up, but obviously I'd prefer not to. I'm also not sure if I kept a single batch, but split this into smaller pieces in each statement, whether that would still fail. I'm guessing I could also crank the hell out of the stack size on the servers, but that feels pretty dirty.
+It seems like the CqlParser should probably be implemented in a way that isn't quite so vulnerable to this, though I fully accept that this batch is koo-koo-bananas.
+>>>
+Thanks!
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.9
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Vincent Mallet
+Create date:
+15/Aug/13 15:36
+Update date:
+16/Apr/19 09:32
+Resolved date:
+21/Aug/13 16:00

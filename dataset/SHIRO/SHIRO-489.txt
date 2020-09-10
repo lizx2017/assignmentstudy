@@ -1,0 +1,55 @@
+Summary:
+can not get session on sina app engine
+Description:
+org.apache.shiro.web.servlet.AbstractShiroFilter
+...
+protected void doFilterInternal(ServletRequest servletRequest, ServletResponse servletResponse, final FilterChain chain)
+throws ServletException, IOException {
+...
+final ServletRequest request = prepareServletRequest(servletRequest, servletResponse, chain);
+final ServletResponse response = prepareServletResponse(request, servletResponse, chain);
+final Subject subject = createSubject(request, response);
+//noinspection unchecked
+subject.execute(new Callable() {
+public Object call() throws Exception
+{ updateSessionLastAccessTime(request, response); executeChain(request, response, chain); ... }
+executeChain(request, response, chain) would not use request instance,this is a ShiroHttpServletRequest instance and override getSession() method,and then any other place(servlet container or other filter) use this request will something unexpected will happen.for example:session.getId() is null in jsp,and login status can not be holded,I think this method should like this:
+protected void doFilterInternal(final ServletRequest servletRequest,final ServletResponse servletResponse, final FilterChain chain)
+throws ServletException, IOException {
+Throwable t = null;
+try {
+final ServletRequest request = prepareServletRequest(servletRequest, servletResponse, chain);
+final ServletResponse response = prepareServletResponse(request, servletResponse, chain);
+final Subject subject = createSubject(request, response);
+//noinspection unchecked
+subject.execute(new Callable() {
+public Object call() throws Exception
+{ updateSessionLastAccessTime(request, response); executeChain(servletRequest, servletResponse, chain); ... }
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+1.2.3
+Fix_version:
+None
+Component:
+Web, Web Site
+Label:
+None
+Environment:
+sina app
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+吴开强
+Create date:
+07/Mar/14 09:31
+Update date:
+07/Mar/14 09:31
+Resolved date:
+

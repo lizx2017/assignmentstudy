@@ -1,0 +1,59 @@
+Summary:
+nodetool doesn't work when Cassandra run with the property java.net.preferIPv6Addresses=true
+Description:
+nodetool doesn't work when Cassandra run with the property java.net.preferIPv6Addresses=true.
+$ sudo netstat -tlpn | grep $(cat /var/run/cassandra/cassandra.pid) | grep 7199
+tcp6       0      0 ::1:7199                :::*                    LISTEN      27560/java
+$ nodetool -h ::1 status
+nodetool: Failed to connect to '::1:7199' - ConnectException: 'Connection refused'.
+Hardcoded value of the property java.rmi.server.hostname (https://github.com/apache/cassandra/blob/cassandra-2.1.4/src/java/org/apache/cassandra/service/CassandraDaemon.java#L91) makes RMI returns the address 127.0.0.1 instead of ::1 that jmxServer listens to.
+21:52:26.300192 IP6 (hlim 64, next-header TCP (6) payload length: 259) ::1.7199 > ::1.58706: Flags [P.], cksum 0x010b (incorrect -> 0x6a57), seq 23:250, ack 88, win 2048, options [nop,nop,TS val 1833457 ecr 1833456], length 227
+`......@...................................R.4...../...........
+........Q....w..SZ.y...L.[....sr..javax.management.remote.rmi.RMIServerImpl_Stub...........pxr..java.rmi.server.RemoteStub......e....pxr..javSZ.y...L.[.....xoteObject.a...a3....pxpw4..UnicastRef2.. 127.0.0.1...(.L....d
+21:52:26.336400 IP6 (hlim 64, next-header TCP (6) payload length: 32) ::1.58706 > ::1.7199: Flags [.], cksum 0x0028 (incorrect -> 0xfe1c), seq 88, ack 250, win 2048, options [nop,nop,TS val 1833467 ecr 1833457], length 0
+`.... .@.................................R...../.4.......(.....
+........
+jmxServer listens to the an ip address that was resolved from localhost and it depends on value of the property java.net.preferIPv6Addresses or lack of it (
+https://github.com/apache/cassandra/blob/trunk/src/java/org/apache/cassandra/utils/RMIServerSocketFactoryImpl.java#L13).
+This is a simple patch that works correctly with java.net.preferIPv6Addresses=(true|false) and java.net.preferIPv4Stack=(true|false):
+diff --git a/src/java/org/apache/cassandra/service/CassandraDaemon.java b/src/java/org/apache/cassandra/service/CassandraDaemon.java
+index 3e398bf..66e9cca 100644
+--- a/src/java/org/apache/cassandra/service/CassandraDaemon.java
++++ b/src/java/org/apache/cassandra/service/CassandraDaemon.java
+@@ -88,7 +88,7 @@ public class CassandraDaemon
+             }
+             else
+             {
+-                System.setProperty("java.rmi.server.hostname","127.0.0.1");
++                System.setProperty("java.rmi.server.hostname", InetAddress.getLoopbackAddress().getHostAddress());
+
+                 try
+                 {
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15, 2.1.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andrey Trubachev
+Reporter:
+Andrey Trubachev
+Create date:
+08/Apr/15 21:05
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Apr/15 19:34

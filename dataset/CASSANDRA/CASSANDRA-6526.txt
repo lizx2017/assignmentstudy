@@ -1,0 +1,54 @@
+Summary:
+CQLSSTableWriter addRow(Map<String, Object> values) does not work as documented.
+Description:
+There are 2 bugs in the method
+addRow(Map<String, Object> values)
+First issue is that the map <b>must</b> contain all the column names as keys in the map otherwise the addRow fails (with InvalidRequestException "Invalid number of arguments, expecting %d values but got %d").
+Second Issue is that the keys in the map must be in lower-case otherwise they may not be found in the map, which will result in a NPE during decompose.
+SUGGESTED SOLUTION:
+Fix the addRow method with:
+public CQLSSTableWriter addRow(Map<String, Object> values)
+    throws InvalidRequestException, IOException
+{
+    int size = boundNames.size();
+    Map<String, ByteBuffer> rawValues = new HashMap<>(size);
+    for (int i = 0; i < size; i++) {
+        ColumnSpecification spec = boundNames.get(i);
+        String colName = spec.name.toString();
+        rawValues.put(colName, values.get(colName) == null ? null : ((AbstractType)spec.type).decompose(values.get(colName)));
+    }
+    return rawAddRow(rawValues);
+}
+When creating the new Map for the insert we need to go over all columns and apply null to missing columns.
+Fix the method documentation add this line:
+     * <p>
+     * Keys in the map <b>must</b> be in lower case, otherwise their value will be null.
+     *
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Yariv Amar
+Create date:
+25/Dec/13 13:09
+Update date:
+16/Apr/19 09:31
+Resolved date:
+06/Mar/14 09:14

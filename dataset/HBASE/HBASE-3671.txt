@@ -1,0 +1,103 @@
+Summary:
+Split report before we finish parent region open; workaround till 0.92; Race between split and OPENED processing
+Description:
+This issue is about adding a workaround to 0.90 until we get proper fix in 0.92 (HBASE-3559).
+Here is the sequence of events:
+1. We start to process OPENED region event.
+2. We receive a SPLIT of this region report.
+3. SPLIT processing offline the region and onlines daughters.
+4. Metascanner runs and clears out the region from .META. deleting it
+5. The OPENED handler runs. Marks the region online in Master memory.
+6. Balancer runs. Trys to balance a region that has been deleted.
+Loops for ever.
+Here is excerpt from logs. It happened during startup, lots going on. Could happen on regionserver crash I suppose, maybe, but we're susceptible during cluster start:
+# We assign the region
+2011-03-16 15:18:29,053 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x22e286f0b9c98f1 Async create of unassigned node for 3516b74d0c9d4458c2f2f715249e3f78 with OFFLINE state
+...
+2011-03-16 15:18:32,298 DEBUG org.apache.hadoop.hbase.master.AssignmentManager$CreateUnassignedAsyncCallback: rs=tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78. state=OFFLINE, ts=1300313909053, server=sv4borg39,60020,1300313564807
+...
+2011-03-16 15:18:32,732 DEBUG org.apache.hadoop.hbase.master.AssignmentManager$ExistsUnassignedAsyncCallback: rs=tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78. state=OFFLINE, ts=1300313909053
+...
+2011-03-16 15:23:02,114 DEBUG org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher: master:60000-0x22e286f0b9c98f1 Received ZooKeeper Event, type=NodeDataChanged, state=SyncConnected, path=/prodjobs/unassigned/3516b74d0c9d4458c2f2f715249e3f78
+...
+2011-03-16 15:23:02,183 DEBUG org.apache.hadoop.hbase.zookeeper.ZKUtil: master:60000-0x22e286f0b9c98f1 Retrieved 127 byte(s) of data from znode /prodjobs/unassigned/3516b74d0c9d4458c2f2f715249e3f78 and set watcher; region=tsdb,^@^D2McZ@^@^@^A^@^@G^@^@^L^@^@f^@^@^U^@^@�^@^@(^@^C^G,1299401073466.3516b74d0c9d4458c2f2f715249e3f78., server=sv4borg39,60020,1300313564807, state=RS_ZK_REGION_OPENED
+2011-03-16 15:23:02,183 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=sv4borg39,60020,1300313564807, region=3516b74d0c9d4458c2f2f715249e3f78
+
+# At this point we've queued an Excecutor to run to process the OPENED event.  Now in comes the SPLIT.
+2011-03-16 15:23:18,199 INFO org.apache.hadoop.hbase.master.ServerManager: Received REGION_SPLIT: tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78.: Daughters; tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1300314189812.74c51400bb8dfa127fadfd11a04d72f2., tsdb,\x00\x042MmD\x88\x00\x00\x01\x00\x00S\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x029\x00\x00(\x00\x03\x03,1300314189812.87b061739a11d0f9d02acfb92ef961a2. from sv4borg39,60020,1300313564807
+2011-03-16 15:23:18,870 WARN org.apache.hadoop.hbase.master.AssignmentManager: Split report has RIT node (shouldnt have one): REGION => {NAME => 'tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78.', STARTKEY => '\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07', ENDKEY => '\x00\x043L\xE7\xF50\x00\x00\x01\x00\x00I\x00\x00\x0C\x00\x00f\x00\x00\x0E\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x02u', ENCODED => 3516b74d0c9d4458c2f2f715249e3f78, TABLE => {{NAME => 'tsdb', FAMILIES => [{NAME => 't', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'LZO', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}} node: region=tsdb,^@^D2McZ@^@^@^A^@^@G^@^@^L^@^@f^@^@^U^@^@�^@^@(^@^C^G,1299401073466.3516b74d0c9d4458c2f2f715249e3f78., server=sv4borg39,60020,1300313564807, state=RS_ZK_REGION_OPENED
+
+# Now metascanner runs and actually removes the parent region, deleting it all
+
+2011-03-16 15:28:34,352 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted daughter reference tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1300314189812.74c51400bb8dfa127fadfd11a04d72f2., qualifier=splitA, from parent tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78.
+2011-03-16 15:28:34,356 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted daughter reference tsdb,\x00\x042MmD\x88\x00\x00\x01\x00\x00S\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x029\x00\x00(\x00\x03\x03,1300314189812.87b061739a11d0f9d02acfb92ef961a2., qualifier=splitB, from parent tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78.
+2011-03-16 15:28:34,356 DEBUG org.apache.hadoop.hbase.master.CatalogJanitor: Deleting region tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78. because daughter splits no longer hold references
+2011-03-16 15:28:34,356 DEBUG org.apache.hadoop.hbase.master.CatalogJanitor: Deleting region tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78. because daughter splits no longer hold references
+
+2011-03-16 15:28:34,444 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: DELETING region hdfs://sv4borg29:9000/hbase/tsdb/3516b74d0c9d4458c2f2f715249e3f78
+
+2011-03-16 15:28:34,542 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted region tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78. from META
+
+# Now the OPENED executor runs, a good while after the above
+#
+
+2011-03-16 15:30:26,679 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Handling OPENED event for 3516b74d0c9d4458c2f2f715249e3f78; deleting unassigned node
+2011-03-16 15:30:26,679 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x22e286f0b9c98f1 Deleting existing unassigned node for 3516b74d0c9d4458c2f2f715249e3f78 that is in expected state RS_ZK_REGION_OPENED
+
+
+2011-03-16 15:30:26,725 DEBUG org.apache.hadoop.hbase.zookeeper.ZKUtil: master:60000-0x22e286f0b9c98f1 Retrieved 127 byte(s) of data from znode /prodjobs/unassigned/3516b74d0c9d4458c2f2f715249e3f78; data=region=tsdb,^@^D2McZ@^@^@^A^@^@G^@^@^L^@^@f^@^@^U^@^@�^@^@(^@^C^G,1299401073466.3516b74d0c9d4458c2f2f715249e3f78., server=sv4borg39,60020,1300313564807, state=RS_ZK_REGION_OPENED
+
+
+2011-03-16 15:30:26,875 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x22e286f0b9c98f1 Successfully deleted unassigned node for region 3516b74d0c9d4458c2f2f715249e3f78 in expected state RS_ZK_REGION_OPENED
+
+
+2011-03-16 15:30:27,051 DEBUG org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher: master:60000-0x22e286f0b9c98f1 Received ZooKeeper Event, type=NodeDeleted, state=SyncConnected, path=/prodjobs/unassigned/3516b74d0c9d4458c2f2f715249e3f78
+
+2011-03-16 15:30:27,051 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Opened region tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78. on sv4borg39,60020,1300313564807
+
+# Now we have a region online in Master's memory but its not out in .META. nor in the FS.
+# The balancer runs
+
+2011-03-16 23:18:41,716 INFO org.apache.hadoop.hbase.master.HMaster: balance hri=tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78., src=sv4borg39,60020,1300313564807, dest=sv4borg33,60020,1300342574666
+
+2011-03-16 23:18:41,716 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78. (offlining)
+
+2011-03-16 23:18:41,718 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Server serverName=sv4borg39,60020,1300313564807, load=(requests=2, regions=504, usedHeap=929, maxHeap=6973) returned org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Received close for tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78. but we are not serving it for 3516b74d0c9d4458c2f2f715249e3f78
+
+2011-03-16 23:20:34,436 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out:  tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78. state=PENDING_CLOSE, ts=1300342802734
+
+2011-03-16 23:20:34,437 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_CLOSE for too long, running forced unassign again on region=tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78.
+
+2011-03-16 23:20:34,437 DEBUG org.apache.hadoop.hbase.zookeeper.ZKUtil: master:60000-0x22e286f0b9c98f1 Set watcher on existing znode /prodjobs/unassigned/3516b74d0c9d4458c2f2f715249e3f78
+
+2011-03-16 23:20:34,437 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78. (offlining)
+2011-03-16 23:20:34,438 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Attempting to unassign region tsdb,\x00\x042McZ@\x00\x00\x01\x00\x00G\x00\x00\x0C\x00\x00f\x00\x00\x15\x00\x00\xA9\x00\x00(\x00\x03\x07,1299401073466.3516b74d0c9d4458c2f2f715249e3f78. which is already pending close but forcing an additional close
+Ad infinitum
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.2
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+18/Mar/11 17:42
+Update date:
+20/Mar/11 07:38
+Resolved date:
+19/Mar/11 20:22

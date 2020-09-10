@@ -1,0 +1,39 @@
+Summary:
+Parsing of UDF body is broken
+Description:
+The parsing of function body introduced by CASSANDRA-7395 is somewhat broken. It blindly parse everything up to END_BODY, which as 2 problems:
+it parse function body as if it was part of the CQL syntax, so anything that don't happen to be a valid CQL token won't even parse.
+something like
+CREATE FUNCTION foo() RETURNS text LANGUAGE JAVA BODY return "END_BODY"; END_BODY;
+will not parse correctly.
+I don't think we can accept random syntax like that. A better solution (which is the one Postgresql uses) is to pass the function body as a normal string. And in fact I'd be in favor of reusing Postgresql syntax (because why not), that is to have:
+CREATE FUNCTION foo() RETURNS text LANGUAGE JAVA AS 'return "END_BODY"';
+One minor annoyance might be, for certain languages, the necessity to double every quote inside the string. But in a separate ticket we could introduce Postregsql solution of adding an alternate syntax for string constants.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Robert Stupp
+Reporter:
+Sylvain Lebresne
+Create date:
+11/Aug/14 12:02
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/Aug/14 12:25

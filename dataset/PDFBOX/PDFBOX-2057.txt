@@ -1,0 +1,53 @@
+Summary:
+Importing BufferedImage into PDPixelMap is broken in 1.8.5
+Description:
+Try to import a BufferedImage in a PDDocument with PDPixelMap
+BufferedImage with TYPE_4BYTE_ABGR works fine with PDFBox 1.8.4 (though, the pdf file contains instruction /ColorSpace /DeviceGray)
+BufferedImage with TYPE_4BYTE_ABGR produces an unreadable PDF with PDFBox 1.8.5 (though, the pdf file contains instruction /ColorSpace /DeviceRGB).
+Code used to demonstrate the problem is as follows (image has also been colored with some Graphics instructions to demonstrate that 1.8.4 is working) :
+try {
+            PDDocument doc = new PDDocument();
+            PDPage page = new PDPage();
+            doc.addPage(page);
+            BufferedImage awtImage = new BufferedImage(100,100, BufferedImage.TYPE_4BYTE_ABGR);
+            PDPixelMap ximage = new PDPixelMap(doc, awtImage);
+            PDPageContentStream contentStream = new PDPageContentStream(doc, page);
+            contentStream.drawXObject(ximage, 200, 200, 100, 100);
+            contentStream.close();
+            doc.save("C:\\Temp\\PDF\\test185_4babgr.pdf");
+        } catch(COSVisitorException|IOException e) {
+            e.printStackTrace();
+        }
+I also tried with a BufferedImage with TYPE_INT_ARGB but it throws an exception with PDFBox 1.8.4 and 1.8.5 :
+Exception in thread "main" java.lang.IllegalArgumentException: Raster IntegerInterleavedRaster: width = 100 height = 100 #Bands = 1 xOff = 0 yOff = 0 dataOffset[0] 0 is incompatible with ColorModel ColorModel: #pixelBits = 8 numComponents = 1 color space = java.awt.color.ICC_ColorSpace@1dc80063 transparency = 1 has alpha = false isAlphaPre = false
+ at java.awt.image.BufferedImage.<init>(BufferedImage.java:630)
+ at org.apache.pdfbox.pdmodel.graphics.xobject.PDPixelMap.createImageStream(PDPixelMap.java:107)
+My main purpose was to use a BufferedImage with a CMYK ColorSpace, but PDPixelMap seems to accept 1 component and 3 component ColorSpace only.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.5, 1.8.6, 2.0.0
+Fix_version:
+1.8.6, 2.0.0
+Component:
+PDModel
+Label:
+regression
+Environment:
+windows, java 1.7
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Michaël Michaud
+Create date:
+04/May/14 14:34
+Update date:
+22/Jun/14 14:34
+Resolved date:
+17/May/14 15:04

@@ -1,0 +1,69 @@
+Summary:
+Improve multiop performances in HTable#flushCommits
+Description:
+This code:
+  @Override
+  public void flushCommits() throws IOException {
+    try {
+      Object[] results = new Object[writeBuffer.size()];
+      try {
+        this.connection.processBatch(writeBuffer, tableName, pool, results);
+      } catch (InterruptedException e) {
+        throw new IOException(e);
+      } finally {
+        // mutate list so that it is empty for complete success, or contains
+        // only failed records results are returned in the same order as the
+        // requests in list walk the list backwards, so we can remove from list
+        // without impacting the indexes of earlier members
+        for (int i = results.length - 1; i>=0; i--) {
+          if (results[i] instanceof Result) {
+            // successful Puts are removed from the list here.
+            writeBuffer.remove(i);
+          }
+        }
+      }
+    } finally {
+      if (clearBufferOnFail) {
+        writeBuffer.clear();
+        currentWriteBufferSize = 0;
+      } else {
+        // the write buffer was adjusted by processBatchOfPuts
+        currentWriteBufferSize = 0;
+        for (Put aPut : writeBuffer) {
+          currentWriteBufferSize += aPut.heapSize();
+        }
+      }
+    }
+  }
+Can be improved by:
+not iterating on the list if clearBufferOnFail is set
+not iterating the the list of there are no error
+iterating on the list only once instead of two when we really have to.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.95.0
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Nicolas Liochon
+Create date:
+04/Jun/12 10:05
+Update date:
+23/Sep/13 18:31
+Resolved date:
+20/Jun/12 10:17

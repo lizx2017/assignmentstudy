@@ -1,0 +1,45 @@
+Summary:
+cassandra-shuffle fails as system keyspace is not user-modifiable
+Description:
+cassandra-shuffle tool fails to insert calculated relocations into the system keyspace as it is not user-modifiable. When run, the following exception is thrown after printing out the list of relocations for the first node in ring:
+Exception in thread "main" java.lang.RuntimeException: InvalidRequestException(why:system keyspace is not user-modifiable.)
+at org.apache.cassandra.tools.Shuffle.executeCqlQuery(Shuffle.java:516)
+at org.apache.cassandra.tools.Shuffle.shuffle(Shuffle.java:359)
+at org.apache.cassandra.tools.Shuffle.main(Shuffle.java:678)
+Caused by: InvalidRequestException(why:system keyspace is not user-modifiable.)
+at org.apache.cassandra.thrift.Cassandra$execute_cql3_query_result.read(Cassandra.java:37849)
+at org.apache.thrift.TServiceClient.receiveBase(TServiceClient.java:78)
+at org.apache.cassandra.thrift.Cassandra$Client.recv_execute_cql3_query(Cassandra.java:1562)
+at org.apache.cassandra.thrift.Cassandra$Client.execute_cql3_query(Cassandra.java:1547)
+at org.apache.cassandra.tools.CassandraClient.execute_cql_query(Shuffle.java:733)
+at org.apache.cassandra.tools.Shuffle.executeCqlQuery(Shuffle.java:502)
+... 2 more
+By quickly checking the code it seems that the patch set for CASSANDRA-4874 disallows modifications to system keyspace again (they were previously allowed by CASSANDRA-4664) thus rendering cassandra-shuffle unable to do its job.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.1
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jouni Hartikainen
+Reporter:
+Jouni Hartikainen
+Create date:
+02/Jan/13 15:04
+Update date:
+16/Apr/19 09:32
+Resolved date:
+02/Jan/13 18:20

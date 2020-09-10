@@ -1,0 +1,103 @@
+Summary:
+AdvancedDataGrid in an AIR application improperly resizes columns when the window is minimized/restored
+Description:
+Steps to reproduce:
+1. Use this sample code:
+<?xml version="1.0" encoding="utf-8"?>
+<mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute">
+<mx:AdvancedDataGrid width="100%" height="100%" sortExpertMode="true" id="grid">
+<mx:columns>
+<mx:AdvancedDataGridColumn headerText="Col 1" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 2" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 3" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Variable Width Column" />
+<mx:AdvancedDataGridColumn headerText="Col 4" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 5" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 6" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 7" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 8" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 9" width="40" minWidth="40" resizable="false" />
+</mx:columns>
+</mx:AdvancedDataGrid>
+</mx:WindowedApplication>
+A few things to note about the code:
+It uses fixed/min widths for most columns
+Has one expanding width column
+Using column groups has the same effect as non grouped columns.
+2. Maximize the window and note the column sizes.
+3. Minimize, then restore.
+Actual Results:
+The expanding column pushes all the other columns to sizes much smaller than their minimum width
+Expected Results:
+Column widths shouldn't be altered
+Workaround (if any):
+Store a clone of the columns (or grouped columns) array during a displayStateChanging event, set the columns property to this copy after a restore from a minimized state. Example:
+<mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" displayStateChanging="saveColumnSizes(event)"
+displayStateChange="onRestore(event)">
+<mx:Script>
+<![CDATA[
+private var columns:Array;
+private function saveColumnSizes(event:NativeWindowDisplayStateEvent):void
+{
+if (!grid) return;
+if (event.afterDisplayState == NativeWindowDisplayState.MINIMIZED && !event.isDefaultPrevented())
+{
+columns = [];
+for (var i:int = 0; i < grid.columns.length; i++)
+{ columns.push(grid.columns[i].clone()); }
+}
+}
+private function onRestore(event:NativeWindowDisplayStateEvent):void
+{
+if (!grid) return;
+if (event.beforeDisplayState != NativeWindowDisplayState.MINIMIZED) return;
+if (!event.isDefaultPrevented() && columns != null)
+{ grid.columns = columns; columns = null; }
+}
+]]
+>
+</mx:Script>
+<mx:AdvancedDataGrid width="100%" height="100%" sortExpertMode="true" id="grid">
+<mx:columns>
+<mx:AdvancedDataGridColumn headerText="Col 1" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 2" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 3" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Variable Width Column" />
+<mx:AdvancedDataGridColumn headerText="Col 4" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 5" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 6" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 7" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 8" width="40" minWidth="40" resizable="false" />
+<mx:AdvancedDataGridColumn headerText="Col 9" width="40" minWidth="40" resizable="false" />
+</mx:columns>
+</mx:AdvancedDataGrid>
+</mx:WindowedApplication>
+This might be a regression of FLEXDMV-1166.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK 3.0 (
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+17/May/10 15:12
+Update date:
+22/Mar/11 04:35
+Resolved date:
+15/Mar/11 02:35

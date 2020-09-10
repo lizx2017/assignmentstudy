@@ -1,0 +1,55 @@
+Summary:
+NumericTermAttribute throws IAE after NumericTokenStream is exhausted
+Description:
+This small test:
+  public void testCloneFullPrecisionToken() throws Exception {
+    FieldType fieldType = new FieldType(IntField.TYPE_NOT_STORED);
+    fieldType.setNumericPrecisionStep(Integer.MAX_VALUE);
+    Field field = new IntField("field", 17, fieldType);
+    TokenStream tokenStream = new CachingTokenFilter(field.tokenStream(null, null));
+    assertTrue(tokenStream.incrementToken());
+  }
+hits this unexpected exception:
+There was 1 failure:
+1) testCloneFullPrecisionToken(org.apache.lucene.analysis.TestNumericTokenStream)
+java.lang.IllegalArgumentException: Illegal shift value, must be 0..31; got shift=2147483647
+ at __randomizedtesting.SeedInfo.seed([2E1E93EF810CB5F7:EF1304A849574BC7]:0)
+ at org.apache.lucene.util.NumericUtils.intToPrefixCodedBytes(NumericUtils.java:175)
+ at org.apache.lucene.util.NumericUtils.intToPrefixCoded(NumericUtils.java:133)
+ at org.apache.lucene.analysis.NumericTokenStream$NumericTermAttributeImpl.getBytesRef(NumericTokenStream.java:165)
+ at org.apache.lucene.analysis.NumericTokenStream$NumericTermAttributeImpl.clone(NumericTokenStream.java:217)
+ at org.apache.lucene.analysis.NumericTokenStream$NumericTermAttributeImpl.clone(NumericTokenStream.java:148)
+ at org.apache.lucene.util.AttributeSource$State.clone(AttributeSource.java:55)
+ at org.apache.lucene.util.AttributeSource.captureState(AttributeSource.java:288)
+ at org.apache.lucene.analysis.CachingTokenFilter.fillCache(CachingTokenFilter.java:96)
+ at org.apache.lucene.analysis.CachingTokenFilter.incrementToken(CachingTokenFilter.java:70)
+ at org.apache.lucene.analysis.TestNumericTokenStream.testCloneFullPrecisionToken(TestNumericTokenStream.java:138)
+because CachingTokenFilter expects that it can captureState after calling end but NumericTokenStream gets angry about this.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+5.5, 6.0
+Fix_version:
+5.5, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Uwe Schindler
+Reporter:
+Michael McCandless
+Create date:
+12/Feb/16 22:19
+Update date:
+09/May/16 18:39
+Resolved date:
+13/Feb/16 17:16

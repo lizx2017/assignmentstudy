@@ -1,0 +1,61 @@
+Summary:
+Query on a secondary index stopped working
+Description:
+After upgrading from cassandra 2.0.10 to 2.1.2 this type of query (using cqlsh) on a secondary index have stopped working (not returning results):
+select * from tweets_updated where updated = '2014-09-06' limit 1;
+However the data exists:
+select * from tweets_updated limit 5;
+
+ uname           | updated                  | updated_date
+-----------------+--------------------------+--------------
+      xxxxxx1 | 2014-08-22 17:37:46-0700 |         null
+   xxxxxx2 |                     null |   2014-09-06
+There are two secondary indexes:
+CREATE TABLE tweets.tweets_updated (
+    uname text PRIMARY KEY,
+    updated timestamp,
+    updated_date text
+) WITH bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'min_threshold': '4', 'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND dclocal_read_repair_chance = 0.0
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.1
+    AND speculative_retry = '99.0PERCENTILE';
+CREATE INDEX tweets_updated_updated_idx ON tweets.tweets_updated (updated);
+CREATE INDEX updated_date ON tweets.tweets_updated (updated_date);
+I've run nodetool rebuild_index on both of them after upgrade - did not help.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Pavel Baranov
+Create date:
+19/Dec/14 22:34
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Dec/14 23:11

@@ -1,0 +1,42 @@
+Summary:
+Short reads can return deleted results
+Description:
+The current code for short reads protection does not handle all cases. Currently, we retry only if a node had returned the requested number of results, but we have less results than that post-reconciliation, because this means the node in question may have more results it hadn't sent due to the limit.
+Consider however 3 nodes A, B, C (RF=3), and following sequence of operations (all done at QUORUM):
+we write 1 and 2 in a partition: all nodes get it.
+we delete 1: only A and C get it.
+we delete 2: only B and C get it.
+we read the first row in the partition (so with a LIMIT 1) and A and B answer first.
+At the last step, A will return the tombstone for 1 and the value 2, while B will return just 1. So post reconciliation, we'll return 2 (since A returned it and we have no tombstone for it), while we should return nothing. This is a short read situation: B stopped at 1 because it was asked only 1 result, but that result didn't made it in the result and we need further results from it. However, Because 1 results is requested and we have 1 result post-reconciliation, the short read retry won't kick in.
+In practice, the short read check should be generalized: if any node X returns the requested number of results but any of those results gets skipped post-reconciliation, we might have a short read. Basically, enforcing the limit replica-side is optimistic and assumes that all results of that replica will be used, and as soon as that assumption fails we should get back more results.
+Implementing that generalized condition can probably be done in RowDataResolver.scheduleRepairs by using the repair to know if a node has had some of results skipped by reconciliation but we want to know if a full CQL row has been skipped or not so this will probably force us to add some recounting.
+I'll note that I've fixed this problem on my branch for CASSANDRA-8099 (where this is both simpler and somewhat more efficient since short reads don't retry full queries there), so if decide this is too risky to fix in 2.1, we can possibly just mark this as duplicate of CASSANDRA-8099.
+Lastly, it shouldn't be too hard to extends our current short read dtests to test for that case, but I haven't taken the time to do so yet (Philip Thompson do you think you can have a look at adding such test at some point?).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+09/Mar/15 13:57
+Update date:
+16/Apr/19 09:31
+Resolved date:
+16/Sep/15 08:02

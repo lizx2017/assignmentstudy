@@ -1,0 +1,78 @@
+Summary:
+sstable2json has resource leaks
+Description:
+Coverity found 3 resource leak within SSTable2JsonExporter:
+CID 71971: Resource leak (RESOURCE_LEAK)
+/src/java/org/apache/cassandra/tools/SSTableExport.java: 300 in
+org.apache.cassandra.tools.SSTableExport.export(org.apache.cassandra.io.sstable.Descriptor,
+java.io.PrintStream, java.util.Collection, java.lang.String[],
+org.apache.cassandra.config.CFMetaData)()
+CID 71972: Resource leak on an exceptional path (RESOURCE_LEAK)
+/src/java/org/apache/cassandra/tools/SSTableExport.java: 332 in
+org.apache.cassandra.tools.SSTableExport.export(org.apache.cassandra.io.sstable.SSTableReader,
+java.io.PrintStream, java.lang.String[],
+org.apache.cassandra.config.CFMetaData)()
+CID 71975: Resource leak on an exceptional path (RESOURCE_LEAK)
+/src/java/org/apache/cassandra/tools/SSTableExport.java: 236 in
+org.apache.cassandra.tools.SSTableExport.enumeratekeys(org.apache.cassandra.io.sstable.Descriptor,
+java.io.PrintStream, org.apache.cassandra.config.CFMetaData)()
+________________________________________________________________________________________________________
+CID 71971: Resource leak (RESOURCE_LEAK)
+/src/java/org/apache/cassandra/tools/SSTableExport.java: 300 in
+org.apache.cassandra.tools.SSTableExport.export(org.apache.cassandra.io.sstable.Descriptor,
+java.io.PrintStream, java.util.Collection, java.lang.String[],
+org.apache.cassandra.config.CFMetaData)()
+294 i++;
+295 serializeRow(deletionInfo, atomIterator,
+sstable.metadata, decoratedKey, outs);
+296 }
+297
+298 outs.println("\n]");
+299 outs.flush();
+>>> CID 71971: Resource leak (RESOURCE_LEAK)
+>>> Variable "dfile" going out of scope leaks the resource it refers to.
+300 }
+301
+302 // This is necessary to accommodate the test suite since
+you cannot open a Reader more
+303 // than once from within the same process.
+304 static void export(SSTableReader reader, PrintStream outs,
+String[] excludes, CFMetaData metadata) throws IOException
+305 { ________________________________________________________________________________________________________ *** CID 71972: Resource leak on an exceptional path (RESOURCE_LEAK) /src/java/org/apache/cassandra/tools/SSTableExport.java: 332 in org.apache.cassandra.tools.SSTableExport.export(org.apache.cassandra.io.sstable.SSTableReader, java.io.PrintStream, java.lang.String[], org.apache.cassandra.config.CFMetaData)() 326 if (excludeSet.contains(currentKey)) 327 continue; 328 else if (i != 0) 329 outs.println(","); 330 331 serializeRow(row, row.getKey(), outs); >>> CID 71972: Resource leak on an exceptional path (RESOURCE_LEAK) >>> Variable "scanner" going out of scope leaks the resource it refers to. 332 checkStream(outs); 333 334 i++; 335 }
+336
+337 outs.println("\n]");
+________________________________________________________________________________________________________
+CID 71975: Resource leak on an exceptional path (RESOURCE_LEAK)
+/src/java/org/apache/cassandra/tools/SSTableExport.java: 236 in
+org.apache.cassandra.tools.SSTableExport.enumeratekeys(org.apache.cassandra.io.sstable.Descriptor,
+java.io.PrintStream, org.apache.cassandra.config.CFMetaData)()
+230 while (iter.hasNext())
+231 { 232 DecoratedKey key = iter.next(); 233 234 // validate order of the keys in the sstable 235 if (lastKey != null && lastKey.compareTo(key) > 0) >>> CID 71975: Resource leak on an exceptional path (RESOURCE_LEAK) >>> Variable "iter" going out of scope leaks the resource it refers to. 236 throw new IOException("Key out of order! " + lastKey + " > " + key); 237 lastKey = key; 238 239 outs.println(metadata.getKeyValidator().getString(key.getKey())); 240 checkStream(outs); // flushes 241 }
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Benjamin Lerer
+Create date:
+07/Aug/14 09:27
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Aug/14 14:23

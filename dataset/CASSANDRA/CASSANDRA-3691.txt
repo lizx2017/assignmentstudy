@@ -1,0 +1,82 @@
+Summary:
+LeveledCompactionStrategy is broken because of generation pre-allocation in LeveledManifest.
+Description:
+LeveledManifest constructor has the following code:
+for (int i = 0; i < generations.length; i++)
+{
+    generations[i] = new ArrayList<SSTableReader>();
+    lastCompactedKeys[i] = new DecoratedKey(cfs.partitioner.getMinimumToken(), null);
+}
+But in the DecoratedKey constructor we have:
+assert token != null && key != null && key.remaining() > 0;
+so when you tried to create a CF with LeveledCompressionStrategy that will result in
+java.lang.RuntimeException: java.util.concurrent.ExecutionException: java.lang.RuntimeException: java.lang.reflect.InvocationTargetException
+ at org.apache.cassandra.thrift.CassandraServer.applyMigrationOnStage(CassandraServer.java:865)
+ at org.apache.cassandra.thrift.CassandraServer.system_add_keyspace(CassandraServer.java:953)
+ at org.apache.cassandra.thrift.Cassandra$Processor$system_add_keyspace.process(Cassandra.java:4103)
+ at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:3078)
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:188)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:680)
+Caused by: java.util.concurrent.ExecutionException: java.lang.RuntimeException: java.lang.reflect.InvocationTargetException
+ at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+ at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+ at org.apache.cassandra.thrift.CassandraServer.applyMigrationOnStage(CassandraServer.java:857)
+ ... 7 more
+Caused by: java.lang.RuntimeException: java.lang.reflect.InvocationTargetException
+ at org.apache.cassandra.config.CFMetaData.createCompactionStrategyInstance(CFMetaData.java:770)
+ at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:209)
+ at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:300)
+ at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:281)
+ at org.apache.cassandra.db.Table.initCf(Table.java:339)
+ at org.apache.cassandra.db.Table.<init>(Table.java:288)
+ at org.apache.cassandra.db.Table.open(Table.java:117)
+ at org.apache.cassandra.db.migration.AddKeyspace.applyModels(AddKeyspace.java:72)
+ at org.apache.cassandra.db.migration.Migration.apply(Migration.java:156)
+ at org.apache.cassandra.thrift.CassandraServer$2.call(CassandraServer.java:850)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ ... 3 more
+Caused by: java.lang.reflect.InvocationTargetException
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:39)
+ at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:27)
+ at java.lang.reflect.Constructor.newInstance(Constructor.java:513)
+ at org.apache.cassandra.config.CFMetaData.createCompactionStrategyInstance(CFMetaData.java:752)
+ ... 14 more
+Caused by: java.lang.AssertionError
+ at org.apache.cassandra.db.DecoratedKey.<init>(DecoratedKey.java:55)
+ at org.apache.cassandra.db.compaction.LeveledManifest.<init>(LeveledManifest.java:79)
+ at org.apache.cassandra.db.compaction.LeveledManifest.create(LeveledManifest.java:85)
+ at org.apache.cassandra.db.compaction.LeveledCompactionStrategy.<init>(LeveledCompactionStrategy.java:74)
+ ... 19 more
+ERROR 19:52:44,029 Fatal exception in thread Thread[MigrationStage:1,5,main]
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+None
+Label:
+lcs
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Pavel Yaskevich
+Create date:
+03/Jan/12 17:01
+Update date:
+16/Apr/19 09:32
+Resolved date:
+03/Jan/12 19:34

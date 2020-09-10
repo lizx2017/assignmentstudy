@@ -1,0 +1,64 @@
+Summary:
+Something wrong with how "File Formats" link is generated in docs/index.html - can cause precommit to fail on some systems
+Description:
+I'm not sure what's going on, but here's what I've figured out while poking at things with Ishan to try and figure out why ant precommit fails for him on a clean checkout of master...
+on my machine, with a clean checkout, the generated index.html file has lines that look like this...
+<li>
+<a href="core/org/apache/lucene/codecs/lucene62
+/package-summary.html#package.description">File Formats</a>: Guide to the supported index format used by Lucene.  This can be customized by using <a href="core/org/apache/lucene/codecs/package-summary.html#package.description">an alternate codec</a>.</li>
+<li>
+...note there is a newline in the href after lucene62
+on ishan's machine, with a clean checkout, the same line looks like this...
+<li>
+<a href="core/org/apache/lucene/codecs/lucene62%0A/package-summary.html#package.description">File Formats</a>: Guide to the supported index format used by Lucene.  This can be customized by using <a href="core/org/apache/lucene/codecs/package-summary.html#package.description">an alternate codec</a>.</li>
+<li>
+...note that he has a URL escaped 'NO-BREAK SPACE' (U+00A0) character in href attribute.
+on my machine, ant documentation-lint doesn't complain about the newline in the href attribute when checking links.
+on ishan's machine, ant documentation-lint most certainly complains about the 'NO-BREAK SPACE'...
+...
+-documentation-lint:
+     [echo] checking for broken html...
+    [jtidy] Checking for broken html (such as invalid tags)...
+   [delete] Deleting directory /home/ishan/code/chatman-lucene-solr/lucene/build/jtidy_tmp
+     [echo] Checking for broken links...
+     [exec] 
+     [exec] Crawl/parse...
+     [exec] 
+     [exec] Verify...
+     [exec] 
+     [exec] file:///build/docs/index.html
+     [exec]   BROKEN LINK: file:///build/docs/core/org/apache/lucene/codecs/lucene62%0A/package-summary.html
+     [exec] 
+     [exec] Broken javadocs links were found!
+BUILD FAILED
+Raising the following questions...
+How is either a newline or a 'NO-BREAK SPACE' getting introduced into the $defaultCodecPackage variable that index.xsl uses to generate that href attribute?
+why doesn't documentation-lint complain that the href has a newline in it on my system?
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.4, 7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Hoss Man
+Reporter:
+Hoss Man
+Create date:
+20/Jul/16 01:24
+Update date:
+15/Nov/16 19:37
+Resolved date:
+15/Nov/16 19:37

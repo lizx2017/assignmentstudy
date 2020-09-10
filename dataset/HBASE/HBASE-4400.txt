@@ -1,0 +1,66 @@
+Summary:
+.META. getting stuck if RS hosting it is dead and znode state is in RS_ZK_REGION_OPENED
+Description:
+Start 2 RS.
+The .META. is being hosted by RS2 but while processing it goes down.
+Now restart the master and RS1. Master gets the RS name from the znode in RS_ZK_REGION_OPENED. But as RS2 is not online still the master is not able to process the META at all. Please find the logs
+2011-09-14 16:43:51,949 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=linux76,60020,1315998828523, region=70236052/-ROOT-
+2011-09-14 16:43:51,968 INFO org.apache.hadoop.hbase.master.HMaster: -ROOT- assigned=1, rit=false, location=linux76:60020
+2011-09-14 16:43:51,970 INFO org.apache.hadoop.hbase.master.AssignmentManager: Processing region .META.,,1.1028785192 in state RS_ZK_REGION_OPENED
+2011-09-14 16:43:51,970 INFO org.apache.hadoop.hbase.master.AssignmentManager: Failed to find linux146,60020,1315998414623 in list of online servers; skipping registration of open of .META.,,1.1028785192
+2011-09-14 16:43:51,971 INFO org.apache.hadoop.hbase.master.AssignmentManager: Waiting on 1028785192/.META.
+2011-09-14 16:43:51,983 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=linux76,60020,1315998828523, region=70236052/-ROOT-
+2011-09-14 16:43:51,986 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Handling OPENED event for 70236052; deleting unassigned node
+2011-09-14 16:43:51,986 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x13267854032001d Deleting existing unassigned node for 70236052 that is in expected state RS_ZK_REGION_OPENED
+2011-09-14 16:43:51,998 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x13267854032001d Successfully deleted unassigned node for region 70236052 in expected state RS_ZK_REGION_OPENED
+2011-09-14 16:43:51,999 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Opened region -ROOT-,,0.70236052 on linux76,60020,1315998828523
+2011-09-14 16:44:00,945 INFO org.apache.hadoop.hbase.master.ServerManager: Registering server=linux146,60020,1315998839724, regionCount=0, userLoad=false
+2011-09-14 16:46:20,003 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out:  .META.,,1.1028785192 state=OPEN, ts=0
+2011-09-14 16:46:20,004 ERROR org.apache.hadoop.hbase.master.AssignmentManager: Region has been OPEN for too long, we don't know where region was opened so can't do anything
+        regionsInTransition.put(encodedRegionName, new RegionState(
+            regionInfo, RegionState.State.OPEN, data.getStamp()));
+          ................
+        } else {
+          HServerInfo hsi = this.serverManager.getServerInfo(sn);
+          if (hsi == null) {
+            LOG.info("Failed to find " + sn +
+              " in list of online servers; skipping registration of open of " +
+              regionInfo.getRegionNameAsString());
+          } else {
+            new OpenedRegionHandler(master, this, regionInfo, hsi).process();
+          }
+        }
+So timeout monitor is not able to do anything here
+          LOG.error("Region has been OPEN for too long, " +
+          "we don't know where region was opened so can't do anything");
+          synchronized(regionState) {
+            regionState.update(regionState.getState());
+          }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+14/Sep/11 05:35
+Update date:
+20/Nov/15 11:53
+Resolved date:
+18/Sep/11 18:56

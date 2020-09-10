@@ -1,0 +1,51 @@
+Summary:
+Deleting an element from a List which is null throws a NPE
+Description:
+I am seeing an NPE on the latest 2.1 branch with this sequence of deletes from a list - first delete the entire list, then attempt to delete one element.
+I expected to see List index 0 out of bound, list has size 0 but instead got an NPE.
+./bin/cqlsh
+Connected to Test Cluster at 127.0.0.1:9042.
+[cqlsh 5.0.1 | Cassandra 2.1.3-SNAPSHOT | CQL spec 3.2.0 | Native protocol v3]
+Use HELP for help.
+cqlsh> use frozen_collections ;
+cqlsh:frozen_collections> DROP TABLE IF EXISTS t;
+cqlsh:frozen_collections> CREATE TABLE t (id text PRIMARY KEY, l list<text>, s set<text>);
+cqlsh:frozen_collections> INSERT INTO t (id, l, s) VALUES ('user', ['1'], {'1'});
+cqlsh:frozen_collections>
+cqlsh:frozen_collections> DELETE l FROM t WHERE id ='user';
+cqlsh:frozen_collections> //INSERT INTO t (id, l) VALUES ('user', ['1']);
+cqlsh:frozen_collections> DELETE l[0] FROM t WHERE id = 'user';
+ServerError: <ErrorMessage code=0000 [Server error] message="java.lang.NullPointerException">
+cqlsh:frozen_collections>
+cqlsh:frozen_collections> DELETE s FROM t WHERE id ='user';
+cqlsh:frozen_collections> DELETE s['1'] FROM t WHERE id = 'user';
+It appears the DELETE emails... directly followed by DELETE emails[0]... is the offending sequence. Either one alone works fine, as does adding an intervening insert/update.
+The same sequence performed on a Set rather than List works (as shown above).
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeff Jirsa
+Reporter:
+dan jatnieks
+Create date:
+31/Mar/15 04:48
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Apr/15 17:15

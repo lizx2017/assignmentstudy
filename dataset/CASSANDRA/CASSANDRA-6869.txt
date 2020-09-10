@@ -1,0 +1,36 @@
+Summary:
+Broken 1.2 sstables support in 2.1
+Description:
+CASSANDRA-5417 has broken 1.2 (ic) sstables support in at least two ways.
+1. CFMetaData.getOnDiskSerializer(), used by SSTableNamesIterator and IndexedSliceReader, doesn't account for pre-2.0 supercolumn sstables
+2. More importantly, ACCNT.CompositeDeserializer doesn't handle ic tables' cell counts, and maybeReadNext() might throw EOFException while expecting the partition end marker. SimpleDeserializer is likely just as broken.
+I'd expect more issues like this, but less obvious, in the code, and thus am torn between forcing people to run upgradesstables on 2.0 and actually fixing these issues, and hoping that we haven't missed anything.
+Implementing a supercolumn aware AtomDeserializer is not hard, fixing CompositeDeserializer and SimpleDeserializer isn't very hard either, but I really am worried about stuff that's less obvious. Plus, if we drop that support, we can get rid of some legacy supercolumn code in 2.1. Minus, obviously, is a bit of extra pain for 2.0->2.1 upgraders still having 1.2- sstables around.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 beta2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Aleksey Yeschenko
+Create date:
+15/Mar/14 20:56
+Update date:
+16/Apr/19 09:31
+Resolved date:
+31/Mar/14 10:44

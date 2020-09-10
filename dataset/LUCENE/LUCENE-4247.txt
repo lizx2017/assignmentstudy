@@ -1,0 +1,73 @@
+Summary:
+QueryParser doesn't call Analyzer
+Description:
+I'm trying to escape czech characters thorough the ASCIIFoldingFilter this works fine in indexing since I can retrieve the non-diacritic version of the content I indexed. But trying to retrieve with diacritics returns always 0 results
+In debug mode I can clearly see that the Analyzer wasn't called (in addition to that I've put a breakpoint in my analyser to check if it is not called later, and it never passes in)
+searchText = "příLIš*";
+Analyzer analyzer = (Analyzer) factory.getBean("analyzer");
+Query q = new QueryParser((Version) factory.getBean("version"), DestinationPlaceProperties.NAME, analyzer).parse(searchText);
+The query q has these values in debug:
+prefix Term (id=90)
+field "name" (id=100)
+text "příliš" (id=101)
+— more details ----
+q PrefixQuery (id=65)
+boost 1.0
+numberOfTerms 0
+prefix Term (id=90)
+rewriteMethod MultiTermQuery$2 (id=92)
+---------------------
+My analyser is quite simple: I put its code just for reference
+public class DestinationAnalyser extends Analyzer {
+/**
+*/
+private final Version luceneVersion;
+public DestinationAnalyser(Version lucene_version)
+{ super(); this.luceneVersion = lucene_version; }
+/*
+(non-Javadoc)
+@see org.apache.lucene.analysis.Analyzer#tokenStream(java.lang.String,
+java.io.Reader)
+*/
+@Override
+public TokenStream tokenStream(String fieldName, Reader reader) { TokenStream result = new StandardTokenizer(luceneVersion, reader); result = new StandardFilter(luceneVersion, result); result = new LowerCaseFilter(luceneVersion, result); result = new ASCIIFoldingFilter(result); return result; }
+}
+--------- WORKAROUND ---------
+To avoid the problem, I'm actually using this method to transform the search text
+/**
+Uses {@link ASCIIFoldingFilter}
+to transform diacritical text to its ascii
+counterpart
+@param text
+to transform
+@return ascii text
+*/
+public static String foldToASCII(String text) { int length = text.length(); char[] toReturn = new char[length]; ASCIIFoldingFilter.foldToASCII(text.toCharArray(), 0, toReturn, 0, length); return new String(toReturn); }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+3.6
+Fix_version:
+None
+Component:
+core/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Uwe Schindler
+Reporter:
+Zied Hamdi
+Create date:
+23/Jul/12 17:22
+Update date:
+23/Jul/12 17:59
+Resolved date:
+23/Jul/12 17:34

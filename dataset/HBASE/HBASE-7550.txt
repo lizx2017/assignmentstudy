@@ -1,0 +1,43 @@
+Summary:
+Synchronization problem in AssignmentManager
+Description:
+While running TestSplitTransactionOnCluster#testShouldClearRITWhenNodeFoundInSplittingState in a loop I encountered this error condition:
+java.util.NoSuchElementException
+        at java.util.concurrent.ConcurrentSkipListMap$Iter.advance(ConcurrentSkipListMap.java:2224)
+        at java.util.concurrent.ConcurrentSkipListMap$EntryIterator.next(ConcurrentSkipListMap.java:2270)
+        at java.util.concurrent.ConcurrentSkipListMap$EntryIterator.next(ConcurrentSkipListMap.java:2266)
+        at java.util.TreeMap.buildFromSorted(TreeMap.java:2394)
+        at java.util.TreeMap.buildFromSorted(TreeMap.java:2344)
+        at java.util.TreeMap.&lt;init&gt;(TreeMap.java:195)
+        at org.apache.hadoop.hbase.master.AssignmentManager.getRegionsInTransition(AssignmentManager.java:2843)
+        at org.apache.hadoop.hbase.regionserver.TestSplitTransactionOnCluster.testShouldClearRITWhenNodeFoundInSplittingState(TestSplitTransactionOnCluster.java:637)
+This can only occur when the map being copied into the TreeMap is modified concurrently.
+While looking at the (0.94) code I noticed that synchronization is indeed missing from the nodeDeleted hook.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Lars Hofhansl
+Create date:
+14/Jan/13 04:54
+Update date:
+16/Feb/13 04:14
+Resolved date:
+14/Jan/13 05:32

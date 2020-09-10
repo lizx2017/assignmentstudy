@@ -1,0 +1,82 @@
+Summary:
+Explore alternative to Document/Field/FieldType API
+Description:
+Auto-prefix terms (LUCENE-5879) is blocked because it's impossible in
+Lucene today to add a simple API to use it, and I don't think we
+should commit features that only super-experts can figure out how to
+use: that's evil.
+The only realistic "workaround" for such new features is to instead
+add them directly to the various servers on top of Lucene, since they
+all already have nice schema APIs.
+I opened LUCENE-5989 to try do at least a baby step towards making it
+easier to use auto-prefix terms, so you can easily add singleton
+binary tokens, but even that has proven controversial.
+Net/net I think we have to solve the root cause of this by fixing the
+Document/Field/FieldType API so that new index-level features can have
+a usable API, properly defaulted for the right types of fields.
+Towards that, I'm exploring a replacement for
+Document/Field/FieldType. The idea is to expose simple methods on the
+document class (no more separate Field and FieldType classes):
+    doc.addLargeText("body", "some text");
+    doc.addShortText("title", "a title");
+    doc.addAtom("id", "29jafnn");
+    doc.addBinary("bytes", new byte[7]);
+    doc.addNumber("number", 17);
+And then expose a separate FieldTypes class, that you pass to ctor of
+the new document class, which lets you set all the various per-field
+settings (stored, doc values, etc.). E.g.:
+    types.enableStored("id");
+FieldTypes is a write-once schema, and it throws exceptions if you try
+to make invalid changes once a given setting is already written
+(e.g. enabling norms after having disabled them). It will (I haven't
+implemented this yet) save its state into IndexWriter's commitData, so
+it's available when you open a new IndexWriter for append and when you
+open a reader.
+It has methods to set all the per-field settings (analyzer, stored,
+term vectors, norms, index options, doc values type), and chooses
+"reasonable" defaults based on the value's type when it suddenly sees
+a new field. For example, when you add a number, it's indexed for
+range querying and sorting (numeric doc values) by default.
+FieldTypes provides the analyzer and codec (a little messy) that you
+pass to IndexWriterConfig. Since it's effectively a persistent
+schema, it knows all about the available fields at search time, so we
+could use it to create queries (checking if they are valid given that
+field's type). Query parsers and highlighters could consult it.
+Default UIs (above Lucene) could use it, etc. This is all future .. I
+think for this issue the goal should be to "just" provide a "better"
+index-time API but not yet make use of it at search time.
+So with this change, for auto-prefix terms, we could add an "enable
+range queries/filters" option, but then validate that the selected
+postings format supports such an option.
+I know this exploration will be horribly controversial, but
+realistically I don't think Lucene can move on much further if we
+can't finally address this schema problem head on.
+This is long overdue.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+10/Oct/14 18:15
+Update date:
+09/May/16 18:31
+Resolved date:
+

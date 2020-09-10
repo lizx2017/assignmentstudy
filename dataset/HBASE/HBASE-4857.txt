@@ -1,0 +1,58 @@
+Summary:
+Recursive loop on KeeperException in AuthenticationTokenSecretManager/ZKLeaderManager
+Description:
+Looking through stack traces for TestMasterFailover, I see a case where the leader AuthenticationTokenSecretManager can get into a recursive loop when a KeeperException is encountered:
+Thread-1-EventThread" daemon prio=10 tid=0x00007f9fb47b2800 nid=0x77f6 waiting on condition [0x00007f9fab376000]
+   java.lang.Thread.State: TIMED_WAITING (sleeping)
+        at java.lang.Thread.sleep(Native Method)
+        at java.lang.Thread.sleep(Thread.java:302)
+        at java.util.concurrent.TimeUnit.sleep(TimeUnit.java:328)
+        at org.apache.hadoop.hbase.util.RetryCounter.sleepUntilNextRetry(RetryCounter.java:55)
+        at org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper.exists(RecoverableZooKeeper.java:206)
+        at org.apache.hadoop.hbase.zookeeper.ZKUtil.createAndFailSilent(ZKUtil.java:891)
+        at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.createBaseZNodes(ZooKeeperWatcher.java:161)
+        at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.<init>(ZooKeeperWatcher.java:154)
+        at org.apache.hadoop.hbase.master.HMaster.tryRecoveringExpiredZKSession(HMaster.java:1397)
+        at org.apache.hadoop.hbase.master.HMaster.abortNow(HMaster.java:1435)
+        at org.apache.hadoop.hbase.master.HMaster.abort(HMaster.java:1374)
+        at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.abort(ZooKeeperWatcher.java:450)
+        at org.apache.hadoop.hbase.zookeeper.ZKLeaderManager.stepDownAsLeader(ZKLeaderManager.java:166)
+        at org.apache.hadoop.hbase.security.token.AuthenticationTokenSecretManager$LeaderElector.stop(AuthenticationTokenSecretManager.java:293)
+        at org.apache.hadoop.hbase.zookeeper.ZKLeaderManager.stepDownAsLeader(ZKLeaderManager.java:167)
+        at org.apache.hadoop.hbase.security.token.AuthenticationTokenSecretManager$LeaderElector.stop(AuthenticationTokenSecretManager.java:293)
+        at org.apache.hadoop.hbase.zookeeper.ZKLeaderManager.stepDownAsLeader(ZKLeaderManager.java:167)
+        at org.apache.hadoop.hbase.security.token.AuthenticationTokenSecretManager$LeaderElector.stop(AuthenticationTokenSecretManager.java:293)
+        at org.apache.hadoop.hbase.zookeeper.ZKLeaderManager.handleLeaderChange(ZKLeaderManager.java:96)
+        at org.apache.hadoop.hbase.zookeeper.ZKLeaderManager.nodeDeleted(ZKLeaderManager.java:78)
+        at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.process(ZooKeeperWatcher.java:286)
+        at org.apache.zookeeper.ClientCnxn$EventThread.processEvent(ClientCnxn.java:521)
+        at org.apache.zookeeper.ClientCnxn$EventThread.run(ClientCnxn.java:497)
+The KeeperException causes ZKLeaderManager to call AuthenticationTokenSecretManager$LeaderElector.stop(), which calls ZKLeaderManager.stepDownAsLeader(), which will encounter another KeeperException, and so on...
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.92.0, 0.94.0
+Fix_version:
+0.92.0
+Component:
+security
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Helmling
+Reporter:
+Gary Helmling
+Create date:
+23/Nov/11 17:50
+Update date:
+20/Nov/15 11:55
+Resolved date:
+23/Nov/11 23:18

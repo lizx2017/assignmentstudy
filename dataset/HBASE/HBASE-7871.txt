@@ -1,0 +1,51 @@
+Summary:
+HBase can be stuck when closing regions concurrently
+Description:
+The attached test fails ~1% of the the time on 0.96. It seems it does not fail on 0.94.5. It's simple: a table creation and some puts.
+I attach the stack. Logs says nothing it seems.
+The suspicious part is:
+"RS_CLOSE_REGION-localhost,57575,1361197489166-2" prio=10 tid=0x00007fb0c8775800 nid=0x61ac runnable [0x00007fb09f272000]
+   java.lang.Thread.State: RUNNABLE
+        at java.util.TreeMap.fixAfterDeletion(TreeMap.java:2193)
+        at java.util.TreeMap.deleteEntry(TreeMap.java:2151)
+        at java.util.TreeMap.remove(TreeMap.java:585)
+        at java.util.TreeSet.remove(TreeSet.java:259)
+        at org.apache.hadoop.hbase.regionserver.MetricsRegionAggregateSourceImpl.deregister(MetricsRegionAggregateSourceImpl.java:55)
+        at org.apache.hadoop.hbase.regionserver.MetricsRegionSourceImpl.close(MetricsRegionSourceImpl.java:86)
+        at org.apache.hadoop.hbase.regionserver.MetricsRegion.close(MetricsRegion.java:40)
+        at org.apache.hadoop.hbase.regionserver.HRegion.doClose(HRegion.java:1063)
+        at org.apache.hadoop.hbase.regionserver.HRegion.close(HRegion.java:969)
+        - locked <0x00000006944e2558> (a java.lang.Object)
+        at org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler.process(CloseRegionHandler.java:146)
+        at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:203)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.98.0, 0.95.1
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Nicolas Liochon
+Create date:
+18/Feb/13 17:03
+Update date:
+23/Sep/13 19:08
+Resolved date:
+03/Apr/13 13:53

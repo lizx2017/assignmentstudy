@@ -1,0 +1,115 @@
+Summary:
+PDDocument.load
+Description:
+Good day! I have one problem with the PDF-box application 1.8.4. Use in java-applet. On code "PDDocument.load" Antivirus blocks and nothing happens, no exceptions or other events. When I disable the antivirus, then all is well.
+This code:
+import org.apache.pdfbox.io.*;
+import org.apache.pdfbox.io.RandomAccessFile;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPageable;
+import javax.print.attribute.HashPrintRequestAttributeSet;
+import javax.print.attribute.standard.MediaSizeName;
+import javax.print.attribute.standard.OrientationRequested;
+import java.applet.Applet;
+import java.awt.*;
+import java.awt.print.PrinterException;
+import java.awt.print.PrinterJob;
+import java.io.*;
+import java.net.URL;
+public class Print extends Applet {
+private boolean containsFile(File dir, String fileName) {
+for (String childFileName : dir.list()) {
+if (childFileName.equals(fileName))
+{ return true; }
+}
+return false;
+}
+public void init() {
+try {
+PrinterJob job = PrinterJob.getPrinterJob();
+PDDocument document = null;
+try {
+if (getParameter("file") != null && !getParameter("file").equals("")) {
+String file1 = getParameter("file");
+if (getParameter("url") == null || getParameter("url").equals("1") ) {
+if (getParameter("login") != null && !getParameter("login").equals(""))
+{ file1 += "&login="+getParameter("login"); }
+if (getParameter("pass") != null && !getParameter("pass").equals(""))
+{ file1 += "&pass="+getParameter("pass"); }
+URL url = new URL(file1);
+File home = new File(System.getProperty("user.home"));
+File dir = new File(home, "Print");
+if (!dir.exists())
+{ dir.mkdir(); }
+int number = 0;
+while (containsFile(dir, "Print" + number + ".pdf"))
+{ number++; }
+File file = new File(dir, "Print" + number + ".pdf");
+FileOutputStream writer = new FileOutputStream(file);
+InputStream is = url.openStream();
+int read = 0;
+byte[] bytes = new byte[1024];
+while ((read = is.read(bytes)) != -1)
+{ writer.write(bytes, 0, read); }
+writer.close();
+file = new File(dir, "Print" + number + ".pdf");
+document = PDDocument.load(file);
+} else
+{ document = PDDocument.load(file1); }
+} else
+{ document = PDDocument.load(file); }
+} catch (IOException e)
+{ e.printStackTrace(); }
+try { job.setPageable(new PDPageable(document, job)); } catch (PrinterException e) { e.printStackTrace(); }
+job.setJobName("Print envelope");
+HashPrintRequestAttributeSet psettings = new HashPrintRequestAttributeSet();
+psettings.add(OrientationRequested.LANDSCAPE);
+if (getParameter("type") != null) {
+if (getParameter("type").equalsIgnoreCase("DL"))
+{ psettings.add(MediaSizeName.ISO_DESIGNATED_LONG); }
+else if (getParameter("type").equalsIgnoreCase("C4"))
+{ psettings.add(MediaSizeName.ISO_C4); }
+else if (getParameter("type").equalsIgnoreCase("C5"))
+{ psettings.add(MediaSizeName.ISO_C5); }
+else if (getParameter("type").equalsIgnoreCase("C6"))
+{ psettings.add(MediaSizeName.ISO_C6); }
+} else
+{ psettings.add(MediaSizeName.ISO_A4); }
+if (job.printDialog(psettings)) {
+try
+{ job.print(psettings); }
+catch (PrinterException e) {
+}
+}
+} catch (Exception ex) {
+}
+}
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+1.8.4
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Poplavsky
+Create date:
+14/Feb/14 12:38
+Update date:
+18/Feb/14 06:27
+Resolved date:
+18/Feb/14 06:27

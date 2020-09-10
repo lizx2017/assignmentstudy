@@ -1,0 +1,42 @@
+Summary:
+BloomFilter's use of BitSet is too inefficient
+Description:
+From the logfile run of TestBloomFilter with special SizeOf agent jar:
+Writing bloom filter for: hdfs://localhost:64003/user/ryan/testComputedParameters/1278366260/contents/6159869037185296839 for size: 100
+2009-03-06 01:54:25,491 DEBUG [RegionServer:0.cacheFlusher] regionserver.StoreFile$StoreFileWriter(319): New bloom filter: vectorSize: 1175 hash_count: 5 numKeys: 100
+Serialized bloomfilter size: 160
+In memory bf size: 1248
+As we can see, the bit vector is 1175 bits, and the serialized size is fairly compact - 160 bytes.
+But the in-memory size is nearly 10x bigger than it has to be. Looking in BloomFilter we see:
+BitSet bits;
+is the only field.
+Clearly it seems the BitSet is using 1 byte = 1 bit. That is an 8 time expansion of where we should be.
+Considering every HFile could potentially have a bloom filter, and bloom filters are more likely to have bit vector sizes of 10,000-100,000, we should do something about this. Aka: write our own bit-set that uses byte[] and bit ops.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.0
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+java 1.6, mac os x
+Attachment number:
+0
+Assignee:
+Nicolas Spiegelberg
+Reporter:
+ryan rawson
+Create date:
+06/Mar/09 10:04
+Update date:
+20/Nov/15 13:01
+Resolved date:
+13/May/10 05:22

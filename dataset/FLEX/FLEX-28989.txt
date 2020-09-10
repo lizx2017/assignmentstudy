@@ -1,0 +1,97 @@
+Summary:
+LinearAxis can hang application if input data is all equal with floating number rounding errors
+Description:
+Steps to reproduce:
+1. Build and run the application with any SDK from 3.5 (use mx equivalents) to 4.6:
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx">
+<fx:Script>
+<![CDATA[
+[Bindable]
+public var numbers:Array = [
+{x: 1, y: 1.8}
+,
+{x: 2, y: 1.8000000000000006}
+,
+{x: 3, y: 1.8}
+];
+]]
+>
+</fx:Script>
+<mx:AreaChart dataProvider="
+{numbers}
+" width="100%" height="100%">
+<mx:verticalAxis>
+<mx:LinearAxis baseAtZero="false"/>
+</mx:verticalAxis>
+<mx:series>
+<mx:AreaSeries xField="x" yField="y"/>
+</mx:series>
+</mx:AreaChart>
+</s:Application>
+Actual Results:
+Application hangs due to endless loop in LinearAxis.buildLabelCache():
+Error: Error #1502: A script has executed for longer than the default timeout period of 15 seconds.
+at mx.charts::LinearAxis/buildLabelCache()
+at mx.charts.chartClasses::NumericAxis/getLabelEstimate()
+at mx.charts::AxisRenderer/measureLabels()
+....
+Expected Results:
+A straight line as data is practically uniform
+Workaround (if any):
+It is caused by
+{x: 2, y: 1.8000000000000006}
+, which makes min and max way too close, causing label interval be too small and not increase value when building labels -> min + interval == min.
+Experiment with removing one of zeros 1.800000000000006 and chart should draw a triangle area.
+Y-values can be anything, as long as all values are equal with one or more with a tiny mantissa rounding deviation.
+Workaround is to estimate label step and switch to the default [min, max] as for uniform data ([min, min + 100])
+It can be implemented in a number of ways, the simplest one is to extend LinearAxis and override guardMinMax():
+public class SafeLinearAxis extends LinearAxis {
+public function SafeLinearAxis() {
+}
+override protected function guardMinMax(min:Number, max:Number):Array /* of Number */
+{
+// check is based on LinearAxis.adjustMinMax()
+function unsafeInterval():Boolean {
+var powerOfTen:Number = Math.floor(Math.log(Math.abs(max - min)) / Math.LN10)
+var interval:Number = Math.pow(10, powerOfTen);
+if (Math.abs(max - min) / interval < 4)
+{ interval = interval * 2 / 10; }
+return min + interval == min; // This is the key check, adding interval doesn't change value
+}
+if (isNaN(min) || !isFinite(min))
+return [ 0, 100 ];
+else if (isNaN(max) || !isFinite(max) || min == max || unsafeInterval())
+return [ min, min + 100 ];
+return null;
+}
+}
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 3.6 (
+Fix_version:
+None
+Component:
+.Unspecified - Framework
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+06/Dec/11 20:00
+Update date:
+06/Dec/11 20:00
+Resolved date:
+

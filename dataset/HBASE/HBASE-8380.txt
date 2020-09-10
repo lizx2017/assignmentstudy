@@ -1,0 +1,76 @@
+Summary:
+NPE in HBaseClient$Connection.readResponse
+Description:
+Stack is:
+2013-04-19 09:22:45,991 WARN  [IPC Client (682317035) connection to ip-10-6-131-32.ec2.internal/10.6.131.32:60020 from root] ipc.HBaseClient (HBaseClient.java:run(664)) - IPC Client (682317035) connection to ip-10-6-131-32.ec2.internal/10.6.131.32:60020 from root: unexpected exception receiving call responses
+java.lang.RuntimeException: java.lang.NullPointerException
+ at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.readResponse(HBaseClient.java:1017)
+ at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.run(HBaseClient.java:661)
+Caused by: java.lang.NullPointerException
+ at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.readResponse(HBaseClient.java:1013)
+ ... 1 more
+ 1197 sec: 3411081 operations; 324,27 current ops/sec; [INSERT AverageLatency(us)=29332,6] 
+Code:
+    protected void readResponse() {
+      if (shouldCloseConnection.get()) return;
+      touch();
+      try {
+        // See HBaseServer.Call.setResponse for where we write out the response.
+
+        // Total size of the response.  Unused.  But have to read it in anyways.
+        /*int totalSize =*/ in.readInt();
+
+        // Read the header
+        ResponseHeader responseHeader = ResponseHeader.parseDelimitedFrom(in);
+        int id = responseHeader.getCallId();
+        if (LOG.isDebugEnabled()) {
+          LOG.debug(getName() + ": got response header " +
+            TextFormat.shortDebugString(responseHeader));
+        }
+        Call call = calls.get(id);
+        if (responseHeader.hasException()) {
+          ExceptionResponse exceptionResponse = responseHeader.getException();
+          RemoteException re = createRemoteException(exceptionResponse);
+          if (isFatalConnectionException(exceptionResponse)) {
+            markClosed(re);
+          } else {
+            if (call != null) call.setException(re);
+          }
+        } else {
+          Message rpcResponseType;
+          try {
+            // TODO: Why pb engine pollution in here in this class?  FIX.
+            rpcResponseType =
+              ProtobufRpcClientEngine.Invoker.getReturnProtoType(
+                reflectionCache.getMethod(remoteId.getProtocol(), call.method.getName()));  <=========== NPE, because call is null
+          } catch (Exception e) {
+            throw new RuntimeException(e); //local exception
+          }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.0
+Fix_version:
+0.98.0, 0.95.1
+Component:
+Client
+Label:
+None
+Environment:
+aws, real cluster, 3 nodes
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Nicolas Liochon
+Create date:
+19/Apr/13 14:24
+Update date:
+23/Sep/13 19:08
+Resolved date:
+24/Apr/13 07:28

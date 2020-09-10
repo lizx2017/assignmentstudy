@@ -1,0 +1,65 @@
+Summary:
+Duplicate assignment of a region after region server recovery
+Description:
+After a region server recovery, some regions may get assigned to duplicate region servers.
+Note: I am based on a slightly older trunk (prior to the HBASE-2694). Nevertheless, I think HBASE-2694 doesn't address this case.
+Scenario:
+Three region server setup (store285,286,287), with about 500 regions in the table overall.
+kill -9 and restart one of the region servers (store286).
+The 170 odd regions in the failed region server got assigned out. But two of the regions got assigned to multiple region servers.
+Looking at the log entries for one such region, it appears that there is some race condition that happens between the ProcessRegionOpen (a RegionServerOperation) and BaseScanner which causes the BaseScanner to think this region needs to be reassigned.
+Relevant Logs:
+Master detects that the server start message (from the restarted RS) is from a server it already knows about, but startcode is different. So, it triggers server recovery. Alternatively, the recovery will be triggered by ZNODE expiry in some cases depending on which ever event (restart of RS or Znode expiry) happens first. After that it does logs splits etc. for the failed RS; it then also removes the old region server/startcode from the deadservers map.
+2010-06-17 10:26:06,420 INFO org.apache.hadoop.hbase.master.ServerManager: Server start rejected; we already have 10.138.95.182:60020 registered; existingServer=serverName=store286.xyz.com,60020,1276629467680, load=(requests=22, regions=171, usedHeap=6549, maxHeap=11993), newServer=serverName=store286.xyz.com,60020,1276795566511, load=(requests=0, regions=0, usedHeap=0, maxHeap=0)
+2010-06-17 10:26:06,420 INFO org.apache.hadoop.hbase.master.ServerManager: Triggering server recovery; existingServer looks stale
+2010-06-17 10:26:06,420 DEBUG org.apache.hadoop.hbase.master.ServerManager: Added=store286.xyz.com,60020,1276629467680 to dead servers, added shutdown processing operation
+
+... split log processing...
+
+2010-06-17 10:29:51,317 DEBUG org.apache.hadoop.hbase.master.RegionServerOperation: Removed store286.xyz.com,60020,1276629467680 from deadservers Map
+What follows is the relevant log snippet for one of the regions that gets double assigned.
+Master tries to assign the region to store285.
+At 10:30:20,006, in ProcessRegionOpen, we update META with information about the new assignment. However, just around the same time, BaseScanner processes this entry (at 10:30:20,009), but finds that the region is still assigned to the old region server. There have been some fixes for double assignment in BaseScanner because BaseScanner might be doing a stale read depending on when it started. But looks like there is still another hole left.
+2010-06-17 10:30:10,186 INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region test1,9301760000,1276657884012.acff724037d739bab9af61e3edef0cc9. to store285.xyz.com,60020,1276629468460
+
+2010-06-17 10:30:11,701 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_PROCESS_OPEN: test1,9301760000,1276657884012.acff724037d739bab9af61e3edef0cc9. from store285.xyz.com,60020,1276629468460; 8 of
+2010-06-17 10:30:12,800 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_PROCESS_OPEN: test1,9301760000,1276657884012.acff724037d739bab9af61e3edef0cc9. from store285.xyz.com,60020,1276629468460; 7 of
+2010-06-17 10:30:13,905 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_PROCESS_OPEN: test1,9301760000,1276657884012.acff724037d739bab9af61e3edef0cc9. from store285.xyz.com,60020,1276629468460; 6 of
+...
+2010-06-17 10:30:20,001 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: test1,9301760000,1276657884012.acff724037d739bab9af61e3edef0cc9. from store285.xyz.com,60020,1276629468460; 1 of 3
+2010-06-17 10:30:20,001 INFO org.apache.hadoop.hbase.master.RegionServerOperation: test1,9301760000,1276657884012.acff724037d739bab9af61e3edef0cc9. open on store285.xyz.com,60020,1276629468460
+2010-06-17 10:30:20,006 INFO org.apache.hadoop.hbase.master.RegionServerOperation: Updated row test1,9301760000,1276657884012.acff724037d739bab9af61e3edef0cc9. in region .META.,,1 with startcode=1276629468460, server=store285.xyz.com:60020
+2010-06-17 10:30:20,009 DEBUG org.apache.hadoop.hbase.master.BaseScanner: Current assignment of test1,9301760000,1276657884012.acff724037d739bab9af61e3edef0cc9. is not valid;  serverAddress=store286.xyz.com:60020, startCode=1276629467680 unknown.
+At this point BaseScanner calls "this.master.getRegionManager().setUnassigned(info, true)" to set the region to be unassigned (even though it is assigned to store285). And later, this region is given to another region server (store287).
+2010-06-17 10:30:20,581 INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region test1,9301760000,1276657884012.acff724037d739bab9af61e3edef0cc9. to store287.xyz.com,60020,1276629468678
+2010-06-17 10:30:25,525 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: test1,9301760000,1276657884012.acff724037d739bab9af61e3edef0cc9. from store287.xyz.com,60020,1276629468678; 6 of 6
+2010-06-17 10:30:25,531 INFO org.apache.hadoop.hbase.master.RegionServerOperation: test1,9301760000,1276657884012.acff724037d739bab9af61e3edef0cc9. open on store287.xyz.com,60020,1276629468678
+2010-06-17 10:30:25,534 INFO org.apache.hadoop.hbase.master.RegionServerOperation: Updated row test1,9301760000,1276657884012.acff724037d739bab9af61e3edef0cc9. in region .META.,,1 with startcode=1276629468678, server=store287.xyz.com:60020
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+19/Jun/10 21:29
+Update date:
+22/Mar/11 01:34
+Resolved date:
+30/Jul/10 05:02

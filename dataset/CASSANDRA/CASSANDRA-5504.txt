@@ -1,0 +1,37 @@
+Summary:
+Eternal iteration when using older hadoop version due to next() call and empty key value
+Description:
+Currently, when using newer hadoop versions, due to the call to
+next(ByteBuffer key, SortedMap<ByteBuffer, IColumn> value)
+within ColumnFamilyRecordReader, because `key.clear();` is called, key is emptied. That causes the StaticRowIterator and WideRowIterator to glitch, namely, when Iterables.getLast(rows).key is called, key is already empty. This will cause Hadoop to request the same range again and again all the time.
+Please see the attached patch/diff, it simply adds lastRowKey (ByteBuffer) and saves it for the next iteration along with all the rows, this allows query for the next range to be fully correct.
+This patch is branched from 1.2.3 version.
+Tested against Cassandra 1.2.3, with Hadoop 1.0.3, 1.0.4 and 0.20.2
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Petrov
+Reporter:
+Alex Petrov
+Create date:
+22/Apr/13 11:50
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Apr/13 23:02

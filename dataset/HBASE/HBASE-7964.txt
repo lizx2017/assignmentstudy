@@ -1,0 +1,44 @@
+Summary:
+requestCompaction priority argument is not used (except for user compaction check)
+Description:
+In some places, like major compaction chore or requesting interface for coproc, we pass priority value to requestCompaction.
+Checking the code in trunk and old code in 94, I see that neither uses this value properly; first, they check it for being user-level. Then they do this:
+        // everything went better than expected. create a compaction request
+        int pri = getCompactPriority(priority);
+        ret = new CompactionRequest(region, this, filesToCompact, isMajor, pri);
+getPriority does:
+    // If this is a user-requested compaction, leave this at the highest priority
+    if(priority == PRIORITY_USER) {
+      return PRIORITY_USER;
+    } else {
+      return this.blockingStoreFileCount - this.storefiles.size();
+    }
+, so non-user caller value is just thrown away. Probably if it's not NO_PRIORITY, it needs to be used. Overall priority code needs cleanup.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+Compaction
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergey Shelukhin
+Reporter:
+Sergey Shelukhin
+Create date:
+28/Feb/13 23:52
+Update date:
+06/Mar/13 01:02
+Resolved date:
+06/Mar/13 01:02

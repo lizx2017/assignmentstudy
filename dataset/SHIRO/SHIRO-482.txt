@@ -1,0 +1,38 @@
+Summary:
+EhCache API misuse prevents use of decorated caches
+Description:
+Shiro's EhCacheManager poses some implicit requirements against Caches served by EHCache CacheManager. Most notable, that EHCache manager instance registered by CacheManager is also a net.sf.ehcache.Cache instance. This can be seen in getCache method of EhCacheManager, as it uses CacheManager.getCache(String) method instead of CacheManager.getEhcache(String) method to populate local variable "cache" of type net.sf.ehcache.Ehcache.
+This condition is not always true, especially when "cache decoration" [1] feature of EHCache is used. In that case, CacheManager.getCache(String) will return null (as decorated cache will probably not be an instance of Cache), and NPE will happen when creation of org.apache.shiro.cache.ehcache.EhCache is attempted with null Cache.
+Proposed fix: one liner change of line 162 that currently yields
+cache = manager.getCache(name);
+to
+cache = manager.getEhcache(name);
+[1] http://ehcache.org/documentation/apis/cache-decorators
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+Caching
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Cservenak, Tamas
+Create date:
+22/Jan/14 13:59
+Update date:
+22/Jan/14 14:03
+Resolved date:
+

@@ -1,0 +1,39 @@
+Summary:
+Snapshot backport in 0.94.6 breaks rolling restarts
+Description:
+Aleksandr Shulman found with his nifty QA tools that 0.94.6 has an incompatible change due to HBASE-7360 (Snapshot 0.94 Backport) that breaks rolling restarts.
+RegionTransitionData.write() uses eventType.ordinal() that is the index in the enum and not the value specified in the enum definition. It means we can't add new states in the middle of the list. This can be fixed by moving C_M_SNAPSHOT_TABLE and C_M_RESTORE_SNAPSHOT at the end of the list. Trunk does the right thing already.
+Right now, RIT znodes created with 0.94.6 (or top of the branch) will use the wrong value for the event type. You will see things like:
+2013-04-03 14:57:25,197 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x13dd1e10dbd0004 Attempting to transition node 70236052/-ROOT- from M_ZK_REGION_OFFLINE to RS_ZK_REGION_OPENING
+2013-04-03 14:57:25,201 WARN org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x13dd1e10dbd0004 Attempt to transition the unassigned node for 70236052 from M_ZK_REGION_OFFLINE to RS_ZK_REGION_OPENING failed, the node existed but was in the state M_SERVER_SHUTDOWN set by the server 192.168.1.112,60020,1365026237977
+2013-04-03 14:57:25,201 WARN org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Failed transition from OFFLINE to OPENING for region=70236052
+2013-04-03 14:57:25,201 WARN org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Region was hijacked? It no longer exists, encodedName=70236052
+We should roll a 0.94.6.1 or 0.94.7 as soon this is fixed IMO.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.94.6
+Fix_version:
+0.94.6.1, 0.94.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Matteo Bertozzi
+Reporter:
+Jean-Daniel Cryans
+Create date:
+03/Apr/13 22:06
+Update date:
+25/Apr/13 22:20
+Resolved date:
+04/Apr/13 20:38

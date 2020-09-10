@@ -1,0 +1,37 @@
+Summary:
+AdvancedDataGrid.makeListData() incorrectly references HierarchicalCollectionViewCursor class instead of IHierarchicalCollectionViewCursor interface
+Description:
+The AdvancedDataGrid.makeListData() function incorrectly checks "iterator" against the HierarchicalCollectionViewCursor class, when it should check against the IHierarchicalCollectionViewCursor interface instead. This means that custom cursors that "extend" HierarchicalCollectionViewCursor will be recognized correctly as being hierarchical, but custom cursors that directly "implement" the IHierarchicalCollectionViewCursor interface instead will not.
+The solution is clear: change all references to HierarchicalCollectionViewCursor in AdvancedDataGrid.makeListData() to IHierarchicalCollectionViewCursor instead. Note, this bug was also present in the AdvancedDataGrid.getItemDepth() / getCurrentCursorDepth() function chain back in build 184505, but that has since been fixed... this bug should probably have been fixed at the same time
+Workaround:
+Subclass the AdvancedDataGrid, adding the following override:
+override protected function makeListData(data:Object, uid:String, rowNum:int, columnNum:int, column:AdvancedDataGridColumn):BaseListData
+{ var advancedDataGridListData:AdvancedDataGridListData = super.makeListData(data,uid,rowNum,columnNum,column) as AdvancedDataGridListData; if (iterator && iterator is IHierarchicalCollectionViewCursor && !(iterator is HierarchicalCollectionViewCursor) && columnNum == treeColumnIndex && !(data is AdvancedDataGridColumn)) initListData(data, advancedDataGridListData); return advancedDataGridListData; }
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+Adobe Flex SDK Previ
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Mihai Chira
+Reporter:
+Adobe JIRA
+Create date:
+18/Aug/08 18:26
+Update date:
+20/May/15 14:38
+Resolved date:
+20/May/15 14:38

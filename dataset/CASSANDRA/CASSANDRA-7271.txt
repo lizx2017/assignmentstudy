@@ -1,0 +1,139 @@
+Summary:
+Bulk data loading in Cassandra causing OOM
+Description:
+I am trying to load data from a csv file into Cassandra table using SSTableSimpleUnsortedWriter. As the latest maven cassandra dependencies have some issues with it, I have taken the next beta (rc) version cut as suggested in CASSANDRA-7218. But after taking it, I am facing issues with bulk data loading
+Here is the piece of code which loads data:
+public void loadData(TableDefinition tableDefinition, InputStream csvInputStream){
+
+    createDataInDBFormat(tableDefinition, csvInputStream);
+
+    Path dbFilePath = Paths.get(TEMP_DIR, keyspace, tableDefinition.getName());
+    //BulkLoader.main(new String[]{"-d","localhost",dbFilePath.toUri().getPath()});
+
+    try {
+        JMXServiceURL jmxUrl = new JMXServiceURL(String.format(
+                "service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi", cassandraHost, cassandraJMXPort));
+        JMXConnector connector = JMXConnectorFactory.connect(jmxUrl, new HashMap<String, Object>());
+        MBeanServerConnection mbeanServerConn = connector.getMBeanServerConnection();
+        ObjectName name = new ObjectName("org.apache.cassandra.db:type=StorageService");
+        StorageServiceMBean storageBean = JMX.newMBeanProxy(mbeanServerConn, name, StorageServiceMBean.class);
+
+        storageBean.bulkLoad(dbFilePath.toUri().getPath());
+        connector.close();
+
+    } catch (IOException | MalformedObjectNameException e) {
+        e.printStacktrace()
+    }
+    FileUtils.deleteQuietly(dbFilePath.toFile());
+}
+
+private void createDataInDBFormat(TableDefinition tableDefinition, InputStream csvInputStream) {
+    try(Reader reader = new InputStreamReader(csvInputStream)){
+
+        String tableName = tableDefinition.getName();
+        File directory = Paths.get(TEMP_DIR, keyspace, tableName).toFile();
+        directory.mkdirs();
+
+        String yamlPath = "file:\\"+CASSANDRA_HOME+File.separator+"conf"+File.separator+"cassandra.yaml";
+        System.setProperty("cassandra.config", yamlPath);
+
+        SSTableSimpleUnsortedWriter writer = new SSTableSimpleUnsortedWriter(
+                directory, new Murmur3Partitioner(), keyspace,
+                tableName, AsciiType.instance, null, 10);
+        long timestamp = System.currentTimeMillis() * 1000;
+
+        CSVReader csvReader = new CSVReader(reader);
+        String[] colValues = null;
+        List<ColumnDefinition> columnDefinitions = tableDefinition.getColumnDefinitions();
+        while((colValues = csvReader.readNext()) != null){
+            if(colValues.length != 0){
+                writer.newRow(bytes(colValues[0]));
+                for(int index = 1; index< colValues.length; index++){
+                    ColumnDefinition columnDefinition = columnDefinitions.get(index);       
+                    writer.addColumn(bytes(columnDefinition.getName()), bytes(colValues[index]), timestamp);
+                }
+            }
+        }
+        csvReader.close();
+        writer.close();
+    } catch (IOException e) {
+        e.printStacktrace();
+    }
+}
+On trying to run loadData, it is giving me the following exception:
+11:23:18.035 [45742123@qtp-1703018180-0] ERROR com.adaequare.common.config.TransactionPerRequestFilter.doInTransactionWithoutResult 39 - Problem in executing request : [http://localhost:8081/mapro-engine/rest/masterdata/pumpData]. Cause :org.glassfish.jersey.server.ContainerException: java.lang.OutOfMemoryError: Java heap space
+javax.servlet.ServletException: org.glassfish.jersey.server.ContainerException: java.lang.OutOfMemoryError: Java heap space
+        at org.glassfish.jersey.servlet.WebComponent.service(WebComponent.java:392) ~[jersey-container-servlet-core-2.6.jar:na]
+        at org.glassfish.jersey.servlet.ServletContainer.service(ServletContainer.java:381) ~[jersey-container-servlet-core-2.6.jar:na]
+        at org.glassfish.jersey.servlet.ServletContainer.service(ServletContainer.java:344) ~[jersey-container-servlet-core-2.6.jar:na]
+        at org.glassfish.jersey.servlet.ServletContainer.service(ServletContainer.java:219) ~[jersey-container-servlet-core-2.6.jar:na]
+        at org.mortbay.jetty.servlet.ServletHolder.handle(ServletHolder.java:511) ~[jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.servlet.ServletHandler$CachedChain.doFilter(ServletHandler.java:1166) [jetty-6.1.25.jar:6.1.25]
+        at com.adaequare.common.config.TransactionPerRequestFilter$1.doInTransactionWithoutResult(TransactionPerRequestFilter.java:37) ~[mapro-commons-1.0.jar:na]
+        at org.springframework.transaction.support.TransactionCallbackWithoutResult.doInTransaction(TransactionCallbackWithoutResult.java:34) [spring-tx-4.0.3.RELEASE.jar:4.0.3.RELEASE]
+:4.0.3.RELEASE]
+        at org.springframework.transaction.support.TransactionTemplate.execute(TransactionTemplate.java:133) [spring-tx-4.0.3.RELEASE.jar:4.0.3.RELEASE]
+        at com.adaequare.common.config.TransactionPerRequestFilter.doFilter(TransactionPerRequestFilter.java:33) [mapro-commons-1.0.jar:na]
+        at org.mortbay.jetty.servlet.ServletHandler$CachedChain.doFilter(ServletHandler.java:1157) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.servlet.ServletHandler.handle(ServletHandler.java:388) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.security.SecurityHandler.handle(SecurityHandler.java:216) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.servlet.SessionHandler.handle(SessionHandler.java:182) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.handler.ContextHandler.handle(ContextHandler.java:765) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.webapp.WebAppContext.handle(WebAppContext.java:440) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.handler.ContextHandlerCollection.handle(ContextHandlerCollection.java:230) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.handler.HandlerCollection.handle(HandlerCollection.java:114) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.handler.HandlerWrapper.handle(HandlerWrapper.java:152) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.Server.handle(Server.java:326) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.HttpConnection.handleRequest(HttpConnection.java:542) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.HttpConnection$RequestHandler.content(HttpConnection.java:943) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.HttpParser.parseNext(HttpParser.java:756) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.HttpParser.parseAvailable(HttpParser.java:218) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.jetty.HttpConnection.handle(HttpConnection.java:404) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.io.nio.SelectChannelEndPoint.run(SelectChannelEndPoint.java:410) [jetty-6.1.25.jar:6.1.25]
+        at org.mortbay.thread.QueuedThreadPool$PoolThread.run(QueuedThreadPool.java:582) [jetty-util-6.1.25.jar:6.1.25]
+Caused by: org.glassfish.jersey.server.ContainerException: java.lang.OutOfMemoryError: Java heap space
+        at org.glassfish.jersey.servlet.internal.ResponseWriter.rethrow(ResponseWriter.java:249) ~[jersey-container-servlet-core-2.6.jar:na]
+        at org.glassfish.jersey.servlet.internal.ResponseWriter.failure(ResponseWriter.java:231) ~[jersey-container-servlet-core-2.6.jar:na]
+        at org.glassfish.jersey.server.ServerRuntime$Responder.process(ServerRuntime.java:433) ~[jersey-server-2.6.jar:na]
+        at org.glassfish.jersey.server.ServerRuntime$1.run(ServerRuntime.java:265) ~[jersey-server-2.6.jar:na]
+        at org.glassfish.jersey.internal.Errors$1.call(Errors.java:271) ~[jersey-common-2.6.jar:na]
+        at org.glassfish.jersey.internal.Errors$1.call(Errors.java:267) ~[jersey-common-2.6.jar:na]
+        at org.glassfish.jersey.internal.Errors.process(Errors.java:315) ~[jersey-common-2.6.jar:na]
+        at org.glassfish.jersey.internal.Errors.process(Errors.java:297) ~[jersey-common-2.6.jar:na]
+        at org.glassfish.jersey.internal.Errors.process(Errors.java:267) ~[jersey-common-2.6.jar:na]
+        at org.glassfish.jersey.process.internal.RequestScope.runInScope(RequestScope.java:319) ~[jersey-common-2.6.jar:na]
+        at org.glassfish.jersey.server.ServerRuntime.process(ServerRuntime.java:236) ~[jersey-server-2.6.jar:na]
+        at org.glassfish.jersey.server.ApplicationHandler.handle(ApplicationHandler.java:1028) ~[jersey-server-2.6.jar:na]
+        at org.glassfish.jersey.servlet.WebComponent.service(WebComponent.java:373) ~[jersey-container-servlet-core-2.6.jar:na]
+        ... 26 common frames omitted
+Caused by: java.lang.OutOfMemoryError: Java heap space
+Here are my GRADLE_OPTS: -Xms1024m -Xmx1024m -XX:MaxPermSize=256m -Xdebug -Xrunjdwp:transport=dt_socket,address=9999,server=y,suspend=n
+And my csv file hardly contains 2 lines of data. Not sure what is causing OOM here? Is there some problem with the latest code I have taken or am I missing something here?
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael Shuler
+Reporter:
+Prasanth Gullapalli
+Create date:
+20/May/14 12:48
+Update date:
+16/Apr/19 09:31
+Resolved date:
+25/May/14 09:46

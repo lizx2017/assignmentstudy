@@ -1,0 +1,42 @@
+Summary:
+Replacement nodes have null entries in system.peers
+Description:
+If a node is replaced with -Dcassandra.replace_address, the new node has mostly null entries in system.peers:
+> select * from system.peers;
+
+ peer      | data_center | host_id | rack | release_version | rpc_address | schema_version | tokens
+-----------+-------------+---------+------+-----------------+-------------+----------------+--------------------------
+ 127.0.0.3 |        null |    null | null |            null |        null |           null | {'-3074457345618258602'}
+To reproduce, simply kill a node and replace it. The entries are correctly populated if the replacement node is restarted but they are never populated if it isn't.
+I can think of at least two bad consequences of this:
+1. Drivers like Datastax java-driver use the peers table to find the rpc_address and location info of a node. If the entires are null it assumes rpc_address=ip and the node is in the local DC.
+2. When using GossipingPropertyFileSnitch and node won't persist the DC/rack of another node so may not be able to locate it during restarts.
+I reproduced in 1.2.15 but from inspection it looks to be present in 1.2.16 and 2.0.7.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.17, 2.0.9, 2.1 rc1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Richard Low
+Create date:
+30/Apr/14 20:24
+Update date:
+16/Apr/19 09:31
+Resolved date:
+06/May/14 21:18

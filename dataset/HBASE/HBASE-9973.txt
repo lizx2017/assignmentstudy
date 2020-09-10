@@ -1,0 +1,47 @@
+Summary:
+[ACL]: Users with 'Admin' ACL permission will lose permissions after upgrade to 0.96.x from 0.94.x or 0.92.x
+Description:
+In our testing, we have uncovered that the ACL permissions for users with the 'A' credential do not hold after the upgrade to 0.96.x.
+This is because in the ACL table, the entry for the admin user is a permission on the 'acl' table with permission 'A'. However, because of the namespace transition, there is no longer an 'acl' table. Therefore, that entry in the hbase:acl table is no longer valid.
+Example:
+hbase(main):002:0> scan 'hbase:acl'
+ROW                   COLUMN+CELL                                               
+ TestTable            column=l:hdfs, timestamp=1384454830701, value=RW          
+ TestTable            column=l:root, timestamp=1384455875586, value=RWCA        
+ _acl_                column=l:root, timestamp=1384454767568, value=C           
+ _acl_                column=l:tableAdmin, timestamp=1384454788035, value=A     
+ hbase:acl            column=l:root, timestamp=1384455875786, value=C           
+In this case, the following entry becomes meaningless:
+ _acl_                column=l:tableAdmin, timestamp=1384454788035, value=A     
+As a result,
+Proposed fix:
+I see the fix being relatively straightforward. As part of the migration, change any entries in the 'acl' table with key 'acl' into a new row with key 'hbase:acl', all else being the same. And the old entry would be deleted.
+This can go into the standard migration script that we expect users to run.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.96.0, 0.96.1
+Fix_version:
+0.98.0, 0.96.1
+Component:
+migration, security
+Label:
+acl
+Environment:
+
+Attachment number:
+0
+Assignee:
+Himanshu Vashishtha
+Reporter:
+Aleksandr Shulman
+Create date:
+14/Nov/13 19:09
+Update date:
+16/Dec/13 18:46
+Resolved date:
+18/Nov/13 21:45

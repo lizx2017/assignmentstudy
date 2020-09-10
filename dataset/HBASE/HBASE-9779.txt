@@ -1,0 +1,90 @@
+Summary:
+IntegrationTestLoadAndVerify fails deleting IntegrationTestLoadAndVerify table
+Description:
+As part of the test, we want to delete the created table to restore cluster state. Interestingly we can disable the table successfully but then immediately after we fail the delete because we cannot get the table descriptor – getting the file descriptor is used to test if table is present.
+The test for getDescriptor is kinda broke because it throws base IOE which causes clients to retry over and over again as though the descriptor was going to come back.
+This bug is kinda ugly because in at least one case it caused our long-running hbase-it suite run to fail so would be good to fix.
+Here is sample from a test run:
+Disabling table IntegrationTestLoadAndVerify 2013-10-11 18:27:53,485 INFO  [main] client.HBaseAdmin: Started disable of IntegrationTestLoadAndVerify
+2013-10-11 18:27:53,526 INFO  [main] zookeeper.ZooKeeper: Initiating client connection, connectString=a1805.halxg.cloudera.com:2181 sessionTimeout=90000 watcher=catalogtracker-on-hconnection-0x5a7e666f
+2013-10-11 18:27:53,527 INFO  [main] zookeeper.RecoverableZooKeeper: Process identifier=catalogtracker-on-hconnection-0x5a7e666f connecting to ZooKeeper ensemble=a1805.halxg.cloudera.com:2181
+2013-10-11 18:27:53,527 INFO  [main-SendThread(a1805.halxg.cloudera.com:2181)] zookeeper.ClientCnxn: Opening socket connection to server a1805.halxg.cloudera.com/10.20.200.105:2181. Will not attempt to authenticate using SASL (unknown error)
+2013-10-11 18:27:53,527 DEBUG [main] catalog.CatalogTracker: Starting catalog tracker org.apache.hadoop.hbase.catalog.CatalogTracker@4ace08a5
+2013-10-11 18:27:53,529 INFO  [main-SendThread(a1805.halxg.cloudera.com:2181)] zookeeper.ClientCnxn: Socket connection established to a1805.halxg.cloudera.com/10.20.200.105:2181, initiating session
+2013-10-11 18:27:53,539 INFO  [main-SendThread(a1805.halxg.cloudera.com:2181)] zookeeper.ClientCnxn: Session establishment complete on server a1805.halxg.cloudera.com/10.20.200.105:2181, sessionid = 0x1412d47f53a5c70, negotiated timeout = 40000
+2013-10-11 18:27:53,602 DEBUG [main] catalog.CatalogTracker: Stopping catalog tracker org.apache.hadoop.hbase.catalog.CatalogTracker@4ace08a5
+2013-10-11 18:27:53,662 INFO  [main] zookeeper.ZooKeeper: Session: 0x1412d47f53a5c70 closed
+2013-10-11 18:27:53,662 INFO  [main-EventThread] zookeeper.ClientCnxn: EventThread shut down
+.2013-10-11 18:27:54,666 INFO  [main] zookeeper.ZooKeeper: Initiating client connection, connectString=a1805.halxg.cloudera.com:2181 sessionTimeout=90000 watcher=catalogtracker-on-hconnection-0x5a7e666f
+2013-10-11 18:27:54,667 INFO  [main] zookeeper.RecoverableZooKeeper: Process identifier=catalogtracker-on-hconnection-0x5a7e666f connecting to ZooKeeper ensemble=a1805.halxg.cloudera.com:2181
+2013-10-11 18:27:54,667 INFO  [main-SendThread(a1805.halxg.cloudera.com:2181)] zookeeper.ClientCnxn: Opening socket connection to server a1805.halxg.cloudera.com/10.20.200.105:2181. Will not attempt to authenticate using SASL (unknown error)
+2013-10-11 18:27:54,667 DEBUG [main] catalog.CatalogTracker: Starting catalog tracker org.apache.hadoop.hbase.catalog.CatalogTracker@692c0c5d
+2013-10-11 18:27:54,667 INFO  [main-SendThread(a1805.halxg.cloudera.com:2181)] zookeeper.ClientCnxn: Socket connection established to a1805.halxg.cloudera.com/10.20.200.105:2181, initiating session
+2013-10-11 18:27:54,696 INFO  [main-SendThread(a1805.halxg.cloudera.com:2181)] zookeeper.ClientCnxn: Session establishment complete on server a1805.halxg.cloudera.com/10.20.200.105:2181, sessionid = 0x1412d47f53a5c71, negotiated timeout = 40000
+2013-10-11 18:27:54,821 DEBUG [main] catalog.CatalogTracker: Stopping catalog tracker org.apache.hadoop.hbase.catalog.CatalogTracker@692c0c5d
+2013-10-11 18:27:54,871 INFO  [main] zookeeper.ZooKeeper: Session: 0x1412d47f53a5c71 closed
+2013-10-11 18:27:54,871 INFO  [main-EventThread] zookeeper.ClientCnxn: EventThread shut down
+.2013-10-11 18:27:55,890 INFO  [main] zookeeper.ZooKeeper: Initiating client connection, connectString=a1805.halxg.cloudera.com:2181 sessionTimeout=90000 watcher=catalogtracker-on-hconnection-0x5a7e666f
+2013-10-11 18:27:55,891 INFO  [main] zookeeper.RecoverableZooKeeper: Process identifier=catalogtracker-on-hconnection-0x5a7e666f connecting to ZooKeeper ensemble=a1805.halxg.cloudera.com:2181
+2013-10-11 18:27:55,891 INFO  [main-SendThread(a1805.halxg.cloudera.com:2181)] zookeeper.ClientCnxn: Opening socket connection to server a1805.halxg.cloudera.com/10.20.200.105:2181. Will not attempt to authenticate using SASL (unknown error)
+2013-10-11 18:27:55,891 DEBUG [main] catalog.CatalogTracker: Starting catalog tracker org.apache.hadoop.hbase.catalog.CatalogTracker@74234057
+2013-10-11 18:27:55,892 INFO  [main-SendThread(a1805.halxg.cloudera.com:2181)] zookeeper.ClientCnxn: Socket connection established to a1805.halxg.cloudera.com/10.20.200.105:2181, initiating session
+2013-10-11 18:27:55,896 INFO  [main-SendThread(a1805.halxg.cloudera.com:2181)] zookeeper.ClientCnxn: Session establishment complete on server a1805.halxg.cloudera.com/10.20.200.105:2181, sessionid = 0x1412d47f53a5c72, negotiated timeout = 40000
+2013-10-11 18:27:55,908 DEBUG [main] catalog.CatalogTracker: Stopping catalog tracker org.apache.hadoop.hbase.catalog.CatalogTracker@74234057
+2013-10-11 18:27:55,912 INFO  [main] zookeeper.ZooKeeper: Session: 0x1412d47f53a5c72 closed
+2013-10-11 18:27:55,912 INFO  [main-EventThread] zookeeper.ClientCnxn: EventThread shut down
+ 2389 ms
+Deleting table IntegrationTestLoadAndVerify 
+2013-10-11 18:33:02,029 INFO  [main] hbase.HBaseCluster: Restoring cluster - started
+2013-10-11 18:33:02,032 INFO  [main] hbase.HBaseCluster: Added new HBaseAdmin
+2013-10-11 18:33:02,032 INFO  [main] hbase.HBaseCluster: Restoring cluster - done
+2013-10-11 18:33:02,033 ERROR [main] util.AbstractHBaseTool: Error running command-line tool
+org.apache.hadoop.hbase.client.RetriesExhaustedException: Failed after attempts=35, exceptions:
+Fri Oct 11 18:27:55 PDT 2013, org.apache.hadoop.hbase.client.RpcRetryingCaller@48c6f1e8, org.apache.hadoop.hbase.ipc.RemoteWithExtrasException(java.io.IOException): java.io.IOException: HTableDescriptor missing for IntegrationTestLoadAndVerify
+ at org.apache.hadoop.hbase.master.handler.TableEventHandler.getTableDescriptor(TableEventHandler.java:231)
+ at org.apache.hadoop.hbase.master.handler.DeleteTableHandler.prepareWithTableLock(DeleteTableHandler.java:58)
+ at org.apache.hadoop.hbase.master.handler.TableEventHandler.prepare(TableEventHandler.java:93)
+ at org.apache.hadoop.hbase.master.HMaster.deleteTable(HMaster.java:1816)
+ at org.apache.hadoop.hbase.master.HMaster.deleteTable(HMaster.java:1826)
+ at org.apache.hadoop.hbase.protobuf.generated.MasterProtos$MasterService$2.callBlockingMethod(MasterProtos.java:38213)
+ at org.apache.hadoop.hbase.ipc.RpcServer.call(RpcServer.java:2146)
+ at org.apache.hadoop.hbase.ipc.RpcServer$Handler.run(RpcServer.java:1851)
+....
+Looking on master logs, it looks fine:
+  1 2013-10-11 18:27:55,541 DEBUG [MASTER_TABLE_OPERATIONS-a1805:60000-0] handler.DisableTableHandler: Disable waiting until done; 298996 ms remaining; []
+  0 2013-10-11 18:27:55,546 INFO  [MASTER_TABLE_OPERATIONS-a1805:60000-0] handler.DisableTableHandler: Disabled table is done=true
+  1 2013-10-11 18:27:55,555 DEBUG [MASTER_TABLE_OPERATIONS-a1805:60000-0] lock.ZKInterProcessLockBase: Released /hbase/table-lock/IntegrationTestLoadAndVerify/write-master:600000000000001
+  2 2013-10-11 18:27:55,923 INFO  [RpcServer.handler=14,port=60000] master.HMaster: Client=hbase//10.20.200.112 delete IntegrationTestLoadAndVerify
+  3 2013-10-11 18:27:55,931 DEBUG [RpcServer.handler=14,port=60000] lock.ZKInterProcessLockBase: Acquired a lock for /hbase/table-lock/IntegrationTestLoadAndVerify/write-master:600000000000002
+  4 2013-10-11 18:27:55,954 DEBUG [RpcServer.handler=14,port=60000] lock.ZKInterProcessLockBase: Released /hbase/table-lock/IntegrationTestLoadAndVerify/write-master:600000000000002
+  5 2013-10-11 18:27:56,167 INFO  [RpcServer.handler=15,port=60000] master.HMaster: Client=hbase//10.20.200.112 delete IntegrationTestLoadAndVerify
+...
+Oddly no exceptions other than corrupted snapshot because mssing hfile. All seems to have been operating fine. Will look more.
+Status:
+OPEN
+Priority:
+Critical
+Resolution:
+Unresolved
+Affects_version:
+0.96.0
+Fix_version:
+None
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+16/Oct/13 05:22
+Update date:
+19/Sep/14 10:22
+Resolved date:
+

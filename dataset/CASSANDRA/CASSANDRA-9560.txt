@@ -1,0 +1,41 @@
+Summary:
+Changing durable_writes on a keyspace is only applied after restart of node
+Description:
+When mutations for a column family is about to be applied, the cached instance of the keyspace metadata is read. But the schema mutation for durable_writes hasn't been applied to this cached instance.
+I'm not too familiar with the codebase but after some debugging (2.1.3), it's somehow related to:
+org.apache.cassandra.db.Mutation.java
+public void apply()
+{
+   Keyspace ks = Keyspace.open(keyspaceName);
+    ks.apply(this, ks.metadata.durableWrites);
+}
+Where a cached instance of the keyspace is opened but it's metadata hasn't been updated with the earlier applied durable_writes mutation, since it seems that the cached keyspace instance is lazily build at startup but after that, never updated. I'm also a little bit concerned if other values in the cached keyspace instance suffers from the same issue, e.g. replication_factor...
+I've seen the same issue in 2.1.5 and the only way to resolve this issue is to restart the node to let the keyspace instance cache reload from disk.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.17, 2.1.8, 2.2.0 rc2
+Component:
+Legacy/Distributed Metadata
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Carl Yeksigian
+Reporter:
+Fred A
+Create date:
+05/Jun/15 22:44
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Jul/15 19:22

@@ -1,0 +1,66 @@
+Summary:
+CQL3 Predicate logic bug when using composite columns
+Description:
+Looks like a predicate logic bug that only happens when you have > 2 primary keys and use COMPACT STORAGE (meaning its using composite columns under the hood)
+First I'll show it works with just 2
+cqlsh:dev> CREATE TABLE testrev (
+       ...          key text,
+       ...          rdate timestamp,
+       ...          num double,
+       ...          PRIMARY KEY(key,rdate)
+       ...          ) WITH COMPACT STORAGE
+       ...            AND CLUSTERING ORDER BY(rdate DESC);
+
+cqlsh:dev> INSERT INTO testrev(key,rdate,num) VALUES ('foo','2012-01-01',10.5);
+cqlsh:dev> select * from testrev where key='foo' and rdate > '2012-01-01';
+cqlsh:dev> select * from testrev where key='foo' and rdate >= '2012-01-01';
+ key | rdate                    | num
+-----+--------------------------+------
+ foo | 2012-01-01 00:00:00-0500 | 10.5
+Now we create with 3 parts to the PRIMARY KEY
+cqlsh:dev> drop TABLE testrev ;
+cqlsh:dev> CREATE TABLE testrev (
+       ...          key text,
+       ...          rdate timestamp,
+       ...          rdate2 timestamp,
+       ...          num double,
+       ...          PRIMARY KEY(key,rdate,rdate2)
+       ...          ) WITH COMPACT STORAGE
+       ...          AND CLUSTERING ORDER BY(rdate DESC);
+
+cqlsh:dev> INSERT INTO testrev(key,rdate,rdate2,num) VALUES ('foo','2012-01-01','2012-01-01',10.5);
+cqlsh:dev> select * from testrev where key='foo' and rdate > '2012-01-01';
+ key | rdate                    | rdate2                   | num
+-----+--------------------------+--------------------------+------
+ foo | 2012-01-01 00:00:00-0500 | 2012-01-01 00:00:00-0500 | 10.5
+
+cqlsh:dev> select * from testrev where key='foo' and rdate >= '2012-01-01';
+The last query should return the row...
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.6
+Component:
+None
+Label:
+cql3
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+T Jake Luciani
+Create date:
+03/Oct/12 21:23
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Oct/12 15:03

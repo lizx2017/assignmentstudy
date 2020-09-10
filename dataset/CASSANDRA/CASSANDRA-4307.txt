@@ -1,0 +1,36 @@
+Summary:
+isMarkedForDelete can return false if it is a few seconds in the future
+Description:
+The patch in CASSANDRA-3716 causes some weird issues to arrise when server times don't exactly match up (and since the resolution is seconds, it is easy to be off by just enough to see it).
+I am seeing a case where during schema propagation .isMarkedForDelete() is checked, but the timestamp is a few seconds in the future because the schema was sent from a different node. The code then happily tries to interpret the value of the column as a String, but it is actually the Int encoded deletion time.
+Here is an example in the code that does this check and will do the wrong thing if the deletion timestamp is even just a few seconds in the future: https://github.com/apache/cassandra/blob/47f0cc5d38d272ec9f7d6179eb3ffa28c6f74107/src/java/org/apache/cassandra/cql3/statements/SelectStatement.java#L607-609
+To prove that this is a problem, here is a stack trace of a machine trying to interpret the "localDeletionTime" value of a DeletedColumn as UTF-8 because the .isMarkedForDeletion() check failed:
+https://gist.github.com/deb064d4377d206368d3
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Wade Simmons
+Create date:
+05/Jun/12 06:09
+Update date:
+16/Apr/19 09:32
+Resolved date:
+06/Jun/12 08:06

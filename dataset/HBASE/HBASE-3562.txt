@@ -1,0 +1,70 @@
+Summary:
+ValueFilter is being evaluated before performing the column match
+Description:
+When performing a Get operation where a both a column is specified and a ValueFilter, the ValueFilter is evaluated before making the column match as is indicated in the javadoc of Get.setFilter() : "
+{@link Filter#filterKeyValue(KeyValue)}
+is called AFTER all tests for ttl, column match, deletes and max versions have been run. "
+The is shown in the little test below, which uses a TestComparator extending a WritableByteArrayComparable.
+public void testFilter() throws Exception {
+byte[] cf = Bytes.toBytes("cf");
+byte[] row = Bytes.toBytes("row");
+byte[] col1 = Bytes.toBytes("col1");
+byte[] col2 = Bytes.toBytes("col2");
+Put put = new Put(row);
+put.add(cf, col1, new byte[]
+{(byte)1}
+);
+put.add(cf, col2, new byte[]
+{(byte)2}
+);
+table.put(put);
+Get get = new Get(row);
+get.addColumn(cf, col2); // We only want to retrieve col2
+TestComparator testComparator = new TestComparator();
+Filter filter = new ValueFilter(CompareOp.EQUAL, testComparator);
+get.setFilter(filter);
+Result result = table.get(get);
+}
+public class TestComparator extends WritableByteArrayComparable {
+/**
+Nullary constructor, for Writable
+*/
+public TestComparator() { super(); }
+@Override
+public int compareTo(byte[] theirValue) {
+if (theirValue[0] == (byte)1)
+{ // If the column match was done before evaluating the filter, we should never get here. throw new RuntimeException("I only expect (byte)2 in col2, not (byte)1 from col1"); }
+if (theirValue[0] == (byte)2)
+{ return 0; }
+else return 1;
+}
+}
+When only one column should be retrieved, this can be worked around by using a SingleColumnValueFilter instead of the ValueFilter.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+0.90.0, 0.94.7
+Fix_version:
+None
+Component:
+Filters
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Evert Arckens
+Create date:
+24/Feb/11 16:02
+Update date:
+17/Nov/16 02:21
+Resolved date:
+

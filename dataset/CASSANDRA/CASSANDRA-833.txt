@@ -1,0 +1,38 @@
+Summary:
+fix consistencylevel during bootstrap
+Description:
+As originally designed, bootstrap nodes should always get all writes under any consistencylevel, so when bootstrap finishes the operator can run cleanup on the old nodes w/o fear that he might lose data.
+but if a bootstrap operation fails or is aborted, that means all writes will fail until the ex-bootstrapping node is decommissioned. so starting in CASSANDRA-722, we just ignore dead nodes in consistencylevel calculations.
+but this breaks the original design. CASSANDRA-822 adds a partial fix for this (just adding bootstrap targets into the RF targets and hinting normally), but this is still broken under certain conditions. The real fix is to consider consistencylevel for two sets of nodes:
+1. the RF targets as currently existing (no pending ranges)
+2. the RF targets as they will exist after all movement ops are done
+If we satisfy CL for both sets then we will always be in good shape.
+I'm not sure if we can easily calculate 2. from the current TokenMetadata, though.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jonathan Ellis
+Create date:
+24/Feb/10 17:44
+Update date:
+16/Apr/19 09:33
+Resolved date:
+21/Sep/12 15:13

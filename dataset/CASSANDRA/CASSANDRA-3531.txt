@@ -1,0 +1,33 @@
+Summary:
+Fix crack-smoking in ConsistencyLevelTest
+Description:
+First, let's note that this test fails in current 1.0 branch. It was "broken" (emphasis on the quotes) by CASSANDRA-3529. But it's not CASSANDRA-3529 fault, it's only that the use of NonBlockingHashMap changed the order of the tables returned by Schema.instance.getNonSystemTables(). And, it turns out that ConsistencyLevelTest bails out as soon as it has found one keyspace with rf >= 2 due to a misplaced return. So it use to be that ConsistencyLevelTest was only ran for Keyspace5 (whose RF is 2) for which the test work. But for any RF > 2, the test fails.
+The reason of this failing is that the test creates a 3 node cluster for whom only 1 node is alive as far as the failure detector is concerned. So for RF=3 and CL=QUORUM, the writes are unavailable (the failure detector is queried), while for reads we "pretend" two nodes are alive so we end up with a case where isWriteUnavailable != isReadUnavailable.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.7
+Component:
+Legacy/Testing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+25/Nov/11 11:37
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Jan/12 03:17

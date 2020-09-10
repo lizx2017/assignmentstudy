@@ -1,0 +1,47 @@
+Summary:
+DROP INDEX name case sensitivity causing errors in cass upgrade 2.0.10 to 2.1.3
+Description:
+We are upgrading our dev cluster. 2.0.10 to 2.1.3
+The indexes are behaving very strangely.
+create index definition_bundle__BundleDefSkuIDXTest on definition_bundle.entity_bundledef(e_entlinks) ;
+definition_bundle> select column_name, index_name, index_options, index_type, component_index from system.schema_columns where keyspace_name = 'definition_bundle' and columnfamily_name = 'entity_bundledef';
+column_name | index_name | index_options | index_type | component_index
+-----------------------------------------------------------------------------------------
+bundle_sku | definition_bundle__BundleDefSkuIDX | {} | COMPOSITES | 1
+e_entid | null | null | null | null
+e_entlinks | definition_bundle__bundledefskuidxtest | {} | COMPOSITES | 1
+NOTICE THE AUTO-DOWNCASE of our newly created index. The index that already existed is NOT AUTO-DOWNCASED. I don't know if this is recent or not.
+We cannot drop the mixed case index. Nodetool index reconstruction did not work. Indexes are doing very weird things.
+Hm. UPDATE:
+This did successfully delete the index:
+drop index "definition_bundle__BundleDefSkuIDX";
+Anyway, it looks like there is some upcase/downcase assumptions not being properly done.... somewhere, either in upgrades or similar stuff.
+We will probably drop our indexes and recreate them.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+None
+Label:
+None
+Environment:
+amazon, ubuntu, java 1.7
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Constance Eustace
+Create date:
+25/Feb/15 20:10
+Update date:
+16/Apr/19 09:31
+Resolved date:
+10/Mar/15 18:42

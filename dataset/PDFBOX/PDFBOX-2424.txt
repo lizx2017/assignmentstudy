@@ -1,0 +1,59 @@
+Summary:
+ClassCastException in getMetaData if no real meta data
+Description:
+Here's an exception from Tim Allison latest TIKA test (too lazy to test it myself, the cause is obvious) with the attached file:
+org.apache.tika.exception.TikaException: Unexpected RuntimeException from org.apache.tika.parser.pdf.PDFParser
+ at org.apache.tika.parser.CompositeParser.parse(CompositeParser.java:249)
+ at org.apache.tika.parser.CompositeParser.parse(CompositeParser.java:247)
+ at org.apache.tika.parser.AutoDetectParser.parse(AutoDetectParser.java:120)
+ at org.apache.tika.parser.RecursiveParserWrapper.parse(RecursiveParserWrapper.java:137)
+ at org.apache.tika.batch.fs.RecursiveParserWrapperFSConsumer.processFileResource(RecursiveParserWrapperFSConsumer.java:120)
+ at org.apache.tika.batch.FileResourceConsumer._processFileResource(FileResourceConsumer.java:153)
+ at org.apache.tika.batch.FileResourceConsumer.call(FileResourceConsumer.java:96)
+ at org.apache.tika.batch.FileResourceConsumer.call(FileResourceConsumer.java:38)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+ at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:724)
+Caused by: java.lang.ClassCastException: org.apache.pdfbox.cos.COSDictionary cannot be cast to org.apache.pdfbox.cos.COSStream
+ at org.apache.pdfbox.pdmodel.PDDocumentCatalog.getMetadata(PDDocumentCatalog.java:312)
+ at org.apache.tika.parser.pdf.PDFParser.extractMetadata(PDFParser.java:181)
+ at org.apache.tika.parser.pdf.PDFParser.parse(PDFParser.java:158)
+ at org.apache.tika.parser.CompositeParser.parse(CompositeParser.java:247)
+ ... 13 more
+"
+here's the excerpt in the PDF:
+241 0 obj << /Type /Metadata /Subtype /XML >> endobj
+the current code is
+        COSStream stream = (COSStream)root.getDictionaryObject( COSName.METADATA );
+shall we keep it that way or rather put out a warning if the meta data is not a stream and return null? Adobe Reader does nothing when looking for the properties.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.7, 1.8.8, 2.0.0
+Fix_version:
+1.8.8, 2.0.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+10/Oct/14 19:13
+Update date:
+13/Dec/14 14:14
+Resolved date:
+12/Oct/14 20:01

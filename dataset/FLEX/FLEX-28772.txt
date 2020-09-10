@@ -1,0 +1,67 @@
+Summary:
+Error 'Could not find compiled resource bundle' when loading resource modules with flashvars resourceModuleURLS in Flex 4.5
+Description:
+In our application, we compile resource modules for each language we support into separate .swf files. At runtime, we use the flashVars property 'resourceModuleURLs' to load the appropriate resource module based on the user's language. We use something like this in our HTML to load the resource modules: <param name="flashvars" value="localeChain=de_DE,en_US&resourceModuleURLs=LocaleTest_de_DE.swf" />
+However, in Flex 4.5, using the flashVars property resourceModuleURLs is resulting in the following error:
+Error: Could not find compiled resource bundle 'collections' for locale 'en_US'.
+at mx.resources::ResourceManagerImpl/installCompiledResourceBundle()
+at mx.resources::ResourceManagerImpl/installCompiledResourceBundles()
+at mx.resources::ResourceManagerImpl/processInfo()
+at mx.resources::ResourceManagerImpl()
+at mx.resources::ResourceManager$/getInstance()
+at mx.core::ResourceModuleRSLItem/load()
+at mx.core::RSLListLoader/loadNext()
+at mx.core::RSLListLoader/load()
+at mx.preloaders::Preloader/timerHandler()
+at flash.utils::Timer/_timerDispatch()
+at flash.utils::Timer/tick()
+This same thing works with Flex SDK 3.5.0.12683.
+Repro:
+1. Extract the attached zip file into a web server document root directory.
+2. In Firefox, browse to the LocaleTest.html file that was extracted (e.g. http://localhost/LocaleTest/LocaleTest.html). This file uses <param name="flashvars" value="localeChain=de_DE,en_US&resourceModuleURLs=LocaleTest_de_DE.swf" /> to load the German resource bundle.
+3. Loading the swf will result in the error "Error: Could not find compiled resource bundle 'collections' for locale 'en_US'".
+More about the repro:
+This repro includes the ANT build file that I used to build the application and the resource bundles. To use the build file:
+1. Set FLEX_HOME, ANT_HOME, and JAVA_HOME in the shell environment. I am using Flex SDK 4.5, Ant 1.7, JRE 1.5.0_15
+2. Build using the command 'ant -buildfile flexbuild.xml'
+Workaround:
+1. Don't build resource modules separately; build all locales (en_US,de_DE,it_IT) into the application itself.
+2. Don't load the resource module using flashvars. Instead load it after the Application is loaded using: resourceManager.loadResourceModule(resourceModuleURL);
+But neither of these options are very attractive for my application.
+More info:
+My debugging has shown that this error is occurring in the frameworks/projects/framework/src/mx/resources/ResourceManagerImpl.as file, in the function installCompiledResourceBundle. In the lines pasted below, the applicationDomain.hasDefinition call returns false when using flashvars (which results in the 'Could not find compiled resource bundle' error). However, when you load the same resource module programmatically using resourceManager.loadResourceModule(resourceModuleURL), the applicationDomain.hasDefinition call in the code below returns true and the module is successfully loaded.
+// Find the bundle class by its name.
+// We do a hasDefinition() check before calling getDefinition()
+// because getDefinition() will throw an RTE
+// if the class doesn't exist.
+var bundleClass:Class = null;
+if (applicationDomain.hasDefinition(resourceBundleClassName))
+{ bundleClass = Class(applicationDomain.getDefinition( resourceBundleClassName)); }
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.5.1
+Fix_version:
+None
+Component:
+Runtime Localization
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+11/Oct/11 15:28
+Update date:
+11/Oct/11 15:30
+Resolved date:
+

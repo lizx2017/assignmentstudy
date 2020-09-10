@@ -1,0 +1,62 @@
+Summary:
+hbase completebulkload to a new table fails in a race
+Description:
+I have a test that tests vanilla use of importtsv with importtsv.bulk.output option followed by completebulkload to a new table.
+This sometimes fails as follows:
+11/12/19 15:02:39 WARN client.HConnectionManager$HConnectionImplementation: Encountered problems when prefetch META table:
+org.apache.hadoop.hbase.TableNotFoundException: Cannot find row in .META. for table: ml_items_copy, row=ml_items_copy,,99999999999999
+at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:157)
+at org.apache.hadoop.hbase.client.MetaScanner.access$000(MetaScanner.java:52)
+at org.apache.hadoop.hbase.client.MetaScanner$1.connect(MetaScanner.java:130)
+at org.apache.hadoop.hbase.client.MetaScanner$1.connect(MetaScanner.java:127)
+at org.apache.hadoop.hbase.client.HConnectionManager.execute(HConnectionManager.java:359)
+at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:127)
+at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:103)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.prefetchRegionCache(HConnectionManager.java:875)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:929)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:817)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:781)
+at org.apache.hadoop.hbase.client.HTable.finishSetup(HTable.java:247)
+at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:211)
+at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:171)
+at org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles.createTable(LoadIncrementalHFiles.java:673)
+at org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles.run(LoadIncrementalHFiles.java:697)
+at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:69)
+at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:83)
+at org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles.main(LoadIncrementalHFiles.java:707)
+The race appears to be calling HbAdmin.createTableAsync(htd, keys) and then creating an HTable object before that call has actually completed.
+The following change to /src/main/java/org/apache/hadoop/hbase/mapreduce/LoadIncrementalHFiles.java appears to fix the problem, but I have not been able to reproduce the race reliably, in order to write a test.
+-    HTable table = new HTable(this.cfg, tableName);
+-
+-    HConnection conn = table.getConnection();
+     int ctr = 0;
+-    while (!conn.isTableAvailable(table.getTableName()) && (ctr<TABLE_CREATE_MA
++    while (!this.hbAdmin.isTableAvailable(tableName) && (ctr<TABLE_CREATE_MAX_R
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0, 0.94.0
+Fix_version:
+0.92.1, 0.94.0
+Component:
+mapreduce
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gregory Chanan
+Reporter:
+Gregory Chanan
+Create date:
+08/Feb/12 00:14
+Update date:
+12/Oct/12 05:35
+Resolved date:
+24/Feb/12 23:42

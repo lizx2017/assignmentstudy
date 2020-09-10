@@ -1,0 +1,60 @@
+Summary:
+Test2BPostingsBytes sometimes OOMs even with -Dtests.heapsize=30g
+Description:
+Here's an example: http://jenkins.sarowe.net/job/Lucene-core-nightly-monster-5.x-Java7/22/console; the seed still OOMs for me when -Dtests.heapsize=60g:
+ant test  -Dtestcase=Test2BPostingsBytes -Dtests.method=test -Dtests.seed=F99606D852DB1420 -Dtests.nightly=true -Dtests.slow=true -Dtests.locale=sr_RS_#Latn -Dtests.timezone=America/Port-au-Prince -Dtests.asserts=true -Dtests.file.encoding=ISO-8859-1
+(Although the repro line doesn't include all of them - Dawid Weiss is this expected? - the above-linked job runs with -Dtests.jvms=4 -Dtests.nightly=true -Dtests.monster=true -Dtests.heapsize=30g.)
+I narrowed the problem down to CompressingCodec - any of the 4 subclasses - with maxDocsPerChunk * blockSize less than 16. The other variable randomized in CompressingCodec.randomInstance() is chunkSize, which doesn't seem to be implicated in the OOMs.
+I guess we could suppress CompressingCodec, or just expect OOMs from time to time (the above condition happens fairly rarely). But I'd rather continue to exercise CompressingCodec as much as possible.
+Here are the OOMs I saw with -Dtests.heapsize=30g and -Dtests.codec=CompressingCodec:
+compressionMode chunkSize maxDocsPerChunk blockSize
+DUMMY 3 2 1
+DUMMY 7 1 1
+FAST_DECOMPRESSION 10 9 1
+FAST_DECOMPRESSION 31614 3 4
+FAST 21879 1 9
+DUMMY 3 3 1
+HIGH_COMPRESSION 4167 10 1
+HIGH_COMPRESSION 12437 2 5
+DUMMY 4 3 2
+HIGH_COMPRESSION 3 3 2
+FAST_DECOMPRESSION 3339 10 1
+DUMMY 2 5 3
+Here are some that did not OOM:
+compressionMode chunkSize maxDocsPerChunk blockSize
+DUMMY 4 4 4
+DUMMY 4 2 246
+FAST 30677 907 2
+FAST_DECOMPRESSION 15165 2 10
+FAST_DECOMPRESSION 28633 67 1
+DUMMY 7 3 9
+DUMMY 2835 9 3
+DUMMY 25785 4 7
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.3
+Component:
+general/test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Steve Rowe
+Reporter:
+Steve Rowe
+Create date:
+10/Jun/15 18:14
+Update date:
+26/Aug/15 13:06
+Resolved date:
+11/Jun/15 15:30

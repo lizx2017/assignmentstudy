@@ -1,0 +1,59 @@
+Summary:
+Force provided columns in clustering key order in 'CLUSTERING ORDER BY'
+Description:
+Using this table:
+CREATE TABLE video_event (
+videoid_username varchar,
+event varchar,
+event_timestamp timestamp,
+video_timestamp timestamp,
+PRIMARY KEY (videoid_username, event, event_timestamp)
+)WITH CLUSTERING ORDER BY (event_timestamp DESC);
+Inserting these records:
+INSERT INTO video_event (videoid_username, event, event_timestamp, video_timestamp)
+VALUES ('99051fe9-6a9c-46c2-b949-38ef78858dd0:ctodd','start','2012-09-02 18:05:00','2012-09-02 18:05:00');
+INSERT INTO video_event (videoid_username, event, event_timestamp, video_timestamp)
+VALUES ('99051fe9-6a9c-46c2-b949-38ef78858dd0:ctodd','stop','2012-09-02 18:05:30','2012-09-02 18:05:30');
+INSERT INTO video_event (videoid_username, event, event_timestamp, video_timestamp)
+VALUES ('99051fe9-6a9c-46c2-b949-38ef78858dd0:ctodd','start','2012-09-02 18:35:00','2012-09-02 18:35:00');
+INSERT INTO video_event (videoid_username, event, event_timestamp, video_timestamp)
+VALUES ('99051fe9-6a9c-46c2-b949-38ef78858dd0:ctodd','stop','2012-09-02 18:37:30','2012-09-02 18:37:30');
+Running this select:
+select * from video_event where videoid_username = '99051fe9-6a9c-46c2-b949-38ef78858dd0:ctodd' limit 1;
+I get this:
+videoid_username | event | event_timestamp | video_timestamp
+------------------------------------------------------------------------+-------------------------
+99051fe9-6a9c-46c2-b949-38ef78858dd0:ctodd | start | 2012-09-02 18:05:00+0000 | 2012-09-02 18:05:00+0000
+I would expect to see this:
+videoid_username | event | event_timestamp | video_timestamp
+------------------------------------------------------------------------+-------------------------
+99051fe9-6a9c-46c2-b949-38ef78858dd0:ctodd | stop | 2012-09-02 18:37:30+0000 | 2012-09-02 18:37:30+0000
+where the first record pulled was the sorted record by event_timestamp in reverse order.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Patrick McFadin
+Create date:
+30/Oct/12 22:18
+Update date:
+16/Apr/19 09:32
+Resolved date:
+31/Oct/12 14:33

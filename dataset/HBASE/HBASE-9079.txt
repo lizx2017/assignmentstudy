@@ -1,0 +1,41 @@
+Summary:
+FilterList getNextKeyHint skips rows that should be included in the results
+Description:
+I hit a weird issue/bug and am able to reproduce the error consistently. The problem arises when FilterList has two filters where each implements the getNextKeyHint method.
+The way the current implementation works is, StoreScanner will call matcher.getNextKeyHint() whenever it gets a SEEK_NEXT_USING_HINT. This in turn will call filter.getNextKeyHint() which at this stage is of type FilterList. The implementation in FilterList iterates through all the filters and keeps the max KeyValue that it sees. All is fine if you wrap filters in FilterList in which only one of them implements getNextKeyHint. but if multiple of them implement then that's where things get weird.
+For example:
+create two filters: one is FuzzyRowFilter and second is ColumnRangeFilter. Both of them implement getNextKeyHint
+wrap them in FilterList with MUST_PASS_ALL
+FuzzyRowFilter will seek to the correct first row and then pass it to ColumnRangeFilter which will return the SEEK_NEXT_USING_HINT code.
+Now in FilterList when getNextKeyHint is called, it calls the one on FuzzyRow first which basically says what the next row should be. While in reality we want the ColumnRangeFilter to give the seek hint.
+The above behavior skips data that should be returned, which I have verified by using a RowFilter with RegexStringComparator.
+I updated the FilterList to maintain state on which filter returns the SEEK_NEXT_USING_HINT and in getNextKeyHint, I invoke the method on the saved filter and reset that state. I tested it with my current queries and it works fine but I need to run the entire test suite to make sure I have not introduced any regression. In addition to that I need to figure out what should be the behavior when the opeation is MUST_PASS_ONE, but I doubt it should be any different.
+Is my understanding of it being a bug correct ? Or am I trivializing it and ignoring something very important ? If it's tough to wrap your head around the explanation, then I can open a JIRA and upload a patch against 0.94 head.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.10
+Fix_version:
+0.98.0, 0.95.2, 0.94.11
+Component:
+Filters
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Viral Bajaria
+Reporter:
+Viral Bajaria
+Create date:
+29/Jul/13 23:39
+Update date:
+21/Aug/13 00:08
+Resolved date:
+08/Aug/13 20:30

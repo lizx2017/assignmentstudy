@@ -1,0 +1,98 @@
+Summary:
+Upgrading from 1.0 to 1.1 makes secondary indexes no longer work
+Description:
+To reproduce:
+Create column family with C* 1.0.8:
+CREATE KEYSPACE Keyspace1 
+with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
+and strategy_options = {replication_factor:1};
+
+use Keyspace1;
+
+CREATE COLUMN FAMILY 'User' WITH
+ key_validation_class = 'UTF8Type' AND
+ comparator = 'UTF8Type' AND
+ default_validation_class = 'UTF8Type' AND
+ compression_options = {sstable_compression:SnappyCompressor,chunk_length_kb:64} AND
+ column_metadata = [
+ {column_name: 'numberOfDeloreans', validation_class: 'IntegerType', index_type: KEYS}
+];
+Then in cqlsh add some data:
+use Keyspace1;
+update User set 'numberOfDeloreans'=0 where key = 'marty';
+update User set 'userId'='themartymcfly' where key = 'marty';
+In cqlsh, do
+select * from User where numberOfDeloreans=0;
+Then in thrift do:
+package org.mostlyharmless;
+
+import org.apache.cassandra.thrift.*;
+import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TFramedTransport;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ThriftQuery {
+
+    public static void main(String[] args)
+            throws TException, InvalidRequestException, UnavailableException, UnsupportedEncodingException, NotFoundException, TimedOutException
+    {
+        TTransport tr = new TFramedTransport(new TSocket("localhost", 9160));
+        TProtocol proto = new TBinaryProtocol(tr);
+        Cassandra.Client client = new Cassandra.Client(proto);
+        tr.open();
+        client.set_keyspace("Keyspace1");
+        ColumnParent columnParent = new ColumnParent("User");
+        SlicePredicate slicePredicate = new SlicePredicate();
+        List<ByteBuffer> columnNames = new ArrayList<ByteBuffer>();
+        columnNames.add(ByteBufferUtil.bytes("userId"));
+        slicePredicate.setColumn_names(columnNames);
+        KeyRange keyRange = new KeyRange();
+        keyRange.setStart_token("0");
+        keyRange.setEnd_token("0");
+        List<IndexExpression> indexExpressions = new ArrayList<IndexExpression>();
+        indexExpressions.add(new IndexExpression(ByteBufferUtil.bytes("numberOfDeloreans"), IndexOperator.EQ, ByteBufferUtil.bytes(0)));
+        keyRange.setRow_filter(indexExpressions);
+        List<KeySlice> keySlices = client.get_range_slices(columnParent, slicePredicate, keyRange, ConsistencyLevel.ONE);
+        System.out.println("number of keyslices returned: " + keySlices.size());
+        tr.close();
+    }
+}
+Note that 1 record is returned in both instances.
+Run nodetool drain on 1.0.8. Start 1.1.7. Do the cqlsh query again, returns the result. Run the thrift code again, get 0 results.
+Tried both upgradesstables and rebuild_index. Didn't help.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+1.1.8
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Jeremy Hanna
+Create date:
+03/Dec/12 21:46
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Dec/12 20:23

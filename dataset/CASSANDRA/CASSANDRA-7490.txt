@@ -1,0 +1,82 @@
+Summary:
+Static columns mess up selects with ordering and clustering column ranges
+Description:
+Starts off ok:
+cqlsh:test> create table test (p text, c text, v text, s text static, PRIMARY KEY (p, c));
+cqlsh:test> insert into test (p, c, v, s) values ('p1', 'k1', 'v1', 'sv1');
+cqlsh:test> select * from test where p = 'p1';
+
+ p  | c  | s   | v
+----+----+-----+----
+ p1 | k1 | sv1 | v1
+
+(1 rows)
+But try ordering, and we appear to get the static row instead:
+cqlsh:test> select * from test where p = 'p1' order by c desc;
+
+ p  | c    | s   | v
+----+------+-----+------
+ p1 | null | sv1 | null
+
+(1 rows)
+Now we add a clustering key range constraint, again works ok:
+cqlsh:test> select * from test where p = 'p1' and c >= 'a';
+
+ p  | c  | s   | v
+----+----+-----+----
+ p1 | k1 | sv1 | v1
+
+(1 rows)
+But, this causes assertion failure (which has a very nice comment explaining exactly why that might happen!):
+cqlsh:test> select * from test where p = 'p1' and c >= 'a' order by c desc;
+Request did not complete within rpc_timeout.
+Cause:
+java.lang.AssertionError: Added column does not sort as the first column
+        at org.apache.cassandra.db.ArrayBackedSortedColumns.addColumn(ArrayBackedSortedColumns.java:115)
+        at org.apache.cassandra.db.ColumnFamily.addColumn(ColumnFamily.java:116)
+        at org.apache.cassandra.db.ColumnFamily.addIfRelevant(ColumnFamily.java:110)
+        at org.apache.cassandra.db.filter.SliceQueryFilter.collectReducedColumns(SliceQueryFilter.java:205)
+        at org.apache.cassandra.db.filter.QueryFilter.collateColumns(QueryFilter.java:122)
+        at org.apache.cassandra.db.filter.QueryFilter.collateOnDiskAtom(QueryFilter.java:80)
+        at org.apache.cassandra.db.filter.QueryFilter.collateOnDiskAtom(QueryFilter.java:72)
+        at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:297)
+        at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:53)
+        at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1547)
+        at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1376)
+        at org.apache.cassandra.db.Keyspace.getRow(Keyspace.java:333)
+        at org.apache.cassandra.db.SliceFromReadCommand.getRow(SliceFromReadCommand.java:65)
+        at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:1363)
+        at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1927)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:744)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+graham sanderson
+Reporter:
+graham sanderson
+Create date:
+03/Jul/14 02:54
+Update date:
+16/Apr/19 09:31
+Resolved date:
+09/Jul/14 16:24

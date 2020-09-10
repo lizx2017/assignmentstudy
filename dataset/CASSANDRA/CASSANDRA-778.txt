@@ -1,0 +1,69 @@
+Summary:
+Gossiper thread deadlock
+Description:
+Found this while attempting to bootstrap a node with more than a trivial amount of data:
+Found one Java-level deadlock:
+=============================
+"GMFD:1":
+waiting to lock monitor 0x0000000100861d60 (object 0x00000001066a7ed8, a org.apache.cassandra.service.StorageService),
+which is held by "main"
+"main":
+waiting to lock monitor 0x0000000100860710 (object 0x0000000106c7c968, a org.apache.cassandra.gms.Gossiper),
+which is held by "GMFD:1"
+Java stack information for the threads listed above:
+===================================================
+"GMFD:1":
+at org.apache.cassandra.service.StorageService.getReplicationStrategy(StorageService.java:226)
+waiting to lock <0x00000001066a7ed8> (a org.apache.cassandra.service.StorageService)
+at org.apache.cassandra.service.StorageService.calculatePendingRanges(StorageService.java:634)
+at org.apache.cassandra.service.StorageService.handleStateNormal(StorageService.java:502)
+at org.apache.cassandra.service.StorageService.onChange(StorageService.java:445)
+at org.apache.cassandra.service.StorageService.onJoin(StorageService.java:812)
+at org.apache.cassandra.gms.Gossiper.handleMajorStateChange(Gossiper.java:607)
+at org.apache.cassandra.gms.Gossiper.handleNewJoin(Gossiper.java:582)
+at org.apache.cassandra.gms.Gossiper.applyStateLocally(Gossiper.java:649)
+locked <0x0000000106c7c968> (a org.apache.cassandra.gms.Gossiper)
+at org.apache.cassandra.gms.Gossiper$GossipDigestAck2VerbHandler.doVerb(Gossiper.java:1061)
+at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:40)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:637)
+"main":
+at org.apache.cassandra.gms.Gossiper.addLocalApplicationState(Gossiper.java:861)
+waiting to lock <0x0000000106c7c968> (a org.apache.cassandra.gms.Gossiper)
+at org.apache.cassandra.service.StorageService.startBootstrap(StorageService.java:347)
+at org.apache.cassandra.service.StorageService.initServer(StorageService.java:318)
+locked <0x00000001066a7ed8> (a org.apache.cassandra.service.StorageService)
+at org.apache.cassandra.thrift.CassandraDaemon.setup(CassandraDaemon.java:99)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:174)
+Found 1 deadlock.
+main acquires SS lock and doesn't release it before attempting to acquire the Gossiper lock. Meanwhile, the gossip stage acquires the Gossiper lock and then attempts to acquire the SS lock.
+Solution is to have finer-grained locking on the resource in SS (map of replication strategies), or to move the collection to a different class (DD maybe?). This was introduced in CASSANDRA-620.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+Gary Dusbabek
+Create date:
+08/Feb/10 18:49
+Update date:
+16/Apr/19 09:33
+Resolved date:
+08/Feb/10 19:39

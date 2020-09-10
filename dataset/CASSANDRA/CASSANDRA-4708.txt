@@ -1,0 +1,36 @@
+Summary:
+StorageProxy slow-down and memory leak
+Description:
+I am consistently observing slow-downs in StorageProxy caused by the NonBlockingHashMap used indirectly by MessagingService via the callbacks ExpiringMap.
+This seems do be due to NBHM having unbounded memory usage in the face of workloads with high key churn. As monotonically increasing integers are used as callback id's by MessagingService, the backing NBHM eventually ends up growing the backing store unboundedly. This causes it to also do very large and expensive backing store reallocation and migrations, causing throughput to drop to tens of operations per second, lasting seconds or even minutes.
+This behavior is especially noticable for high throughput workloads where the dataset is completely in ram and I'm doing up to a hundred thousand reads per second.
+Replacing NBHM in ExpiringMap with the java standard library ConcurrentHashMap resolved the issue and allowed me to keep a consistent high throughput.
+An open issue on NBHM can be seen here: http://sourceforge.net/tracker/?func=detail&aid=3563980&group_id=194172&atid=948362
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.12, 1.1.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Daniel Norberg
+Reporter:
+Daniel Norberg
+Create date:
+24/Sep/12 07:09
+Update date:
+16/Apr/19 09:32
+Resolved date:
+24/Sep/12 15:11

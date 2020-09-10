@@ -1,0 +1,81 @@
+Summary:
+cannot alter compaction strategy to leveled
+Description:
+this happens in trunk (probably trunk only)
+when changing the compaction strategy to leveled db (via cli), it fails. The C* log shows an assertion error on org.apache.cassandra.db.DecoratedKey.
+It looks like it is on key being null, as the LeveledManifest construct it with null:
+lastCompactedKeys[i] = new DecoratedKey(cfs.partitioner.getMinimumToken(), null);
+The DecoratedKey in 1.0 only check assertion on token. Cassandra-1034 changes the assertion in trunk to include the key:
+    public DecoratedKey(T token, ByteBuffer key)
+    {
+        assert token != null && key != null && key.remaining() > 0;
+ERROR [pool-2-thread-2] 2012-01-23 12:27:47,274 Cassandra.java (line 4228) Internal error processing system_update_column_family
+java.lang.RuntimeException: java.util.concurrent.ExecutionException: java.lang.RuntimeException: java.lang.reflect.InvocationTargetException
+        at org.apache.cassandra.thrift.CassandraServer.applyMigrationOnStage(CassandraServer.java:861)
+        at org.apache.cassandra.thrift.CassandraServer.system_update_column_family(CassandraServer.java:1053)
+        at org.apache.cassandra.thrift.Cassandra$Processor$system_update_column_family.process(Cassandra.java:4222)
+        at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:3077)
+        at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:188)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+Caused by: java.util.concurrent.ExecutionException: java.lang.RuntimeException: java.lang.reflect.InvocationTargetException
+        at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+        at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+        at org.apache.cassandra.thrift.CassandraServer.applyMigrationOnStage(CassandraServer.java:853)
+        ... 7 more
+Caused by: java.lang.RuntimeException: java.lang.reflect.InvocationTargetException
+        at org.apache.cassandra.config.CFMetaData.createCompactionStrategyInstance(CFMetaData.java:726)
+        at org.apache.cassandra.db.ColumnFamilyStore.maybeReloadCompactionStrategy(ColumnFamilyStore.java:164)
+        at org.apache.cassandra.db.ColumnFamilyStore.reload(ColumnFamilyStore.java:148)
+        at org.apache.cassandra.db.migration.UpdateColumnFamily.applyModels(UpdateColumnFamily.java:86)
+        at org.apache.cassandra.db.migration.Migration.apply(Migration.java:156)
+        at org.apache.cassandra.thrift.CassandraServer$2.call(CassandraServer.java:846)
+        at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+        ... 3 more
+Caused by: java.lang.reflect.InvocationTargetException
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:39)
+        at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:27)
+        at java.lang.reflect.Constructor.newInstance(Constructor.java:513)
+        at org.apache.cassandra.config.CFMetaData.createCompactionStrategyInstance(CFMetaData.java:708)
+        ... 10 more
+Caused by: java.lang.AssertionError
+        at org.apache.cassandra.db.DecoratedKey.<init>(DecoratedKey.java:55)
+        at org.apache.cassandra.db.compaction.LeveledManifest.<init>(LeveledManifest.java:78)
+        at org.apache.cassandra.db.compaction.LeveledManifest.create(LeveledManifest.java:84)
+        at org.apache.cassandra.db.compaction.LeveledCompactionStrategy.<init>(LeveledCompactionStrategy.java:74)
+        ... 15 more
+There is another bug also in the cli that it does not provide meaningful error/stack trace, even with --debug:
+[default@RequestAnalytic] update column family ServiceName with compaction_strategy='LeveledCompactionStrategy';
+org.apache.thrift.TApplicationException: Internal error processing system_update_column_family
+i could file that as a separate bug if necessary.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Jackson Chung
+Create date:
+23/Jan/12 20:42
+Update date:
+16/Apr/19 09:32
+Resolved date:
+24/Jan/12 08:13

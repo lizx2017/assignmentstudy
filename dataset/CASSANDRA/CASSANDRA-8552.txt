@@ -1,0 +1,112 @@
+Summary:
+Large compactions run out of off-heap RAM
+Description:
+We have a large table of storing, effectively event logs and a pair of denormalized tables for indexing.
+When updating from 2.0 to 2.1 we saw performance improvements, but some random and silent crashes during nightly repairs. We lost a node (totally corrupted) and replaced it. That node has never stabilized – it simply can't finish the compactions.
+Smaller compactions finish. Larger compactions, like these two never finish -
+pending tasks: 48
+   compaction type   keyspace             table     completed         total    unit   progress
+        Compaction       data           stories   16532973358   75977993784   bytes     21.76%
+        Compaction       data   stories_by_text   10593780658   38555048812   bytes     27.48%
+Active compaction remaining time :   0h10m51s
+We are not getting exceptions and are not running out of heap space. The Ubuntu OOM killer is reaping the process after all of the memory is consumed. We watch memory in the opscenter console and it will grow. If we turn off the OOM killer for the process, it will run until everything else is killed instead and then the kernel panics.
+We have the following settings configured:
+2G Heap
+512M New
+memtable_heap_space_in_mb: 1024
+memtable_offheap_space_in_mb: 1024
+memtable_allocation_type: heap_buffers
+commitlog_total_space_in_mb: 2048
+
+concurrent_compactors: 1
+compaction_throughput_mb_per_sec: 128
+The compaction strategy is leveled (these are read-intensive tables that are rarely updated)
+I have tried every setting, every option and I have the system where the MTBF is about an hour now, but we never finish compacting because there are some large compactions pending. None of the GC tools or settings help because it is not a GC problem. It is an off-heap memory problem.
+We are getting these messages in our syslog
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219527] BUG: Bad page map in process java  pte:00000320 pmd:2d6fa5067
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219545] addr:00007fb820be3000 vm_flags:08000070 anon_vma:          (null) mapping:          (null) index:7fb820be3
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219556] CPU: 3 PID: 27344 Comm: java Tainted: G    B        3.13.0-24-generic #47-Ubuntu
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219559]  ffff880028510e40 ffff88020d43da98 ffffffff81715ac4 00007fb820be3000
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219565]  ffff88020d43dae0 ffffffff81174183 0000000000000320 00000007fb820be3
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219568]  ffff8802d6fa5f18 0000000000000320 00007fb820be3000 00007fb820be4000
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219572] Call Trace:
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219584]  [<ffffffff81715ac4>] dump_stack+0x45/0x56
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219591]  [<ffffffff81174183>] print_bad_pte+0x1a3/0x250
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219594]  [<ffffffff81175439>] vm_normal_page+0x69/0x80
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219598]  [<ffffffff8117580b>] unmap_page_range+0x3bb/0x7f0
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219602]  [<ffffffff81175cc1>] unmap_single_vma+0x81/0xf0
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219605]  [<ffffffff81176d39>] unmap_vmas+0x49/0x90
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219610]  [<ffffffff8117feec>] exit_mmap+0x9c/0x170
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219617]  [<ffffffff8110fcf3>] ? __delayacct_add_tsk+0x153/0x170
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219621]  [<ffffffff8106482c>] mmput+0x5c/0x120
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219625]  [<ffffffff81069bbc>] do_exit+0x26c/0xa50
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219631]  [<ffffffff810d7591>] ? __unqueue_futex+0x31/0x60
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219634]  [<ffffffff810d83b6>] ? futex_wait+0x126/0x290
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219640]  [<ffffffff8171d8e0>] ? _raw_spin_unlock_irqrestore+0x20/0x40
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219643]  [<ffffffff8106a41f>] do_group_exit+0x3f/0xa0
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219649]  [<ffffffff8107a050>] get_signal_to_deliver+0x1d0/0x6f0
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219655]  [<ffffffff81013448>] do_signal+0x48/0x960
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219660]  [<ffffffff811112fc>] ? acct_account_cputime+0x1c/0x20
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219664]  [<ffffffff8109d76b>] ? account_user_time+0x8b/0xa0
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219667]  [<ffffffff8109dd84>] ? vtime_account_user+0x54/0x60
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219671]  [<ffffffff81013dc9>] do_notify_resume+0x69/0xb0
+Jan  2 07:06:00 ip-10-0-2-226 kernel: [49801151.219676]  [<ffffffff8172676a>] int_signal+0x12/0x17
+This seems like unmap is failing, but I am uncertain about how to fix it or work around it.
+For completeness sake, let me point this out too: The system.log will show whatever was happening when the system stops and the the service is restarted. There is no stake trace. Here is an example:
+INFO  [main] 2015-01-02 06:38:38,813 ColumnFamilyStore.java:840 - Enqueuing flush of local: 1552 (0%) on-heap, 0 (0%) off-heap
+INFO  [MemtableFlushWriter:1] 2015-01-02 06:38:38,813 Memtable.java:325 - Writing Memtable-local@172795560(281 serialized bytes, 10 ops, 0%/0% of on/off-heap limit)
+INFO  [MemtableFlushWriter:1] 2015-01-02 06:38:38,824 Memtable.java:364 - Completed flushing /data/cassandra/data/system/local-7ad54392bcdd35a684174e047860b377/system-local-ka-778-Data.db (262 bytes) for commitlog position ReplayPosition(segmentId=1420180671225,
+ position=87520)
+INFO  [main] 2015-01-02 06:38:38,825 YamlConfigurationLoader.java:92 - Loading settings from file:/etc/cassandra/cassandra.yaml
+INFO  [main] 2015-01-02 06:38:38,837 YamlConfigurationLoader.java:135 - Node configuration:[authenticator=AllowAllAuthenticator; authorizer=AllowAllAuthorizer; auto_snapshot=true; batch_size_warn_threshold_in_kb=5; batchlog_replay_throttle_in_kb=1024; cas_conten
+tion_timeout_in_ms=1000; client_encryption_options=<REDACTED>; cluster_name=booshaka-batch; column_index_size_in_kb=64; commit_failure_policy=stop; commitlog_directory=/commitlog/cassandra/commitlog; commitlog_segment_size_in_mb=32; commitlog_sync=periodic; comm
+itlog_sync_period_in_ms=10000; commitlog_total_space_in_mb=2048; compaction_throughput_mb_per_sec=128; concurrent_compactors=1; concurrent_counter_writes=32; concurrent_reads=48; concurrent_writes=48; counter_cache_save_period=7200; counter_cache_size_in_mb=null
+; counter_write_request_timeout_in_ms=5000; cross_node_timeout=false; data_file_directories=[/data/cassandra/data]; disk_failure_policy=stop; dynamic_snitch_badness_threshold=0.1; dynamic_snitch_reset_interval_in_ms=600000; dynamic_snitch_update_interval_in_ms=1
+00; endpoint_snitch=Ec2Snitch; hinted_handoff_enabled=true; hinted_handoff_throttle_in_kb=1024; incremental_backups=false; index_summary_capacity_in_mb=null; index_summary_resize_interval_in_minutes=60; inter_dc_tcp_nodelay=false; internode_compression=all; key_
+cache_save_period=14400; key_cache_size_in_mb=null; listen_address=10.0.2.226; max_hint_window_in_ms=10800000; max_hints_delivery_threads=2; memtable_allocation_type=heap_buffers; memtable_cleanup_threshold=0.33; memtable_heap_space_in_mb=1024; memtable_offheap_
+space_in_mb=1024; native_transport_port=9042; num_tokens=256; partitioner=org.apache.cassandra.dht.Murmur3Partitioner; permissions_validity_in_ms=2000; phi_convict_threshold=12; range_request_timeout_in_ms=10000; read_request_timeout_in_ms=5000; request_schedule
+r=org.apache.cassandra.scheduler.NoScheduler; request_timeout_in_ms=10000; row_cache_save_period=0; row_cache_size_in_mb=0; rpc_address=10.0.2.226; rpc_keepalive=true; rpc_port=9160; rpc_server_type=sync; saved_caches_directory=/data/cassandra/saved_caches; seed
+_provider=[{class_name=org.apache.cassandra.locator.SimpleSeedProvider, parameters=[{seeds=10.0.2.8,10.0.2.144,10.0.2.145}]}]; server_encryption_options=<REDACTED>; snapshot_before_compaction=false; ssl_storage_port=7001; sstable_preemptive_open_interval_in_mb=5
+0; start_native_transport=true; start_rpc=true; storage_port=7000; thrift_framed_transport_size_in_mb=15; tombstone_failure_threshold=100000; tombstone_warn_threshold=1000; trickle_fsync=false; trickle_fsync_interval_in_kb=10240; truncate_request_timeout_in_ms=6
+0000; write_request_timeout_in_ms=2000]
+INFO  [main] 2015-01-02 06:38:38,943 MessagingService.java:477 - Starting Messaging Service on port 7000
+INFO  [main] 2015-01-02 06:38:38,981 YamlConfigurationLoader.java:92 - Loading settings from file:/etc/cassandra/cassandra.yaml
+INFO  [main] 2015-01-02 06:38:38,987 YamlConfigurationLoader.java:135 - Node configuration:[authenticator=AllowAllAuthenticator; authorizer=AllowAllAuthorizer; auto_snapshot=true; batch_size_warn_threshold_in_kb=5; batchlog_replay_throttle_in_kb=1024; cas_conten
+tion_timeout_in_ms=1000; client_encryption_options=<REDACTED>; cluster_name=booshaka-batch; column_index_size_in_kb=64; commit_failure_policy=stop; commitlog_directory=/commitlog/cassandra/commitlog; commitlog_segment_size_in_mb=32; commitlog_sync=periodic; comm
+itlog_sync_period_in_ms=10000; commitlog_total_space_in_mb=2048; compaction_throughput_mb_per_sec=128; concurrent_compactors=1; concurrent_counter_writes=32; concurrent_reads=48; concurrent_writes=48; counter_cache_save_period=7200; counter_cache_size_in_mb=null
+; counter_write_request_timeout_in_ms=5000; cross_node_timeout=false; data_file_directories=[/data/cassandra/data]; disk_failure_policy=stop; dynamic_snitch_badness_threshold=0.1; dynamic_snitch_reset_interval_in_ms=600000; dynamic_snitch_update_interval_in_ms=1
+00; endpoint_snitch=Ec2Snitch; hinted_handoff_enabled=true; hinted_handoff_throttle_in_kb=1024; incremental_backups=false; index_summary_capacity_in_mb=null; index_summary_resize_interval_in_minutes=60; inter_dc_tcp_nodelay=false; internode_compression=all; key_
+cache_save_period=14400; key_cache_size_in_mb=null; listen_address=10.0.2.226; max_hint_window_in_ms=10800000; max_hints_delivery_threads=2; memtable_allocation_type=heap_buffers; memtable_cleanup_threshold=0.33; memtable_heap_space_in_mb=1024; memtable_offheap_
+space_in_mb=1024; native_transport_port=9042; num_tokens=256; partitioner=org.apache.cassandra.dht.Murmur3Partitioner; permissions_validity_in_ms=2000; phi_convict_threshold=12; range_request_timeout_in_ms=10000; read_request_timeout_in_ms=5000; request_schedule
+r=org.apache.cassandra.scheduler.NoScheduler; request_timeout_in_ms=10000; row_cache_save_period=0; row_cache_size_in_mb=0; rpc_address=10.0.2.226; rpc_keepalive=true; rpc_port=9160; rpc_server_type=sync; saved_caches_directory=/data/cassandra/saved_caches; seed
+_provider=[{class_name=org.apache.cassandra.locator.SimpleSeedProvider, parameters=[{seeds=10.0.2.8,10.0.2.144,10.0.2.145}]}]; server_encryption_options=<REDACTED>; snapshot_before_compaction=false; ssl_storage_port=7001; sstable_preemptive_open_interval_in_mb=5
+0; start_native_transport=true; start_rpc=true; storage_port=7000; thrift_framed_transport_size_in_mb=15; tombstone_failure_threshold=100000; tombstone_warn_threshold=1000; trickle_fsync=false; trickle_fsync_interval_in_kb=10240; truncate_request_timeout_in_ms=6
+0000; write_request_timeout_in_ms=2000]
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Brent Haines
+Create date:
+02/Jan/15 07:15
+Update date:
+16/Apr/19 09:31
+Resolved date:
+20/Jan/15 19:56

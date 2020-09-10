@@ -1,0 +1,48 @@
+Summary:
+FSDirectory can't open indexes that are symlinks, due to a deficiency in Files.createDirectories
+Description:
+Lucene, using FSDirectory (via NIOFS directory) cannot open an index from a Path that is a symbolic link to an actual index directory. Trying to do so generates an exception stack like:
+Exception in thread "main" java.nio.file.FileAlreadyExistsException: maildex.idx
+at sun.nio.fs.UnixException.translateToIOException(UnixException.java:88)
+at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:102)
+at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:107)
+at sun.nio.fs.UnixFileSystemProvider.createDirectory(UnixFileSystemProvider.java:384)
+at java.nio.file.Files.createDirectory(Files.java:674)
+at java.nio.file.Files.createAndCheckIsDirectory(Files.java:781)
+at java.nio.file.Files.createDirectories(Files.java:727)
+at org.apache.lucene.store.FSDirectory.<init>(FSDirectory.java:128)
+at org.apache.lucene.store.NIOFSDirectory.<init>(NIOFSDirectory.java:64)
+at org.apache.lucene.store.NIOFSDirectory.<init>(NIOFSDirectory.java:74)
+This problem occurs on both Linux and Solaris (which probably use the same SPI for Unix file systems at the bottom of the java.nio.file stack.)
+This problem has been noted in the OpenJDK issue tracker at:
+https://bugs.openjdk.java.net/browse/JDK-8130464
+And closed as "Not an Issue" because Files.createDirectories is meant to operate on directories, and a symlink is not a directory. This doesn't strike me as particularly helpful, but I guess is sort of makes sense in a broken-by-design way.
+The work-around is simply to move or copy the index to the place where I want it, but this makes concurrent read-only development on the index difficult when the index is large.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+5.0
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+java 1.8
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Stephen Green
+Create date:
+28/Jul/15 15:25
+Update date:
+28/Jul/15 15:25
+Resolved date:
+

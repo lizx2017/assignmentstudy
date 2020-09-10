@@ -1,0 +1,76 @@
+Summary:
+Regionserver BLOCKED on WAITING DFSClient$DFSOutputStream.waitForAckedSeqno running 0.20.205.0+
+Description:
+Running 0.20.205.1 (I was not at tip of the branch) I ran into the following hung regionserver:
+"regionserver7003.logRoller" daemon prio=10 tid=0x00007fd98028f800 nid=0x61af in Object.wait() [0x00007fd987bfa000]
+   java.lang.Thread.State: WAITING (on object monitor)
+        at java.lang.Object.wait(Native Method)
+        at java.lang.Object.wait(Object.java:485)
+        at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.waitForAckedSeqno(DFSClient.java:3606)
+        - locked <0x00000000f8656788> (a java.util.LinkedList)
+        at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.flushInternal(DFSClient.java:3595)
+        at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.closeInternal(DFSClient.java:3687)
+        - locked <0x00000000f8656458> (a org.apache.hadoop.hdfs.DFSClient$DFSOutputStream)
+        at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.close(DFSClient.java:3626)
+        at org.apache.hadoop.fs.FSDataOutputStream$PositionCache.close(FSDataOutputStream.java:61)
+        at org.apache.hadoop.fs.FSDataOutputStream.close(FSDataOutputStream.java:86)
+        at org.apache.hadoop.io.SequenceFile$Writer.close(SequenceFile.java:966)
+        - locked <0x00000000f8655998> (a org.apache.hadoop.io.SequenceFile$Writer)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogWriter.close(SequenceFileLogWriter.java:214)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.cleanupCurrentWriter(HLog.java:791)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.rollWriter(HLog.java:578)
+        - locked <0x00000000c443deb0> (a java.lang.Object)
+        at org.apache.hadoop.hbase.regionserver.LogRoller.run(LogRoller.java:94)
+        at java.lang.Thread.run(Thread.java:662)
+Other threads are like this (here's a sample):
+"regionserver7003.logSyncer" daemon prio=10 tid=0x00007fd98025e000 nid=0x61ae waiting for monitor entry [0x00007fd987cfb000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.syncer(HLog.java:1074)
+        - waiting to lock <0x00000000c443deb0> (a java.lang.Object)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.sync(HLog.java:1195)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog$LogSyncer.run(HLog.java:1057)
+        at java.lang.Thread.run(Thread.java:662)
+
+....
+
+"IPC Server handler 0 on 7003" daemon prio=10 tid=0x00007fd98049b800 nid=0x61b8 waiting for monitor entry [0x00007fd9872f1000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.append(HLog.java:1007)
+        - waiting to lock <0x00000000c443deb0> (a java.lang.Object)
+        at org.apache.hadoop.hbase.regionserver.HRegion.doMiniBatchPut(HRegion.java:1798)
+        at org.apache.hadoop.hbase.regionserver.HRegion.put(HRegion.java:1668)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.multi(HRegionServer.java:2980)
+        at sun.reflect.GeneratedMethodAccessor636.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Server.call(WritableRpcEngine.java:364)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1325)
+Looks like HDFS-1529? (Todd?)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+19/Nov/11 23:09
+Update date:
+09/Dec/15 06:11
+Resolved date:
+22/Nov/11 01:07

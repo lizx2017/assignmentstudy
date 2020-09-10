@@ -1,0 +1,39 @@
+Summary:
+Dropping a 1k+ regions table likely ends in a client socket timeout and it's very confusing
+Description:
+I tried truncating a 1.6k regions table from the shell and, after the usual disabling timeout, I then got a socket timeout on the second invocation while it was dropping. It looked like this:
+ERROR: java.net.SocketTimeoutException: Call to sv2borg180/10.20.20.180:61000 failed on socket timeout exception:
+ java.net.SocketTimeoutException: 60000 millis timeout while waiting for channel to be ready for read. ch :
+ java.nio.channels.SocketChannel[connected local=/10.20.20.180:59153 remote=sv2borg180/10.20.20.180:61000]
+At first I thought that was coming from the master because HDFS was somehow slow, but then understood that it was my socket that timed out meaning that the master was still dropping the table. Calling truncate again, I got:
+ERROR: Unknown table TestTable!
+Which means that the table would be deleted... I learned later that it wasn't totally deleted after I shut down the cluster. So it leaves me in a situation where I have to manually delete the files on the FS and the remaining .META. entries.
+Since I expect a few people will hit this issue rather soon, for 0.90.0, I propose we just set the socket timeout really high in the shell. For 0.90.1, or 0.92, we should do for drop what we do for disabling.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Jean-Daniel Cryans
+Create date:
+01/Dec/10 19:29
+Update date:
+20/Nov/15 12:42
+Resolved date:
+02/Dec/10 18:50

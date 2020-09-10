@@ -1,0 +1,65 @@
+Summary:
+Fontbox does not close file descriptor when loading fonts.
+Description:
+My app has been getting "java.io.FileNotFoundException (No file descriptors available)" and I've confirmed that it's because fontbox isn't closing it's file descriptors.
+In org.apache.fontbox.ttf.TTFParser there's this method:
+public TrueTypeFont parse(File ttfFile) throws IOException {
+  RAFDataStream raf = new RAFDataStream(ttfFile, "r");
+  try {
+    return this.parse((TTFDataStream)raf);
+  } catch (IOException var4) {
+    // close only on error (file is still being accessed later)
+    raf.close();
+    throw var4;
+}
+}
+I would have expected to see the close() in a finally block so that the file is always closed, not just on exceptions. Presumably, you can keep it in memory without leaving the file descriptor open?
+public TrueTypeFont parse(File ttfFile) throws IOException {
+  RAFDataStream raf = new RAFDataStream(ttfFile, "r");
+  try {
+    return this.parse((TTFDataStream)raf);
+  } catch (IOException var4) {    raf.close();
+    throw var4;
+  } finally {
+    raf.close();
+}
+}
+I tried performing this in a lazy initialization, but it blew up:
+java.lang.RuntimeException: java.io.IOException: The TrueType font null does not contain a 'cmap' tableCaused by: java.io.IOException: The TrueType font null does not contain a 'cmap' table
+at org.apache.fontbox.ttf.TrueTypeFont.getUnicodeCmapImpl(TrueTypeFont.java:548)
+at org.apache.fontbox.ttf.TrueTypeFont.getUnicodeCmapLookup(TrueTypeFont.java:528)
+at org.apache.fontbox.ttf.TrueTypeFont.getUnicodeCmapLookup(TrueTypeFont.java:514)
+at org.apache.fontbox.ttf.TTFSubsetter.<init>(TTFSubsetter.java:91)
+at org.apache.pdfbox.pdmodel.font.TrueTypeEmbedder.subset(TrueTypeEmbedder.java:321)
+at org.apache.pdfbox.pdmodel.font.PDType0Font.subset(PDType0Font.java:239)
+at org.apache.pdfbox.pdmodel.PDDocument.save(PDDocument.java:1271)
+Thoughts?
+Thanks for PDFBox - it's been really helpful!
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+2.0.9
+Fix_version:
+2.0.12, 3.0.0 PDFBox
+Component:
+FontBox
+Label:
+file_leak
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Glen Peterson
+Create date:
+07/Jun/18 17:28
+Update date:
+05/Oct/18 04:53
+Resolved date:
+05/Jul/18 17:37

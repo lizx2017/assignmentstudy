@@ -1,0 +1,42 @@
+Summary:
+limit appears to replace page size under certain conditions
+Description:
+This seems it could be related to CASSANDRA-8403.
+When paging a query with:
+limit < page size << data size, and querying using an 'IN' clause across several partitions, I get back several pages of size=limit (instead of the page size being used). So the limit is being exceeded and it seems to supplant the page size value, but something is still keeping the total rows returned down.
+To repro, create a table:
+CREATE TABLE paging_test ( id int, value text, PRIMARY KEY (id, value) )
+And add data across several partitions (I used 6 partitions). Add a bunch of rows to each partition (I have 80 total across all partitions).
+Perform a paged query using an 'IN' clause across all the partitions, where:
+limit < page_size << data size. I used something like:
+SELECT * FROM paging_test where id in (1,2,3,4,5,6) LIMIT 9;
+(with a page_size of 20 for the query).
+What I get returned is three pages of sizes: 9, 9, 8 – 26 rows in total but I'm uncertain why.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.12, 2.1.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Russ Hatch
+Create date:
+02/Dec/14 18:18
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Dec/14 17:08

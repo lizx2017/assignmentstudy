@@ -1,0 +1,80 @@
+Summary:
+Repair hangs when a new datacenter is added to a cluster
+Description:
+Attempting to add a new datacenter to a cluster seems to cause repair operations to break. I've been reproducing this with 20~ node clusters but can get it to reliably occur on 2 node setups.
+##Basic Steps to reproduce
+#Node 1 is started using GossipingPropertyFileSnitch as dc1
+#Cassandra-stress is used to insert a minimal amount of data
+$CASSANDRA_STRESS -t 100 -R org.apache.cassandra.locator.NetworkTopologyStrategy  --num-keys=1000 --columns=10 --consistency-level=LOCAL_QUORUM --average-size-values -
+-compaction-strategy='LeveledCompactionStrategy' -O dc1:1 --operation=COUNTER_ADD
+#Alter "Keyspace1"
+ALTER KEYSPACE "Keyspace1" WITH replication = {'class': 'NetworkTopologyStrategy', 'dc1': 1 , 'dc2': 1 };
+#Add node 2 using GossipingPropertyFileSnitch as dc2
+run repair on node 1
+run repair on node 2
+The repair task on node 1 never completes and while there are no exceptions in the logs of node1, netstat reports the following repair tasks
+Mode: NORMAL
+Repair 4e71a250-36b4-11e3-bedc-1d1bb5c9abab
+Repair 6c64ded0-36b4-11e3-bedc-1d1bb5c9abab
+Read Repair Statistics:
+Attempted: 0
+Mismatch (Blocking): 0
+Mismatch (Background): 0
+Pool Name                    Active   Pending      Completed
+Commands                        n/a         0          10239
+Responses                       n/a         0           3839
+Checking on node 2 we see the following exceptions
+ERROR [STREAM-IN-/10.171.122.130] 2013-10-16 22:42:58,961 StreamSession.java (line 410) [Stream #4e71a250-36b4-11e3-bedc-1d1bb5c9abab] Streaming error occurred
+java.lang.NullPointerException
+        at org.apache.cassandra.streaming.ConnectionHandler.sendMessage(ConnectionHandler.java:174)
+        at org.apache.cassandra.streaming.StreamSession.prepare(StreamSession.java:436)
+        at org.apache.cassandra.streaming.StreamSession.messageReceived(StreamSession.java:358)
+        at org.apache.cassandra.streaming.ConnectionHandler$IncomingMessageHandler.run(ConnectionHandler.java:293)
+        at java.lang.Thread.run(Thread.java:724)
+...
+ERROR [STREAM-IN-/10.171.122.130] 2013-10-16 22:43:49,214 StreamSession.java (line 410) [Stream #6c64ded0-36b4-11e3-bedc-1d1bb5c9abab] Streaming error occurred
+java.lang.NullPointerException
+        at org.apache.cassandra.streaming.ConnectionHandler.sendMessage(ConnectionHandler.java:174)
+        at org.apache.cassandra.streaming.StreamSession.prepare(StreamSession.java:436)
+        at org.apache.cassandra.streaming.StreamSession.messageReceived(StreamSession.java:358)
+        at org.apache.cassandra.streaming.ConnectionHandler$IncomingMessageHandler.run(ConnectionHandler.java:293)
+        at java.lang.Thread.run(Thread.java:724)
+Netstats on node 2 reports
+automaton@ip-10-171-15-234:~$ nodetool netstats
+Mode: NORMAL
+Repair 4e71a250-36b4-11e3-bedc-1d1bb5c9abab
+Read Repair Statistics:
+Attempted: 0
+Mismatch (Blocking): 0
+Mismatch (Background): 0
+Pool Name                    Active   Pending      Completed
+Commands                        n/a         0           2562
+Responses                       n/a         0           4284
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.5
+Component:
+None
+Label:
+None
+Environment:
+amazon
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Russell Spitzer
+Create date:
+16/Oct/13 23:01
+Update date:
+16/Apr/19 09:32
+Resolved date:
+28/Jan/14 15:21

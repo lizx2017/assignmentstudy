@@ -1,0 +1,56 @@
+Summary:
+Performing a "Select count(*)" when replication factor < node count causes assertion error and timeout
+Description:
+When performing a "Select Count()" query on a table belonging to a keyspace with a replication factor less than the total node count, the following error is encountered which ultimately results in an rpc_timeout for the request:
+ERROR 18:47:54,660 Exception in thread Thread[Thread-5,5,main]
+java.lang.AssertionError
+at org.apache.cassandra.db.filter.IDiskAtomFilter$Serializer.deserialize(IDiskAtomFilter.java:116)
+at org.apache.cassandra.db.RangeSliceCommandSerializer.deserialize(RangeSliceCommand.java:247)
+at org.apache.cassandra.db.RangeSliceCommandSerializer.deserialize(RangeSliceCommand.java:156)
+at org.apache.cassandra.net.MessageIn.read(MessageIn.java:99)
+at org.apache.cassandra.net.IncomingTcpConnection.receiveMessage(IncomingTcpConnection.java:148)
+at org.apache.cassandra.net.IncomingTcpConnection.handleModernVersion(IncomingTcpConnection.java:125)
+at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:73)
+The issue is not encountered when the replication factor is >= node count
+To replicate the issue:
+1) Create the keyspace: CREATE KEYSPACE demodb WITH REPLICATION =
+{'class' : 'SimpleStrategy', 'replication_factor': 1}
+;
+2) Create the table CREATE TABLE users (
+user_name varchar,
+password varchar,
+gender varchar,
+session_token varchar,
+state varchar,
+birth_year bigint,
+PRIMARY KEY (user_name));
+3) Do a CQL query: "SELECT count( * ) FROM demodb.users" ;
+The issue is reproducible even if the table is empty. Both CQLSH and client (astyanax) api calls are affected. Tested on two different clusters (2-node and 8-node)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.1
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+James P
+Create date:
+11/Sep/13 02:04
+Update date:
+16/Apr/19 09:32
+Resolved date:
+16/Sep/13 15:24

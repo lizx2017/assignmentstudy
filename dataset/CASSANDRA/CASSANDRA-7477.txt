@@ -1,0 +1,122 @@
+Summary:
+JSON to SSTable import failing
+Description:
+Issue affects C* version >= 2.1. Commit found by using git bisect. The previous commit to this one also fails, but due to other reasons (CCM server won't start). This commit is the one that give the same error as 2.1 HEAD:
+02d1e7497a9930120fac367ce82a3b22940acafb is the first bad commit
+commit 02d1e7497a9930120fac367ce82a3b22940acafb
+Author: Brandon Williams <brandonwilliams@apache.org>
+Date:   Mon Apr 21 14:42:29 2014 -0500
+
+    Default flush dir to data dir.
+    Patch by brandonwilliams, reviewed by yukim for CASSANDRA-7064
+
+:040000 040000 c50a123f305b73583ccbfa9c455efc4e4cee228f 507a90290dccb8a929afadf1f833d926049c46ad M conf
+$ PRINT_DEBUG=true nosetests -x -s -v json_tools_test.py 
+json_tools_test (json_tools_test.TestJson) ... cluster ccm directory: /tmp/dtest-8WVBq9
+Starting cluster...
+Version: 2.1.0
+Getting CQLSH...
+Inserting data...
+Flushing and stopping cluster...
+Exporting to JSON file...
+-- test-users-ka-1-Data.db -----
+
+Deleting cluster and creating new...
+Inserting data...
+Importing JSON file...
+Counting keys to import, please wait... (NOTE: to skip this use -n <num_keys>)
+Importing 2 keys...
+java.lang.ClassCastException: org.apache.cassandra.db.composites.Composites$EmptyComposite cannot be cast to org.apache.cassandra.db.composites.CellName
+ at org.apache.cassandra.db.composites.AbstractCellNameType.cellFromByteBuffer(AbstractCellNameType.java:168)
+ at org.apache.cassandra.tools.SSTableImport$JsonColumn.<init>(SSTableImport.java:165)
+ at org.apache.cassandra.tools.SSTableImport.addColumnsToCF(SSTableImport.java:242)
+ at org.apache.cassandra.tools.SSTableImport.addToStandardCF(SSTableImport.java:225)
+ at org.apache.cassandra.tools.SSTableImport.importSorted(SSTableImport.java:464)
+ at org.apache.cassandra.tools.SSTableImport.importJson(SSTableImport.java:351)
+ at org.apache.cassandra.tools.SSTableImport.main(SSTableImport.java:575)
+ERROR: org.apache.cassandra.db.composites.Composites$EmptyComposite cannot be cast to org.apache.cassandra.db.composites.CellName
+Verifying import...
+data: [[u'gandalf', 1955, u'male', u'p@$$', u'WA']]
+FAIL
+removing ccm cluster test at: /tmp/dtest-8WVBq9
+ERROR
+
+======================================================================
+ERROR: json_tools_test (json_tools_test.TestJson)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/kishan/git/cstar/cassandra-dtest/dtest.py", line 214, in tearDown
+    raise AssertionError('Unexpected error in %s node log: %s' % (node.name, errors))
+AssertionError: Unexpected error in node1 node log: ['ERROR [SSTableBatchOpen:1] 2014-06-30 13:56:01,032 CassandraDaemon.java:166 - Exception in thread Thread[SSTableBatchOpen:1,5,main]\n']
+-------------------- >> begin captured logging << --------------------
+dtest: DEBUG: cluster ccm directory: /tmp/dtest-8WVBq9
+dtest: DEBUG: Starting cluster...
+dtest: DEBUG: Version: 2.1.0
+dtest: DEBUG: Getting CQLSH...
+dtest: DEBUG: Inserting data...
+dtest: DEBUG: Flushing and stopping cluster...
+dtest: DEBUG: Exporting to JSON file...
+dtest: DEBUG: Deleting cluster and creating new...
+dtest: DEBUG: Inserting data...
+dtest: DEBUG: Importing JSON file...
+dtest: DEBUG: Verifying import...
+dtest: DEBUG: data: [[u'gandalf', 1955, u'male', u'p@$$', u'WA']]
+dtest: DEBUG: removing ccm cluster test at: /tmp/dtest-8WVBq9
+--------------------- >> end captured logging << ---------------------
+
+======================================================================
+FAIL: json_tools_test (json_tools_test.TestJson)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/kishan/git/cstar/cassandra-dtest/json_tools_test.py", line 91, in json_tools_test
+    [u'gandalf', 1955, u'male', u'p@$$', u'WA'] ] )
+AssertionError: Element counts were not equal:
+First has 0, Second has 1:  [u'frodo', 1985, u'male', u'pass@', u'CA']
+First has 0, Second has 1:  [u'sam', 1980, u'male', u'@pass', u'NY']
+-------------------- >> begin captured logging << --------------------
+dtest: DEBUG: cluster ccm directory: /tmp/dtest-8WVBq9
+dtest: DEBUG: Starting cluster...
+dtest: DEBUG: Version: 2.1.0
+dtest: DEBUG: Getting CQLSH...
+dtest: DEBUG: Inserting data...
+dtest: DEBUG: Flushing and stopping cluster...
+dtest: DEBUG: Exporting to JSON file...
+dtest: DEBUG: Deleting cluster and creating new...
+dtest: DEBUG: Inserting data...
+dtest: DEBUG: Importing JSON file...
+dtest: DEBUG: Verifying import...
+dtest: DEBUG: data: [[u'gandalf', 1955, u'male', u'p@$$', u'WA']]
+--------------------- >> end captured logging << ---------------------
+
+----------------------------------------------------------------------
+Ran 1 test in 28.636s
+
+FAILED (errors=1, failures=1)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.0, 2.1.1
+Component:
+None
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Mikhail Stepura
+Reporter:
+Kishan Karunaratne
+Create date:
+30/Jun/14 21:17
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/Aug/14 20:27

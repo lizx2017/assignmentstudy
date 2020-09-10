@@ -1,0 +1,87 @@
+Summary:
+Problem with creating keyspace after drop
+Description:
+Hi,
+I'm doing testing and wanted to drop a keyspace (with a column family) to re-add it with a different strategy. So I ran in cqlsh:
+DROP KEYSPACE PlayLog;
+CREATE KEYSPACE PlayLog WITH strategy_class = 'SimpleStrategy'
+AND strategy_options:replication_factor = 2;
+And everything seemed to be fine. I ran some inserts, which also seemed to go fine, but then selecting them gave me:
+cqlsh:PlayLog> select count from playlog;
+TSocket read 0 bytes
+I wasn't sure what was wrong, so I tried dropping and creating again, and now when I try to create I get:
+cqlsh> CREATE KEYSPACE PlayLog WITH strategy_class = 'SimpleStrategy'
+... AND strategy_options:replication_factor = 2;
+TSocket read 0 bytes
+And the keyspace doesn't get created. In the log it shows:
+ERROR [Thrift:4] 2012-05-03 18:23:05,124 CustomTThreadPoolServer.java (line 204) Error occurred during processing of message.
+java.lang.RuntimeException: java.util.concurrent.ExecutionException: java.lang.AssertionError
+at org.apache.cassandra.utils.FBUtilities.waitOnFuture(FBUtilities.java:372)
+at org.apache.cassandra.service.MigrationManager.announce(MigrationManager.java:191)
+at org.apache.cassandra.service.MigrationManager.announceNewKeyspace(MigrationManager.java:129)
+at org.apache.cassandra.cql.QueryProcessor.processStatement(QueryProcessor.java:701)
+at org.apache.cassandra.cql.QueryProcessor.process(QueryProcessor.java:875)
+at org.apache.cassandra.thrift.CassandraServer.execute_cql_query(CassandraServer.java:1235)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3458)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3446)
+at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:186)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Unknown Source)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+at java.lang.Thread.run(Unknown Source)
+Caused by: java.util.concurrent.ExecutionException: java.lang.AssertionError
+at java.util.concurrent.FutureTask$Sync.innerGet(Unknown Source)
+at java.util.concurrent.FutureTask.get(Unknown Source)
+at org.apache.cassandra.utils.FBUtilities.waitOnFuture(FBUtilities.java:368)
+... 13 more
+Caused by: java.lang.AssertionError
+at org.apache.cassandra.db.DefsTable.updateKeyspace(DefsTable.java:441)
+at org.apache.cassandra.db.DefsTable.mergeKeyspaces(DefsTable.java:339)
+at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:269)
+at org.apache.cassandra.service.MigrationManager$1.call(MigrationManager.java:214)
+at java.util.concurrent.FutureTask$Sync.innerRun(Unknown Source)
+at java.util.concurrent.FutureTask.run(Unknown Source)
+... 3 more
+ERROR [MigrationStage:1] 2012-05-03 18:23:05,124 AbstractCassandraDaemon.java (line 134) Exception in thread Thread[MigrationStage:1,5,main]
+java.lang.AssertionError
+at org.apache.cassandra.db.DefsTable.updateKeyspace(DefsTable.java:441)
+at org.apache.cassandra.db.DefsTable.mergeKeyspaces(DefsTable.java:339)
+at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:269)
+at org.apache.cassandra.service.MigrationManager$1.call(MigrationManager.java:214)
+at java.util.concurrent.FutureTask$Sync.innerRun(Unknown Source)
+at java.util.concurrent.FutureTask.run(Unknown Source)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Unknown Source)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+at java.lang.Thread.run(Unknown Source)
+Any ideas how I can recover from this?
+I am running version 1.1.0 and have tried nodetool repair, cleanup, compact. I can create other keyspaces, but still can't create a keyspace called PlayLog even though it is not listed anywhere.
+Jeff
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.1
+Component:
+None
+Label:
+None
+Environment:
+debian
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Jeff Williams
+Create date:
+04/May/12 07:29
+Update date:
+16/Apr/19 09:32
+Resolved date:
+15/May/12 14:20

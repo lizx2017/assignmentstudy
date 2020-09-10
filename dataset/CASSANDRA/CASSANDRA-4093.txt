@@ -1,0 +1,47 @@
+Summary:
+schema_* CFs do not respect column comparator which leads to CLI commands failure.
+Description:
+ColumnDefinition.
+{ascii, utf8, bool, ...}
+static methods used to initialize schema_* CFs column_metadata do not respect CF comparator and use ByteBufferUtil.bytes(...) for column names which creates problems in CLI and probably in other places.
+The CompositeType validator throws exception on first column
+String columnName = columnNameValidator.getString(columnDef.name);
+Because it appears the composite type length header is wrong (25455)
+AbstractCompositeType.getWithShortLength
+java.lang.IllegalArgumentException
+at java.nio.Buffer.limit(Buffer.java:247)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.getBytes(AbstractCompositeType.java:50)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.getWithShortLength(AbstractCompositeType.java:59)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.getString(AbstractCompositeType.java:139)
+at org.apache.cassandra.cli.CliClient.describeColumnFamily(CliClient.java:2046)
+at org.apache.cassandra.cli.CliClient.describeKeySpace(CliClient.java:1969)
+at org.apache.cassandra.cli.CliClient.executeShowKeySpaces(CliClient.java:1574)
+(seen in trunk)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Dave Brosius
+Create date:
+27/Mar/12 20:59
+Update date:
+16/Apr/19 09:32
+Resolved date:
+09/Apr/12 16:58

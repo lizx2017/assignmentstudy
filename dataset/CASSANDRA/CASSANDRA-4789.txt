@@ -1,0 +1,76 @@
+Summary:
+CassandraStorage.getNextWide produces corrupt data
+Description:
+This took me a while to track down. I'm seeing the problem when the "key changes" case happens. The intended behavior (as far as I can tell) when the key changes is the method returns the current tuple, and picks up where it left off on the next call to getNextWide(). The problem I'm seeing is the sometimes the current key advances between method calls, sometimes not. "Not" being the correct behavior, since the code is saving the value into an instance variable, but when the key advances there is a key/value mismatch (the result being the values for two different keys are being glued together). I think the problem might be related to keys that only have a single column??? I'm still trying to track that down to help assist in solving this case...
+Maybe this will be clearer from me pasting a bunch of logging I added to the class. The log messages are fairly self documenting (I hope):
+...lots of previous logging...
+enter getNextWide
+hasNext = true
+set key = dVNhbXAxMzQ3ODM1OA%3D%3D
+lastRow != null
+added 1 items to bag from lastRow
+added 1 items to bag from row
+hasNext = true
+added 1 items to bag from row
+hasNext = true
+added 1 items to bag from row
+hasNext = true
+added 1 items to bag from row
+hasNext = true
+added 1 items to bag from row
+hasNext = true
+added 1 items to bag from row
+hasNext = true
+added 1 items to bag from row
+hasNext = true
+added 1 items to bag from row
+hasNext = true
+key changed, new key = 669392df09572d0045b964bc65f86a2c
+exit getNextWide
+enter getNextWide
+hasNext = true
+//!!Unable to render embedded object: File (THIS IS THE PROBLEM HERE I THINK) not found.!!
+//!!Unable to render embedded object: File (Usually the key here == key before "exit getNextWide") not found.!!
+set key = 5f900ee4bb1850f8cf387cc3d5fc23ca
+//!!! lastRow is data for 669392df09572d0045b964bc65f86a2c !!!
+//!!! but it's being added to key 5f900ee4bb1850f8cf387cc3d5fc23ca !!!
+lastRow != null
+added 1 items to bag from lastRow
+//!!! Here are the real values for 5f900ee4bb1850f8cf387cc3d5fc23ca !!!
+added 1 items to bag from row
+hasNext = true
+added 1 items to bag from row
+hasNext = true
+key changed, new key = 50438549-cdb6-8c44-f93a-d18d7daeffd8
+exit getNextWide
+enter getNextWide
+hasNext = true
+set key = 50438549-cdb6-8c44-f93a-d18d7daeffd8
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Will Oberman
+Reporter:
+Will Oberman
+Create date:
+10/Oct/12 20:48
+Update date:
+16/Apr/19 09:32
+Resolved date:
+11/Oct/12 19:01

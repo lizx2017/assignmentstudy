@@ -1,0 +1,52 @@
+Summary:
+FilterList correctness may be affected by random ordering of sub-filter(list)
+Description:
+say, ther're 10 rows, column value is i%2:
+row0 0
+row1 1
+row2 0
+row3 1
+row4 0
+row5 1
+row6 0
+row7 1
+row8 0
+row9 1
+1: filter : row filter > row4 ===> row5 row6 row7 row8 row9
+2: subFilterList: row filter <= row4 && column==0 ===> row0 row2 row4
+3.1 filterlist[expected] filter || subFilterList ===> row0 row2 row4 row5 row6 row7 row8 row9
+3.2 filterlist[BUGON!] subFilterList || filter ===> row0 row1 row2 row3 row4 row5 row6 row7 row8 row9
+(Please refer to the new testNestedFilterListWithSCVF case)
+It was found when i managed to transform the following SQL into HBase scan statement:
+select xxx from xxx where (pk <= xxx and column1 = xxx) or pk > xxx
+My finding is that we had an assumption for filter methods call sequence:
+e.g. filterRowKey() should be called before filterKeyValue().
+and the orignial filterList.filterRowKey impl broke it due to fast short-circuit returning.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.3
+Fix_version:
+0.98.0, 0.95.1, 0.94.9
+Component:
+Filters
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Liang Xie
+Reporter:
+Liang Xie
+Create date:
+16/May/13 05:34
+Update date:
+04/Jul/13 22:10
+Resolved date:
+22/May/13 23:30

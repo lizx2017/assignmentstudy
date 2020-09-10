@@ -1,0 +1,120 @@
+Summary:
+Interrupting IndexWriter causing unhandled ClosedChannelException
+Description:
+When interrupting the IndexWriter, sometimes an InterruptedException is correctly handled but other times it isn't. When unhandled, the IndexWriter 'closes' and any other operation throws AlreadyClosedException. Here is a stack trace:
+java.nio.channels.ClosedChannelException
+at sun.nio.ch.FileLockImpl.release(FileLockImpl.java:58)
+at java.nio.channels.FileLock.close(FileLock.java:309)
+at org.apache.lucene.store.NativeFSLockFactory$NativeFSLock.close(NativeFSLockFactory.java:194)
+at org.apache.lucene.util.IOUtils.close(IOUtils.java:97)
+at org.apache.lucene.util.IOUtils.close(IOUtils.java:84)
+at org.apache.lucene.index.IndexWriter.rollbackInternal(IndexWriter.java:2103)
+at org.apache.lucene.index.IndexWriter.tragicEvent(IndexWriter.java:4574)
+at org.apache.lucene.index.IndexWriter.updateDocument(IndexWriter.java:1487)
+at com.google.gerrit.lucene.AutoCommitWriter.updateDocument(AutoCommitWriter.java:100)
+at org.apache.lucene.index.TrackingIndexWriter.updateDocument(TrackingIndexWriter.java:55)
+at com.google.gerrit.lucene.SubIndex.replace(SubIndex.java:183)
+at com.google.gerrit.lucene.LuceneChangeIndex.replace(LuceneChangeIndex.java:326)
+at com.google.gerrit.server.index.ChangeIndexer$IndexTask.call(ChangeIndexer.java:243)
+at com.google.gerrit.server.index.ChangeIndexer$IndexTask.call(ChangeIndexer.java:1)
+at com.google.common.util.concurrent.TrustedListenableFutureTask$TrustedFutureInterruptibleTask.runInterruptibly(TrustedListenableFutureTask.java:108)
+at com.google.common.util.concurrent.InterruptibleTask.run(InterruptibleTask.java:41)
+at com.google.common.util.concurrent.TrustedListenableFutureTask.run(TrustedListenableFutureTask.java:77)
+at com.google.common.util.concurrent.MoreExecutors$DirectExecutorService.execute(MoreExecutors.java:310)
+at java.util.concurrent.AbstractExecutorService.submit(AbstractExecutorService.java:132)
+at com.google.common.util.concurrent.AbstractListeningExecutorService.submit(AbstractListeningExecutorService.java:61)
+at com.google.gerrit.server.index.ChangeIndexer.submit(ChangeIndexer.java:200)
+at com.google.gerrit.server.index.ChangeIndexer.indexAsync(ChangeIndexer.java:133)
+at com.google.gerrit.server.change.PostReviewers.addReviewers(PostReviewers.java:246)
+at com.google.gerrit.server.change.PostReviewers.putAccount(PostReviewers.java:156)
+at com.google.gerrit.server.change.PostReviewers.apply(PostReviewers.java:138)
+at com.google.gerrit.sshd.commands.SetReviewersCommand.modifyOne(SetReviewersCommand.java:158)
+at com.google.gerrit.sshd.commands.SetReviewersCommand.run(SetReviewersCommand.java:112)
+at com.google.gerrit.sshd.SshCommand$1.run(SshCommand.java:48)
+at com.google.gerrit.sshd.BaseCommand$TaskThunk.run(BaseCommand.java:442)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$201(ScheduledThreadPoolExecutor.java:178)
+at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:292)
+at com.google.gerrit.server.git.WorkQueue$Task.run(WorkQueue.java:377)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+at java.lang.Thread.run(Thread.java:745)
+[...]
+org.apache.lucene.store.AlreadyClosedException: this IndexWriter is closed
+at org.apache.lucene.index.IndexWriter.ensureOpen(IndexWriter.java:719)
+at org.apache.lucene.index.IndexWriter.ensureOpen(IndexWriter.java:733)
+at org.apache.lucene.index.IndexWriter.updateDocument(IndexWriter.java:1471)
+at com.google.gerrit.lucene.AutoCommitWriter.updateDocument(AutoCommitWriter.java:100)
+at org.apache.lucene.index.TrackingIndexWriter.updateDocument(TrackingIndexWriter.java:55)
+at com.google.gerrit.lucene.SubIndex.replace(SubIndex.java:183)
+at com.google.gerrit.lucene.LuceneChangeIndex.replace(LuceneChangeIndex.java:326)
+at com.google.gerrit.server.index.ChangeIndexer$IndexTask.call(ChangeIndexer.java:243)
+at com.google.gerrit.server.index.ChangeIndexer$IndexTask.call(ChangeIndexer.java:1)
+at com.google.common.util.concurrent.TrustedListenableFutureTask$TrustedFutureInterruptibleTask.runInterruptibly(TrustedListenableFutureTask.java:108)
+at com.google.common.util.concurrent.InterruptibleTask.run(InterruptibleTask.java:41)
+at com.google.common.util.concurrent.TrustedListenableFutureTask.run(TrustedListenableFutureTask.java:77)
+at com.google.common.util.concurrent.MoreExecutors$DirectExecutorService.execute(MoreExecutors.java:310)
+at java.util.concurrent.AbstractExecutorService.submit(AbstractExecutorService.java:132)
+at com.google.common.util.concurrent.AbstractListeningExecutorService.submit(AbstractListeningExecutorService.java:61)
+at com.google.gerrit.server.index.ChangeIndexer.submit(ChangeIndexer.java:200)
+at com.google.gerrit.server.index.ChangeIndexer.indexAsync(ChangeIndexer.java:133)
+at com.google.gerrit.server.change.PostReviewers.addReviewers(PostReviewers.java:246)
+at com.google.gerrit.server.change.PostReviewers.putAccount(PostReviewers.java:156)
+at com.google.gerrit.server.change.PostReviewers.apply(PostReviewers.java:138)
+at com.google.gerrit.sshd.commands.SetReviewersCommand.modifyOne(SetReviewersCommand.java:158)
+at com.google.gerrit.sshd.commands.SetReviewersCommand.run(SetReviewersCommand.java:112)
+at com.google.gerrit.sshd.SshCommand$1.run(SshCommand.java:48)
+at com.google.gerrit.sshd.BaseCommand$TaskThunk.run(BaseCommand.java:442)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$201(ScheduledThreadPoolExecutor.java:178)
+at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:292)
+at com.google.gerrit.server.git.WorkQueue$Task.run(WorkQueue.java:377)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+at java.lang.Thread.run(Thread.java:745)
+Caused by: java.nio.channels.ClosedByInterruptException
+at java.nio.channels.spi.AbstractInterruptibleChannel.end(AbstractInterruptibleChannel.java:202)
+at sun.nio.ch.FileChannelImpl.size(FileChannelImpl.java:312)
+at org.apache.lucene.store.NativeFSLockFactory$NativeFSLock.ensureValid(NativeFSLockFactory.java:170)
+at org.apache.lucene.store.LockValidatingDirectoryWrapper.createOutput(LockValidatingDirectoryWrapper.java:43)
+at org.apache.lucene.store.TrackingDirectoryWrapper.createOutput(TrackingDirectoryWrapper.java:43)
+at org.apache.lucene.codecs.compressing.CompressingStoredFieldsWriter.<init>(CompressingStoredFieldsWriter.java:110)
+at org.apache.lucene.codecs.compressing.CompressingStoredFieldsFormat.fieldsWriter(CompressingStoredFieldsFormat.java:128)
+at org.apache.lucene.codecs.lucene50.Lucene50StoredFieldsFormat.fieldsWriter(Lucene50StoredFieldsFormat.java:183)
+at org.apache.lucene.index.DefaultIndexingChain.initStoredFieldsWriter(DefaultIndexingChain.java:81)
+at org.apache.lucene.index.DefaultIndexingChain.startStoredFields(DefaultIndexingChain.java:258)
+at org.apache.lucene.index.DefaultIndexingChain.processDocument(DefaultIndexingChain.java:295)
+at org.apache.lucene.index.DocumentsWriterPerThread.updateDocument(DocumentsWriterPerThread.java:234)
+at org.apache.lucene.index.DocumentsWriter.updateDocument(DocumentsWriter.java:450)
+at org.apache.lucene.index.IndexWriter.updateDocument(IndexWriter.java:1475)
+... 29 more
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Workaround
+Affects_version:
+5.3
+Fix_version:
+None
+Component:
+core/store
+Label:
+exception interrupt 
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Alexandre Philbert
+Create date:
+22/Apr/16 18:06
+Update date:
+29/Sep/16 08:21
+Resolved date:
+25/Apr/16 15:54

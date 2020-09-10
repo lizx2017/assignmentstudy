@@ -1,0 +1,60 @@
+Summary:
+Aggregate UDFs allow SFUNC return type to differ from STYPE if FFUNC specified
+Description:
+When a final function is specified in an aggregate C* allows the return type of the state function to not match the state type.
+Allowing the mismatch if a final function is specified seems to be intentional as if you don't provide a final function and you provide a state function with a return type that doesn't match the state type, then C* gives you an error that states that they must match "unless a final function is specified".
+It seems incorrect regardless of whether or not a final function is present to allow the state functions return type to vary from state type. And indeed if you do so it produces an error when you try to use the aggregate.
+Here is a simple example that shows the problem:
+CREATE OR REPLACE FUNCTION state_func(state int, p2 int)
+RETURNS double LANGUAGE java AS 'return Double.valueOf(1.0);';
+
+CREATE OR REPLACE FUNCTION final_func(state int)
+RETURNS int
+LANGUAGE java
+AS 'return Integer.valueOf(1);';
+
+CREATE OR REPLACE AGGREGATE my_aggregate( int )
+SFUNC state_func
+STYPE int
+FINALFUNC final_func
+INITCOND 1;
+
+SELECT my_aggregate(column) FROM table;
+The select produces the error:
+Aggregate 'ks.my_aggregate : (int) -> int' exists but hasn't been loaded successfully for the following reason: Referenced state function 'ks.state_func [double, int]' for aggregate 'ks.my_aggregate' does not exist.
+I was reproducing this with 3.0 trunk, though now I just grabbed the latest and there is an NPE instead of the error above:
+java.lang.NullPointerException: at index 1
+ at com.google.common.collect.ObjectArrays.checkElementNotNull(ObjectArrays.java:240) ~[guava-16.0.jar:na]
+ at com.google.common.collect.ImmutableSet.construct(ImmutableSet.java:195) ~[guava-16.0.jar:na]
+ at com.google.common.collect.ImmutableSet.of(ImmutableSet.java:116) ~[guava-16.0.jar:na]
+ at org.apache.cassandra.cql3.functions.UDAggregate.getFunctions(UDAggregate.java:110) ~[main/:na]
+ at org.apache.cassandra.cql3.selection.AbstractFunctionSelector$1.getFunctions(AbstractFunctionSelector.java:78) ~[main/:na]
+ at org.apache.cassandra.cql3.selection.SelectorFactories.getFunctions(SelectorFactories.java:105) ~[main/:na]
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Robert Stupp
+Reporter:
+Zachary Kurey
+Create date:
+07/May/15 00:10
+Update date:
+16/Apr/19 09:31
+Resolved date:
+08/May/15 20:43

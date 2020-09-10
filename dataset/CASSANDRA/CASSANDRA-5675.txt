@@ -1,0 +1,43 @@
+Summary:
+cqlsh shouldn't display "null" for empty values
+Description:
+For historical reason (and compatibility with thrift), all type support an empty value, even type like int for which it doesn't really make sense (see CASSANDRA-5674 too on that subject).
+If you input such an empty value for a type like int, cqlsh will display it as null:
+cqlsh:ks> CREATE TABLE test (k text PRIMARY KEY, v int);
+cqlsh:ks> INSERT INTO test(k, v) VALUES ('someKey', blobAsInt(0x));
+cqlsh:ks> SELECT * FROM test;
+
+ k       | v
+---------+------
+ someKey | null
+But that's not correct, it suggests v has no value but that's not true, it has a value, it's just an empty one.
+Now, one may argue support empty values for a type like int is broken, and I would agree with that. But thrift allows it so we probably need to preserve that behavior for compatibility sake. And I guess the need to use blobAsInt at least make it clear that it's kind of a hack.
+That being said, cqlsh should not display null as this is confusing. Instead I'd suggest either displaying nothing (that's how an empty string is displayed after all), or to just go with some random explicit syntax like say "[empty value]"
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.7, 2.0 beta 1
+Component:
+None
+Label:
+cqlsh
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Sylvain Lebresne
+Create date:
+20/Jun/13 10:36
+Update date:
+16/Apr/19 09:32
+Resolved date:
+26/Jun/13 22:29

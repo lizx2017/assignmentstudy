@@ -1,0 +1,71 @@
+Summary:
+HintsColumnFamily compactions hang when using multithreaded compaction
+Description:
+Running into an issue on a 6 node ring running 1.0.11 where HintsColumnFamily compactions often hang indefinitely when using multithreaded compaction. Nothing of note in the logs. In some cases, the compaction hangs before a tmp sstable is even created.
+I've wiped out every hints sstable and restarted several times. The issue always comes back rather quickly and predictably. The compactions sometimes complete if the hint sstables are very small. Disabling multithreaded compaction stops this issue from occurring.
+Compactions of all other CFs seem to work just fine.
+This ring was upgraded from 1.0.7. I didn't keep any hints from the upgrade.
+I should note that the ring gets a huge amount of writes, and as a result the HintedHandoff rows get be quite wide. I didn't see any large-row compaction notices when the compaction was hanging (perhaps the bug was triggered by incremental compaction?). After disabling multithreaded compaction, several of the rows that were successfully compacted were over 1GB.
+Here is the output I see from compactionstats where a compaction has hung. The 'bytes compacted' column never changes.
+pending tasks: 1
+          compaction type        keyspace   column family bytes compacted     bytes total  progress
+               Compaction          systemHintsColumnFamily          268082       464784758     0.06%
+The hung thread stack is as follows: (full jstack attached, as well)
+"CompactionExecutor:37" daemon prio=10 tid=0x00000000063df800 nid=0x49d9 waiting on condition [0x00007eb8c6ffa000]
+   java.lang.Thread.State: WAITING (parking)
+        at sun.misc.Unsafe.park(Native Method)
+        - parking to wait for  <0x000000050f2e0e58> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+        at java.util.concurrent.locks.LockSupport.park(LockSupport.java:158)
+        at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:1987)
+        at java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.java:399)
+        at org.apache.cassandra.db.compaction.ParallelCompactionIterable$Deserializer.computeNext(ParallelCompactionIterable.java:329)
+        at org.apache.cassandra.db.compaction.ParallelCompactionIterable$Deserializer.computeNext(ParallelCompactionIterable.java:281)
+        at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:140)
+        at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:135)
+        at org.apache.cassandra.utils.MergeIterator$Candidate.advance(MergeIterator.java:147)
+        at org.apache.cassandra.utils.MergeIterator$ManyToOne.advance(MergeIterator.java:126)
+        at org.apache.cassandra.utils.MergeIterator$ManyToOne.computeNext(MergeIterator.java:100)
+        at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:140)
+        at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:135)
+        at org.apache.cassandra.db.compaction.ParallelCompactionIterable$Unwrapper.computeNext(ParallelCompactionIterable.java:101)
+        at org.apache.cassandra.db.compaction.ParallelCompactionIterable$Unwrapper.computeNext(ParallelCompactionIterable.java:88)
+        at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:140)
+        at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:135)
+        at com.google.common.collect.Iterators$7.computeNext(Iterators.java:614)
+        at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:140)
+        at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:135)
+        at org.apache.cassandra.db.compaction.CompactionTask.execute(CompactionTask.java:141)
+        at org.apache.cassandra.db.compaction.CompactionManager$7.call(CompactionManager.java:395)
+        at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.9, 1.2.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Carl Yeksigian
+Reporter:
+Jason Harvey
+Create date:
+05/Aug/12 04:12
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/Dec/12 21:15

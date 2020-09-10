@@ -1,0 +1,44 @@
+Summary:
+Bug in SSTableReader.getSampleIndexesForRanges(...) causes uneven InputSplits generation for Hadoop mappers
+Description:
+Running a simple mapreduce job on cassandra column family results in creating multiple small mappers for one half of the ring and one big mapper for the other half. Upper part (85... - 0) is cut into smaller slices. Lower part (0 - 85...) generates one big input slice. One mapper processing half of the ring causes huge inefficiency. Also the progress meter for this mapper is incorrect - it goes to 100% in a couple of seconds, than stays at 100% for an hour or two.
+I've investigated the problem a bit. I think it is related to incorrect output of 'nodetool rangekeysample'. On the node resposible for part (0 - 85...) the output is empty! On the other node it works fine.
+I think the bug is in SSTableReader.getSampleIndexesForRanges(...). These two lines:
+RowPosition leftPosition = range.left.maxKeyBound();
+RowPosition rightPosition = range.left.maxKeyBound();
+should be changed to:
+RowPosition leftPosition = range.left.maxKeyBound();
+RowPosition rightPosition = range.right.maxKeyBound();
+After that fix the output of nodetool is correct and the whole ring is split into small mappers.
+The other half of the ring works fine because of extra 'if' in the code:
+int right = Range.isWrapAround(range.left, range.right)...
+This causes that the bug does not show up in one-node cluster or in the "last" ring partition in muli-node clusters.
+Can anyone look at it and verify my thoughts? I'm rather new to Cassandra.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Bartłomiej Romański
+Reporter:
+Bartłomiej Romański
+Create date:
+18/May/12 17:07
+Update date:
+16/Apr/19 09:32
+Resolved date:
+19/May/12 22:35

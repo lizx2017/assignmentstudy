@@ -1,0 +1,89 @@
+Summary:
+nodetool exception for users with read only permissions on jmx authentication
+Description:
+nodetool will throw exception for a read only user when JMX authentication is enabled.
+[automaton@i-0212b8098 ~]$ nodetool -u jose -pw JoseManuel status
+Exception in thread "main" java.lang.SecurityException: Access denied! Invalid access level for requested MBeanServer operation.
+        at com.sun.jmx.remote.security.MBeanServerFileAccessController.checkAccess(MBeanServerFileAccessController.java:344)
+        at com.sun.jmx.remote.security.MBeanServerFileAccessController.checkWrite(MBeanServerFileAccessController.java:240)
+        at com.sun.jmx.remote.security.MBeanServerAccessController.invoke(MBeanServerAccessController.java:466)
+        at javax.management.remote.rmi.RMIConnectionImpl.doOperation(RMIConnectionImpl.java:1487)
+        at javax.management.remote.rmi.RMIConnectionImpl.access$300(RMIConnectionImpl.java:97)
+        at javax.management.remote.rmi.RMIConnectionImpl$PrivilegedOperation.run(RMIConnectionImpl.java:1328)
+        at java.security.AccessController.doPrivileged(Native Method)
+        at javax.management.remote.rmi.RMIConnectionImpl.doPrivilegedOperation(RMIConnectionImpl.java:1427)
+        at javax.management.remote.rmi.RMIConnectionImpl.invoke(RMIConnectionImpl.java:848)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.lang.reflect.Method.invoke(Method.java:606)
+        at sun.rmi.server.UnicastServerRef.dispatch(UnicastServerRef.java:322)
+        at sun.rmi.transport.Transport$1.run(Transport.java:177)
+        at sun.rmi.transport.Transport$1.run(Transport.java:174)
+        at java.security.AccessController.doPrivileged(Native Method)
+        at sun.rmi.transport.Transport.serviceCall(Transport.java:173)
+        at sun.rmi.transport.tcp.TCPTransport.handleMessages(TCPTransport.java:556)
+        at sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run0(TCPTransport.java:811)
+        at sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run(TCPTransport.java:670)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:744)
+        at sun.rmi.transport.StreamRemoteCall.exceptionReceivedFromServer(StreamRemoteCall.java:275)
+        at sun.rmi.transport.StreamRemoteCall.executeCall(StreamRemoteCall.java:252)
+        at sun.rmi.server.UnicastRef.invoke(UnicastRef.java:161)
+        at com.sun.jmx.remote.internal.PRef.invoke(Unknown Source)
+        at javax.management.remote.rmi.RMIConnectionImpl_Stub.invoke(Unknown Source)
+        at javax.management.remote.rmi.RMIConnector$RemoteMBeanServerConnection.invoke(RMIConnector.java:1029)
+        at javax.management.MBeanServerInvocationHandler.invoke(MBeanServerInvocationHandler.java:292)
+        at com.sun.proxy.$Proxy0.effectiveOwnership(Unknown Source)
+        at org.apache.cassandra.tools.NodeProbe.effectiveOwnership(NodeProbe.java:335)
+        at org.apache.cassandra.tools.NodeCmd$ClusterStatus.print(NodeCmd.java:480)
+        at org.apache.cassandra.tools.NodeCmd.printClusterStatus(NodeCmd.java:590)
+        at org.apache.cassandra.tools.NodeCmd.main(NodeCmd.java:1263)
+[automaton@i-0212b8098 ~]$ dse -v
+4.5.1
+[automaton@i-0212b8098 ~]$ cqlsh -u jose -p JoseManuel 
+Connected to Spark at localhost:9160.
+[cqlsh 4.1.1 | Cassandra 2.0.8.39 | CQL spec 3.1.1 | Thrift protocol 19.39.0]
+Use HELP for help.
+cqlsh> exit;
+[automaton@i-0212b8098 ~]$ 
+Nodetool runs fine for cassandra user:
+[automaton@i-0212b8098 ~]$ nodetool -u cassandra -pw cassandra status
+Note: Ownership information does not include topology; for complete information, specify a keyspace
+Datacenter: Cassandra
+=====================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address        Load       Owns   Host ID                               Token                                    Rack
+UN  10.240.11.164  771.93 KB  100.0%  ae672795-bd73-4f53-a371-1a35c8df28a1  -9223372036854775808                     rack1
+[automaton@i-0212b8098 ~]$
+JMX authentication is enabled as described here
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/Observability
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Joshua McKenzie
+Reporter:
+Jose Martinez Poblete
+Create date:
+29/Sep/14 12:30
+Update date:
+16/Apr/19 09:31
+Resolved date:
+08/Dec/14 17:32

@@ -1,0 +1,43 @@
+Summary:
+IndexedRegion RPC deadlock
+Description:
+From Tatsuya Kawano up on hbase-user@
+50 client threads who try to put millions of records, autoFlush(false), flushCommits() on every 5,000 put. After inserting about 3 million records, a deadlock occurred on a region server who has both the table and index regions loaded.
+I have attached a full thread dump of the deadlocked region server, and you can see IPC Server handlers are blocked in org.apache.hadoop.hbase.regionserver.tableindexed.IndexedRegion.updateIndex().
+I found the flowing FIXME comment on updateIndex() method, and it seems this is the deadlock I'm having.
+  // FIXME: This call takes place in an RPC, and requires an RPC. This makes for
+  // a likely deadlock if the number of RPCs we are trying to serve is >= the
+  // number of handler threads.
+  private void updateIndex(IndexSpecification indexSpec, byte[] row,
+      SortedMap<byte[], byte[]> columnValues) throws IOException {
+I use HBase 0.20.1 and my region servers were running with 10 RPC handler threads on each (default).
+Maybe you can workaround this by adding more RPC handlers (increase the value of "hbase.regionserver.handler.count" in hbase-site.xml)
+Opening this issue to track the FIXME.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.20.1, 0.90.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Andrew Purtell
+Create date:
+16/Oct/09 01:31
+Update date:
+05/Jun/11 09:46
+Resolved date:
+05/Jun/11 09:46

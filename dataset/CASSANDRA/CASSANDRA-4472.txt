@@ -1,0 +1,113 @@
+Summary:
+Can't add secondary index
+Description:
+It seems connected to CASSANDRA-4461 (and CASSANDRA-4471), but symptoms are different so I open a separate bug. It may be the same problem, though.
+Applying CASSANDRA-4432 seems not to solve the issue.
+It seems I can't create secondary indexes on any CF. Reading and wrting data works, creating and dropping tables works. Adding new indexes, no longer works, and I get no errors and nothing in logs that (to me) seems an error.
+This happens on a single node cassandra installation, on Ubuntu LTS 12.04.
+cqlsh:goh_master> DESCRIBE TABLE users;
+CREATE TABLE users (
+corporation_id ascii PRIMARY KEY,
+mail_token ascii,
+admin ascii,
+sysd ascii,
+username ascii,
+password ascii,
+dockd ascii
+) WITH
+comment='' AND
+comparator=text AND
+read_repair_chance=0.100000 AND
+gc_grace_seconds=864000 AND
+default_validation=text AND
+min_compaction_threshold=4 AND
+max_compaction_threshold=32 AND
+replicate_on_write='true' AND
+compaction_strategy_class='SizeTieredCompactionStrategy' AND
+compression_parameters:sstable_compression='SnappyCompressor';
+CREATE INDEX users_username ON users (username);
+cqlsh:goh_master> create index on users (admin);
+cqlsh:goh_master> DESCRIBE TABLE users;
+CREATE TABLE users (
+corporation_id ascii PRIMARY KEY,
+mail_token ascii,
+admin ascii,
+sysd ascii,
+username ascii,
+password ascii,
+dockd ascii
+) WITH
+comment='' AND
+comparator=text AND
+read_repair_chance=0.100000 AND
+gc_grace_seconds=864000 AND
+default_validation=text AND
+min_compaction_threshold=4 AND
+max_compaction_threshold=32 AND
+replicate_on_write='true' AND
+compaction_strategy_class='SizeTieredCompactionStrategy' AND
+compression_parameters:sstable_compression='SnappyCompressor';
+CREATE INDEX users_username ON users (username);
+Interestingly enough, I can create new columnfamilies and add indexes to them:
+cqlsh:goh_master> create table test (id ascii, value ascii, PRIMARY KEY(id));
+cqlsh:goh_master> DESCRIBE TABLE test;
+CREATE TABLE test (
+id ascii PRIMARY KEY,
+value ascii
+) WITH
+comment='' AND
+comparator=text AND
+read_repair_chance=0.100000 AND
+gc_grace_seconds=864000 AND
+default_validation=text AND
+min_compaction_threshold=4 AND
+max_compaction_threshold=32 AND
+replicate_on_write='true' AND
+compaction_strategy_class='SizeTieredCompactionStrategy' AND
+compression_parameters:sstable_compression='SnappyCompressor';
+cqlsh:goh_master> create index test_value ON test (value);
+[[A[[Acqlsh:goh_DESCRIBE TABLE test;(value);
+CREATE TABLE test (
+id ascii PRIMARY KEY,
+value ascii
+) WITH
+comment='' AND
+comparator=text AND
+read_repair_chance=0.100000 AND
+gc_grace_seconds=864000 AND
+default_validation=text AND
+min_compaction_threshold=4 AND
+max_compaction_threshold=32 AND
+replicate_on_write='true' AND
+compaction_strategy_class='SizeTieredCompactionStrategy' AND
+compression_parameters:sstable_compression='SnappyCompressor';
+CREATE INDEX test_value ON test (value);
+cqlsh:goh_master>
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+1.1.4
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Marco Matarazzo
+Create date:
+30/Jul/12 16:30
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Aug/12 15:39

@@ -1,0 +1,49 @@
+Summary:
+HMaster.balance() returns 'true' even if rebalancing plan is empty and the balancer does not run
+Description:
+The issue seems to exists due to oversight during the rewrite. In line 1289, the variable 'plans' is created as a 'new ArrayList<RegionPlan>()' and then in line 1298, balancerRan is calculated as (plans != null) which for obvious reason, will always return true.
+HMaster.java (trunk:1383496)
+....
+1289        List<RegionPlan> plans = new ArrayList<RegionPlan>();
+1290        //Give the balancer the current cluster state.
+1291        this.balancer.setClusterStatus(getClusterStatus());
+1292        for (Map<ServerName, List<HRegionInfo>> assignments : assignmentsByTable.values()) {
+1293          List<RegionPlan> partialPlans = this.balancer.balanceCluster(assignments);
+1294          if (partialPlans != null) plans.addAll(partialPlans);
+1295        }
+1296        int rpCount = 0;  // number of RegionPlans balanced so far
+1297        long totalRegPlanExecTime = 0;
+1298        balancerRan = plans != null;
+1299        if (plans != null && !plans.isEmpty()) {
+....
+A simple fix is to initialize 'balancerRan' to 'false', remove "balancerRan = plans != null" and add "balancerRan = true" after "if (plans != null && !plans.isEmpty()) {".
+However, a question remains that should we call "this.cpHost.postBalance();" if the balancer did not run at this point?
+I'll attach the patch shortly if I get a confirmation on this.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aditya Kishore
+Reporter:
+Aditya Kishore
+Create date:
+11/Sep/12 18:33
+Update date:
+08/Jan/15 19:20
+Resolved date:
+08/Jan/15 08:07

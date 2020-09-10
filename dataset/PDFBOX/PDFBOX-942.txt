@@ -1,0 +1,52 @@
+Summary:
+Image quality improvements
+Description:
+The quality of the images inserted in a PDF documents could be improved by changing PDJpeg.java
+In the API
+public PDJpeg(PDDocument doc, BufferedImage bi) throws IOException
+ImageIO.write(bi, "jpeg", os);
+could be replaced by :
+ImageWriter writer = null;
+Iterator iter = ImageIO.getImageWritersByFormatName("jpg");
+if (iter.hasNext())
+{ writer = (ImageWriter) iter.next(); }
+ImageOutputStream ios = ImageIO.createImageOutputStream(os);
+writer.setOutput(ios);
+// Set the compression quality
+JPEGImageWriteParam iwparam = new JPEGImageWriteParam(Locale.getDefault());
+iwparam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+iwparam.setCompressionQuality(1.0f);
+// Write the image
+writer.write(null, new IIOImage(bi, null, null), iwparam);
+writer.dispose();
+This increase the size of the generated PDF.
+By default the JPEG quality is 0.75, in the patch I use 1.0, the maximum quality
+As a suggestion the quality of the JPEG could be a global variable since it affect the size of the PDF
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.4.0
+Fix_version:
+1.5.0
+Component:
+PDModel
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Olivier DOREMIEUX
+Create date:
+14/Jan/11 17:27
+Update date:
+04/Mar/11 10:29
+Resolved date:
+30/Jan/11 17:10

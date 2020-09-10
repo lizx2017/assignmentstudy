@@ -1,0 +1,53 @@
+Summary:
+CFS leaks a file on exception opening it
+Description:
+If CFS hits an exception opening its file, it will leak the file handle. Found by Jenkins: https://jenkins.thetaphi.de/job/Lucene-Solr-7.x-Solaris/808/
+ java.lang.RuntimeException: MockDirectoryWrapper: cannot close: there are still 7 open files: {_j.cfs=1, _h.cfs=1, _e.cfs=1, _g.cfs=1, _i.cfs=1, _k.cfs=1, _f.cfs=1}
+...
+Caused by: java.lang.RuntimeException: unclosed IndexInput: _f.cfs
+        at org.apache.lucene.store.MockDirectoryWrapper.addFileHandle(MockDirectoryWrapper.java:730)
+        at org.apache.lucene.store.MockDirectoryWrapper.openInput(MockDirectoryWrapper.java:773)
+        at org.apache.lucene.codecs.lucene50.Lucene50CompoundReader.<init>(Lucene50CompoundReader.java:78)
+Looks like it needs to move opening of handle into the try block (untested):
+diff --git a/lucene/core/src/java/org/apache/lucene/codecs/lucene50/Lucene50CompoundReader.java b/lucene/core/src/java/org/apache/lucene/codecs/lucene50/Lucene50CompoundReader.java
+index 7526c88c20..db54ecdee2 100644
+--- a/lucene/core/src/java/org/apache/lucene/codecs/lucene50/Lucene50CompoundReader.java
++++ b/lucene/core/src/java/org/apache/lucene/codecs/lucene50/Lucene50CompoundReader.java
+@@ -75,8 +75,8 @@ final class Lucene50CompoundReader extends Directory {
+     }
+     expectedLength += CodecUtil.footerLength(); 
+ 
+-    handle = directory.openInput(dataFileName, context);
+     try {
++      handle = directory.openInput(dataFileName, context);
+       CodecUtil.checkIndexHeader(handle, Lucene50CompoundFormat.DATA_CODEC, version, version, si.getId(), "");
+       
+       // NOTE: data file is too costly to verify checksum against all the bytes on open,
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/codecs
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+09/Sep/18 15:45
+Update date:
+10/Sep/18 11:20
+Resolved date:
+

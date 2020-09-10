@@ -1,0 +1,63 @@
+Summary:
+Fix java.lang.RuntimeException: Cached an already cached block
+Description:
+In one test, one of the region servers received the following on 0.94.
+Note HalfStoreFileReader in the stack trace. I think the root cause is that after the region is split, the mid point can be in the middle of the block (for store files that the mid point is not chosen from). Each half store file tries to load the half block and put it in the block cache. Since IdLock is instantiated per store file reader, they do not share the same IdLock instance, thus does not lock against each other effectively.
+2013-05-12 01:30:37,733 ERROR org.apache.hadoop.hbase.regionserver.HRegionServer:·
+java.lang.RuntimeException: Cached an already cached block
+  at org.apache.hadoop.hbase.io.hfile.LruBlockCache.cacheBlock(LruBlockCache.java:279)
+  at org.apache.hadoop.hbase.io.hfile.HFileReaderV2.readBlock(HFileReaderV2.java:353)
+  at org.apache.hadoop.hbase.io.hfile.HFileBlockIndex$BlockIndexReader.loadDataBlockWithScanInfo(HFileBlockIndex.java:254)
+  at org.apache.hadoop.hbase.io.hfile.HFileReaderV2$AbstractScannerV2.seekTo(HFileReaderV2.java:480)
+  at org.apache.hadoop.hbase.io.hfile.HFileReaderV2$AbstractScannerV2.seekTo(HFileReaderV2.java:501)
+  at org.apache.hadoop.hbase.io.HalfStoreFileReader$1.seekTo(HalfStoreFileReader.java:237)
+  at org.apache.hadoop.hbase.regionserver.StoreFileScanner.seekAtOrAfter(StoreFileScanner.java:226)
+  at org.apache.hadoop.hbase.regionserver.StoreFileScanner.seek(StoreFileScanner.java:145)
+  at org.apache.hadoop.hbase.regionserver.StoreFileScanner.enforceSeek(StoreFileScanner.java:351)
+  at org.apache.hadoop.hbase.regionserver.KeyValueHeap.pollRealKV(KeyValueHeap.java:354)
+  at org.apache.hadoop.hbase.regionserver.KeyValueHeap.generalizedSeek(KeyValueHeap.java:312)
+  at org.apache.hadoop.hbase.regionserver.KeyValueHeap.requestSeek(KeyValueHeap.java:277)
+  at org.apache.hadoop.hbase.regionserver.StoreScanner.reseek(StoreScanner.java:543)
+  at org.apache.hadoop.hbase.regionserver.StoreScanner.next(StoreScanner.java:411)
+  at org.apache.hadoop.hbase.regionserver.KeyValueHeap.next(KeyValueHeap.java:143)
+  at org.apache.hadoop.hbase.regionserver.HRegion$RegionScannerImpl.populateResult(HRegion.java:3829)
+  at org.apache.hadoop.hbase.regionserver.HRegion$RegionScannerImpl.nextInternal(HRegion.java:3896)
+  at org.apache.hadoop.hbase.regionserver.HRegion$RegionScannerImpl.nextRaw(HRegion.java:3778)
+  at org.apache.hadoop.hbase.regionserver.HRegion$RegionScannerImpl.nextRaw(HRegion.java:3770)
+  at org.apache.hadoop.hbase.regionserver.HRegionServer.next(HRegionServer.java:2643)
+  at sun.reflect.GeneratedMethodAccessor25.invoke(Unknown Source)
+  at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+  at java.lang.reflect.Method.invoke(Method.java:597)
+  at org.apache.hadoop.hbase.ipc.SecureRpcEngine$Server.call(SecureRpcEngine.java:308)
+  at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1426)
+I can see two possible fixes:
+Allow this kind of rare cases in LruBlockCache by not throwing an exception.
+Move the lock instances to upper layer (possibly in CacheConfig), and let half hfile readers share the same IdLock implementation.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.94.8, 0.95.1
+Component:
+io, regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Enis Soztutar
+Reporter:
+Enis Soztutar
+Create date:
+14/May/13 18:12
+Update date:
+27/Jun/18 09:22
+Resolved date:
+15/May/13 07:30

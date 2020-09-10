@@ -1,0 +1,129 @@
+Summary:
+BooleanQuery2ModifierNodeProcessor breaks the query node hierarchy
+Description:
+We discovered that one of our own implementations of QueryNodeProcessor was seeing node.getParent() returning null for nodes other than the root of the query tree.
+I put a diagnostic processor around every processor which runs and found that BooleanQuery2ModifierNodeProcessor (and possibly others, although it isn't clear) are mysteriously setting some of the node references to null.
+Example query tree before:
+GroupQueryNode, parent = null
+  WithinQueryNode, parent = GroupQueryNode
+    QuotedFieldQueryNode, parent = WithinQueryNode
+    GroupQueryNode, parent = WithinQueryNode
+      AndQueryNode, parent = GroupQueryNode
+        GroupQueryNode, parent = AndQueryNode
+          OrQueryNode, parent = GroupQueryNode
+            QuotedFieldQueryNode, parent = OrQueryNode
+            QuotedFieldQueryNode, parent = OrQueryNode
+        GroupQueryNode, parent = AndQueryNode
+          OrQueryNode, parent = GroupQueryNode
+            QuotedFieldQueryNode, parent = OrQueryNode
+            QuotedFieldQueryNode, parent = OrQueryNode
+And after BooleanQuery2ModifierNodeProcessor.process():
+GroupQueryNode, parent = null
+  WithinQueryNode, parent = GroupQueryNode
+    QuotedFieldQueryNode, parent = WithinQueryNode
+    GroupQueryNode, parent = WithinQueryNode
+      AndQueryNode, parent = GroupQueryNode
+        BooleanModifierNode, parent = AndQueryNode
+          GroupQueryNode, parent = null
+            OrQueryNode, parent = GroupQueryNode
+              QuotedFieldQueryNode, parent = OrQueryNode
+              QuotedFieldQueryNode, parent = OrQueryNode
+        BooleanModifierNode, parent = AndQueryNode
+          GroupQueryNode, parent = null
+            OrQueryNode, parent = GroupQueryNode
+              QuotedFieldQueryNode, parent = OrQueryNode
+              QuotedFieldQueryNode, parent = OrQueryNode
+Looking at QueryNodeImpl, there is a lot of fiddly logic in there. Removing children can trigger setting the parent to null, but setting the parent can also trigger the child removing itself, so it's near impossible to figure out why this could be happening, but I'm closing in on it at least. My initial suspicion is that cloneTree() is responsible, because ironically the number of failures of this sort increase if I try to use cloneTree to defend against mutability bugs.
+The fix I have come up with is to clone the whole API but making QueryNode immutable. This removes the ability for processors to mess with nodes that don't belong to them, but also obviates the need for a parent reference in the first place, which I think is the entire source of the problem - keeping the parent and child in sync correctly is obviously going to be hard, and indeed we find that there is at least one bug of this sort lurking in there.
+But even if we rewrite it, I figured I would report the issue so that maybe it can be fixed for others.
+Code to use for diagnostics:
+import java.util.List;
+
+import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
+import org.apache.lucene.queryparser.flexible.core.config.QueryConfigHandler;
+import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
+import org.apache.lucene.queryparser.flexible.core.processors.QueryNodeProcessor;
+
+public class DiagnosticQueryNodeProcessor implements QueryNodeProcessor
+{
+    private final QueryNodeProcessor delegate;
+
+    public TreeFixingQueryNodeProcessor(QueryNodeProcessor delegate)
+    {
+        this.delegate = delegate;
+    }
+
+    @Override
+    public QueryConfigHandler getQueryConfigHandler()
+    {
+        return delegate.getQueryConfigHandler();
+    }
+
+    @Override
+    public void setQueryConfigHandler(QueryConfigHandler queryConfigHandler)
+    {
+        delegate.setQueryConfigHandler(queryConfigHandler);
+    }
+
+    @Override
+    public QueryNode process(QueryNode queryNode) throws QueryNodeException
+    {
+        System.out.println("Before " + delegate.getClass().getSimpleName() + ".process():");
+        dumpTree(queryNode);
+
+        queryNode = delegate.process(queryNode);
+
+        System.out.println("After " + delegate.getClass().getSimpleName() + ".process():");
+        dumpTree(queryNode);
+
+        return queryNode;
+    }
+
+    private void dumpTree(QueryNode queryNode)
+    {
+        dumpTree(queryNode, "");
+    }
+
+    private void dumpTree(QueryNode queryNode, String prefix)
+    {
+        System.out.println(prefix + queryNode.getClass().getSimpleName() +
+                           ", parent = " + (queryNode.getParent() == null ? "null" : queryNode.getParent().getClass().getSimpleName()));
+        List<QueryNode> children = queryNode.getChildren();
+        if (children != null)
+        {
+            String childPrefix = "  " + prefix;
+            for (QueryNode child : children)
+            {
+                dumpTree(child, childPrefix);
+            }
+        }
+    }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Duplicate
+Affects_version:
+None
+Fix_version:
+5.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Trejkaz
+Create date:
+28/Oct/15 23:55
+Update date:
+28/Apr/16 17:56
+Resolved date:
+28/Apr/16 17:56

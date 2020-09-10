@@ -1,0 +1,102 @@
+Summary:
+[stargate] Fix JSON handling of META and ROOT
+Description:
+While working on the HBase Explorer front end in Hue I found a few inconsistencies between the plain text version of values versus the JSON representation. From an email conversation:
+Plain Text
+---------------
+$ curl -H "curl -H "Accept: text/plain" localhost:8888/status/cluster
+1 live servers, 0 dead servers, 5.0000 average load
+1 live servers
+de1-app-mbp-2.fritz.box:62884 1280924907616
+requests=0, regions=5
+heapSizeMB=27
+maxHeapSizeMB=995
+t2,,1280917558997
+stores=3
+storefiless=0
+storefileSizeMB=0
+memstoreSizeMB=0
+storefileIndexSizeMB=0
+usertable,,1280917566604
+stores=3
+storefiless=2
+storefileSizeMB=224
+memstoreSizeMB=0
+storefileIndexSizeMB=0
+.META.,,1
+stores=2
+storefiless=1
+storefileSizeMB=0
+memstoreSizeMB=0
+storefileIndexSizeMB=0
+t1,,1280917554475
+stores=3
+storefiless=0
+storefileSizeMB=0
+memstoreSizeMB=0
+storefileIndexSizeMB=0
+-ROOT-,,0
+stores=1
+storefiless=1
+storefileSizeMB=0
+memstoreSizeMB=0
+storefileIndexSizeMB=0
+JSON
+---------
+And curling the JSON yields:
+$ curl -H "Accept: application/json" localhost:8888/status/cluster
+{"requests":0,"regions":5,"averageLoad":5.0,"DeadNodes":[null],"LiveNodes":[{"Node":{"startCode":1280924907616,"requests":0,"name":"de1-app-mbp-2.fritz.box:62884","maxHeapSizeMB":995,"heapSizeMB":27,"Region":[
+{"stores":3,"storefiles":0,"storefileSizeMB":0,"storefileIndexSizeMB":0,"name":"dDIsLDEyODA5MTc1NTg5OTc=","memstoreSizeMB":0}
+,
+{"stores":3,"storefiles":2,"storefileSizeMB":224,"storefileIndexSizeMB":0,"name":"dXNlcnRhYmxlLCwxMjgwOTE3NTY2NjA0","memstoreSizeMB":0}
+,
+{"stores":2,"storefiles":1,"storefileSizeMB":0,"storefileIndexSizeMB":0,"name":"Lk1FVEEuLCwx","memstoreSizeMB":0}
+,
+{"stores":3,"storefiles":0,"storefileSizeMB":0,"storefileIndexSizeMB":0,"name":"dDEsLDEyODA5MTc1NTQ0NzU=","memstoreSizeMB":0}
+,
+{"stores":1,"storefiles":1,"storefileSizeMB":0,"storefileIndexSizeMB":0,"name":"LVJPT1QtLCww","memstoreSizeMB":0}
+]}}]}
+And another one:
+I have another one with .META. and -ROOT-, in my small sample setup (all local, /tmp etc.) I see this in the master UI:
+Name Region Server Encoded Name Start Key End Key
+.META.,,1 10.0.0.43:60030 -
+But running the same against Stargate I get:
+$ curl -H "Accept: application/json" http://localhost:8888/.META./regions
+{"name":".META."}
+while a "normal" user table with a single row has
+Name Region Server Encoded Name Start Key End Key
+t1,,1281111615489 10.0.0.43:60030 1127696125
+and through Stargate:
+$ curl -H "Accept: application/json" http://localhost:8888/t1/regions
+{"name":"t1","Region":[
+{"location":"10.0.0.43:54988","endKey":"","startKey":"","id":1281111615489,"name":"t1,,1281111615489"}
+]}
+So the internal tables are not reported right.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+None
+Component:
+REST
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andrew Purtell
+Reporter:
+Lars George
+Create date:
+12/Aug/10 08:14
+Update date:
+24/Nov/10 21:42
+Resolved date:
+24/Nov/10 21:24

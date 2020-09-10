@@ -1,0 +1,33 @@
+Summary:
+Provide new non-copy mechanism to assure atomic reads in get and scan
+Description:
+HBASE-2037 introduced a new MemStoreScanner which triggers a ConcurrentSkipListMap.buildFromSorted clone of the memstore and snapshot when starting a scan.
+After upgrading to 0.20.3, we noticed a big slowdown in our use of short scans. Some of our data repesent a time series. The data is stored in time series order, MR jobs often insert/update new data at the end of the series, and queries usually have to pick up some or all of the series. These are often scans of 0-100 rows at a time. To load one page, we'll observe about 20 such scans being triggered concurrently, and they take 2 seconds to complete. Doing a thread dump of a region server shows many threads in ConcurrentSkipListMap.biuldFromSorted which traverses the entire map of key values to copy it.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.20.3
+Fix_version:
+0.20.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ryan rawson
+Reporter:
+Dave Latham
+Create date:
+22/Feb/10 23:35
+Update date:
+12/Oct/12 06:14
+Resolved date:
+14/Apr/10 21:57

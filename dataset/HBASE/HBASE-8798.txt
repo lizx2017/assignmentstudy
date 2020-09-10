@@ -1,0 +1,60 @@
+Summary:
+Fix a minor bug in shell command with clone_snapshot table error
+Description:
+In HBase shell, the syntax for clone_snapshot is:
+hbase> clone_snapshot 'snapshotName', 'tableName'
+If the target table already exists, we'll get an error.
+For example:
+------------------
+hbase(main):011:0> clone_snapshot 'mysnapshot1', 'TestTable'
+ERROR: Table already exists: mysnapshot1!
+Here is some help for this command:
+Create a new table by cloning the snapshot content.
+There're no copies of data involved.
+And writing on the newly created table will not influence the snapshot data.
+Examples:
+hbase> clone_snapshot 'snapshotName', 'tableName'
+----------------------
+The bug is in the ERROR message:
+ERROR: Table already exists: mysnapshot1!
+We should output the table name, not the snapshot name.
+Currently, in command.rb, we have the output fixed as args.first for TableExistsException:
+      def translate_hbase_exceptions(*args)
+        yield
+      rescue org.apache.hadoop.hbase.exceptions.TableNotFoundException
+        raise "Unknown table #{args.first}!"
+      rescue org.apache.hadoop.hbase.exceptions.NoSuchColumnFamilyException
+        valid_cols = table(args.first).get_all_columns.map { |c| c + '*' }
+        raise "Unknown column family! Valid column names: #{valid_cols.join(", ")}"
+      rescue org.apache.hadoop.hbase.exceptions.TableExistsException
+        raise "Table already exists: #{args.first}!"
+      end
+This is fine with commands like 'create tableName ...' but not 'clone_snapshot snapshotName tableName'.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.8, 0.95.1
+Fix_version:
+0.98.0
+Component:
+shell, snapshots
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Jerry He
+Create date:
+24/Jun/13 21:21
+Update date:
+20/Nov/15 11:54
+Resolved date:
+13/Jul/13 23:56

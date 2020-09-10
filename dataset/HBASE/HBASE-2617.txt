@@ -1,0 +1,77 @@
+Summary:
+Load balancer falls into pathological state if one server under average - slop; endless churn
+Description:
+I'm looking at a 0.20.4 cluster of 80 fast machines. It runs fine for a while and then falls over into crazy balancing churn (My view on logs is sporadic but have a log before me where this is happening). Things I see that seem to be of 0.20.4 particularly:
++ We don't reach an equilibrium or at least it takes so long, its as though it wasn't every going to happen
++ Master log filled w/ open, close of one or two regions usually the same ones over and over (The Regions that are candidates to close are provided by the RS. They are ordered by hash of their name. We return the top ten from this Set every time. So, we always close the same regions all the time even if we just opened it)
++ Often, we'll tell an RS to close a region. It will do the job. In 0.20.4 we made it so if RS has any work at all for the master, that we return immediately rather than wait for the reporting period to elaspse. So, on these fast machines, it can be back near immediately if it just opened another some other region, say. It can get assigned the region it just closed. Seems to happen frequently enough.
+For example, look at the below extract featuring a single regions life. Its opened and closed 5 times in about 1/2 a second:
+2010-05-25 11:01:05,488 DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: ProcessRegionClose of GenericMetaStore,139757491,1274779304880, false, reassign: true
+2010-05-25 11:01:05,489 INFO org.apache.hadoop.hbase.master.ProcessRegionClose$1: region set as unassigned: GenericMetaStore,139757491,1274779304880
+2010-05-25 11:01:05,490 INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region GenericMetaStore,139757491,1274779304880 to a025.example.com,60020,1274744064673
+2010-05-25 11:01:05,510 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: GenericMetaStore,139757491,1274779304880 from a025.example.com,60020,1274744064673; 1 of 1
+2010-05-25 11:01:05,510 INFO org.apache.hadoop.hbase.master.RegionServerOperation: GenericMetaStore,139757491,1274779304880 open on 10.209.32.189:60020
+2010-05-25 11:01:05,511 INFO org.apache.hadoop.hbase.master.RegionServerOperation: Updated row GenericMetaStore,139757491,1274779304880 in region .META.,,1 with startcode=1274744064673, server=10.209.32.189:60020
+2010-05-25 11:01:05,548 DEBUG org.apache.hadoop.hbase.master.RegionManager: Going to close region GenericMetaStore,139757491,1274779304880
+2010-05-25 11:01:05,552 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_CLOSE: GenericMetaStore,139757491,1274779304880 from a025.example.com,60020,1274744064673; 1 of 2
+2010-05-25 11:01:05,552 DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: ProcessRegionClose of GenericMetaStore,139757491,1274779304880, false, reassign: true
+2010-05-25 11:01:05,552 INFO org.apache.hadoop.hbase.master.ProcessRegionClose$1: region set as unassigned: GenericMetaStore,139757491,1274779304880
+2010-05-25 11:01:05,556 INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region GenericMetaStore,139757491,1274779304880 to a028.example.com,60020,1274747560769
+2010-05-25 11:01:05,578 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: GenericMetaStore,139757491,1274779304880 from a028.example.com,60020,1274747560769; 1 of 1
+2010-05-25 11:01:05,578 INFO org.apache.hadoop.hbase.master.RegionServerOperation: GenericMetaStore,139757491,1274779304880 open on 10.209.32.185:60020
+2010-05-25 11:01:05,579 INFO org.apache.hadoop.hbase.master.RegionServerOperation: Updated row GenericMetaStore,139757491,1274779304880 in region .META.,,1 with startcode=1274747560769, server=10.209.32.185:60020
+2010-05-25 11:01:05,599 DEBUG org.apache.hadoop.hbase.master.RegionManager: Going to close region GenericMetaStore,139757491,1274779304880
+2010-05-25 11:01:05,605 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_CLOSE: GenericMetaStore,139757491,1274779304880 from a028.example.com,60020,1274747560769; 1 of 2
+2010-05-25 11:01:05,605 DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: ProcessRegionClose of GenericMetaStore,139757491,1274779304880, false, reassign: true
+2010-05-25 11:01:05,606 INFO org.apache.hadoop.hbase.master.ProcessRegionClose$1: region set as unassigned: GenericMetaStore,139757491,1274779304880
+2010-05-25 11:01:05,607 INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region GenericMetaStore,139757491,1274779304880 to sjc1c104.example.com,60020,1274747062601
+2010-05-25 11:01:05,640 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: GenericMetaStore,139757491,1274779304880 from sjc1c104.example.com,60020,1274747062601; 1 of 1
+2010-05-25 11:01:05,640 INFO org.apache.hadoop.hbase.master.RegionServerOperation: GenericMetaStore,139757491,1274779304880 open on 10.209.42.181:60020
+2010-05-25 11:01:05,641 INFO org.apache.hadoop.hbase.master.RegionServerOperation: Updated row GenericMetaStore,139757491,1274779304880 in region .META.,,1 with startcode=1274747062601, server=10.209.42.181:60020
+2010-05-25 11:01:05,723 DEBUG org.apache.hadoop.hbase.master.RegionManager: Going to close region GenericMetaStore,139757491,1274779304880
+2010-05-25 11:01:05,729 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_CLOSE: GenericMetaStore,139757491,1274779304880 from sjc1c104.example.com,60020,1274747062601; 1 of 4
+2010-05-25 11:01:05,729 DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: ProcessRegionClose of GenericMetaStore,139757491,1274779304880, false, reassign: true
+2010-05-25 11:01:05,730 INFO org.apache.hadoop.hbase.master.ProcessRegionClose$1: region set as unassigned: GenericMetaStore,139757491,1274779304880
+2010-05-25 11:01:05,731 INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region GenericMetaStore,139757491,1274779304880 to sjc1c091.example.com,60020,1274747056415
+2010-05-25 11:01:05,751 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: GenericMetaStore,139757491,1274779304880 from sjc1c091.example.com,60020,1274747056415; 1 of 1
+2010-05-25 11:01:05,752 INFO org.apache.hadoop.hbase.master.RegionServerOperation: GenericMetaStore,139757491,1274779304880 open on 10.209.42.238:60020
+2010-05-25 11:01:05,752 INFO org.apache.hadoop.hbase.master.RegionServerOperation: Updated row GenericMetaStore,139757491,1274779304880 in region .META.,,1 with startcode=1274747056415, server=10.209.42.238:60020
+2010-05-25 11:01:05,775 DEBUG org.apache.hadoop.hbase.master.RegionManager: Going to close region GenericMetaStore,139757491,1274779304880
+2010-05-25 11:01:05,780 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_CLOSE: GenericMetaStore,139757491,1274779304880 from sjc1c091.example.com,60020,1274747056415; 1 of 2
+2010-05-25 11:01:05,780 DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: ProcessRegionClose of GenericMetaStore,139757491,1274779304880, false, reassign: true
+2010-05-25 11:01:05,780 INFO org.apache.hadoop.hbase.master.ProcessRegionClose$1: region set as unassigned: GenericMetaStore,139757491,1274779304880
+2010-05-25 11:01:05,808 INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region GenericMetaStore,139757491,1274779304880 to sjc1a003.example.com,60020,1274747057557
+2010-05-25 11:01:05,828 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: GenericMetaStore,139757491,1274779304880 from sjc1a003.example.com,60020,1274747057557; 1 of 1
+2010-05-25 11:01:05,828 INFO org.apache.hadoop.hbase.master.RegionServerOperation: GenericMetaStore,139757491,1274779304880 open on 10.209.32.148:60020
+2010-05-25 11:01:05,829 INFO org.apache.hadoop.hbase.master.RegionServerOperation: Updated row GenericMetaStore,139757491,1274779304880 in region .META.,,1 with startcode=1274747057557, server=10.209.32.148:60020
+The culprit seems to be the code that wants to bring up underloaded regionservers up to average. That and something about the lightly loaded servers math that is off.
+I'm marking this as a blocker. I'm not sure why its not more common. There were some issues on this cluster regards disks filling but though such an event may have provoked the issue, we should have evened out eventually.
+Making this a blocker on 0.20.5. Need to fix it for this user at least.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.20.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+26/May/10 23:26
+Update date:
+12/Oct/12 06:15
+Resolved date:
+27/May/10 18:14

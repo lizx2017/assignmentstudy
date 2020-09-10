@@ -1,0 +1,68 @@
+Summary:
+Intermittently TestZooKeeper#testRegionAssignmentAfterMasterRecoveryDueToZKExpiry hangs in admin#createTable() call
+Description:
+TestZooKeeper#testRegionAssignmentAfterMasterRecoveryDueToZKExpiry sometimes hung.
+Here were two recent occurrences:
+https://builds.apache.org/job/PreCommit-HBASE-Build/7676/console
+https://builds.apache.org/job/PreCommit-HBASE-Build/7671/console
+There were 9 occurrences of the following in both stack traces:
+"FifoRpcScheduler.handler1-thread-5" daemon prio=10 tid=0x09df8800 nid=0xc17 waiting for monitor entry [0x6fdf8000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+  at org.apache.hadoop.hbase.master.TableNamespaceManager.isTableAvailableAndInitialized(TableNamespaceManager.java:250)
+  - waiting to lock <0x7f69b5f0> (a org.apache.hadoop.hbase.master.TableNamespaceManager)
+  at org.apache.hadoop.hbase.master.HMaster.isTableNamespaceManagerReady(HMaster.java:3146)
+  at org.apache.hadoop.hbase.master.HMaster.getNamespaceDescriptor(HMaster.java:3105)
+  at org.apache.hadoop.hbase.master.HMaster.createTable(HMaster.java:1743)
+  at org.apache.hadoop.hbase.master.HMaster.createTable(HMaster.java:1782)
+  at org.apache.hadoop.hbase.protobuf.generated.MasterProtos$MasterService$2.callBlockingMethod(MasterProtos.java:38221)
+  at org.apache.hadoop.hbase.ipc.RpcServer.call(RpcServer.java:1983)
+  at org.apache.hadoop.hbase.ipc.CallRunner.run(CallRunner.java:92)
+The test hung here:
+"pool-1-thread-1" prio=10 tid=0x74f7b800 nid=0x5aa5 in Object.wait() [0x74efe000]
+   java.lang.Thread.State: TIMED_WAITING (on object monitor)
+  at java.lang.Object.wait(Native Method)
+  - waiting on <0xcc848348> (a org.apache.hadoop.hbase.ipc.RpcClient$Call)
+  at org.apache.hadoop.hbase.ipc.RpcClient.call(RpcClient.java:1436)
+  - locked <0xcc848348> (a org.apache.hadoop.hbase.ipc.RpcClient$Call)
+  at org.apache.hadoop.hbase.ipc.RpcClient.callBlockingMethod(RpcClient.java:1654)
+  at org.apache.hadoop.hbase.ipc.RpcClient$BlockingRpcChannelImplementation.callBlockingMethod(RpcClient.java:1712)
+  at org.apache.hadoop.hbase.protobuf.generated.MasterProtos$MasterService$BlockingStub.createTable(MasterProtos.java:40372)
+  at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation$5.createTable(HConnectionManager.java:1931)
+  at org.apache.hadoop.hbase.client.HBaseAdmin$2.call(HBaseAdmin.java:598)
+  at org.apache.hadoop.hbase.client.HBaseAdmin$2.call(HBaseAdmin.java:594)
+  at org.apache.hadoop.hbase.client.RpcRetryingCaller.callWithRetries(RpcRetryingCaller.java:116)
+  - locked <0x7faa26d0> (a org.apache.hadoop.hbase.client.RpcRetryingCaller)
+  at org.apache.hadoop.hbase.client.RpcRetryingCaller.callWithRetries(RpcRetryingCaller.java:94)
+  - locked <0x7faa26d0> (a org.apache.hadoop.hbase.client.RpcRetryingCaller)
+  at org.apache.hadoop.hbase.client.HBaseAdmin.executeCallable(HBaseAdmin.java:3124)
+  at org.apache.hadoop.hbase.client.HBaseAdmin.createTableAsync(HBaseAdmin.java:594)
+  at org.apache.hadoop.hbase.client.HBaseAdmin.createTable(HBaseAdmin.java:485)
+  at org.apache.hadoop.hbase.TestZooKeeper.testRegionAssignmentAfterMasterRecoveryDueToZKExpiry(TestZooKeeper.java:486)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Ted Yu
+Create date:
+30/Oct/13 19:42
+Update date:
+20/Nov/15 11:55
+Resolved date:
+02/Dec/13 03:29

@@ -1,0 +1,44 @@
+Summary:
+Master goes to infinite loop if AccessControlException occurs while setting cluster id during initialization
+Description:
+Steps to reproduce:
+change permission of /hbase to a user other than one running hbase
+delete hbase.id if already exists
+start master, it will try to create cluster ID file in /hbase and fail while doing so with org.apache.hadoop.security.AccessControlException
+From this point it will go to infinite loop.
+Reason: org.apache.hadoop.hbase.util.FSUtils.setClusterId has a wait > 0 and no control over retries when called during master initialization.
+Quoting : checkRootDir in MasterFileSystem
+// Make sure cluster ID exists
+    if (!FSUtils.checkClusterIdExists(fs, rd, c.getInt(
+        HConstants.THREAD_WAKE_FREQUENCY, 10 * 1000))) {
+      FSUtils.setClusterId(fs, rd, UUID.randomUUID().toString(), c.getInt(
+          HConstants.THREAD_WAKE_FREQUENCY, 10 * 1000));
+    }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.92.1
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Shrijeet Paliwal
+Create date:
+12/Apr/12 22:28
+Update date:
+11/Apr/15 01:26
+Resolved date:
+11/Apr/15 01:26

@@ -1,0 +1,37 @@
+Summary:
+RegionMetricsStorage.incrNumericMetric is called too often
+Description:
+Running an HBase scan load through the profiler revealed that RegionMetricsStorage.incrNumericMetric is called way too often.
+It turns out that we make this call for each KV in StoreScanner.next(...).
+Incrementing AtomicLong requires expensive memory barriers.
+The observation here is that StoreScanner.next(...) can maintain a simple
+long in its internal loop and only update the metric upon exit. Thus the AtomicLong is not updated nearly as often.
+That cuts about 10% runtime from scan only load (I'll quantify this better soon).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.2
+Component:
+Performance
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+M. Chen
+Reporter:
+Lars Hofhansl
+Create date:
+17/Aug/12 00:16
+Update date:
+07/Apr/13 04:49
+Resolved date:
+20/Aug/12 23:43

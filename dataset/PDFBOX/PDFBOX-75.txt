@@ -1,0 +1,240 @@
+Summary:
+Import XFDF 2 - NullPointerException
+Description:
+[imported from SourceForge]
+http://sourceforge.net/tracker/index.php?group_id=78314&atid=552832&aid=1240285
+Originally submitted by fitzerpn on 2005-07-18 07:17.
+I think this is also a bug. Below is the input/output from
+the command prompt.
+C:\PDFBox-0.7.1\bin>importxfdf ir.pdf data.xfdf
+output.pdf
+Exception in thread "main"
+java.lang.NullPointerException
+at
+org.pdfbox.pdmodel.interactive.form.PDAppearance.conv
+ertToMultiLine (
+PDAppearance.java:460)
+at
+org.pdfbox.pdmodel.interactive.form.PDAppearance.setA
+ppearanceValue (
+PDAppearance.java:228)
+at
+org.pdfbox.pdmodel.interactive.form.PDVariableText.set
+Value (PDVariab
+leText.java:134)
+at
+org.pdfbox.pdmodel.interactive.form.PDField.importFDF
+(PDField.java:3
+47)
+at
+org.pdfbox.pdmodel.interactive.form.PDAcroForm.import
+FDF (PDAcroForm.
+java:131)
+at org.pdfbox.ImportFDF.importFDF
+(ImportFDF.java:72)
+at org.pdfbox.ImportXFDF.importXFDF
+(ImportXFDF.java:108)
+at org.pdfbox.ImportXFDF.importXFDF
+(ImportXFDF.java:93)
+at org.pdfbox.ImportXFDF.main
+(ImportXFDF.java:89)
+C:\PDFBox-0.7.1\bin>
+here is the contents of the xfdf file (data.xfdf):
+<?xml version="1.0" encoding="UTF-8"?>
+<xfdf xmlns="http://ns.adobe.com/xfdf/"
+xml:space="preserve"
+><fields
+><field name="AdminAssist"
+><value
+>Yes</value
+></field
+><field name="Administration"
+><value
+>Yes</value
+></field
+><field name="DepHeadDesc"
+><value
+> </value
+></field
+><field name="EEO"
+><value
+>Yes</value
+></field
+><field name="FormAction"
+><value
+>Save</value
+></field
+><field name="FormDate"
+><value
+>07/07/2005</value
+></field
+><field name="Health_Safety"
+><value
+>Yes</value
+></field
+><field name="IncidentDate"
+><value
+>07/07/2005</value
+></field
+><field name="IncidentDesc"
+><value
+>;kasf;lkasdkl;jasdfjkfasd
+'fas
+df
+'asdfasd';
+fa';dfasdfasdf
+'asdf
+'asd
+fas
+df
+asd
+fasd
+fa
+sdfasdf</value
+></field
+><field name="IncidentTime"
+><value
+>16:21</value
+></field
+><field name="Investigator"
+><value
+>Yes</value
+></field
+><field name="Med"
+><value
+>Yes</value
+></field
+><field name="Operations"
+><value
+>Yes</value
+></field
+><field name="OtherDesc"
+><value
+>asdfasdfasdfasdfasdf</value
+></field
+><field name="PersonnelOfficer"
+><value
+>Yes</value
+></field
+><field name="RecordOfficer"
+><value
+>Yes</value
+></field
+><field name="SpecServices"
+><value
+>Yes</value
+></field
+><field name="StaffName"
+><value
+>as5d4f6as5d4f6a5sd4f6</value
+></field
+><field name="StaffTitle"
+><value
+>6a5sd4f65asd4f65as4df65</value
+></field
+><field name="Subject"
+><value
+>UOF</value
+></field
+><field name="chkDeptHead"
+><value
+>Yes</value
+></field
+><field name="txtAction"
+><value
+>sdafasdfasdf
+a
+sdf
+asdf
+asd
+f
+asdf
+a</value
+></field
+><field name="txtInvolves"
+><value
+>asdfasdfasjdfkjasd;lkf;jlkfdsafjfjkl;ajkl;kjl;</value
+></field
+><field name="txtLocation"
+><value
+>as5d4f65asd4f65asd4f6</value
+></field
+></fields
+><ids
+original="4397E7BF36CCF736546813C9D787D1D9"
+modified="30B29E4F37C15747BC26D9D9754378F0"
+/><f href="../../FITZERPN/My Documents/Forms in
+Catalog/DRC1000v1.pdf"
+/></xfdf
+>
+[attachment on SourceForge]
+http://sourceforge.net/tracker/download.php?group_id=78314&atid=552832&aid=1240285&file_id=142435
+ir.pdf (application/pdf), 35822 bytes
+Version 6 Acrobat Form. No Encryption
+[attachment on SourceForge]
+http://sourceforge.net/tracker/download.php?group_id=78314&atid=552832&aid=1240285&file_id=142437
+data.xfdf (application/vnd.adobe.xfdf), 1900 bytes
+Here is the Data.xfdf file
+[comment on SourceForge]
+Originally sent by blmatthews.
+Logged In: YES
+user_id=116912
+Hmmm, it sort of mangled that diff. It's a simple change,
+on line 460 of PDAppearance.java, change value.substring
+to line.substring.
+[comment on SourceForge]
+Originally sent by blmatthews.
+Logged In: YES
+user_id=116912
+I've encountered this too, it's a simple wrong variable
+use. Here's a patch:
+diff rc PDFBox
+0.7.2.orig/src/org/pdfbox/pdmodel/interactive/form/PDAppear
+ance.java PDFBox-
+0.7.2.works/src/org/pdfbox/pdmodel/interactive/form/PDAppea
+rance.java
+PDFBox-
+0.7.2.orig/src/org/pdfbox/pdmodel/interactive/form/PDAppear
+ance.java Mon Sep 5 14:38:00 2005
+PDFBox-
+0.7.2.works/src/org/pdfbox/pdmodel/interactive/form/PDAppea
+rance.java Mon Jun 5 17:18:03 2006
+***************
+457,463 ****
+StringBuffer result = new StringBuffer
+(line.length() + 64);
+while( (currIdx = line.indexOf('\n',lastIdx ))
+> -1 ) { ! result.append(value.substring (lastIdx,currIdx)); result.append(" ) Tj\n0 -13 Td\n("); lastIdx = currIdx + 1; }
+457,463 ----
+StringBuffer result = new StringBuffer
+(line.length() + 64);
+while( (currIdx = line.indexOf('\n',lastIdx ))
+> -1 ) { ! result.append(line.substring (lastIdx,currIdx)); result.append(" ) Tj\n0 -13 Td\n("); lastIdx = currIdx + 1; }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+AcroForm
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Anonymous
+Create date:
+18/Jul/05 14:17
+Update date:
+10/Oct/14 22:31
+Resolved date:
+10/Oct/14 22:31

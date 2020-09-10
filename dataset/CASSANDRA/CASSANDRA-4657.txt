@@ -1,0 +1,37 @@
+Summary:
+cql version race condition with rpc_server_type: sync
+Description:
+If clients connect to a cassandra cluster configured with rpc_server_type: sync with heterogeneous cql versions (2 and 3), the cql version used for execution on the server changes seemingly randomly.
+It's due to the fact that CustomTThreadPoolServer.java does not set the remoteSocket anytime, or does not clear the cql version in the ThreadLocal clientState object.
+When CassandraServer.java calls state() it gets the ThreadLocal object clientState, which has its cqlversion already changed by a previous socket that was using the same thread.
+The easiest fix is probably to do a SocketSessionManagementService.instance.set when accepting a new client and SocketSessionManagementService.instance.remove when the client is closed, but if you really want to use the ThreadLocal clientState and not alloc/destroy a ClientState everytime, then you should clear this clientState on accept of a new client.
+The problem can be reproduced with cqlsh -3 on one side and a client that does not set the cql version, expecting to get version 2 by default, but actually gettingv v2/v3 depending on which thread it connects to.
+The problem does not happen with other rpc_server_types, nor with clients that set their cql version at connection.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.6
+Component:
+None
+Label:
+features
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Emmanuel Courreges
+Create date:
+12/Sep/12 15:10
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Oct/12 16:05

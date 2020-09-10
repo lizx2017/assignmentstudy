@@ -1,0 +1,66 @@
+Summary:
+LayoutBase->getScrollPositionDeltaToElementHelper isn't ideal
+Description:
+LayoutBase.getScrollPositionDeltaToElementHelper() method should return a point where x and y are representing the horizontal and vertical scroll needed.
+This calculation is used by data classes such as List.
+When having a List with vertical layout - changing the selected index using the UP/DOWN keys should scroll the view only if the selected element is NOT fully contain inside the scroll rectangle in Y DIRECTION.
+If it is contained - no scroll is needed - so it has to return the (0, 0) point.
+However, I managed to make it scroll even if the element was fully contained.
+When using the "horizontalAlign = HorizontalAlign.CONTENT_JUSTIFY" on actual data group, the items are having the same size as the container.
+Here's the code that actually works bad (LayoutBase, starting at the line 1552):
+---------------------------------------------------------------------------------
+// scrollR "contains" elementR in just one dimension
+if ((elementR.left >= scrollR.left) && (elementR.right <= scrollR.right))
+dx = 0;
+else if ((elementR.bottom <= scrollR.bottom) && (elementR.top >= scrollR.top))
+dy = 0;
+---------------------------------------------------------------------------------
+What happens here is: since the elementR has the equal width as scrollR, their left and right are both equal, so the first check passes (sets dx = 0, which is OK) and the second check (the "else if") is never done.
+This results in not resetting the dy, so its value remains as calculated in the previous nby the same method (based on the "edge distance" calculation, i.e. it's always some number).
+I believe the "else if" should be changed to "if" so allowing the dy to reset itself if the element is being fully contained in y direction.
+It currently works fine in most cases because it relies on tiny 1 pixel distance between the item and the data group, but it could break any moment if the developer makes the item width equal to the data group width.
+Note that it works BETTER with horizontally oriented list, simply because the first check is for X and it always goes to the second check (the X-check is privileged, and really shouldn't be).
+It's the same with another pair of checks checking if the element is bigger that scroll rectangle (starting at the line 1558).
+So, the valid code (in total) should be (lines 1552-1562):
+---------------------------------------------------------------------------------
+// scrollR "contains" elementR in just one dimension
+if ((elementR.left >= scrollR.left) && (elementR.right <= scrollR.right))
+dx = 0;
+if ((elementR.bottom <= scrollR.bottom) && (elementR.top >= scrollR.top))
+dy = 0;
+// elementR "contains" scrollR in just one dimension
+if ((elementR.left <= scrollR.left) && (elementR.right >= scrollR.right))
+dx = 0;
+if ((elementR.bottom >= scrollR.bottom) && (elementR.top <= scrollR.top))
+dy = 0;
+---------------------------------------------------------------------------------
+Cheers,
+Danko
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Not A Problem
+Affects_version:
+Apache Flex 4.11.0
+Fix_version:
+Apache Flex 4.12.0
+Component:
+Spark: Layout
+Label:
+LayoutBase Spark bug
+Environment:
+
+Attachment number:
+0
+Assignee:
+Justin Mclean
+Reporter:
+Danko Kozar
+Create date:
+06/Nov/13 02:03
+Update date:
+27/Nov/13 07:18
+Resolved date:
+27/Nov/13 07:18

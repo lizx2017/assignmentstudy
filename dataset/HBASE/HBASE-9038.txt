@@ -1,0 +1,49 @@
+Summary:
+Compaction WALEdit gives NPEs with Replication enabled
+Description:
+If you enable replication, and get a compaction requested, you'll see this in the logs:
+2013-07-24 15:16:38,831 ERROR [regionserver60020-smallCompactions-1374704194254] regionserver.CompactSplitThread: Compaction failed Request = regionName=TestTable,00000000000000000000057204,1374704192994.6bb7c58d1e6cc99fbfe04592e44fbc35., storeName=info, fileCount=4, fileSize=335.1m (115.4m, 115.4m, 69.0m, 35.2m), priority=6, time=1374704194257521000
+java.lang.NullPointerException
+ at org.apache.hadoop.hbase.replication.regionserver.Replication.visitLogEntryBeforeWrite(Replication.java:215)
+ at org.apache.hadoop.hbase.regionserver.wal.FSHLog.doWrite(FSHLog.java:1204)
+ at org.apache.hadoop.hbase.regionserver.wal.FSHLog.append(FSHLog.java:890)
+ at org.apache.hadoop.hbase.regionserver.wal.FSHLog.append(FSHLog.java:840)
+ at org.apache.hadoop.hbase.regionserver.wal.HLogUtil.writeCompactionMarker(HLogUtil.java:262)
+ at org.apache.hadoop.hbase.regionserver.HStore.writeCompactionWalRecord(HStore.java:1026)
+ at org.apache.hadoop.hbase.regionserver.HStore.compact(HStore.java:973)
+ at org.apache.hadoop.hbase.regionserver.HRegion.compact(HRegion.java:1278)
+ at org.apache.hadoop.hbase.regionserver.CompactSplitThread$CompactionRunner.run(CompactSplitThread.java:465)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:895)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:918)
+ at java.lang.Thread.run(Thread.java:680)
+It's a simple case of filtering METAFAMILY like this:
+if (kv.matchingFamily(WALEdit.METAFAMILY)) continue;
+and add a unit test.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.95.1
+Fix_version:
+0.98.0, 0.95.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+25/Jul/13 00:43
+Update date:
+23/Sep/13 19:22
+Resolved date:
+30/Jul/13 00:11

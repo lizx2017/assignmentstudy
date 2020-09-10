@@ -1,0 +1,62 @@
+Summary:
+Uncaught ItemPendingError in AdvancedListBase
+Description:
+Steps to reproduce:
+1. Use a virtual collection (i.e. one that uses ItemPendingError) as the data provider for an AdvancedListBase descendent (such as ADG)
+2. Scroll to the bottom of the list
+3. Initiate a collection REFRESH (e.g. apply a filter) on the data provider (RESET will
+invalidate the scroll position and consequently will not trigger the error)
+Actual Results:
+An uncaught ItemPendingError is thrown during AdvancedListBase.updateDisplayList() which
+usually causes a display corruption on non-debug Flash players. The unhandled exception
+is triggered by a call to IViewCursor.seek() that doesn't handle ItemPendingError at the
+end of makeRowsAndColumnsWithExtraColumns() which is called during updateDisplayList().
+Abbreviated stack trace:
+Error: Request pending
+...
+at VirtualCollection/getItemAt()
+at ListCollectionViewCursor/seek()[...\mx\collections\ListCollectionView.as:2453]
+at mx.controls.listClasses::AdvancedListBase/makeRowsAndColumnsWithExtraRows()[...\mx\controls\listClasses\AdvancedListBase.as:4036]
+at mx.controls.listClasses::AdvancedListBase/updateDisplayList()[...\mx\controls\listClasses\AdvancedListBase.as:3574]
+at mx.controls::AdvancedDataGridBaseEx/updateDisplayList()[...\mx\controls\AdvancedDataGridBaseEx.as:2025]
+at mx.controls::AdvancedDataGrid/updateDisplayList()[...\mx\controls\AdvancedDataGrid.as:2899]
+at mx.controls.listClasses::AdvancedListBase/validateDisplayList()[...\mx\controls\listClasses\AdvancedListBase.as:3472]
+at mx.managers::LayoutManager/validateDisplayList()[...\mx\managers\LayoutManager.as:736]
+at mx.managers::LayoutManager/doPhasedInstantiation()[...\mx\managers\LayoutManager.as:801]
+at mx.managers::LayoutManager/doPhasedInstantiationCallback()[...\mx\managers\LayoutManager.as:1180]
+Expected Results:
+The data refreshes normally.
+Workaround (if any):
+This appears related to SDK-2385 (bugbase 174766) and appears to have been fixed in ListBase
+by calling seekPositionIgnoreError() at the tail end of makeRowsAndColumnsWithExtraColumns()
+instead of IViewCursor.seek() directly. The corresponding implementation in AdvancedListBase
+still calls IViewCursor.seek() directly. Calling seekPositionIgnoreError() in
+AdvancedListBase.makeRowsAndColumnsWithExtraColumns() should fix the issue.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.5 (
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+02/Aug/11 12:08
+Update date:
+02/Aug/11 12:08
+Resolved date:
+

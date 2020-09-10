@@ -1,0 +1,45 @@
+Summary:
+hsha default thread limits make no sense, and yaml comments look confused
+Description:
+The cassandra.yaml states with respect to rpc_max_threads:
+# For the Hsha server, the min and max both default to quadruple the number of
+# CPU cores.
+The code seems to indeed do this. But this makes, as far as I can tell, no sense what-so-ever since the number of concurrent RPC threads you need is a function of the throughput and the average latency of requests (that includes synchronously waiting on network traffic).
+Defaulting to anything having to do with CPU cores seems inherently wrong. If a default is non-static, a closer guess might be to look at thread stack size and heap size and infer what "might" be reasonable.
+NOTE: The effect of having this too low, is "strange" (if you don't know what's going on) latencies observed form the client on all thrift requests (any thrift request, including e.g. describe_ring()), that isn't visible in any latency metric exposed by Cassandra. This is why I consider this "major", since unwitting users may be seeing detrimental performance for no good reason.
+In addition, I read this about async:
+# async -> Nonblocking server implementation with one thread to serve 
+#          rpc connections.  This is not recommended for high throughput use
+#          cases. Async has been tested to be about 50% slower than sync
+#          or hsha and is deprecated: it will be removed in the next major release.
+This makes even less sense. Running with one rpc thread limits you to a single concurrent request. How was that 50% number even attained? By single-node testing being completely CPU bound locally on a node? The actual effect should be "stupidly slow" in any real situation with lots of requests on a cluster of many nodes and network traffic (though I didn't test that) - especially in the event of any kind of hiccup like a node doing GC. I agree that if the above is true, async should definitely be deprecated, but the reasons seem much stronger than implied.
+I may be missing something here, in which case I apologize,, but I specifically double-checked after I fixed this setting on on our our clusters after seeing exactly the expected side-effect of having it be too low. I always was under the impression that rpc_max_threads affects the number of RPC requests running concurrently, and code inspection (it being used for the worker thread limit) + the effects of client-observed latency is consistent with my understanding.
+I suspect the setting was set strangely by someone because the phrasing of the comments in cassandra.yaml strongly suggest that this should be tied to CPU cores, hiding the fact that this really has to do with the number of requests that can be serviced concurrently regardless of implementation details of thrift/networking being sync/async/etc.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Peter Schuller
+Reporter:
+Peter Schuller
+Create date:
+23/May/12 18:38
+Update date:
+16/Apr/19 09:32
+Resolved date:
+29/May/12 16:27

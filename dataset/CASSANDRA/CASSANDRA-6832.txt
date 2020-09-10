@@ -1,0 +1,47 @@
+Summary:
+File handle leak in StreamWriter.java
+Description:
+Reference CASSANDRA-6283 where this first came up. nodetool.bat repair -par on 2.0.5 pops up the following stack:
+ERROR [Finalizer] 2014-02-17 09:21:52,922 RandomAccessReader.java (line 399) LEAK finalizer had to clean up
+java.lang.Exception: RAR for C:\var\lib\cassandra\data\Keyspace1\Standard1\Keyspace1-Standard1-jb-41-CRC.db allocated
+at org.apache.cassandra.io.util.RandomAccessReader.<init>(RandomAccessReader.java:66)
+at org.apache.cassandra.io.util.RandomAccessReader.open(RandomAccessReader.java:106)
+at org.apache.cassandra.io.util.RandomAccessReader.open(RandomAccessReader.java:98)
+at org.apache.cassandra.io.util.DataIntegrityMetadata$ChecksumValidator.<init>(DataIntegrityMetadata.java:53)
+at org.apache.cassandra.io.util.DataIntegrityMetadata.checksumValidator(DataIntegrityMetadata.java:40)
+at org.apache.cassandra.streaming.StreamWriter.write(StreamWriter.java:76)
+at org.apache.cassandra.streaming.messages.OutgoingFileMessage$1.serialize(OutgoingFileMessage.java:59)
+at org.apache.cassandra.streaming.messages.OutgoingFileMessage$1.serialize(OutgoingFileMessage.java:42)
+at org.apache.cassandra.streaming.messages.StreamMessage.serialize(StreamMessage.java:45)
+at org.apache.cassandra.streaming.ConnectionHandler$OutgoingMessageHandler.sendMessage(ConnectionHandler.java:383)
+at org.apache.cassandra.streaming.ConnectionHandler$OutgoingMessageHandler.run(ConnectionHandler.java:355)
+at java.lang.Thread.run(Thread.java:744)
+This leak doesn't look like it's breaking anything but is still worth fixing.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7
+Component:
+Legacy/Local Write-Read Paths
+Label:
+None
+Environment:
+windows
+Attachment number:
+0
+Assignee:
+Joshua McKenzie
+Reporter:
+Joshua McKenzie
+Create date:
+10/Mar/14 18:43
+Update date:
+16/Apr/19 09:31
+Resolved date:
+13/Mar/14 18:14

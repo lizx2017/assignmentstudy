@@ -1,0 +1,44 @@
+Summary:
+Grant Permission fails if permission had been revoked previously
+Description:
+The dtest auth_test.py:TestAuth.alter_cf_auth_test is failing.
+        cassandra.execute("GRANT ALTER ON ks.cf TO cathy")
+        cathy.execute("ALTER TABLE ks.cf ADD val int")
+
+        cassandra.execute("REVOKE ALTER ON ks.cf FROM cathy")
+        self.assertUnauthorized("User cathy has no ALTER permission on <table ks.cf> or any of its parents",
+                                cathy, "CREATE INDEX ON ks.cf(val)")
+
+        cassandra.execute("GRANT ALTER ON ks.cf TO cathy")
+        cathy.execute("CREATE INDEX ON ks.cf(val)")
+In this section of code, the user cathy is granted "ALTER" permissions on 'ks.cf', then they are revoked, then granted again. Monitoring system_auth.permissions during this section of code show that the permission is added with the initial grant, and revoked properly, but the table remains empty after the second grant.
+When the cathy user attempts to create an index, the following exception is thrown:
+Unauthorized: code=2100 [Unauthorized] message="User cathy has no ALTER permission on <table ks.cf> or any of its parents"
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.2
+Component:
+None
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Philip Thompson
+Create date:
+29/Oct/14 18:02
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Nov/14 20:55

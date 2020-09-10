@@ -1,0 +1,70 @@
+Summary:
+Rendering will never complete
+Description:
+I have a PDF file that I am attempting to render with:
+PDFRenderer renderer = new PDFRenderer(document);
+for (int i = 0; i < 2; i++ ) { // the document is two pages, code simplified
+    BufferedImage image = renderer.renderImageWithDPI(i, dpi, ImageType.RGB); 
+}
+However, the code never returns. When I pause execution (in Eclipse) I see that execution never leaves the decode() method of org.apache.pdfbox.filter.RunLengthDecodeFilter.
+The problem is that the inner loop of while (amountToCopy > 0) in bold below is never executed because the stream has come to EOF! That means that the int compressedRead get a negative value and amountToCopy is _*added *_to instead of being subtracted from.
+The loop seems to eventually step out of itself, Probably when the integer warps around when reaching it's max
+The problem is easy to catch if setting a conditional breakpoint on compressedRead == -1.
+I'll include the PDF. The problem arises on page 2.
+    public DecodeResult decode(InputStream encoded, OutputStream decoded,
+                                         COSDictionary parameters, int index) throws IOException
+    {
+        int dupAmount;
+        byte[] buffer = new byte[128];
+        while ((dupAmount = encoded.read()) != -1 && dupAmount != RUN_LENGTH_EOD)
+        {
+            if (dupAmount <= 127)
+            {
+                int amountToCopy = dupAmount + 1;
+                int compressedRead;
+               * while(amountToCopy > 0)
+                {
+                    compressedRead = encoded.read(buffer, 0, amountToCopy);
+                    decoded.write(buffer, 0, compressedRead);
+                    amountToCopy -= compressedRead;
+                }*
+            }
+            else
+            {
+                int dupByte = encoded.read();
+                for (int i = 0; i < 257 - dupAmount; i++)
+                {
+                    decoded.write(dupByte);
+                }
+            }
+        }
+        return new DecodeResult(parameters);
+    }
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+2.0.8
+Fix_version:
+2.0.9
+Component:
+Rendering
+Label:
+None
+Environment:
+java 1.8
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Kristian Jörg
+Create date:
+03/Nov/17 12:25
+Update date:
+24/Mar/18 09:41
+Resolved date:
+03/Nov/17 17:12

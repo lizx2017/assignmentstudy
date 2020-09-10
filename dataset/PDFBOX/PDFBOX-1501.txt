@@ -1,0 +1,74 @@
+Summary:
+Width of the character "201" .. inconsistent with the width in the PDF dictionary.
+Description:
+I have downloaded the trunk version of PDFBox for PDF/A validation purposes.
+The validation process fails with the following error :
+3.1.6 : Invalid Font definition, Width of the character "201" in the font program "AEOQYB+Frutiger-Bold-ANSI"is inconsistent with the width in the PDF dictionary.
+The same PDF file is considered as valid when using Acrobat Pro X
+I used FontForge (as described in https://issues.apache.org/jira/browse/PDFBOX-1259) to check the width of the caracter and the value is correct 556. The same value is found in the PDF file.
+When running in debug mode I noticed that the CharStringRenderer constructor is called with "false" as parameter, meaning that the charString is not Type1 (Acrobat reader says it is Type1).
+When digging further, I found that in the handleCommandType2 method of CharStringRenderer does not update the width of the character because the following condition is not met
+else if ("endchar".equals(name)) {
+if (numbers.size() == 1 )
+{ setWidth(numbers.get(0)); }
+}
+numbers has an array as value ([556, 171, 158, 69, 194]).
+In the handleSequence method of CharStringHandler, the sequence value used to compute the "numbers " value is [556, 171, 158, 69, 194, [14]]
+[14] being the endchar command.
+If I change the above condition to
+else if ("endchar".equals(name)) {
+if (numbers.size() % 2 == 1 )
+{ setWidth(numbers.get(0)); }
+}
+The PDF file is considered as valid ... Is there a bug in the code or in the validation process or in the PDF file ?
+Why should there be a single character when the endchar command is met ?
+The the technical note 5177 (16 march 2000) issued by Adode says that the correct "sequence and form of a Type 2 charstring program may be represented as:
+w?
+{hs* vs* cm* hm* mt subpath}
+?
+{mt subpath}
+* endchar
+Where:
+w = width
+hs = hstem or hstemhm command
+vs = vstem or vstemhm command
+cm = cntrmask operator
+hm = hintmask operator
+mt = moveto (i.e. any of the moveto) operators
+subpath = refers to the construction of a subpath (one complete closed contour), which may include hintmask operators where appropriate.
+and the following symbols indicate specific usage:
+zero or more occurrences are allowed
+? zero or one occurrences are allowed
++ one or more occurrences are allowed
+{ } indicates grouping
+The PDF file is attached to this mail and the Caracter 201 is Eacute.
+Thanks for your help
+Best regards
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+1.8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+rahee ghurbhurn
+Create date:
+28/Jan/13 08:33
+Update date:
+23/Mar/13 12:56
+Resolved date:
+03/Feb/13 16:09

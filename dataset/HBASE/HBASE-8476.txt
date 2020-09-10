@@ -1,0 +1,49 @@
+Summary:
+locateRegionInMeta should check the cache before doing the prefetch
+Description:
+locateRegionInMeta uses a regionLockObject to synchronize all accesses to prefetch the RegionCache.
+synchronized (regionLockObject) {
+// If the parent table is META, we may want to pre-fetch some
+// region info into the global region cache for this table.
+if (Bytes.equals(parentTable, HConstants.META_TABLE_NAME) &&
+(getRegionCachePrefetch(tableName)) )
+{ prefetchRegionCache(tableName, row); }
+// Check the cache again for a hit in case some other thread made the
+// same query while we were waiting on the lock. If not supposed to
+// be using the cache, delete any existing cached location so it won't
+// interfere.
+if (useCache) {
+location = getCachedLocation(tableName, row);
+if (location != null)
+{ return location; }
+} else
+{ deleteCachedLocation(tableName, row); }
+However, for this to be effective, we need to check the cache as soon as we grab the lock; before doing the prefetch. Checking the cache after doing the prefetch does not help the current thread, in case another thread has done the prefetch.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.89-fb, 0.95.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Himanshu Vashishtha
+Reporter:
+Amitanand Aiyer
+Create date:
+01/May/13 17:43
+Update date:
+23/Sep/13 19:28
+Resolved date:
+03/May/13 23:29

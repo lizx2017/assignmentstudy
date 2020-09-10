@@ -1,0 +1,39 @@
+Summary:
+Figure how to deal with eof splitting logs
+Description:
+When splitting the WAL and encountering EOF, it's not clear what to do. Initial discussion of this started in http://review.hbase.org/r/74/ - summarizing here for brevity:
+We can get an EOFException while splitting the WAL in the following cases:
+The writer died after creating the file but before even writing the header (or crashed halfway through writing the header)
+The writer died in the middle of flushing some data - sync() guarantees that we can see at least the last edit, but we may see half of an edit that was being written out when the RS crashed (especially for large rows)
+The data was actually corrupted somehow (eg a length field got changed to be too long and thus points past EOF)
+Ideally we would know when we see EOF whether it was really the last record, and in that case, simply drop that record (it wasn't synced, so therefore we dont need to split it). Some open questions:
+Currently we ignore empty files. Is it ok to ignore an empty log file if it's not the last one?
+Similarly, do we ignore an EOF mid-record if it's not the last log file?
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.89.20100621
+Fix_version:
+0.89.20100924, (1)
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Spiegelberg
+Reporter:
+stack
+Create date:
+01/Jun/10 17:07
+Update date:
+20/Nov/15 12:41
+Resolved date:
+03/Sep/10 05:58

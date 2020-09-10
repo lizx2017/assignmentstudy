@@ -1,0 +1,39 @@
+Summary:
+Region Server fails to properly close socket resulting in many CLOSE_WAIT to Data Nodes
+Description:
+HBase dose not close a dead connection with the datanode.
+This resulting in over 60K CLOSE_WAIT and at some point HBase can not connect to the datanode because too many mapped sockets from one host to another on the same port.
+The example below is with low CLOSE_WAIT count because we had to restart hbase to solve the porblem, later in time it will incease to 60-100K sockets on CLOSE_WAIT
+[root@hd2-region3 ~]# netstat -nap |grep CLOSE_WAIT |grep 21592 |wc -l
+13156
+[root@hd2-region3 ~]# ps -ef |grep 21592
+root 17255 17219 0 12:26 pts/0 00:00:00 grep 21592
+hbase 21592 1 17 Aug29 ? 03:29:06 /usr/java/jdk1.6.0_26/bin/java -XX:OnOutOfMemoryError=kill -9 %p -Xmx8000m -ea -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode -Dhbase.log.dir=/var/log/hbase -Dhbase.log.file=hbase-hbase-regionserver-hd2-region3.swnet.corp.log ...
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.2, 0.98.0, 1.0.1.1, 1.1.2
+Fix_version:
+1.4.0, 1.3.2, 1.1.12, (2)
+Component:
+None
+Label:
+None
+Environment:
+Centos 6.4 - 7 regionservers/datanodes, 8 TB per node, 7279 regions
+Attachment number:
+0
+Assignee:
+Ashish Singhi
+Reporter:
+Avi Zrachya
+Create date:
+30/Aug/13 16:31
+Update date:
+08/Sep/18 02:37
+Resolved date:
+06/Jun/17 20:29

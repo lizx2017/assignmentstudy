@@ -1,0 +1,57 @@
+Summary:
+Tuple relation in select query is broken
+Description:
+Cassandra version 2.011 (and 2.0.12)
+1) Login to CQLSH
+2) Create a keyspace as below:
+CREATE TABLE test1 (campId int,grpId int,itmtypeId int, itemId int, PRIMARY KEY((campId, grpId), itmtypeId, itemid));
+3) Insert 10 rows
+4) Run select * from test1 and it works
+5) Run a select query as below:
+select * from test1 where token(campid, grpid) = token(987654321, 4) and (itmtypeid, itemid) > (12347, 1234567812);
+It fails with error 'TSocket read 0 bytes'
+6) The actual error in the Cassandra server log is as below:
+ERROR [Thrift:2] 2015-02-13 16:22:41,269 CustomTThreadPoolServer.java (line 222) Error occurred during processing of message.
+java.lang.ClassCastException: org.apache.cassandra.cql3.MultiColumnRelation cannot be cast to org.apache.cassandra.cql3.SingleColumnRelation 
+at org.apache.cassandra.cql3.statements.SelectStatement$RawStatement.checkTokenFunctionArgumentsOrder(SelectStatement.java:1887)
+at org.apache.cassandra.cql3.statements.SelectStatement$RawStatement.processPartitionKeyRestrictions(SelectStatement.java:1873)
+at org.apache.cassandra.cql3.statements.SelectStatement$RawStatement.prepare(SelectStatement.java:1494)
+at org.apache.cassandra.cql3.QueryProcessor.getStatement(QueryProcessor.java:333)
+at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:171)
+at org.apache.cassandra.thrift.CassandraServer.execute_cql3_query(CassandraServer.java:1958)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4486)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4470)
+at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:39)
+at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:39)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:204)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+at java.lang.Thread.run(Thread.java:745)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Ajay
+Create date:
+13/Feb/15 10:55
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Feb/15 19:24

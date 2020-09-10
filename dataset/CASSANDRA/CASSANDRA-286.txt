@@ -1,0 +1,40 @@
+Summary:
+slice offset breaks read repair
+Description:
+[code]
+int liveColumns = 0;
+int limit = offset + count;
+for (IColumn column : reducedColumns)
+{ if (liveColumns >= limit) break; if (!finish.isEmpty() && ((isAscending && column.name().compareTo(finish) > 0)) || (!isAscending && column.name().compareTo(finish) < 0)) break; if (!column.isMarkedForDelete()) liveColumns++; if (liveColumns > offset) returnCF.addColumn(column); }
+[code]
+The problem is that for offset to return the correct "live" columns, it has to ignore tombstones it scans before the first live one post-offset.
+This means that instead of being corrected within a few ms of a read, a node can continue returning deleted data indefinitely (until the next anti-entropy pass).
+Coupled with offset's inherent inefficiency (see CASSANDRA-261) I think this means we should take it out and leave offset to be computed client-side (which, for datasets under which it was reasonable server-side, will still be reasonable).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jonathan Ellis
+Create date:
+09/Jul/09 14:26
+Update date:
+16/Apr/19 09:33
+Resolved date:
+16/Jul/09 00:39

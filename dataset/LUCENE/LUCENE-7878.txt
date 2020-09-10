@@ -1,0 +1,70 @@
+Summary:
+QueryParser AND default operator and MultiWords synonyms failed if keywords exactly matches a synonym
+Description:
+This issue is about using the QueryParser with MultiWordsSynonyms.
+To reproduce the bug:
+Use AND as default operator
+Use a query string which exactly matches one synonym.
+In short, the part of the query which handle the synonym lookup should keep a "OR" relation between the synonyms, but it is translated as a "AND".
+If I parse: "guinea pig" which is a synonym of "cavy":
+Using default OR, I get something correct:
+"(+guinea +pig) cavy"
+Note: I should probably better have ((+guinea +pic) cavy)
+Using AND as default operator, I get something wrong:
++(+guinea +pig) +cavy
+I was expected:
++((+guinea +pig) cavy)
+The relation between "guinea pig" and "cavy" is now a AND. It should be still a OR because it is a synonym clause.
+To help understanding. If now I parse "guinea pig world"
+And I get the expected result:
++((+guinea +pig) cavy) +world
+The relation between "guinea pig" and "cavy" is a OR as expected (it is a synonym), and the relation with "world" is AND as expected by the default operator.
+Here is the additional unit test for, I hope it is pretty self-explanatory:
+org.apache.lucene.queryparser.classic.TestQueryParser
+public void testDefaultOperatorWhenKeywordsMatchesExactlyOneSynonym() throws ParseException {
+    // Using the default OR operator
+    QueryParser smart = new QueryParser("field", new Analyzer1());
+    smart.setSplitOnWhitespace(false);
+    smart.setDefaultOperator(Operator.OR);
+    assertEquals("(+guinea +pig) cavy", smart.parse("guinea pig").toString("field"));
+
+    // Using the default AND operator
+    smart = new QueryParser("field", new Analyzer1());
+    smart.setSplitOnWhitespace(false);
+    smart.setDefaultOperator(Operator.AND);
+    assertEquals("+((+guinea +pig) cavy) +world", smart.parse("guinea pig world").toString("field"));
+
+    // Using the default AND operator
+    smart = new QueryParser("field", new Analyzer1());
+    smart.setSplitOnWhitespace(false);
+    smart.setDefaultOperator(Operator.AND);
+    assertEquals("+((+guinea +pig) cavy)", smart.parse("guinea pig").toString("field"));
+  }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+6.5.1, 6.6, 7.0
+Fix_version:
+6.6.1, 6.7, 7.0
+Component:
+core/queryparser
+Label:
+multi-word query-par
+Environment:
+mac os x
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Emmanuel Keller
+Create date:
+14/Jun/17 10:52
+Update date:
+16/Jun/17 14:24
+Resolved date:
+16/Jun/17 14:12

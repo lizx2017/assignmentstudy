@@ -1,0 +1,101 @@
+Summary:
+/ImageMask true does not work. Patch included.
+Description:
+I have the following pdf...
+10 0 obj
+<<
+/Type /Page
+/MediaBox [ 0 0 612.0 792.0 ]
+/Parent 3 0 R
+/Resources << /XObject << /Obj4 4 0 R /Obj5 5 0 R /Obj6 6 0 R /Obj7 7 0 R >> /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ] >>
+/Contents [ 8 0 R 9 0 R ]
+>>
+endobj
+Which then draws 4 images. The first one is a "base" and then rest are image masks
+9 0 obj
+<< /Filter /FlateDecode /Length 121 >>
+stream
+q
+612.00 0 0 792.00 0.00 0.00 cm
+/Obj4 Do
+Q
+q
+0.129 g
+524.16 0 0 556.80 48.00 127.68 cm
+/Obj5 Do
+Q
+q
+0.302 g
+220.80 0 0 398.40 48.00 286.08 cm
+/Obj6 Do
+Q
+q
+0.204 g
+524.16 0 0 469.44 48.00 185.28 cm
+/Obj7 Do
+Q
+endstream
+endobj
+4 0 obj
+<< /Type /XObject /Subtype /Image /Width 1275 /Height 1650 /BitsPerComponent 8
+/ColorSpace /DeviceGray /Filter [ /FlateDecode /DCTDecode ] /Length 50485 >>
+stream
+endstream
+endobj
+5 0 obj
+<< /Type /XObject /Subtype /Image /Width 2184 /Height 2320 /BitsPerComponent 1
+/ImageMask true /Filter /CCITTFaxDecode /DecodeParms << /K -1 /Columns 2184 >>
+/Length 15580 >>
+stream
+etc ...
+The current code simply treats the imagemask as an image. Since this is just a 1 bit image it has no Alpha channel it overwrites the existing image and we simply get the last image drawn.
+In
+org.apache.pdfbox.util.operator.pagedrawer.Invoke.java
+method
+public void process(PDFOperator operator, List<COSBase> arguments) throws IOException
+after
+if (awtImage == null)
+{ LOG.warn("getRGBImage returned NULL"); return;//TODO PKOCH }
+If you add the following code it fixes the problem. I can not provide the sample doc due to privacy reasons.
+/**
+Spec 8.9.6.2
+If ImageMask is true then the image is one bit. Black means draw the current colour and white means use the colour on the current image (ie Mask).
+Convert the map to an image with an Alpha channel so we can lay it on top
+*/
+if(image.getImageMask())
+{
+Color currentColour = drawer.getGraphicsState().getStrokingColor().getJavaColor();
+final int onColour = 0xff000000 | currentColour.getRGB();
+BufferedImage bia = new BufferedImage(awtImage.getWidth(),awtImage.getHeight(),BufferedImage.TYPE_INT_ARGB);
+for(int y=0;y<awtImage.getHeight();y++)
+Unknown macro: { for(int x=0;x<awtImage.getWidth();x++) { bia.setRGB(x, y, (awtImage.getRGB(x, y) & 0x00ffffff) == 0xffffff ? 0x00ffffff : onColour); } }
+awtImage = bia;
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+1.8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Dave Smith
+Create date:
+13/Nov/12 13:49
+Update date:
+23/Mar/13 12:56
+Resolved date:
+18/Nov/12 14:20

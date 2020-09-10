@@ -1,0 +1,51 @@
+Summary:
+MSLab May cause the Bytes.toLong not work correctly for increment
+Description:
+When use MemStoreLAB, the KeyValues will share the byte array allocated by the MemStoreLAB, all the KeyValues' "bytes" attributes are the same byte array. When use the functions such as Bytes.toLong(byte[] bytes, int offset):
+  public static long toLong(byte[] bytes, int offset) {
+    return toLong(bytes, offset, SIZEOF_LONG);
+  }
+
+  public static long toLong(byte[] bytes, int offset, final int length) {
+    if (length != SIZEOF_LONG || offset + length > bytes.length) {
+      throw explainWrongLengthOrOffset(bytes, offset, length, SIZEOF_LONG);
+    }
+    long l = 0;
+    for(int i = offset; i < offset + length; i++) {
+      l <<= 8;
+      l ^= bytes[i] & 0xFF;
+    }
+    return l;
+  }
+If we do not put a long value to the KeyValue, and read it as a long value in HRegion.increment(),the check
+offset + length > bytes.length
+will take no effects, because the bytes.length is not equal to keyLength+valueLength, indeed it is MemStoreLAB chunkSize which is default 2048 * 1024.
+I will paste the patch later.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ShiXing
+Reporter:
+ShiXing
+Create date:
+07/Aug/12 04:30
+Update date:
+07/Apr/13 04:44
+Resolved date:
+09/Aug/12 06:22

@@ -1,0 +1,45 @@
+Summary:
+QueryParserBase should not throw ParseException in getPrefixQuery when termStr starts with *
+Description:
+The method getPrefixQuery of org.apache.lucene.queryparser.classic.QueryParserBase checks for leading *-wildcards:
+protected Query getPrefixQuery(String field, String termStr) throws ParseException
+  {
+    if (!allowLeadingWildcard && termStr.startsWith("*"))
+      throw new ParseException("'*' not allowed as first character in PrefixQuery");
+    ...
+  }
+However, the passed termStr is already unescaped in handleBareTokenQuery(...):
+ q = getPrefixQuery(qfield,
+          discardEscapeChar(term.image.substring
+              (0, term.image.length()-1)));
+Therefore, a search query like this one results in a ParseException, even though the first wildcard is escaped:
+title:\*a*
+I don't think there is any sense in checking for leading wildcards in getPrefixQuery, as the passed termStr is already used literally, without paying attention to special characters at all.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+4.0, 4.1
+Fix_version:
+None
+Component:
+core/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Christoph Kaser
+Create date:
+12/Feb/13 10:44
+Update date:
+12/Feb/13 10:44
+Resolved date:
+

@@ -1,0 +1,44 @@
+Summary:
+CloneSnapshotHandler.prepare() is not called by SnapshotManager
+Description:
+Ted noticed the following exception during TestSnapshotCloneIndependence#testOfflineSnapshotRegionOperationsIndependent()
+2013-02-27 01:45:25,785 ERROR [MASTER_TABLE_OPERATIONS-juno.apache.org,46592,1361929424741-0] handler.CreateTableHandler(159): Error trying to create the table test-clone-test1361929508917
+java.lang.IllegalStateException: Table test-clone-test1361929508917 is not locked!
+ at org.apache.hadoop.hbase.master.TableLockManager$ZKTableLockManager$TableLockImpl.release(TableLockManager.java:257)
+ at org.apache.hadoop.hbase.master.handler.CreateTableHandler.releaseTableLock(CreateTableHandler.java:233)
+ at org.apache.hadoop.hbase.master.handler.CreateTableHandler.handleCreateTable(CreateTableHandler.java:226)
+ at org.apache.hadoop.hbase.master.handler.CreateTableHandler.process(CreateTableHandler.java:153)
+ at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:130)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+ at java.lang.Thread.run(Thread.java:722)
+See https://builds.apache.org/job/HBase-TRUNK/3901/testReport/org.apache.hadoop.hbase.client/TestSnapshotCloneIndependence/testOfflineSnapshotRegionOperationsIndependent/.
+The root cause is that SnapshotManager does not invoke prepare() method for the created CloneSnapshotHandler. Prepare has been introduced in HBASE-7305, and acquires the table lock.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.0
+Component:
+snapshots
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Enis Soztutar
+Reporter:
+Enis Soztutar
+Create date:
+28/Feb/13 01:40
+Update date:
+23/Sep/13 18:30
+Resolved date:
+25/Mar/13 23:41

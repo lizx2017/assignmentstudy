@@ -1,0 +1,66 @@
+Summary:
+ComboBox with requestedRowCount set has RTE when text input is cleared
+Description:
+Steps to reproduce:
+1. Create a project with the following code
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+<s:ComboBox>
+<s:layout>
+<s:VerticalLayout requestedRowCount="1"/>
+</s:layout>
+<s:dataProvider>
+<s:ArrayCollection>
+<fx:int>25</fx:int>
+</s:ArrayCollection>
+</s:dataProvider>
+</s:ComboBox>
+</s:Application>
+2. Run the application and cut or select/delete the text in the text input portion of the ComboBox.
+Actual Results:
+TypeError: Error #1009: Cannot access a property or method of a null object reference.
+at spark.components.supportClasses::DropDownListBase/http://www.adobe.com/2006/flex/mx/internal::positionIndexInView()[E:\dev\hero_private\frameworks\projects\spark\src\spark\components\supportClasses\DropDownListBase.as:659]
+at spark.components.supportClasses::DropDownListBase/http://www.adobe.com/2006/flex/mx/internal::changeHighlightedSelection()[E:\dev\hero_private\frameworks\projects\spark\src\spark\components\supportClasses\DropDownListBase.as:638]
+at spark.components::ComboBox/textInput_changeHandler()[E:\dev\hero_private\frameworks\projects\spark\src\spark\components\ComboBox.as:1045]
+...
+Expected Results:
+No error.
+Workaround (if any):
+Do not use requestedRowCount.
+Specifically the issue is that ComboBox overrides some things, but in this particular instance, it uses the super (DropDownListBase) which tries to use a null dataGroup. The issue is in ComboBox#textInput_changeHandler:
+// Close the dropDown if we press delete or cut the selected text
+if (operation is DeleteTextOperation || operation is CutOperation)
+{ super.changeHighlightedSelection(CUSTOM_SELECTED_ITEM); }
+This was previously mentioned by someone else in the forums:
+http://forums.adobe.com/message/3272412#3272412
+Not sure if that ever made it to a ticket though.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK 4.5.1
+Fix_version:
+Apache Flex 4.11.0
+Component:
+Spark: ComboBox
+Label:
+easyfix easytest
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Justin Mclean
+Reporter:
+Adobe JIRA
+Create date:
+04/Sep/11 23:08
+Update date:
+02/Aug/13 20:51
+Resolved date:
+02/Aug/13 20:51

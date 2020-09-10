@@ -1,0 +1,52 @@
+Summary:
+missing host ID results in NPE when delivering hints
+Description:
+In StorageService.handledStateNormal() the token-to-endpoint map is updated before the id-to-endpoint map, creating a small window where TokenMetadata.isMember() can return true before a host ID is available.
+Trivial patch forthcoming.
+[...]
+ INFO [GossipStage:1] 2012-05-30 21:59:10,683 Gossiper.java (line 833) Node /10.2.131.32 has restarted, now UP
+ INFO [GossipStage:1] 2012-05-30 21:59:10,684 Gossiper.java (line 799) InetAddress /10.2.131.32 is now UP
+ INFO [HintedHandoff:1] 2012-05-30 21:59:10,697 HintedHandOffManager.java (line 304) Started hinted handoff for host: null with IP: /10.2.131.32
+ERROR [HintedHandoff:1] 2012-05-30 21:59:10,698 AbstractCassandraDaemon.java (line 134) Exception in thread Thread[HintedHandoff:1,1,main]
+java.lang.NullPointerException
+ at org.apache.cassandra.utils.UUIDGen.decompose(UUIDGen.java:112)
+ at org.apache.cassandra.db.HintedHandOffManager.deliverHintsToEndpointInternal(HintedHandOffManager.java:305)
+ at org.apache.cassandra.db.HintedHandOffManager.deliverHintsToEndpoint(HintedHandOffManager.java:265)
+ at org.apache.cassandra.db.HintedHandOffManager.access$300(HintedHandOffManager.java:86)
+ at org.apache.cassandra.db.HintedHandOffManager$3.runMayThrow(HintedHandOffManager.java:439)
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+ at java.lang.Thread.run(Thread.java:636)
+ INFO [GossipStage:1] 2012-05-30 21:59:10,700 Events.java (line 130) Node 10.2.131.32 now available: true
+ INFO [GossipStage:1] 2012-05-30 21:59:10,700 StorageService.java (line 1218) Node /10.2.131.32 state jump to normal
+ INFO [GossipStage:1] 2012-05-30 21:59:10,701 Events.java (line 120) Node 10.2.131.32 is now in state NORMAL
+[...]
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+vnodes
+Environment:
+
+Attachment number:
+0
+Assignee:
+Eric Evans
+Reporter:
+Eric Evans
+Create date:
+31/May/12 12:48
+Update date:
+16/Apr/19 09:32
+Resolved date:
+31/May/12 16:11

@@ -1,0 +1,118 @@
+Summary:
+MapReduce based tests broken on Hadoop 2.0.0-alpha
+Description:
+Some fairly recent change in Hadoop 2.0.0-alpha has broken our MapReduce test rigging. Below is a representative error, can be easily reproduced with:
+mvn -PlocalTests -Psecurity \
+  -Dhadoop.profile=23 -Dhadoop.version=2.0.0-SNAPSHOT \
+  clean test \
+  -Dtest=org.apache.hadoop.hbase.mapreduce.TestTableMapReduce
+And the result:
+-------------------------------------------------------
+ T E S T S
+-------------------------------------------------------
+Running org.apache.hadoop.hbase.mapreduce.TestTableMapReduce
+Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 54.292 sec <<< FAILURE!
+
+-------------------------------------------------------------------------------
+Test set: org.apache.hadoop.hbase.mapreduce.TestTableMapReduce
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 54.292 sec <<< FAILURE!
+testMultiRegionTable(org.apache.hadoop.hbase.mapreduce.TestTableMapReduce)  Time elapsed: 21.935 sec  <<< ERROR!
+java.lang.reflect.UndeclaredThrowableException
+ at org.apache.hadoop.yarn.exceptions.impl.pb.YarnRemoteExceptionPBImpl.unwrapAndThrowException(YarnRemoteExceptionPBImpl.java:135)
+ at org.apache.hadoop.yarn.api.impl.pb.client.ClientRMProtocolPBClientImpl.getNewApplication(ClientRMProtocolPBClientImpl.java:134)
+ at org.apache.hadoop.mapred.ResourceMgrDelegate.getNewJobID(ResourceMgrDelegate.java:183)
+ at org.apache.hadoop.mapred.YARNRunner.getNewJobID(YARNRunner.java:216)
+ at org.apache.hadoop.mapreduce.JobSubmitter.submitJobInternal(JobSubmitter.java:339)
+ at org.apache.hadoop.mapreduce.Job$11.run(Job.java:1226)
+ at org.apache.hadoop.mapreduce.Job$11.run(Job.java:1223)
+ at java.security.AccessController.doPrivileged(Native Method)
+ at javax.security.auth.Subject.doAs(Subject.java:416)
+ at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1232)
+ at org.apache.hadoop.mapreduce.Job.submit(Job.java:1223)
+ at org.apache.hadoop.mapreduce.Job.waitForCompletion(Job.java:1244)
+ at org.apache.hadoop.hbase.mapreduce.TestTableMapReduce.runTestOnTable(TestTableMapReduce.java:151)
+ at org.apache.hadoop.hbase.mapreduce.TestTableMapReduce.testMultiRegionTable(TestTableMapReduce.java:129)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+ at java.lang.reflect.Method.invoke(Method.java:616)
+ at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:45)
+ at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:15)
+ at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:42)
+ at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:20)
+ at org.junit.rules.TestWatcher$1.evaluate(TestWatcher.java:47)
+ at org.junit.rules.RunRules.evaluate(RunRules.java:18)
+ at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:263)
+ at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:68)
+ at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:47)
+ at org.junit.runners.ParentRunner$3.run(ParentRunner.java:231)
+ at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:60)
+ at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:229)
+ at org.junit.runners.ParentRunner.access$000(ParentRunner.java:50)
+ at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:222)
+ at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:28)
+ at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:30)
+ at org.junit.runners.ParentRunner.run(ParentRunner.java:300)
+ at org.apache.maven.surefire.junit4.JUnit4TestSet.execute(JUnit4TestSet.java:53)
+ at org.apache.maven.surefire.junit4.JUnit4Provider.executeTestSet(JUnit4Provider.java:123)
+ at org.apache.maven.surefire.junit4.JUnit4Provider.invoke(JUnit4Provider.java:104)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+ at java.lang.reflect.Method.invoke(Method.java:616)
+ at org.apache.maven.surefire.util.ReflectionUtils.invokeMethodWithArray(ReflectionUtils.java:164)
+ at org.apache.maven.surefire.booter.ProviderFactory$ProviderProxy.invoke(ProviderFactory.java:110)
+ at org.apache.maven.surefire.booter.SurefireStarter.invokeProvider(SurefireStarter.java:175)
+ at org.apache.maven.surefire.booter.SurefireStarter.runSuitesInProcessWhenForked(SurefireStarter.java:81)
+ at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:68)
+Caused by: com.google.protobuf.ServiceException: java.net.ConnectException: Call From acer.localdomain/192.168.122.1 to 0.0.0.0:8032 failed on connection exception: java.net.ConnectException: Connection refused; For more details see:  http://wiki.apache.org/hadoop/ConnectionRefused
+ at org.apache.hadoop.ipc.ProtobufRpcEngine$Invoker.invoke(ProtobufRpcEngine.java:188)
+ at $Proxy89.getNewApplication(Unknown Source)
+ at org.apache.hadoop.yarn.api.impl.pb.client.ClientRMProtocolPBClientImpl.getNewApplication(ClientRMProtocolPBClientImpl.java:132)
+ ... 45 more
+Caused by: java.net.ConnectException: Call From acer.localdomain/192.168.122.1 to 0.0.0.0:8032 failed on connection exception: java.net.ConnectException: Connection refused; For more details see:  http://wiki.apache.org/hadoop/ConnectionRefused
+ at org.apache.hadoop.net.NetUtils.wrapException(NetUtils.java:725)
+ at org.apache.hadoop.ipc.Client.call(Client.java:1160)
+ at org.apache.hadoop.ipc.ProtobufRpcEngine$Invoker.invoke(ProtobufRpcEngine.java:185)
+ ... 47 more
+Caused by: java.net.ConnectException: Connection refused
+ at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+ at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:592)
+ at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:206)
+ at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:522)
+ at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:487)
+ at org.apache.hadoop.ipc.Client$Connection.setupConnection(Client.java:469)
+ at org.apache.hadoop.ipc.Client$Connection.setupIOstreams(Client.java:563)
+ at org.apache.hadoop.ipc.Client$Connection.access$2000(Client.java:212)
+ at org.apache.hadoop.ipc.Client.getConnection(Client.java:1266)
+ at org.apache.hadoop.ipc.Client.call(Client.java:1136)
+ ... 48 more
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.0, 0.95.2
+Fix_version:
+0.94.1, 0.95.1
+Component:
+mapreduce, test
+Label:
+None
+Environment:
+hadoop
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Andrew Purtell
+Create date:
+09/May/12 01:04
+Update date:
+03/Apr/13 05:55
+Resolved date:
+19/Jul/12 23:44

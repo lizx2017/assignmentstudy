@@ -1,0 +1,68 @@
+Summary:
+CQL: Range query throws errors when run thru cqlsh but passes in system test
+Description:
+It appears the following nose test breaks when run via cqlsh
+CREATE COLUMNFAMILY StandardLongA (KEY text PRIMARY KEY) WITH comparator = bigint AND default_validation = ascii;
+
+UPDATE StandardLongA SET 1='1', 2='2', 3='3', 4='4' WHERE KEY='aa';
+UPDATE StandardLongA SET 5='5', 6='6', 7='8', 9='9' WHERE KEY='ab';
+UPDATE StandardLongA SET 9='9', 8='8', 7='7', 6='6' WHERE KEY='ac';
+UPDATE StandardLongA SET 5='5', 4='4', 3='3', 2='2' WHERE KEY='ad';
+UPDATE StandardLongA SET 1='1', 2='2', 3='3', 4='4' WHERE KEY='ae';
+UPDATE StandardLongA SET 1='1', 2='2', 3='3', 4='4' WHERE KEY='af';
+UPDATE StandardLongA SET 5='5', 6='6', 7='8', 9='9' WHERE KEY='ag';
+
+cqlsh> SELECT 4 FROM StandardLongA WHERE KEY > 'ad' AND KEY < 'ag';
+Internal application error
+
+cqlsh> SELECT * FROM StandardLongA WHERE KEY > 'ad' AND KEY < 'ag';
+Internal application error
+ERROR 21:43:16,880 Internal error processing execute_cql_query
+java.lang.AssertionError: [109302822465993666080409141220504733189,104027502549504462599318918375258179002]
+ at org.apache.cassandra.dht.Bounds.<init>(Bounds.java:40)
+ at org.apache.cassandra.dht.Bounds.<init>(Bounds.java:33)
+ at org.apache.cassandra.cql.QueryProcessor.multiRangeSlice(QueryProcessor.java:142)
+ at org.apache.cassandra.cql.QueryProcessor.process(QueryProcessor.java:507)
+ at org.apache.cassandra.thrift.CassandraServer.execute_cql_query(CassandraServer.java:1127)
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.process(Cassandra.java:4072)
+ at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:2889)
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:187)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+ at java.lang.Thread.run(Thread.java:636)
+This test case runs nightly in the system tests and passes
+http://173.203.89.16:8080/job/CassandraSystem/
+jenkins@mallen2:~/jobs/Cassandra/workspace$ nosetests test/system/test_cql.py
+..................................
+----------------------------------------------------------------------
+Ran 34 tests in 147.040s
+
+OK
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.0
+Component:
+None
+Label:
+cql
+Environment:
+
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Cathy Daw
+Create date:
+03/May/11 22:54
+Update date:
+16/Apr/19 09:33
+Resolved date:
+09/May/11 07:14

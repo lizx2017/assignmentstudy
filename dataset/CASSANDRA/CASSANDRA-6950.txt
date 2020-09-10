@@ -1,0 +1,40 @@
+Summary:
+Secondary index query fails with tc range query when ordered by DESC
+Description:
+create table test4 ( name text, lname text, tc bigint, record text, PRIMARY KEY ((name, lname), tc)) WITH CLUSTERING ORDER BY (tc DESC) AND compaction=
+{'class': 'LeveledCompactionStrategy'}
+;
+create index test4_index ON test4(lname);
+Populate it with some data and non-zero tc values, then try:
+select * from test4 where lname='blah' and tc>0 allow filtering;
+And, (0 rows) returned, even though there are rows which should be found.
+When I create the table using CLUSTERING ORDER BY (tc ASC), the above query works. Rows are correctly returned based on the range check.
+Tried various combinations but with descending order on tc nothing works.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.8
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+redhat
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Andre Campeau
+Create date:
+28/Mar/14 17:42
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/May/14 09:39

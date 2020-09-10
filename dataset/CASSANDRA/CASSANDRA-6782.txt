@@ -1,0 +1,63 @@
+Summary:
+setting TTL on some columns seems to expire whole row
+Description:
+I create a table with 4 columns, set a ttl on 2 of the columns and when the TTL is up, the entire row disappears.
+cqlsh:myks> CREATE TABLE paging_test (
+        ...   id int,
+        ...   mytext text,
+        ...   anothervalue text,
+        ...   somevalue text,
+        ...   PRIMARY KEY (id, mytext)
+        ... );
+cqlsh:myks> insert into paging_test (id, mytext, anothervalue, somevalue) values (1, 'foo', 'some', 'another');
+cqlsh:myks> select * from paging_test;
+
+ id | mytext | anothervalue | somevalue
+----+--------+--------------+-----------
+  1 |    foo |         some |   another
+
+(1 rows)
+
+cqlsh:myks> update paging_test using ttl 10
+        ...   set somevalue='one', anothervalue='two'
+        ...   where id = 1 and mytext = 'foo';
+cqlsh:myks> select * from paging_test;
+
+ id | mytext | anothervalue | somevalue
+----+--------+--------------+-----------
+  1 |    foo |          two |       one
+
+(1 rows)
+
+cqlsh:myks> -- wait for it....
+cqlsh:myks> select * from paging_test;
+
+(0 rows)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.6
+Component:
+None
+Label:
+None
+Environment:
+java 1.7
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Russ Hatch
+Create date:
+27/Feb/14 22:53
+Update date:
+16/Apr/19 09:31
+Resolved date:
+04/Mar/14 10:53

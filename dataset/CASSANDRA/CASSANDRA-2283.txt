@@ -1,0 +1,79 @@
+Summary:
+Streaming Old Format Data Fails in 0.7.3 after upgrade from 0.6.8
+Description:
+After successfully upgrading a 0.6.8 ring to 0.7.3, we needed to bootstrap in a new node relatively quickly. When starting the new node with an assigned token in auto bootstrap mode, we see the following exceptions on the new node:
+INFO [main] 2011-03-07 10:37:32,671 StorageService.java (line 505) Joining: sleeping 30000 ms for pending range setup
+INFO [main] 2011-03-07 10:38:02,679 StorageService.java (line 505) Bootstrapping
+INFO [HintedHandoff:1] 2011-03-07 10:38:02,899 HintedHandOffManager.java (line 304) Started hinted handoff for endpoint /10.211.14.200
+INFO [HintedHandoff:1] 2011-03-07 10:38:02,900 HintedHandOffManager.java (line 360) Finished hinted handoff of 0 rows to endpoint /10.211.14.200
+INFO [CompactionExecutor:1] 2011-03-07 10:38:04,924 SSTableReader.java (line 154) Opening /mnt/services/cassandra/var/data/0.7.3/data/Stuff/stuff-f-1
+INFO [CompactionExecutor:1] 2011-03-07 10:38:05,390 SSTableReader.java (line 154) Opening /mnt/services/cassandra/var/data/0.7.3/data/Stuff/stuff-f-2
+INFO [CompactionExecutor:1] 2011-03-07 10:38:05,768 SSTableReader.java (line 154) Opening /mnt/services/cassandra/var/data/0.7.3/data/Stuff/stuffid-f-1
+INFO [CompactionExecutor:1] 2011-03-07 10:38:06,389 SSTableReader.java (line 154) Opening /mnt/services/cassandra/var/data/0.7.3/data/Stuff/stuffid-f-2
+INFO [CompactionExecutor:1] 2011-03-07 10:38:06,581 SSTableReader.java (line 154) Opening /mnt/services/cassandra/var/data/0.7.3/data/Stuff/stuffid-f-3
+ERROR [CompactionExecutor:1] 2011-03-07 10:38:07,056 AbstractCassandraDaemon.java (line 114) Fatal exception in thread Thread[CompactionExecutor:1,1,main]
+java.io.EOFException
+at org.apache.cassandra.io.sstable.IndexHelper.skipIndex(IndexHelper.java:65)
+at org.apache.cassandra.io.sstable.SSTableWriter$Builder.build(SSTableWriter.java:303)
+at org.apache.cassandra.db.CompactionManager$9.call(CompactionManager.java:923)
+at org.apache.cassandra.db.CompactionManager$9.call(CompactionManager.java:916)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+INFO [CompactionExecutor:1] 2011-03-07 10:38:08,480 SSTableReader.java (line 154) Opening /mnt/services/cassandra/var/data/0.7.3/data/Stuff/stuffid-f-5
+INFO [CompactionExecutor:1] 2011-03-07 10:38:08,582 SSTableReader.java (line 154) Opening /mnt/services/cassandra/var/data/0.7.3/data/Stuff/stuffid_reg_idx-f-1
+ERROR [CompactionExecutor:1] 2011-03-07 10:38:08,635 AbstractCassandraDaemon.java (line 114) Fatal exception in thread Thread[CompactionExecutor:1,1,main]
+java.io.EOFException
+at org.apache.cassandra.io.sstable.IndexHelper.skipIndex(IndexHelper.java:65)
+at org.apache.cassandra.io.sstable.SSTableWriter$Builder.build(SSTableWriter.java:303)
+at org.apache.cassandra.db.CompactionManager$9.call(CompactionManager.java:923)
+at org.apache.cassandra.db.CompactionManager$9.call(CompactionManager.java:916)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+ERROR [CompactionExecutor:1] 2011-03-07 10:38:08,666 AbstractCassandraDaemon.java (line 114) Fatal exception in thread Thread[CompactionExecutor:1,1,main]
+java.io.EOFException
+at org.apache.cassandra.io.sstable.IndexHelper.skipIndex(IndexHelper.java:65)
+at org.apache.cassandra.io.sstable.SSTableWriter$Builder.build(SSTableWriter.java:303)
+at org.apache.cassandra.db.CompactionManager$9.call(CompactionManager.java:923)
+at org.apache.cassandra.db.CompactionManager$9.call(CompactionManager.java:916)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+INFO [CompactionExecutor:1] 2011-03-07 10:38:08,855 SSTableReader.java (line 154) Opening /mnt/services/cassandra/var/data/0.7.3/data/Stuff/stuffid_reg_idx-f-4
+Two attempts to bootstrap in the new node both exhibited this behavior. On the node owning the tokens being migrated, stream activity is visible but doesn't update any progress I think due to the issues on the receiving host.
+Lastly, just case it's relevant, we had an EC2 node die underneath us during the upgrade so not all nodes were drained. This didn't affect the upgrade but I wanted to note it her to be thorough.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.5
+Component:
+None
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Erik Onnen
+Create date:
+07/Mar/11 21:00
+Update date:
+16/Apr/19 09:33
+Resolved date:
+18/Apr/11 21:58

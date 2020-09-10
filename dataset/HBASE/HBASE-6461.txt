@@ -1,0 +1,53 @@
+Summary:
+Killing the HRegionServer and DataNode hosting ROOT can result in a malformed root table.
+Description:
+Spun up a new dfs on hadoop-0.20.2-cdh3u3
+Started hbase
+started running loadtest tool.
+killed rs and dn holding root with killall -9 java on server sv4r27s44 at about 2012-07-25 22:40:00
+After things stabilize Root is in a bad state. Ran hbck and got:
+Exception in thread "main" org.apache.hadoop.hbase.client.NoServerForRegionException: No server address listed in ROOT for region .META.,,1.1028785192 containing row
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:1016)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:841)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:810)
+at org.apache.hadoop.hbase.client.HTable.finishSetup(HTable.java:232)
+at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:172)
+at org.apache.hadoop.hbase.util.HBaseFsck.connect(HBaseFsck.java:241)
+at org.apache.hadoop.hbase.util.HBaseFsck.main(HBaseFsck.java:3236)
+hbase(main):001:0> scan 'ROOT'
+ROW COLUMN+CELL
+12/07/25 22:43:18 INFO security.UserGroupInformation: JAAS Configuration already set up for Hadoop, not re-installing.
+.META.,,1 column=info:regioninfo, timestamp=1343255838525, value=
+{NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192,}
+.META.,,1 column=info:v, timestamp=1343255838525, value=\x00\x00
+1 row(s) in 0.5930 seconds
+Here's the master log: https://gist.github.com/3179194
+I tried the same thing with 0.92.1 and I was able to get into a similar situation, so I don't think this is anything new.
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.94.14
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+hadoop
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Elliott Clark
+Create date:
+26/Jul/12 20:13
+Update date:
+16/Nov/16 22:04
+Resolved date:
+16/Nov/16 22:04

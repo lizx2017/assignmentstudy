@@ -1,0 +1,33 @@
+Summary:
+Inconsistent failure handling with repair
+Description:
+I think we introduced this with CASSANDRA-6455, problem is that we now treat all repair futures as a single unit (Futures.allAsList(..)) which makes the whole thing fail if one sub-future fails. Also, when one of those fail, we notify nodetool that we failed and we stop the executor with shutdownNow() which throws out any pending RepairJobs.
+Yuki Morishita I think we used to be able to proceed with the other RepairSessions even if one fails, right? If not, we should probably call cancel on the RepairJob runnables which are in queue for the executor after calling shutdownNow() in repairComplete() in StorageService.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/Streaming and Messaging
+Label:
+repair
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Marcus Eriksson
+Create date:
+29/Oct/14 14:17
+Update date:
+16/Apr/19 09:31
+Resolved date:
+13/Nov/14 18:57

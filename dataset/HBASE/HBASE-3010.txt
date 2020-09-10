@@ -1,0 +1,35 @@
+Summary:
+Can't start/stop/start... cluster using new master
+Description:
+Currently you might start a small cluster the first time on TRUNK – i.e. new master – but second time you do the startup you run into a couple of interesting issues:
++ The old root-region-location is still in place. It gets cleaned later but for a while on startup it does not have the 'right' address.
++ Regionserver (or a client) on startup creates a catalogtracker, a class that notices changes in meta tables keeping up catalog table locations. Starting the catalogtracker results in a check for current catalog locations. As part of this process, since root-region-location "exists", catalogtracker tries to verify root's location by doing a noop against root host, only, to do this it needs to do the initial rpc proxy setup. It can so happen that the old root address was that of the current regionserver trying to initialize so we'll be trying to connect to ourself to verify root location ONLY, we're doing this before we've setup the rpcserver and handlers – so we block, and as it happens there is no timeout on proxy setup (Todd ran into this yesterday, I ran into it today – its easy to manufacture).
++ So regionserver can't progress. Meantime the master can't progress because there are no regionservers checking in. And you can't shut it down because we're not looking at the right 'stop' flag
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+17/Sep/10 08:06
+Update date:
+20/Nov/15 12:41
+Resolved date:
+18/Sep/10 00:51

@@ -1,0 +1,41 @@
+Summary:
+Filter HFiles based on TTL
+Description:
+In ScanWildcardColumnTracker we have
+ 
+  this.oldestStamp = EnvironmentEdgeManager.currentTimeMillis() - ttl;
+
+  ...
+
+  private boolean isExpired(long timestamp) {
+    return timestamp < oldestStamp;
+  }
+but this time range filtering does not participate in HFile selection. In one real case this caused next() calls to time out because all KVs in a table got expired, but next() had to iterate over the whole table to find that out. We should be able to filter out those HFiles right away. I think a reasonable approach is to add a "default timerange filter" to every scan for a CF with a finite TTL and utilize existing filtering in StoreFile.Reader.passesTimerangeFilter.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mikhail Bautin
+Reporter:
+Mikhail Bautin
+Create date:
+12/Dec/11 19:09
+Update date:
+12/Oct/12 05:34
+Resolved date:
+27/Jan/12 02:07

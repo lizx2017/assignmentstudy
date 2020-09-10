@@ -1,0 +1,62 @@
+Summary:
+-ROOT-, .META. tables stay offline for too long in recovery phase after all RSs are shutdown at the same time
+Description:
+1. Shutdown all RSs.
+2. Bring all RS back online.
+The "ROOT", ".META." stay in offline state until timeout monitor force assignment 30 minutes later. That is because HMaster can't find a RS to assign the tables to in assign operation.
+011-09-13 13:25:52,743 WARN org.apache.hadoop.hbase.master.AssignmentManager: Failed assignment of ROOT,,0.70236052 to sea-lab-4,60020,1315870341387, trying to assign elsewhere instead; retry=0
+java.net.ConnectException: Connection refused
+at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:567)
+at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:206)
+at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:373)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.setupIOstreams(HBaseClient.java:345)
+at org.apache.hadoop.hbase.ipc.HBaseClient.getConnection(HBaseClient.java:1002)
+at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:854)
+at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Invoker.invoke(WritableRpcEngine.java:148)
+at $Proxy9.openRegion(Unknown Source)
+at org.apache.hadoop.hbase.master.ServerManager.sendRegionOpen(ServerManager.java:407)
+at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1408)
+at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1153)
+at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1128)
+at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1123)
+at org.apache.hadoop.hbase.master.AssignmentManager.assignRoot(AssignmentManager.java:1788)
+at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.verifyAndAssignRoot(ServerShutdownHandler.java:100)
+at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.verifyAndAssignRootWithRetries(ServerShutdownHandler.java:118)
+at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.process(ServerShutdownHandler.java:181)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:167)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+2011-09-13 13:25:52,743 WARN org.apache.hadoop.hbase.master.AssignmentManager: Unable to find a viable location to assign region ROOT,,0.70236052
+Possible fixes:
+1. Have serverManager handle "server online" event similar to how RegionServerTracker.java calls servermanager.expireServer in the case server goes down.
+2. Make timeoutMonitor handle the situation better. This is a special situation in the cluster. 30 minutes timeout can be skipped.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ming Ma
+Reporter:
+Ming Ma
+Create date:
+14/Sep/11 00:25
+Update date:
+12/Oct/12 05:35
+Resolved date:
+06/Jan/12 08:13

@@ -1,0 +1,39 @@
+Summary:
+attempting to create 10K column families fails with 100 node cluster
+Description:
+During this test we are attempting to create a total of 1K keyspaces with 10 column families each to bring the total column families to 10K. With a 5 node cluster this operation can be completed; however, it fails with 100 nodes. Please see the two charts. For the 5 node case the time required to create each keyspace and subsequent 10 column families increases linearly until the number of keyspaces is 1K. For a 100 node cluster there is a sudden increase in latency between 450 keyspaces and 550 keyspaces. The test ends when the test script times out. After the test script times out it is impossible to reconnect to the cluster with the datastax python driver because it cannot connect to the host:
+cassandra.cluster.NoHostAvailable: ('Unable to connect to any servers',
+{'10.199.5.98': OperationTimedOut()}
+It was found that running the following stress command does work from the same machine the test script runs on.
+cassandra-stress -d 10.199.5.98 -l 2 -e QUORUM -L3 -b -o INSERT
+It should be noted that this test was initially done with DSE 4.0 and c* version 2.0.5.24 and in that case it was not possible to run stress against the cluster even locally on a node due to not finding the host.
+Attached are system logs from one of the nodes, charts showing schema creation latency for 5 and 100 node clusters and virtualvm tracer data for cpu, memory, num_threads and gc runs, tpstat output and the test script.
+The test script was on an m1.large aws instance outside of the cluster under test.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+2.1.1
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Rocco Varela
+Reporter:
+Daniel Meyer
+Create date:
+02/Apr/14 21:43
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/Aug/14 20:07

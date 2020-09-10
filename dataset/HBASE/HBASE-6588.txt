@@ -1,0 +1,58 @@
+Summary:
+enable table throws npe and leaves trash in zk in competition with delete table
+Description:
+2012-08-15 19:23:36,178 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Creating scanner over .META. starting at key 'test,,'
+2012-08-15 19:23:36,178 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Advancing internal scanner to startKey at 'test,,'
+2012-08-15 19:24:09,180 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Creating scanner over .META. starting at key ''
+2012-08-15 19:24:09,180 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Advancing internal scanner to startKey at ''
+2012-08-15 19:24:09,183 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Finished with scanning at
+{NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192,}
+2012-08-15 19:24:09,183 DEBUG org.apache.hadoop.hbase.master.CatalogJanitor: Scanned 2 catalog row(s) and gc'd 0 unreferenced parent region(s)
+2012-08-15 19:25:12,260 DEBUG org.apache.hadoop.hbase.master.handler.DeleteTableHandler: Deleting region test,,1345029764571.d1e24b251ca6286c840a9a5f571b7db1. from META and FS
+2012-08-15 19:25:12,263 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted region test,,1345029764571.d1e24b251ca6286c840a9a5f571b7db1. from META
+2012-08-15 19:25:12,265 INFO org.apache.hadoop.hbase.master.handler.EnableTableHandler: Attemping to enable the table test
+2012-08-15 19:25:12,265 WARN org.apache.hadoop.hbase.zookeeper.ZKTable: Moving table test state to enabling but was not first in disabled state: null
+2012-08-15 19:25:12,267 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Creating scanner over .META. starting at key 'test,,'
+2012-08-15 19:25:12,267 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Advancing internal scanner to startKey at 'test,,'
+2012-08-15 19:25:12,270 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Finished with scanning at {NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192,}
+2012-08-15 19:25:12,270 ERROR org.apache.hadoop.hbase.executor.EventHandler: Caught throwable while processing event C_M_ENABLE_TABLE
+java.lang.NullPointerException
+at org.apache.hadoop.hbase.master.handler.EnableTableHandler.handleEnableTable(EnableTableHandler.java:116)
+at org.apache.hadoop.hbase.master.handler.EnableTableHandler.process(EnableTableHandler.java:97)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:169)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+table is disabled now, then we enable and delete the table at the same time.
+Since the thread num of MASTER_TABLE_OPERATIONS is 1 by default. The two operations are serial in master.Before deletetable deletes all the regions in meta, CreateTableHandler ships the check of tableExists,then it will block until deletetable finishs, then CreateTableHandler will set zk enabling, and find no data in meta:
+regionsInMeta = MetaReader.getTableRegions(this.ct, tableName, true);
+int countOfRegionsInTable = regionsInMeta.size();
+npe will be throwed here. And we could not create the same table anymore.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Later
+Affects_version:
+0.94.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Zhou wenjian
+Reporter:
+Zhou wenjian
+Create date:
+15/Aug/12 11:26
+Update date:
+20/May/13 03:29
+Resolved date:
+20/May/13 03:29

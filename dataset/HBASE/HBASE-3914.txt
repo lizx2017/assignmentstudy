@@ -1,0 +1,66 @@
+Summary:
+ROOT region appeared in two regionserver's onlineRegions at the same time
+Description:
+This could be happen under the following steps with little probability:
+(I suppose the cluster nodes names are RS1/RS2/HM, and there's more than 10,000 regions in the cluster)
+1.Root region was opened in RS1.
+2.Due to some reason(Maybe the hdfs process was got abnormal),RS1 aborted.
+3.ServerShutdownHandler process start.
+4.HMaster was restarted, during the finishInitialization's handling, ROOT region was unsetted, and assigned to RS2.
+5.Root region was opened successfully in RS2.
+6.But after while, ROOT region was unsetted again by RS1's ServerShutdownHandler. Then it was reassigned. Before that, the RS1 was restarted. So there's two possibilities:
+Case a:
+ROOT region was assigned to RS1.
+It seemed nothing would be affected. But the root region was still online in RS2.
+Case b:
+ROOT region was assigned to RS2.
+The ROOT Region couldn't be opened until it would be reassigned to other regionserver, because it was showed online in this regionserver.
+This could be proved from the logs:
+1. ROOT region was opened with two times:
+2011-05-17 10:32:59,188 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Opened region ROOT,,0.70236052 on 162-2-77-0,20020,1305598359031
+2011-05-17 10:33:01,536 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Opened region ROOT,,0.70236052 on 162-2-16-6,20020,1305597548212
+2.Regionserver 162-2-16-6 was aborted, so it was reassigned to 162-2-77-0, but already online on this server:
+10:49:30,920 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Received request to open region: ROOT,,0.70236052 10:49:30,920 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Processing open of ROOT,,0.70236052 10:49:30,920 WARN org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Attempted open of ROOT,,0.70236052 but already online on this server
+This could be cause a long break of ROOT region offline, though it happened under a special scenario. And I have checked the code, it seems a tiny bug here.
+There's 2 references about assignRoot():
+1.
+HMaster# assignRootAndMeta:
+if (!catalogTracker.verifyRootRegionLocation(timeout))
+{ this.assignmentManager.assignRoot(); this.catalogTracker.waitForRoot(); assigned++; }
+2.
+ServerShutdownHandler# process:
+if (isCarryingRoot()) { // ROOT
+try
+{ this.services.getAssignmentManager().assignRoot(); }
+catch (KeeperException e)
+{ this.server.abort("In server shutdown processing, assigning root", e); throw new IOException("Aborting", e); }
+}
+I think each time call the method of assignRoot(), we should verify Root Region's Location first. Because before the assigning, the ROOT region could have been assigned by another place.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.90.4
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jieshan Bean
+Reporter:
+Jieshan Bean
+Create date:
+24/May/11 01:51
+Update date:
+20/Nov/15 12:43
+Resolved date:
+24/May/11 17:28

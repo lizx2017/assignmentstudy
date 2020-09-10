@@ -1,0 +1,88 @@
+Summary:
+ClassCastException caused by unhandled Markup Annotations.
+Description:
+Got a ClassCastException in the getParent() method of PDAnnotationPopup because some Markup Annotations are not handled fully by PDFBox and become PDAnnotationUnknown
+Solution to make them generic PDAnnotationMarkup instead.
+Eclipse Workspace Patch 1.0
+#P pdfbox
+Index: pdfbox/src/main/java/org/apache/pdfbox/pdmodel/interactive/annotation/PDAnnotation.java
+===================================================================
+pdfbox/src/main/java/org/apache/pdfbox/pdmodel/interactive/annotation/PDAnnotation.java (revision 1026306)
++++ pdfbox/src/main/java/org/apache/pdfbox/pdmodel/interactive/annotation/PDAnnotation.java (working copy)
+@@ -138,6 +138,15 @@ { annot = new PDAnnotationWidget( annotDic ); }
++ else if( subtype.equals( PDAnnotationMarkup.SUB_TYPE_FREETEXT ) ||
++ subtype.equals( PDAnnotationMarkup.SUB_TYPE_POLYGON ) ||
++ subtype.equals( PDAnnotationMarkup.SUB_TYPE_POLYLINE ) ||
++ subtype.equals( PDAnnotationMarkup.SUB_TYPE_CARET ) ||
++ subtype.equals( PDAnnotationMarkup.SUB_TYPE_INK ) ||
++ subtype.equals( PDAnnotationMarkup.SUB_TYPE_SOUND ))
++
+{ + annot = new PDAnnotationMarkup( annotDic ); + }
+else
+{
+annot = new PDAnnotationUnknown( annotDic );
+Index: pdfbox/src/main/java/org/apache/pdfbox/pdmodel/interactive/annotation/PDAnnotationMarkup.java
+===================================================================
+pdfbox/src/main/java/org/apache/pdfbox/pdmodel/interactive/annotation/PDAnnotationMarkup.java (revision 1026306)
++++ pdfbox/src/main/java/org/apache/pdfbox/pdmodel/interactive/annotation/PDAnnotationMarkup.java (working copy)
+@@ -32,8 +32,32 @@
+@author Paul King
+@version $Revision: 1.1 $
+*/
+-public abstract class PDAnnotationMarkup extends PDAnnotation
++public class PDAnnotationMarkup extends PDAnnotation
+{
++ /**
++ * Constant for a FreeText type of annotation.
++ */
++ public static final String SUB_TYPE_FREETEXT = "FreeText";
++ /**
++ * Constant for an Polygon type of annotation.
++ */
++ public static final String SUB_TYPE_POLYGON = "Polygon";
++ /**
++ * Constant for an PolyLine type of annotation.
++ */
++ public static final String SUB_TYPE_POLYLINE = "PolyLine";
++ /**
++ * Constant for an Caret type of annotation.
++ */
++ public static final String SUB_TYPE_CARET = "Caret";
++ /**
++ * Constant for an Ink type of annotation.
++ */
++ public static final String SUB_TYPE_INK = "Ink";
++ /**
++ * Constant for an Sound type of annotation.
++ */
++ public static final String SUB_TYPE_SOUND = "Sound";
+/*
+The various values of the reply type as defined in the PDF 1.7 reference
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.3.1
+Fix_version:
+1.4.0
+Component:
+PDModel
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adam Nichols
+Reporter:
+Kevin Jackson
+Create date:
+23/Nov/10 06:07
+Update date:
+20/Dec/10 09:38
+Resolved date:
+23/Nov/10 17:51

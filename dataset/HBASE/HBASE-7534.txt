@@ -1,0 +1,39 @@
+Summary:
+[replication] TestReplication.queueFailover can fail because HBaseTestingUtility.createMultiRegions is dangerous
+Description:
+HBaseTestingUtility.createMultiRegions is an abomination, it uses an already existing table and hot replaces the regions in it. I've seen TestReplication failing a few times because the "old" first region is still assigned and tried to flush but crashed due to the fact that the region's folder is missing in HDFS:
+2013-01-04 10:04:45,500 DEBUG [RegionServer:1;172.21.3.117,57114,1357322589018.cacheFlusher] regionserver.Store(844): Renaming flushed file at hdfs://localhost:57099/user/jdcryans/hbase/test/62c85f8a6e3d0e32b2fb21326537f5a6/.tmp/b938b33268064312abfc250d2eeca61d to hdfs://localhost:57099/user/jdcryans/hbase/test/62c85f8a6e3d0e32b2fb21326537f5a6/f/b938b33268064312abfc250d2eeca61d
+2013-01-04 10:04:45,500 WARN  [IPC Server handler 8 on 57099] namenode.FSDirectory(422): DIR* FSDirectory.unprotectedRenameTo: failed to rename /user/jdcryans/hbase/test/62c85f8a6e3d0e32b2fb21326537f5a6/.tmp/b938b33268064312abfc250d2eeca61d to /user/jdcryans/hbase/test/62c85f8a6e3d0e32b2fb21326537f5a6/f/b938b33268064312abfc250d2eeca61d because destination's parent does not exist
+2013-01-04 10:04:45,503 WARN  [RegionServer:1;172.21.3.117,57114,1357322589018.cacheFlusher] regionserver.Store(847): Unable to rename hdfs://localhost:57099/user/jdcryans/hbase/test/62c85f8a6e3d0e32b2fb21326537f5a6/.tmp/b938b33268064312abfc250d2eeca61d to hdfs://localhost:57099/user/jdcryans/hbase/test/62c85f8a6e3d0e32b2fb21326537f5a6/f/b938b33268064312abfc250d2eeca61d
+2013-01-04 10:04:45,504 WARN  [DataStreamer for file /user/jdcryans/hbase/.logs/172.21.3.117,57113,1357322588994/172.21.3.117%2C57113%2C1357322588994.1357322683769] hdfs.DFSClient$DFSOutputStream$DataStreamer(2873): DataStreamer Exception: org.apache.hadoop.ipc.RemoteException: org.apache.hadoop.hdfs.server.namenode.LeaseExpiredException: No lease on /user/jdcryans/hbase/.logs/172.21.3.117,57113,1357322588994/172.21.3.117%2C57113%2C1357322588994.1357322683769 File does not exist. [Lease.  Holder: DFSClient_hb_rs_172.21.3.117,57113,1357322588994, pendingcreates: 1]
+Eventually the test times out because both region servers on the master cluster are dead.
+It can be easily fixed by pre-creating the table with enough regions.
+FWIW a bunch of other tests are using this facility, my IDE tells me that the 3 methods are called 25 times outside of HBaseTestingUtility.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.3
+Fix_version:
+0.94.5, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+10/Jan/13 21:04
+Update date:
+26/Feb/13 08:27
+Resolved date:
+11/Jan/13 00:55

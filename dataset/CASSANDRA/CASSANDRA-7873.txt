@@ -1,0 +1,62 @@
+Summary:
+Replace AbstractRowResolver.replies with collection with tailored properties
+Description:
+The dtest auth_test.py:TestAuth.system_auth_ks_is_alterable_test is failing on trunk only with the following stack trace:
+Unexpected error in node1 node log:
+ERROR [Thrift:1] 2014-09-03 15:48:08,389 CustomTThreadPoolServer.java:219 - Error occurred during processing of message.
+java.util.ConcurrentModificationException: null
+ at java.util.ArrayList$Itr.checkForComodification(ArrayList.java:859) ~[na:1.7.0_65]
+ at java.util.ArrayList$Itr.next(ArrayList.java:831) ~[na:1.7.0_65]
+ at org.apache.cassandra.service.RowDigestResolver.resolve(RowDigestResolver.java:71) ~[main/:na]
+ at org.apache.cassandra.service.RowDigestResolver.resolve(RowDigestResolver.java:28) ~[main/:na]
+ at org.apache.cassandra.service.ReadCallback.get(ReadCallback.java:110) ~[main/:na]
+ at org.apache.cassandra.service.AbstractReadExecutor.get(AbstractReadExecutor.java:144) ~[main/:na]
+ at org.apache.cassandra.service.StorageProxy.fetchRows(StorageProxy.java:1228) ~[main/:na]
+ at org.apache.cassandra.service.StorageProxy.read(StorageProxy.java:1154) ~[main/:na]
+ at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:256) ~[main/:na]
+ at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:212) ~[main/:na]
+ at org.apache.cassandra.auth.Auth.selectUser(Auth.java:257) ~[main/:na]
+ at org.apache.cassandra.auth.Auth.isExistingUser(Auth.java:76) ~[main/:na]
+ at org.apache.cassandra.service.ClientState.login(ClientState.java:178) ~[main/:na]
+ at org.apache.cassandra.thrift.CassandraServer.login(CassandraServer.java:1486) ~[main/:na]
+ at org.apache.cassandra.thrift.Cassandra$Processor$login.getResult(Cassandra.java:3579) ~[thrift/:na]
+ at org.apache.cassandra.thrift.Cassandra$Processor$login.getResult(Cassandra.java:3563) ~[thrift/:na]
+ at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:39) ~[libthrift-0.9.1.jar:0.9.1]
+ at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:39) ~[libthrift-0.9.1.jar:0.9.1]
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:201) ~[main/:na]
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145) [na:1.7.0_65]
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615) [na:1.7.0_65]
+ at java.lang.Thread.run(Thread.java:745) [na:1.7.0_65]
+That exception is thrown when the following query is sent:
+"""SELECT strategy_options
+                          FROM system.schema_keyspaces
+                          WHERE keyspace_name = 'system_auth'"""
+The test alters the RF of the system_auth keyspace, then shuts down and restarts the cluster.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+None
+Label:
+qa-resolved
+Environment:
+mac os x, ubuntu
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Philip Thompson
+Create date:
+03/Sep/14 20:29
+Update date:
+16/Apr/19 09:31
+Resolved date:
+09/Dec/14 19:10

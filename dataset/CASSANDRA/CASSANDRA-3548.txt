@@ -1,0 +1,83 @@
+Summary:
+NPE in AntiEntropyService$RepairSession.completed()
+Description:
+This may be related to CASSANDRA-3519 (cluster it was observed on is still 1.0.1), however i think there is still a race condition.
+Observed on a 2 DC cluster, during a repair that spanned the DC's.
+INFO [AntiEntropyStage:1] 2011-11-28 06:22:56,225 StreamingRepairTask.java (line 136) [streaming task #69187510-1989-11e1-0000-5ff37d368cb6] Forwarding streaming repair of 8602 
+ranges to /10.6.130.70 (to be streamed with /10.37.114.10)
+...
+ INFO [AntiEntropyStage:66] 2011-11-29 11:20:57,109 StreamingRepairTask.java (line 253) [streaming task #69187510-1989-11e1-0000-5ff37d368cb6] task succeeded
+ERROR [AntiEntropyStage:66] 2011-11-29 11:20:57,109 AbstractCassandraDaemon.java (line 133) Fatal exception in thread Thread[AntiEntropyStage:66,5,main]
+java.lang.NullPointerException
+        at org.apache.cassandra.service.AntiEntropyService$RepairSession.completed(AntiEntropyService.java:712)
+        at org.apache.cassandra.service.AntiEntropyService$RepairSession$Differencer$1.run(AntiEntropyService.java:912)
+        at org.apache.cassandra.streaming.StreamingRepairTask$2.run(StreamingRepairTask.java:186)
+        at org.apache.cassandra.streaming.StreamingRepairTask$StreamingRepairResponse.doVerb(StreamingRepairTask.java:255)
+        at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:59)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+        at java.lang.Thread.run(Thread.java:679)
+One of the nodes involved in the repair session failed, e.g. (Not sure if this is from the same repair session as the streaming task above, but it illustrates the issue)
+ERROR [AntiEntropySessions:1] 2011-11-28 19:39:52,507 AntiEntropyService.java (line 688) [repair #2bf19860-197f-11e1-0000-5ff37d368cb6] session completed with the following error
+java.io.IOException: Endpoint /10.29.60.10 died
+        at org.apache.cassandra.service.AntiEntropyService$RepairSession.failedNode(AntiEntropyService.java:725)
+        at org.apache.cassandra.service.AntiEntropyService$RepairSession.convict(AntiEntropyService.java:762)
+        at org.apache.cassandra.gms.FailureDetector.interpret(FailureDetector.java:192)
+        at org.apache.cassandra.gms.Gossiper.doStatusCheck(Gossiper.java:559)
+        at org.apache.cassandra.gms.Gossiper.access$700(Gossiper.java:62)
+        at org.apache.cassandra.gms.Gossiper$GossipTask.run(Gossiper.java:167)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+        at java.util.concurrent.FutureTask$Sync.innerRunAndReset(FutureTask.java:351)
+        at java.util.concurrent.FutureTask.runAndReset(FutureTask.java:178)
+        at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$201(ScheduledThreadPoolExecutor.java:165)
+        at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:267)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+        at java.lang.Thread.run(Thread.java:679)
+ERROR [GossipTasks:1] 2011-11-28 19:39:52,507 StreamOutSession.java (line 232) StreamOutSession /10.29.60.10 failed because {} died or was restarted/removed
+ERROR [GossipTasks:1] 2011-11-28 19:39:52,571 Gossiper.java (line 172) Gossip error
+java.util.ConcurrentModificationException
+        at java.util.ArrayList$Itr.checkForComodification(ArrayList.java:782)
+        at java.util.ArrayList$Itr.next(ArrayList.java:754)
+        at org.apache.cassandra.gms.FailureDetector.interpret(FailureDetector.java:190)
+        at org.apache.cassandra.gms.Gossiper.doStatusCheck(Gossiper.java:559)
+        at org.apache.cassandra.gms.Gossiper.access$700(Gossiper.java:62)
+        at org.apache.cassandra.gms.Gossiper$GossipTask.run(Gossiper.java:167)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+        at java.util.concurrent.FutureTask$Sync.innerRunAndReset(FutureTask.java:351)
+        at java.util.concurrent.FutureTask.runAndReset(FutureTask.java:178)
+        at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$201(ScheduledThreadPoolExecutor.java:165)
+        at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:267)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+        at java.lang.Thread.run(Thread.java:679)
+When a node is marked as failed AntiEntropyService.RepairSession.forceShutdown() clears the activejobs map. But the jobs to other nodes will continue, and will eventually call completed().
+RepairSession.terminated should stop completed() from checking the map, but there is a race between the map been cleared and if there is an error in finally block it wont be set.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.6
+Component:
+None
+Label:
+None
+Environment:
+freebsd, jvm, java 1.6
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+amorton
+Create date:
+01/Dec/11 11:35
+Update date:
+16/Apr/19 09:32
+Resolved date:
+02/Dec/11 10:54

@@ -1,0 +1,71 @@
+Summary:
+ComplexPhraseQuery.rewrite can throw exception RE MatchNoDocsQuery if MTQ sub-clause matches no terms
+Description:
+With Solr v6.3, when I issue this query:
+http://localhost:8983/solr/BestBuy/select?wt=json&rows=10&q=
+{!complexphrase%20inOrder=false}
+text:%22maytag~%20(refri~%20OR%20refri*)%20%22&fl=id&hl=true&hl.preserveMulti=false&hl.fragsize=60&hl.fl=nameX,shortDescription,longDescription,artistName,type,manufacturer,department
+I get this error in the JSON response:
+*************************************************************
+{
+"responseHeader": {
+"zkConnected": true,
+"status": 500,
+"QTime": 8,
+"params": {
+"q": "
+{!complexphrase inOrder=false}
+text:\"maytag~ (refri~ OR refri*) \"",
+"hl": "true",
+"hl.preserveMulti": "false",
+"fl": "id",
+"hl.fragsize": "60",
+"hl.fl": "nameX,shortDescription,longDescription,artistName,type,manufacturer,department",
+"rows": "10",
+"wt": "json"
+}
+},
+"response": {
+"numFound": 2,
+"start": 0,
+"docs": [
+{ "id": "5411379" }
+,
+{ "id": "5411404" }
+]
+},
+"error":
+{ "msg": "Unknown query type:org.apache.lucene.search.MatchNoDocsQuery", "trace": "java.lang.IllegalArgumentException: Unknown query type:org.apache.lucene.search.MatchNoDocsQuery\n\tat org.apache.lucene.queryparser.complexPhrase.ComplexPhraseQueryParser$ComplexPhraseQuery.addComplexPhraseClause(ComplexPhraseQueryParser.java:388)\n\tat org.apache.lucene.queryparser.complexPhrase.ComplexPhraseQueryParser$ComplexPhraseQuery.rewrite(ComplexPhraseQueryParser.java:289)\n\tat org.apache.lucene.search.highlight.WeightedSpanTermExtractor.extract(WeightedSpanTermExtractor.java:230)\n\tat org.apache.lucene.search.highlight.WeightedSpanTermExtractor.getWeightedSpanTerms(WeightedSpanTermExtractor.java:522)\n\tat org.apache.lucene.search.highlight.QueryScorer.initExtractor(QueryScorer.java:218)\n\tat org.apache.lucene.search.highlight.QueryScorer.init(QueryScorer.java:186)\n\tat org.apache.lucene.search.highlight.Highlighter.getBestTextFragments(Highlighter.java:195)\n\tat org.apache.solr.highlight.DefaultSolrHighlighter.doHighlightingByHighlighter(DefaultSolrHighlighter.java:602)\n\tat org.apache.solr.highlight.DefaultSolrHighlighter.doHighlightingOfField(DefaultSolrHighlighter.java:448)\n\tat org.apache.solr.highlight.DefaultSolrHighlighter.doHighlighting(DefaultSolrHighlighter.java:410)\n\tat org.apache.solr.handler.component.HighlightComponent.process(HighlightComponent.java:141)\n\tat org.apache.solr.handler.component.SearchHandler.handleRequestBody(SearchHandler.java:295)\n\tat org.apache.solr.handler.RequestHandlerBase.handleRequest(RequestHandlerBase.java:153)\n\tat org.apache.solr.core.SolrCore.execute(SolrCore.java:2213)\n\tat org.apache.solr.servlet.HttpSolrCall.execute(HttpSolrCall.java:654)\n\tat org.apache.solr.servlet.HttpSolrCall.call(HttpSolrCall.java:460)\n\tat org.apache.solr.servlet.SolrDispatchFilter.doFilter(SolrDispatchFilter.java:303)\n\tat org.apache.solr.servlet.SolrDispatchFilter.doFilter(SolrDispatchFilter.java:254)\n\tat org.eclipse.jetty.servlet.ServletHandler$CachedChain.doFilter(ServletHandler.java:1668)\n\tat org.eclipse.jetty.servlet.ServletHandler.doHandle(ServletHandler.java:581)\n\tat org.eclipse.jetty.server.handler.ScopedHandler.handle(ScopedHandler.java:143)\n\tat org.eclipse.jetty.security.SecurityHandler.handle(SecurityHandler.java:548)\n\tat org.eclipse.jetty.server.session.SessionHandler.doHandle(SessionHandler.java:226)\n\tat org.eclipse.jetty.server.handler.ContextHandler.doHandle(ContextHandler.java:1160)\n\tat org.eclipse.jetty.servlet.ServletHandler.doScope(ServletHandler.java:511)\n\tat org.eclipse.jetty.server.session.SessionHandler.doScope(SessionHandler.java:185)\n\tat org.eclipse.jetty.server.handler.ContextHandler.doScope(ContextHandler.java:1092)\n\tat org.eclipse.jetty.server.handler.ScopedHandler.handle(ScopedHandler.java:141)\n\tat org.eclipse.jetty.server.handler.ContextHandlerCollection.handle(ContextHandlerCollection.java:213)\n\tat org.eclipse.jetty.server.handler.HandlerCollection.handle(HandlerCollection.java:119)\n\tat org.eclipse.jetty.server.handler.HandlerWrapper.handle(HandlerWrapper.java:134)\n\tat org.eclipse.jetty.server.Server.handle(Server.java:518)\n\tat org.eclipse.jetty.server.HttpChannel.handle(HttpChannel.java:308)\n\tat org.eclipse.jetty.server.HttpConnection.onFillable(HttpConnection.java:244)\n\tat org.eclipse.jetty.io.AbstractConnection$ReadCallback.succeeded(AbstractConnection.java:273)\n\tat org.eclipse.jetty.io.FillInterest.fillable(FillInterest.java:95)\n\tat org.eclipse.jetty.io.SelectChannelEndPoint$2.run(SelectChannelEndPoint.java:93)\n\tat org.eclipse.jetty.util.thread.strategy.ExecuteProduceConsume.produceAndRun(ExecuteProduceConsume.java:246)\n\tat org.eclipse.jetty.util.thread.strategy.ExecuteProduceConsume.run(ExecuteProduceConsume.java:156)\n\tat org.eclipse.jetty.util.thread.QueuedThreadPool.runJob(QueuedThreadPool.java:654)\n\tat org.eclipse.jetty.util.thread.QueuedThreadPool$3.run(QueuedThreadPool.java:572)\n\tat java.lang.Thread.run(Thread.java:745)\n", "code": 500 }
+}
+*************************************************************
+I did NOT have this error in Solr v6.1 so something has changed in v6.3 that is causing this error.
+Steve Rowe thinks it may be related to https://issues.apache.org/jira/browse/LUCENE-7337
+Hoss' initial thoughts: "i think the root of the issue is that the way those fuzzy and prefix queries are parsed means that they may produce an empty boolean query depending on the contents of the index, and then the new optimization rewrites those empty boolean queries into MatchNoDocsQueries – but the highlighter (which uses hueristics to figure out what to ask each query – based on it's type – what to highlight) doesn't know what to do with that. i'm really suprised the highlighter throws an error in the "unexpected query type" code path instead of just ignorning it."
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+6.3
+Fix_version:
+7.4
+Component:
+modules/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+David Smiley
+Reporter:
+Andy Tran
+Create date:
+31/Jan/17 17:02
+Update date:
+27/Jun/18 08:30
+Resolved date:
+10/May/18 03:08

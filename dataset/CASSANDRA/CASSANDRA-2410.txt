@@ -1,0 +1,65 @@
+Summary:
+JDBC ResultSet does not honor column value typing for the CF and uses default validator for all column value types.
+Description:
+Assume a CF declared in CQL as :
+CREATE COLUMNFAMILY TestCF(KEY utf8 PRIMARY KEY,description utf8, anumber int)
+  WITH comparator = ascii AND default_validation = long;
+If the ResultSet is fetched thusly:
+Statement stmt = con.createStatement();
+ResultSet rs = stmt.executeQuery(query);
+
+String description;
+Integer anumber;
+
+    while (rs.next())
+    {
+      description = rs.getString(1);
+      System.out.print("description : "+ description);
+      anumber = rs.getInt(2);
+      System.out.print("anumber     : "+ anumber);
+    }
+It will immediately fail with a message of:
+org.apache.cassandra.db.marshal.MarshalException: A long is exactly 8 bytes: 16
+ at org.apache.cassandra.db.marshal.LongType.getString(LongType.java:66)
+ at org.apache.cassandra.cql.jdbc.TypedColumn.<init>(TypedColumn.java:45)
+ at org.apache.cassandra.cql.jdbc.ColumnDecoder.makeCol(ColumnDecoder.java:158)
+ at org.apache.cassandra.cql.jdbc.CassandraResultSet.next(CassandraResultSet.java:1073)
+ at da.access.testing.TestJDBC.selectAll(TestJDBC.java:83)
+         ...
+It appears that the makeCol method of ColumnDecoder.java chooses NOT to use the CfDef to look up the possible occurrence of a column? That's not right. Right?
+    /** constructs a typed column */
+    public TypedColumn makeCol(String keyspace, String columnFamily, byte[] name, byte[] value)
+    {
+        CfDef cfDef = cfDefs.get(String.format("%s.%s", keyspace, columnFamily));
+        AbstractType comparator = getComparator(keyspace, columnFamily, Specifier.Comparator, cfDef);
+        AbstractType validator = getComparator(keyspace, columnFamily, Specifier.Validator, null);
+        return new TypedColumn(comparator, name, validator, value);
+    }
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8 beta 1
+Component:
+Legacy/CQL
+Label:
+cql
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+Rick Shaw
+Create date:
+31/Mar/11 20:55
+Update date:
+16/Apr/19 09:33
+Resolved date:
+16/Apr/11 23:10

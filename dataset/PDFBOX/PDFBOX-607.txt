@@ -1,0 +1,71 @@
+Summary:
+Problem setting custom appearance on PDAnnotationRubberStamp
+Description:
+I'm trying to generate a RubberStamp with a custom appearance in a PDF. I wrote the following test-code: it saves the document and I can find the image inside the pdf, by examinating the structures. But the Rubberstamp isn't shown within the PDF when opened with the Reader.
+I made a second PDF using Acrobat Pro with the same stamp - there I can see the stamp when opening with a Reader.
+Here is the test-code I wrote:
+(I came to this solution by analyzing the structure of a manually set custom RubberStamp from the Acrobat Pro document):
+//Generating a new document and adding a new page
+PDDocument document = new PDDocument();
+PDPage page = new PDPage();
+document.addPage(page);
+//Get all annotations
+List annotations = page.getAnnotations();
+//Generate a new RubberStamp
+PDAnnotationRubberStamp aRubber = new PDAnnotationRubberStamp();
+aRubber.setName("fancy_name");
+aRubber.setContents("This is the content of the generated stamp!");
+//Generate a custom appearance for the RubberStamp
+FileInputStream fin = new FileInputStream("fancyImage.jpg");
+PDJpeg mypic = new PDJpeg(document,fin);
+PDResources myResources = new PDResources();
+myResources.getXObjects().put("Im0", mypic);
+COSStream s = new COSStream(document.getDocument().getScratchFile());
+s.createUnfilteredStream();
+PDAppearanceStream myDic = new PDAppearanceStream(s);
+myDic.setResources(myResources);
+PDAppearanceDictionary appearance = new PDAppearanceDictionary(new COSDictionary());
+appearance.setNormalAppearance(new HashMap<String, COSObjectable>());
+appearance.getNormalAppearance().put("default", myDic);
+//Set the appearance of the RubberStamp to the custom look
+aRubber.setAppearance(appearance);
+//Define and set the target rectangle
+PDRectangle myrect = new PDRectangle();
+myrect.setUpperRightX(250);
+myrect.setUpperRightY(550);
+myrect.setLowerLeftX(275);
+myrect.setLowerLeftY(575);
+aRubber.setRectangle(myrect);
+//Add the new RubberStamp to the document
+annotations.add(aRubber);
+// Finally write the new file and close it
+document.save("output_final.pdf");
+document.close();
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Not A Problem
+Affects_version:
+0.8.0-incubator, (1)
+Fix_version:
+0.8.0-incubator, (1)
+Component:
+PDModel
+Label:
+None
+Environment:
+mac os x, j2se
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Erik Scholtz
+Create date:
+27/Jan/10 17:24
+Update date:
+01/Feb/10 12:02
+Resolved date:
+01/Feb/10 12:02

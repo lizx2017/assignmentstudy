@@ -1,0 +1,76 @@
+Summary:
+Failed region split is not handled correctly by AM
+Description:
+We ran into a case with ITLoadAndVerify with CM which left a region in RIT state, because the region failed a region SPLIT, but AM did not process this correctly.
+Region server attempting SPLIT and rollover:
+2013-10-06 16:42:56,959 INFO  [Priority.RpcServer.handler=0,port=60020] regionserver.HRegionServer: Splitting IntegrationTestLoadAndVerify,/(k\xCA\x1A\xF2\x86\xB6,1381100194019.9608be62536a61444766da669e67d39e.
+...
+2013-10-06 16:43:01,480 INFO  [regionserver60020-splits-1381102351302] regionserver.SplitTransaction: Starting split of region IntegrationTestLoadAndVerify,/(k\xCA\x1A\xF2\x86\xB6,1381100194019.9608be62536a61444766da669e67d39e.
+2013-10-06 16:43:01,480 DEBUG [regionserver60020-splits-1381102351302] regionserver.SplitTransaction: regionserver:60020-0x1418eb9f38301bb Creating ephemeral node for 9608be62536a61444766da669e67d39e in SPLITTING state
+2013-10-06 16:43:01,570 DEBUG [regionserver60020-splits-1381102351302] zookeeper.ZKAssign: regionserver:60020-0x1418eb9f38301bb Transitioning 9608be62536a61444766da669e67d39e from RS_ZK_REGION_SPLITTING to RS_ZK_REGION_SPLITTING
+2013-10-06 16:43:01,607 DEBUG [regionserver60020-splits-1381102351302] zookeeper.ZKAssign: regionserver:60020-0x1418eb9f38301bb Transitioned node 9608be62536a61444766da669e67d39e from RS_ZK_REGION_SPLITTING to RS_ZK_REGION_SPLITTING
+2013-10-06 16:43:01,607 DEBUG [regionserver60020-splits-1381102351302] zookeeper.ZKAssign: regionserver:60020-0x1418eb9f38301bb Transitioning 9608be62536a61444766da669e67d39e from RS_ZK_REGION_SPLITTING to RS_ZK_REGION_SPLITTING
+2013-10-06 16:43:01,629 DEBUG [regionserver60020-splits-1381102351302] zookeeper.ZKAssign: regionserver:60020-0x1418eb9f38301bb Transitioned node 9608be62536a61444766da669e67d39e from RS_ZK_REGION_SPLITTING to RS_ZK_REGION_SPLITTING
+2013-10-06 16:43:02,047 DEBUG [regionserver60020-splits-1381102351302] regionserver.HRegion: Closing IntegrationTestLoadAndVerify,/(k\xCA\x1A\xF2\x86\xB6,1381100194019.9608be62536a61444766da669e67d39e.: disabling compactions & flushes
+2013-10-06 16:43:02,047 DEBUG [regionserver60020-splits-1381102351302] regionserver.HRegion: Updates disabled for region IntegrationTestLoadAndVerify,/(k\xCA\x1A\xF2\x86\xB6,1381100194019.9608be62536a61444766da669e67d39e.
+2013-10-06 16:43:02,047 DEBUG [regionserver60020-splits-1381102351302] regionserver.HRegion: Started memstore flush for IntegrationTestLoadAndVerify,/(k\xCA\x1A\xF2\x86\xB6,1381100194019.9608be62536a61444766da669e67d39e., current region memstore size 4.4 M
+2013-10-06 16:43:03,945 INFO  [regionserver60020-splits-1381102351302] regionserver.HRegion: Finished memstore flush of ~4.4 M/4607072, currentsize=0/0 for region IntegrationTestLoadAndVerify,/(k\xCA\x1A\xF2\x86\xB6,1381100194019.9608be62536a61444766da669e67d39e. in 1898ms, sequenceid=6703616, compaction requested=true
+2013-10-06 16:43:04,026 INFO  [StoreCloserThread-IntegrationTestLoadAndVerify,/(k\xCA\x1A\xF2\x86\xB6,1381100194019.9608be62536a61444766da669e67d39e.-1] regionserver.HStore: Closed f1
+2013-10-06 16:43:04,027 INFO  [regionserver60020-splits-1381102351302] regionserver.HRegion: Closed IntegrationTestLoadAndVerify,/(k\xCA\x1A\xF2\x86\xB6,1381100194019.9608be62536a61444766da669e67d39e.
+2013-10-06 16:43:36,938 INFO  [regionserver60020-splits-1381102351302] regionserver.SplitRequest: Running rollback/cleanup of failed split of IntegrationTestLoadAndVerify,/(k\xCA\x1A\xF2\x86\xB6,1381100194019.9608be62536a61444766da669e67d39e.; Took too long to split the files and create the references, aborting split
+java.io.IOException: Took too long to split the files and create the references, aborting split
+  at org.apache.hadoop.hbase.regionserver.SplitTransaction.splitStoreFiles(SplitTransaction.java:584)
+  at org.apache.hadoop.hbase.regionserver.SplitTransaction.createDaughters(SplitTransaction.java:296)
+  at org.apache.hadoop.hbase.regionserver.SplitTransaction.execute(SplitTransaction.java:465)
+  at org.apache.hadoop.hbase.regionserver.SplitRequest.run(SplitRequest.java:82)
+  at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+  at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+  at java.lang.Thread.run(Thread.java:722)
+2013-10-06 16:43:37,482 INFO  [StoreOpener-9608be62536a61444766da669e67d39e-1] compactions.CompactionConfiguration: size [134217728, 9223372036854775807); files [3, 10); ratio 1.200000; off-peak ratio 5.000000; throttle point 2684354560; delete expired; major period 604800000, major jitter 0.500000
+2013-10-06 16:43:37,509 DEBUG [StoreOpener-9608be62536a61444766da669e67d39e-1] regionserver.HStore: loaded hdfs://ambari-unsec-1381055459-hbase-1.cs1cloud.internal:8020/apps/hbase/data/data/default/IntegrationTestLoadAndVerify/9608be62536a61444766da669e67d39e/f1/12cecfd69b7948eb8bbf9bacc3d7fbb0, isReference=false, isBulkLoadResult=false, seqid=6703616, majorComp
+2013-10-06 16:43:37,549 DEBUG [StoreOpener-9608be62536a61444766da669e67d39e-1] regionserver.HStore: loaded hdfs://ambari-unsec-1381055459-hbase-1.cs1cloud.internal:8020/apps/hbase/data/data/default/IntegrationTestLoadAndVerify/9608be62536a61444766da669e67d39e/f1/6b715040df9b424cbd3d01f36b34677b, isReference=false, isBulkLoadResult=false, seqid=6703217, majorComp
+2013-10-06 16:43:37,588 DEBUG [StoreOpener-9608be62536a61444766da669e67d39e-1] regionserver.HStore: loaded hdfs://ambari-unsec-1381055459-hbase-1.cs1cloud.internal:8020/apps/hbase/data/data/default/IntegrationTestLoadAndVerify/9608be62536a61444766da669e67d39e/f1/97cbd5f18ee64e0aaf43f48b1d3fae73, isReference=false, isBulkLoadResult=false, seqid=6681405, majorComp
+2013-10-06 16:43:37,630 DEBUG [StoreOpener-9608be62536a61444766da669e67d39e-1] regionserver.HStore: loaded hdfs://ambari-unsec-1381055459-hbase-1.cs1cloud.internal:8020/apps/hbase/data/data/default/IntegrationTestLoadAndVerify/9608be62536a61444766da669e67d39e/f1/a0d33ad9786d4a6fb6fa83b530cb5acd, isReference=false, isBulkLoadResult=false, seqid=6699746, majorComp
+2013-10-06 16:43:37,676 DEBUG [StoreOpener-9608be62536a61444766da669e67d39e-1] regionserver.HStore: loaded hdfs://ambari-unsec-1381055459-hbase-1.cs1cloud.internal:8020/apps/hbase/data/data/default/IntegrationTestLoadAndVerify/9608be62536a61444766da669e67d39e/f1/c4ad2148624d42e6b8408b9b257a4c70, isReference=false, isBulkLoadResult=false, seqid=6689091, majorComp
+2013-10-06 16:43:37,893 INFO  [regionserver60020-splits-1381102351302] regionserver.HRegionFileSystem: Cleaned up old failed split transaction detritus: hdfs://ambari-unsec-1381055459-hbase-1.cs1cloud.internal:8020/apps/hbase/data/data/default/IntegrationTestLoadAndVerify/9608be62536a61444766da669e67d39e/.splits
+2013-10-06 16:43:37,937 INFO  [regionserver60020-splits-1381102351302] regionserver.HRegion: Onlined 9608be62536a61444766da669e67d39e; next sequenceid=6703617
+2013-10-06 16:43:38,021 DEBUG [regionserver60020-splits-1381102351302] zookeeper.ZKAssign: regionserver:60020-0x1418eb9f38301bb Deleted unassigned node 9608be62536a61444766da669e67d39e in expected state RS_ZK_REGION_SPLITTING
+2013-10-06 16:43:38,021 INFO  [regionserver60020-splits-1381102351302] regionserver.SplitRequest: Successful rollback of failed split of IntegrationTestLoadAndVerify,/(k\xCA\x1A\xF2\x86\xB6,1381100194019.9608be62536a61444766da669e67d39e.
+The RS, 4 mins later will try to do another split, but it will fail to let master know so, because master still thinks the region is in RIT due to the first split.
+2013-10-06 16:43:01,606 DEBUG [AM.ZK.Worker-pool2-t202] master.AssignmentManager: Handling RS_ZK_REGION_SPLITTING, server=ambari-unsec-1381055459-hbase-5.cs1cloud.internal,60020,1381101889371, region=9608be62536a61444766da669e67d39e, current_state=null
+2013-10-06 16:43:01,609 INFO  [AM.ZK.Worker-pool2-t202] master.RegionStates: Transitioned {9608be62536a61444766da669e67d39e state=OPEN, ts=1381102229682, server=ambari-unsec-1381055459-hbase-5.cs1cloud.internal,60020,1381101889371} to {9608be62536a61444766da669e67d39e state=SPLITTING, ts=1381102981609, server=ambari-unsec-1381055459-hbase-5.cs1cloud.internal,600
+2013-10-06 16:43:01,634 DEBUG [AM.ZK.Worker-pool2-t203] master.AssignmentManager: Handling RS_ZK_REGION_SPLITTING, server=ambari-unsec-1381055459-hbase-5.cs1cloud.internal,60020,1381101889371, region=9608be62536a61444766da669e67d39e, current_state={9608be62536a61444766da669e67d39e state=SPLITTING, ts=1381102981609, server=ambari-unsec-1381055459-hbase-5.cs1cloud
+2013-10-06 16:43:38,019 DEBUG [AM.ZK.Worker-pool2-t204] master.AssignmentManager: Znode IntegrationTestLoadAndVerify,/(k\xCA\x1A\xF2\x86\xB6,1381100194019.9608be62536a61444766da669e67d39e. deleted, state: {9608be62536a61444766da669e67d39e state=SPLITTING, ts=1381102981634, server=ambari-unsec-1381055459-hbase-5.cs1cloud.internal,60020,1381101889371}
+2013-10-06 16:44:35,673 DEBUG [AM.ZK.Worker-pool2-t206] master.AssignmentManager: Handling RS_ZK_REGION_SPLITTING, server=ambari-unsec-1381055459-hbase-5.cs1cloud.internal,60020,1381101889371, region=ae22b90a3ddeb30c45c5735f7c855014, current_state=null
+2013-10-06 16:44:35,673 INFO  [AM.ZK.Worker-pool2-t206] master.RegionStates: Transitioned {ae22b90a3ddeb30c45c5735f7c855014 state=OPEN, ts=1381102362273, server=ambari-unsec-1381055459-hbase-5.cs1cloud.internal,60020,1381101889371} to {ae22b90a3ddeb30c45c5735f7c855014 state=SPLITTING, ts=1381103075673, server=ambari-unsec-1381055459-hbase-5.cs1cloud.internal,600
+2013-10-06 16:44:35,725 DEBUG [AM.ZK.Worker-pool2-t207] master.AssignmentManager: Handling RS_ZK_REGION_SPLITTING, server=ambari-unsec-1381055459-hbase-5.cs1cloud.internal,60020,1381101889371, region=ae22b90a3ddeb30c45c5735f7c855014, current_state={ae22b90a3ddeb30c45c5735f7c855014 state=SPLITTING, ts=1381103075673, server=ambari-unsec-1381055459-hbase-5.cs1cloud
+2013-10-06 16:44:38,707 DEBUG [ambari-unsec-1381055459-hbase-1.cs1cloud.internal,60000,1381101554357-BalancerChore] master.HMaster: Not running balancer because 2 region(s) in transition: {9608be62536a61444766da669e67d39e={9608be62536a61444766da669e67d39e state=SPLITTING, ts=1381102981634, server=ambari-unsec-1381055459-hbase-5.cs1cloud.internal,60020,1381101889
+It seems that AM.nodeDeleted() does not revert the in-memory state for the region to be opened.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.96.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Enis Soztutar
+Reporter:
+Enis Soztutar
+Create date:
+07/Oct/13 22:22
+Update date:
+20/Nov/15 11:55
+Resolved date:
+09/Oct/13 23:02

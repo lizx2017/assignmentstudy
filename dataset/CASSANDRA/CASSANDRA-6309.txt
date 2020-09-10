@@ -1,0 +1,68 @@
+Summary:
+Pig CqlStorage generates ERROR 1108: Duplicate schema alias
+Description:
+In Pig after loading a simple CQL3 table from Cassandra 2.0.1, and dumping contents, I receive:
+Caused by: org.apache.pig.impl.plan.PlanValidationException: ERROR 1108: Duplicate schema alias: author in "cm"
+cm = load 'cql://thunder_test/cassandra_messages' USING CqlStorage;
+dump cm
+ERROR org.apache.pig.tools.grunt.Grunt - org.apache.pig.impl.logicalLayer.FrontendException: ERROR 1066: Unable to open iterator for alias cm
+...
+Caused by: org.apache.pig.impl.plan.PlanValidationException: ERROR 1108: Duplicate schema alias: author in "cm"
+at org.apache.pig.newplan.logical.visitor.SchemaAliasVisitor.validate(SchemaAliasVisitor.java:75)
+running 'describe cm' gives:
+cm:
+{message_id: chararray,author: chararray,author: chararray,body: chararray,message_id: chararray}
+The original table schema in Cassandra is:
+CREATE TABLE cassandra_messages (
+message_id text,
+author text,
+body text,
+PRIMARY KEY (message_id, author)
+) WITH
+bloom_filter_fp_chance=0.010000 AND
+caching='KEYS_ONLY' AND
+comment='null' AND
+dclocal_read_repair_chance=0.000000 AND
+gc_grace_seconds=864000 AND
+index_interval=128 AND
+read_repair_chance=0.100000 AND
+replicate_on_write='true' AND
+populate_io_cache_on_flush='false' AND
+default_time_to_live=0 AND
+speculative_retry='NONE' AND
+memtable_flush_period_in_ms=0 AND
+compaction=
+{'class': 'SizeTieredCompactionStrategy'}
+AND
+compression=
+{'sstable_compression': 'LZ4Compressor'}
+;
+it appears that the code in CqlStorage.getColumnMetadata at ~line 478 takes the "keys" columns (in my case, message_id and author) and appends the columns from getColumnMeta (which has all three columns). Thus the keys columns are duplicated.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.13, 2.0.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Liu
+Reporter:
+Thunder Stumpges
+Create date:
+06/Nov/13 23:15
+Update date:
+16/Apr/19 09:32
+Resolved date:
+13/Dec/13 17:42

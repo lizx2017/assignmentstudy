@@ -1,0 +1,53 @@
+Summary:
+PrefixFilter with OR condition gives wrong results
+Description:
+PrefixFilter when used with a SingleColumnValueFilter with an OR condition gives wrong results. In below example, each filter when evaluated separately gives 1 row each. The OR condition with the two filters gives 3 rows instead of 2. Repro below:
+create 't1', 'f1'
+put 't1','a1','f1:q2','111'
+put 't1','b1','f1:q1','112'
+put 't1','c1','f1:q1','113'
+hbase(main):020:0> scan 't1',
+{FILTER => "PrefixFilter ('b') OR SingleColumnValueFilter('f1', 'q1', =, 'binary:113')"}
+ROW COLUMN+CELL
+a1 column=f1:q2, timestamp=1381468905492, value=111
+b1 column=f1:q1, timestamp=1381468905518, value=112
+c1 column=f1:q1, timestamp=1381468905549, value=113
+3 row(s) in 0.1020 seconds
+hbase(main):021:0> scan 't1',
+{FILTER => "PrefixFilter ('b')"}
+ROW COLUMN+CELL
+b1 column=f1:q1, timestamp=1381468905518, value=112
+1 row(s) in 0.0150 seconds
+hbase(main):002:0> scan 't1',
+{FILTER => "SingleColumnValueFilter('f1', 'q1', =, 'binary:113')"}
+ROW COLUMN+CELL
+c1 column=f1:q1, timestamp=1381469178679, value=113
+1 row(s) in 0.0140 seconds
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2, 0.94.9
+Fix_version:
+0.98.0, 0.94.13, 0.96.1
+Component:
+Filters
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aditya Kishore
+Reporter:
+Deepa Remesh
+Create date:
+11/Oct/13 05:56
+Update date:
+08/Nov/13 00:03
+Resolved date:
+17/Oct/13 20:12

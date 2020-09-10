@@ -1,0 +1,46 @@
+Summary:
+support custom GC options in hbase-env.sh
+Description:
+When running things like bin/start-hbase and bin/hbase-daemon.sh start [master|regionserver|etc] we end up setting HBASE_OPTS property a couple times via calling hbase-env.sh. This is generally not a problem for most cases, but when you want to set your own GC log properties, one would think you should set HBASE_GC_OPTS, which get added to HBASE_OPTS.
+NOPE! That would make too much sense.
+Running bin/hbase-daemons.sh will run bin/hbase-daemon.sh with the daemons it needs to start. Each time through hbase-daemon.sh we also call bin/hbase. This isn't a big deal except for each call to hbase-daemon.sh, we also source hbase-env.sh twice (once in the script and once in bin/hbase). This is important for my next point.
+Note that to turn on GC logging, you uncomment:
+# export HBASE_OPTS="$HBASE_OPTS -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps $HBASE_GC_OPTS" 
+and then to log to a gc file for each server, you then uncomment:
+# export HBASE_USE_GC_LOGFILE=true
+in hbase-env.sh
+On the first pass through hbase-daemon.sh, HBASE_GC_OPTS isn't set, so HBASE_OPTS doesn't get anything funky, but we set HBASE_USE_GC_LOGFILE, which then sets HBASE_GC_OPTS to the log file (-Xloggc:...). Then in bin/hbase we again run hbase-env.sh, which now hs HBASE_GC_OPTS set, adding the GC file.
+This isn't a general problem because HBASE_OPTS is set without prefixing the existing HBASE_OPTS (eg. HBASE_OPTS="$HBASE_OPTS ..."), allowing easy updating. However, GC OPTS don't work the same and this is really odd behavior when you want to set your own GC opts, which can include turning on GC log rolling (yes, yes, they really are jvm opts, but they ought to support their own param, to help minimize clutter).
+The simple version of this patch will just add an idempotent GC option to hbase-env.sh and some comments that uncommenting
+# export HBASE_USE_GC_LOGFILE=true
+will lead to a custom gc log file per server (along with an example name), so you don't need to set "-Xloggc".
+The more complex solution does the above and also solves the multiple calls to hbase-env.sh so we can be sane about how all this works. Note that to fix this, hbase-daemon.sh just needs to read in HBASE_USE_GC_LOGFILE after sourcing hbase-env.sh and then update HBASE_OPTS. Oh and also not source hbase-env.sh in bin/hbase.
+Even further, we might want to consider adding options just for cases where we don't need gc logging - i.e. the shell, the config reading tool, hcbk, etc. This is the hardest version to handle since the first couple will willy-nilly apply the gc options.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.4
+Fix_version:
+0.94.4, 0.95.0
+Component:
+scripts
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jesse Yates
+Reporter:
+Jesse Yates
+Create date:
+03/Nov/12 00:01
+Update date:
+05/Aug/14 20:12
+Resolved date:
+20/Dec/12 19:19

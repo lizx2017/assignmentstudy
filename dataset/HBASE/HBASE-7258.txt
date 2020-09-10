@@ -1,0 +1,56 @@
+Summary:
+Hbase needs to create baseZNode recursively
+Description:
+In deploy env, multi small hbase clusters may share a same zk cluster. So, for hbase cluster1, its parent znode is /hbase/cluster1. But in hbase version 0.94.1, hbase use ZKUtil.createAndFailSilent(this, baseZNode) to create parent path and it will throw a NoNode exception if znode /hbase donot exist.
+We want to change it to ZKUtil.createWithParents(this, baseZNode); to suport create baseZNode recursivly.
+The NoNode exception is:
+java.lang.RuntimeException: Failed construction of Master: class org.apache.hadoop.hbase.master.HMaster
+at org.apache.hadoop.hbase.master.HMaster.constructMaster(HMaster.java:1792)
+at org.apache.hadoop.hbase.master.HMasterCommandLine.startMaster(HMasterCommandLine.java:146)
+at org.apache.hadoop.hbase.master.HMasterCommandLine.run(HMasterCommandLine.java:103)
+at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:70)
+at org.apache.hadoop.hbase.util.ServerCommandLine.doMain(ServerCommandLine.java:77)
+at org.apache.hadoop.hbase.master.HMaster.main(HMaster.java:1806)
+Caused by: org.apache.zookeeper.KeeperException$NoNodeException: KeeperErrorCode = NoNode for /hbase/cluster1
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:111)
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:51)
+at org.apache.zookeeper.ZooKeeper.create(ZooKeeper.java:778)
+at org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper.createNonSequential(RecoverableZooKeeper.java:420)
+at org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper.create(RecoverableZooKeeper.java:402)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.createAndFailSilent(ZKUtil.java:905)
+at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.createBaseZNodes(ZooKeeperWatcher.java:166)
+at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.<init>(ZooKeeperWatcher.java:159)
+at org.apache.hadoop.hbase.master.HMaster.<init>(HMaster.java:282)
+at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:39)
+at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:27)
+at java.lang.reflect.Constructor.newInstance(Constructor.java:513)
+at org.apache.hadoop.hbase.master.H
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.2
+Fix_version:
+0.95.0
+Component:
+Zookeeper
+Label:
+zookeeper zookeeper.
+Environment:
+
+Attachment number:
+0
+Assignee:
+Liu Shaohui
+Reporter:
+Liu Shaohui
+Create date:
+03/Dec/12 03:28
+Update date:
+23/Sep/13 18:30
+Resolved date:
+11/Jan/13 07:07

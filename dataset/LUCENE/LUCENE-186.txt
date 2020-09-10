@@ -1,0 +1,120 @@
+Summary:
+[PATCH] Get/Set for Searcher in Hits and Searchable in RemoteSearchable
+Description:
+First of all thanks for Lucene!
+I want to contribute some thoughts, perhaps it's interesting for others.
+Perhaps not. But if I want to know? I have to post
+I've added:
+A getSearcher and setSearcher Method for the Searcher used from the Hits object.
+This Searcher is used from the Hits object to load new HitDoc objects into the
+hitDocs cache (Vector).
+I've added a getSearcher and setSearcher Method for the RemoteSearchable too.
+Reason:
+I've read the threads in the dev mailing list about remote and distributed
+searching and reusing Searcher objects in a multi threaded environment like
+application servers or servlet containers. The overall opinion is to instantiate
+a IndexSearcher for a index and reuse these object with many threads. This
+sounds ok.
+Example Situation:
+A Singleton with a HashMap can act as a registry vor Searcher objects
+initialized and populated during application startup.
+Now we can acces these Searcher objects through lookups to this registry and use
+them for searching.
+Note: The same Searcher object used for searching is referenced in the resulting
+Hits object of each search!
+In a web production environment with 7x24 it must be possible to replace a whole
+index with a new one during runtime (because of many changes or architecture
+decissions...). This means reloading/replacing these Searcher objects too.
+Situation in a web or ejb environment with sessions.
+Many clients start a search and receive a Hits object. (Or any wrapper around a
+Hits object like a HitsIterator to browse large collections of search results or
+RemoteSearchable). Typically a reference to this Hits (or wrapper) object is
+stored in a Session context of the conversation (HttpSession, Stateful Session
+Bean) and so a reference to originally used Searcher.
+But what happens when the Hits object tries to load new HitDoc objects into
+hitDocs cache (Vector).
+The reference to the Searcher object is no longer available because it is
+replaced with a new Searcher object. Perhaps the same lucene index is available
+again but not the same hash code of the object... the reference is broken and
+it's really hard to find out why no more results (documents are available) in
+the Hits object. This breaks iterating over large collections of search results
+in long sessions when the reusable Searcher object has changed.
+The same problem appears when we use the RemoteSearchable which acts on the
+lower level search api. In this implementation UnicastRemoteObject is extended.
+The javadoc explains the same problem.
+"The UnicastRemoteObject class defines a non-replicated remote object whose
+references are valid only while the server process is alive. The
+UnicastRemoteObject class provides support for point-to-point active object
+references (invocations, parameters, and results) using TCP streams.
+Objects that require remote behavior should extend RemoteObject, typically via
+UnicastRemoteObject. If UnicastRemoteObject is not extended, the implementation
+class must then assume the responsibility for the correct semantics of the
+hashCode, equals, and toString methods inherited from the Object class, so that
+they behave appropriately for remote objects."
+A quick Solution for Hits:
+A possibility for wrapper objects to read the original Searcher object from the
+"Hits" object and do some checks on the Searcher object (e.g. compare hashCode).
+If not it must be possible to set a new Searcher object to the Hits object to
+receive new documents.
+A quick Solution for Remote:
+same as for Hits
+see PATCHES
+A long solution:
+Implement all Searcher objects as serializable objects. So it's possible to
+share these objects in a distributed environment like application servers
+through JNDI. In the moment they don't travel very well ;-(
+DO NOT add a reference to the Searcher to the Hits object. A better approach is
+to use a proxy inside the Hits object with the possibility to check the
+existence of the searcher object and if needed to receive a new one.
+Example of Proxy implementations:
+JNDI
+Registry Service in the same VM
+RMI
+HA-JNDI (clustered JBoss)
+or a combination of above
+This is not so hard but needs a little different architecture.
+Results from experiments with distributed lucene indexe in a clustered JBoss
+3.2.3 environment (implemented as JMX services):
+Remote or distributed searching with Lucene is a big problem.
+A RemoteSearchable implementation is available for searching a lucene index
+over RMI but this is not a real solution for production environments.
+Do not use Searcher implementations in distributed environments as components
+The only save approach without changing to much on the lucene code is to use
+Searcher in the same VM. Only RAMDirectory is useful with many search requests.
+Apply read/write methods for Seracher objects in Hits and RemoteSearchable. Wrap
+Hits and RemoteSearchable with a object responsible for checking Searcher's
+availability and when needed the functionality to lookup a new Searcher.
+I'm very interested in re open a new thread in the dev mailing list if anyone is
+interested in a discussion about distributed searching.
+Perhaps this topic is dicussed elsewhere and I'm to stupid to find it, please
+give me a tip if so.
+Thanks for your time.
+yo
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Joachim Schreiber
+Create date:
+27/Feb/04 03:21
+Update date:
+02/Jun/11 22:04
+Resolved date:
+27/May/06 01:37

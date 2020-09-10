@@ -1,0 +1,77 @@
+Summary:
+AxisRenderer incorrectly uses label.htmlText to measure label size and label.text to render
+Description:
+Steps to reproduce:
+1. Run the following app, which is a basic ColumnChart with 3 categories on the horizontal axis.
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx">
+<fx:Script>
+<![CDATA[
+import mx.collections.ArrayCollection;
+[Bindable]
+private var data:ArrayCollection = new ArrayCollection([
+{category:"<30", count:10}
+,
+{category:"<30", count:20}
+,
+{category:">30", count:32}
+]);
+]]
+>
+</fx:Script>
+<mx:ColumnChart width="100%" height="100%" dataProvider="
+{data}
+" showDataTips="true">
+<mx:horizontalAxis>
+<mx:CategoryAxis id="categories" categoryField="category"/>
+</mx:horizontalAxis>
+<mx:series>
+<mx:ColumnSeries xField="category" yField="count"/>
+</mx:series>
+</mx:ColumnChart>
+</s:Application>
+Actual Results:
+Labels that contain html characters do not render correctly. Both the <30 and < display incorrectly because the AxisRenderer mixes text handling modes. Note that the default data tip renderer correctly displays the label of the middle column (as htmlText).
+Expected Results:
+Labels (either the first or second) display correctly.
+Workaround (if any):
+Create a custom LabelRenderer that sets the htmlText to the data.text
+Issue:
+AxisRenderer.processAxisLabels at lines 3651&3691 currently set the htmlText property of the measuringLabel:
+measuringField.htmlText = labelValues[i];
+However the renderLabels function at line 3237 sets the text property of the label.
+label.text = labelData.text;
+This means that any label with html control codes will be incorrectly sized. Especially any fields containing "<"
+Solution:
+Change renderLabels to use htmlText of the labelField:
+label.htmlText = labelData.text.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.1 (
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+23/Dec/10 00:58
+Update date:
+11/Sep/11 23:42
+Resolved date:
+

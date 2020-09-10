@@ -1,0 +1,58 @@
+Summary:
+user types allow counters
+Description:
+From the conversation on CASSANDRA-6312 it seems we should not allow user types to contain counters. Presently, user types can be defined with field types of counter, and these user types can also be associated with tables without error.
+I'm not certain if there's a compelling case for counters within user types, but I don't think there's any syntax existing presently that would allow updating them anyway.
+To repro:
+CREATE KEYSPACE test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}  AND durable_writes = true;
+
+USE test;
+
+CREATE TYPE t_item (
+  sub_one counter
+); 
+
+CREATE TYPE item (
+  sub_one counter
+); 
+
+CREATE TABLE test.mytable (
+    value1 text PRIMARY KEY,
+    item t_item,
+    value2 text
+);
+
+cqlsh:test> insert into mytable (value1, value2) VALUES ( 'foo', 'bar');
+cqlsh:test> select * from mytable;
+
+ value1 | item | value2
+--------+------+--------
+    foo | null |    bar
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc5
+Component:
+None
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Russ Hatch
+Create date:
+01/Aug/14 23:00
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Aug/14 10:41

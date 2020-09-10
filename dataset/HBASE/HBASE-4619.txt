@@ -1,0 +1,44 @@
+Summary:
+TableOutputFormat.close() interferes with HBase clients in same JVM
+Description:
+This appears in TableOutputFormat.java:
+@Override
+    public void close(TaskAttemptContext context)
+    throws IOException {
+      table.flushCommits();
+      // The following call will shutdown all connections to the cluster from
+      // this JVM.  It will close out our zk session otherwise zk wil log
+      // expired sessions rather than closed ones.  If any other HTable instance
+      // running in this JVM, this next call will cause it damage.  Presumption
+      // is that the above this.table is only instance.
+      HConnectionManager.deleteAllConnections(true);
+    }
+It's not a safe assumption that a single TableOutputFormat is the only HBase client in a JVM.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+close delete
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Dave Revell
+Create date:
+19/Oct/11 17:01
+Update date:
+06/Jan/15 16:44
+Resolved date:
+06/Jan/15 16:44

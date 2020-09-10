@@ -1,0 +1,56 @@
+Summary:
+Poor AdvancedDataGrid scrolling with large number of visible columns and rows + possible fix
+Description:
+(Found in the Flex 3.3 sdk)
+Steps to reproduce:
+1. Construct an AdvancedDataGrid with a large number of visible rows and columns (say, 50 rows visible, and 10 columns)
+2. Make several of the columns use custom item renderers, and several just display default text.
+3. Ensure "selectionMode" of the ADG is NOT 'none'
+4. This effect is exaggerated significantly by using the debug Flash runtime.
+5. Scroll the datagrid up and down. The scrolling is extremely unresponsive.
+We profiled the issue, as well investigated the accompanying source code, and made the following discoveries:
+--The mouse move event (that causes scrolling) directly invokes layout and rendering routines.
+--Layout pushes all the regular item renderers onto the priority queues for invalidation; after validation, these renderers are placed onto the updateComplete queues, but they are not actually drawn, and hence THEY ARE NOT REMOVED (important) during this rendering phase.
+--During rendering, the custom item renderers are likewise pushed onto invalidation queues, and then dequeued. However, these custom renderers are drawn during this rendering phase (regular item renderers are not), which causes them to be removed from the updateComplete queues. When this happens, a message must be sent to each custom renderer, and all their children, informing them of the completed update. This requires a de-queue from the priority queue of all children of the item renderer. This in turn requires a scan through the update complete queue, which as mentioned above is getting larger and larger for every single row (because the regular item renderers are not removed).
+--On a profile we made of scrolling a large datagrid (~50 rows x 12 columns), in 11 seconds of sampled data, over 3.5 million calls were made to Flash's DisplayObjectContainer.contains method (which is called from the PriorityQueue.removeLargestChild). This seems excessive.
+--It appears the entire purpose of these draw calls is to draw highlighted/selected/edited cells. Looking at AdvancedDataGridBase, in the createRow method (line 1697), we see the following code:
+if (more)
+drawVisibleItem (....)
+We can see that in drawVisibleItem, the very first statement is an if-test ensuring that a row-selection mode is possible (or cell selection, in the parent class). It follows that if selectionMode is set to 'none', this code will never be called. We verified this: scrolling with no selection mode enabled is significantly better than with a selection mode set. Profiling also revealed that no profligate numbers of calls to DisplayObjectContainer.contains are made. Thus, we created a modified version of the AdvancedDataGrid by simply changing the if-statement to:
+if (more && (bHighlight || bSelected || bCaret))
+drawVisibleItem (...)
+This has worked well for us--no problems have been seen, though none of us are experts of this codebase.
+Is it possible to see this patch (assuming it is correct) make it into the Flex runtime?
+Workaround (if any):
+Setting selectionMode to 'none' will bypass the offending code; so will ensuring only stock item renderers are used; using only custom item renderers results in somewhat better performance, though calls are still made to the DisplayObjectContainer.contains method.
+Thanks,
+Chris Klochek
+VMware, Inc.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Incomplete
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+25/Feb/10 18:54
+Update date:
+29/Apr/10 03:13
+Resolved date:
+29/Jan/12 21:54

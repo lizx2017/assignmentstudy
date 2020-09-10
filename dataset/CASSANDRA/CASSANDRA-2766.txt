@@ -1,0 +1,74 @@
+Summary:
+ConcurrentModificationException during node recovery
+Description:
+Testing some node recovery operations.
+In this case:
+1. Data is being added/updated as it would in production
+2. repair is running on other nodes in the cluster
+3. we wiped data on this node and started up again, but before repair was actually started on this node (but it had gotten data through the regular data feed) we got this error.
+I see no indication in the logs that outgoing streams has been started, but the node have finished one incoming stream before this (I guess from some other node doing repair).
+INFO [CompactionExecutor:11] 2011-06-14 14:15:09,078 SSTableReader.java (line 155) Opening /data/cassandra/node1/data/JP/test-g-8
+INFO [CompactionExecutor:13] 2011-06-14 14:15:09,079 SSTableReader.java (line 155) Opening /data/cassandra/node1/data/JP/test-g-10
+INFO [HintedHandoff:1] 2011-06-14 14:15:26,623 HintedHandOffManager.java (line 302) Started hinted handoff for endpoint /1.10.42.216
+INFO [HintedHandoff:1] 2011-06-14 14:15:26,623 HintedHandOffManager.java (line 358) Finished hinted handoff of 0 rows to endpoint /1.10.42.216
+INFO [CompactionExecutor:9] 2011-06-14 14:15:29,417 SSTableReader.java (line 155) Opening /data/cassandra/node1/data/JP/Datetest-g-2
+ERROR [Thread-84] 2011-06-14 14:15:36,755 AbstractCassandraDaemon.java (line 113) Fatal exception in thread Thread[Thread-84,5,main]
+java.util.ConcurrentModificationException
+at java.util.AbstractList$Itr.checkForComodification(AbstractList.java:372)
+at java.util.AbstractList$Itr.next(AbstractList.java:343)
+at org.apache.cassandra.streaming.StreamInSession.closeIfFinished(StreamInSession.java:132)
+at org.apache.cassandra.streaming.IncomingStreamReader.read(IncomingStreamReader.java:63)
+at org.apache.cassandra.net.IncomingTcpConnection.stream(IncomingTcpConnection.java:155)
+at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:93)
+ERROR [Thread-79] 2011-06-14 14:15:36,755 AbstractCassandraDaemon.java (line 113) Fatal exception in thread Thread[Thread-79,5,main]
+java.util.ConcurrentModificationException
+at java.util.AbstractList$Itr.checkForComodification(AbstractList.java:372)
+at java.util.AbstractList$Itr.next(AbstractList.java:343)
+at org.apache.cassandra.streaming.StreamInSession.closeIfFinished(StreamInSession.java:132)
+at org.apache.cassandra.streaming.IncomingStreamReader.read(IncomingStreamReader.java:63)
+at org.apache.cassandra.net.IncomingTcpConnection.stream(IncomingTcpConnection.java:155)
+at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:93)
+ERROR [Thread-83] 2011-06-14 14:15:36,755 AbstractCassandraDaemon.java (line 113) Fatal exception in thread Thread[Thread-83,5,main]
+java.util.ConcurrentModificationException
+at java.util.AbstractList$Itr.checkForComodification(AbstractList.java:372)
+at java.util.AbstractList$Itr.next(AbstractList.java:343)
+at org.apache.cassandra.streaming.StreamInSession.closeIfFinished(StreamInSession.java:132)
+at org.apache.cassandra.streaming.IncomingStreamReader.read(IncomingStreamReader.java:63)
+at org.apache.cassandra.net.IncomingTcpConnection.stream(IncomingTcpConnection.java:155)
+at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:93)
+ERROR [Thread-85] 2011-06-14 14:15:36,755 AbstractCassandraDaemon.java (line 113) Fatal exception in thread Thread[Thread-85,5,main]
+java.util.ConcurrentModificationException
+at java.util.AbstractList$Itr.checkForComodification(AbstractList.java:372)
+at java.util.AbstractList$Itr.next(AbstractList.java:343)
+at org.apache.cassandra.streaming.StreamInSession.closeIfFinished(StreamInSession.java:132)
+at org.apache.cassandra.streaming.IncomingStreamReader.read(IncomingStreamReader.java:63)
+at org.apache.cassandra.net.IncomingTcpConnection.stream(IncomingTcpConnection.java:155)
+at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:93)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Terje Marthinussen
+Create date:
+14/Jun/11 07:14
+Update date:
+16/Apr/19 09:32
+Resolved date:
+16/Jun/11 17:40

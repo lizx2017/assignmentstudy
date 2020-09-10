@@ -1,0 +1,61 @@
+Summary:
+incorrect output for super call in getter
+Description:
+COMPILE::JS
+public function get defaultPrevented():Boolean
+{ return wrappedEvent ? wrappedEvent.defaultPrevented : super.isDefaultPrevented(); }
+COMPILE::JS
+override public function isDefaultPrevented():Boolean
+{ return defaultPrevented; }
+compiles to:
+org.apache.flex.events.KeyboardEvent.prototype.get__defaultPrevented = function() {
+return this.wrappedEvent ? this.wrappedEvent.defaultPrevented : org.apache.flex.events.KeyboardEvent.superClass_.get__defaultPrevented.apply(this);
+};
+org.apache.flex.events.KeyboardEvent.prototype.isDefaultPrevented = function() {
+return this.defaultPrevented;
+};
+In case the problem was not obvious, the first function should have looked like this:
+return this.wrappedEvent ? this.wrappedEvent.defaultPrevented : org.apache.flex.events.KeyboardEvent.superClass_.isDefaultPrevented.apply(this);
+instead of using (the non-existent) get__defaultPrevented function.
+Reversing the functions to use super in the normal function behaves as I’d expect:
+COMPILE::JS
+public function get defaultPrevented():Boolean
+{ return isDefaultPrevented(); }
+COMPILE::JS
+override public function isDefaultPrevented():Boolean
+{ return wrappedEvent ? wrappedEvent.defaultPrevented : super.isDefaultPrevented(); }
+Compiles to:
+org.apache.flex.events.KeyboardEvent.prototype.get__defaultPrevented = function() {
+return this.isDefaultPrevented();
+};
+org.apache.flex.events.KeyboardEvent.prototype.isDefaultPrevented = function() {
+return this.wrappedEvent ? this.wrappedEvent.defaultPrevented : org.apache.flex.events.KeyboardEvent.superClass_.isDefaultPrevented.apply(this);
+};
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Apache FalconJX 0.8.
+Fix_version:
+Apache FalconJX 0.9.
+Component:
+FalconJX
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Harbs
+Create date:
+26/Jul/17 11:23
+Update date:
+04/Aug/17 15:06
+Resolved date:
+04/Aug/17 15:06

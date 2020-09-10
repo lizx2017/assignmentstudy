@@ -1,0 +1,63 @@
+Summary:
+Localization in XRef generation results in unusable PDFs
+Description:
+PDFBox appears to be using a localized number formatter when encoding the XRef table. Depending on locale settings, this can result in unicode characters being used, which prevents PDFBox from loading the PDF.
+The following code demonstrates this:
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.util.Locale;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+
+class Example {
+
+  public static void main(String [] args) throws Exception {
+    File tempFile = File.createTempFile("example", ".pdf");
+    Locale arabicLocale = new Locale.Builder().setLanguageTag("ar-EG-u-nu-arab").build();
+    Locale.setDefault(arabicLocale);
+
+    try (FileOutputStream out = new FileOutputStream(tempFile)) {
+      PDDocument doc = new PDDocument();
+      doc.addPage(new PDPage(PDRectangle.LETTER));
+
+      doc.save(out);
+      doc.close();
+    }
+
+    try (FileInputStream in = new FileInputStream(tempFile)) {
+      PDDocument doc = PDDocument.load(in);
+      // This will throw.
+      doc.getPage(0);
+    }
+  }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.12, 1.8.13, 2.0.2, (2)
+Fix_version:
+1.8.13, 2.0.3, 3.0.0 PDFBox
+Component:
+Writing
+Label:
+easyfix locale newbi
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Edward Kupershlak
+Create date:
+05/Sep/16 02:38
+Update date:
+22/Feb/19 15:59
+Resolved date:
+05/Sep/16 16:20

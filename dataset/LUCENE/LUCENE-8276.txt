@@ -1,0 +1,45 @@
+Summary:
+GeoComplexPolygon failures
+Description:
+I have tightened a bit more the random test for polygons and GeoComplexPolygons still shows issues when traveling planes that are cutting the world near the pole. I could identify three cases:
+  case 1) It happens when the check point is on aone of the test point planes but the planes is close to the pole and cannot be traversed. In that case we hit the following part of the code:
+} else if (testPointFixedYPlane.evaluateIsZero(x, y, z) || testPointFixedXPlane.evaluateIsZero(x, y, z) || testPointFixedZPlane.evaluateIsZero(x, y, z)) {
+  throw new IllegalArgumentException("Can't compute isWithin for specified point");
+} else {
+  It seems this check is unnecesary. If removed then a traversal is choosen and evrything works as expected.
+  case 2) In this case a DualCrossingEdgeIterator is used with one of the planes being close to the pole but inside current restricutions (is a valid traversal). I think the problem happens when computing the intersection points for above and below plane in computeInsideOutside:
+final GeoPoint[] outsideOutsidePoints = testPointOutsidePlane.findIntersections(planetModel, travelOutsidePlane);  //these don't add anything: , checkPointCutoffPlane, testPointCutoffPlane);
+final GeoPoint outsideOutsidePoint = pickProximate(outsideOutsidePoints);
+The intersection above results in two points close to each other and close to the intersection point, and therefore pickProximate fails in choosing the right one.
+case 3) In this case a LinearCrossingEdgeIterator is used with the plane being close to the pole. In this case when evaluating the intersection between an edge and the plane, we get two intersections (because are very close together) inside the bounds instead of one. The result is too many crossings.
+  After evaluating this errors I think we should really prevent using planes that are near a pole. I attached a new version of GeoComplexPolygon that seems to solve this issues. The approach is the following:
+ NEAR_EDGE_CUTOFF is not expressed as a linear distance but as a percentage, curerntly 0.75 . If ab is the value of a semiaxis, the logic disallows to travel a plane if the distance between the plane and the center of the world is bigger that  NEAR_EDGE_CUTOFF * pole.
+               
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.7, 7.4, 8.0
+Component:
+modules/spatial3d
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Karl Wright
+Reporter:
+Ignacio Vera
+Create date:
+25/Apr/18 12:30
+Update date:
+27/Jun/18 08:31
+Resolved date:
+26/Apr/18 13:17

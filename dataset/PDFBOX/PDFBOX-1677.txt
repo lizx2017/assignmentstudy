@@ -1,0 +1,91 @@
+Summary:
+PDPage.convertToImage() throw java.lang.IndexOutOfBoundsException
+Description:
+Sometimes, a random times, the method PDPage.convertToImage() throw an exception like java.lang.IndexOutOfBoundsException.
+I said sometimes, because is a ramdom process which i cannot understand.
+This is my code:
+public byte[] getImageOutputStreamFromPdfFile (byte[] inputPDF) throws IOException,Exception{
+logger.info("Utils.getImageOutputStreamFromPdfFile (byte[] inputPDF)");
+//resultado
+byte[] result=null;
+if (inputPDF!=null && inputPDF.length>0){
+long time = System.currentTimeMillis();
+InputStream isPDF = null;
+//imagen resultado
+ByteArrayOutputStream imageOutputStream = null;
+try{
+isPDF = new ByteArrayInputStream(inputPDF);
+imageOutputStream = new ByteArrayOutputStream();
+//pdf
+PDDocument document = PDDocument.load(isPDF, true);
+@SuppressWarnings("unchecked")
+List<PDPage> pages = document.getDocumentCatalog().getAllPages();
+List<BufferedImage> imagesList = new ArrayList<BufferedImage>(
+pages.size());
+PDPage pDPage = null;
+BufferedImage auxImage = null;
+// width y height final image
+int maxWidth = 0;
+int totalHeight = 0;
+for (int i = 0; i < pages.size(); i++) {
+pDPage = pages.get;
+// get Image Page
+auxImage = pDPage.convertToImage();
+auxImage.flush();
+// maxWidth
+if (auxImage.getWidth() > maxWidth)
+{ maxWidth = auxImage.getWidth(); }
+// totalHeight
+totalHeight += auxImage.getHeight();
+// add image to the list
+imagesList.add(i, auxImage);
+}
+BufferedImage bImageFromConvert = new BufferedImage(maxWidth,
+totalHeight, BufferedImage.TYPE_INT_ARGB);
+Graphics g = bImageFromConvert.getGraphics();
+int auxHeightDraw = 0;
+for (BufferedImage img : imagesList)
+{ g.drawImage(img, 0, auxHeightDraw, null); auxHeightDraw += img.getHeight(); }
+imagesList.clear();
+ImageIO.write(bImageFromConvert, ConstantesProperties.EXTENSION_IMAGE, imageOutputStream);
+result=imageOutputStream.toByteArray();
+logger.info("Utils.getImageOutputStreamFromPdfFile --> OK: Generation time:"+(System.currentTimeMillis()-time));
+}catch (IOException e)
+{ logger.error("Utils.getImageOutputStreamFromPdfFile-->"+Utils.stackTraceToString(e)); result=null; throw e; }catch (Exception e) { logger.error("Utils.getImageOutputStreamFromPdfFile-->"+Utils.stackTraceToString(e)); result=null; throw e; }
+finally{
+if (isPDF!=null)
+{ isPDF.close(); }
+if (imageOutputStream!=null)
+{ imageOutputStream.close(); }
+}//end finally
+}//end if
+return result;
+}//end getImageOutputStreamFromPdfFile
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+1.8.1, 1.8.2
+Fix_version:
+None
+Component:
+PDModel, (2)
+Label:
+PDPage, convertToIma
+Environment:
+jsf, tomcat, weblogic
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Javier García Sánche
+Create date:
+30/Jul/13 16:52
+Update date:
+21/Aug/13 15:53
+Resolved date:
+21/Aug/13 15:53

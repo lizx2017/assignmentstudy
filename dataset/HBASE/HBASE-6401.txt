@@ -1,0 +1,41 @@
+Summary:
+HBase may lose edits after a crash if used with HDFS 1.0.3 or older
+Description:
+This comes from a hdfs bug, fixed in some hdfs versions. I haven't found the hdfs jira for this.
+Context: HBase Write Ahead Log features. This is using hdfs append. If the node crashes, the file that was written is read by other processes to replay the action.
+So we have in hdfs one (dead) process writing with another process reading.
+But, despite the call to syncFs, we don't always see the data when we have a dead node. It seems to be because the call in DFSClient#updateBlockInfo ignores the ipc errors and set the length to 0.
+So we may miss all the writes to the last block if we try to connect to the dead DN.
+hdfs 1.0.3, branch-1 or branch-1-win: we have the issue
+http://svn.apache.org/viewvc/hadoop/common/branches/branch-1/src/hdfs/org/apache/hadoop/hdfs/DFSClient.java?revision=1359853&view=markup
+hdfs branch-2 or trunk: we should not have the issue (but not tested)
+http://svn.apache.org/viewvc/hadoop/common/branches/branch-2/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/DFSInputStream.java?view=markup
+The attached test will fail ~50 of the time.
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Won't Fix
+Affects_version:
+0.95.2
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Nicolas Liochon
+Create date:
+17/Jul/12 12:35
+Update date:
+05/Dec/12 14:59
+Resolved date:
+05/Dec/12 14:59

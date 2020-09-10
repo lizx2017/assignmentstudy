@@ -1,0 +1,65 @@
+Summary:
+FSTableDescriptors.getTableInfoPath() should handle FileNotFoundException
+Description:
+As reported by Roman in the thread entitled 'HBase 0.92/Hadoop 0.22 test results', table creation would result in the following if hadoop 0.22 is the underlying platform:
+11/11/05 19:08:48 INFO handler.CreateTableHandler: Attemping to create
+the table b
+11/11/05 19:08:48 ERROR handler.CreateTableHandler: Error trying to
+create the table b
+java.io.FileNotFoundException: File
+hdfs://ip-10-110-254-200.ec2.internal:17020/hbase/b does not exist.
+       at org.apache.hadoop.hdfs.DistributedFileSystem.listStatus(DistributedFileSystem.java:387)
+       at org.apache.hadoop.fs.FileSystem.listStatus(FileSystem.java:1085)
+       at org.apache.hadoop.fs.FileSystem.listStatus(FileSystem.java:1110)
+       at org.apache.hadoop.hbase.util.FSTableDescriptors.getTableInfoPath(FSTableDescriptors.java:257)
+       at org.apache.hadoop.hbase.util.FSTableDescriptors.getTableInfoPath(FSTableDescriptors.java:243)
+       at org.apache.hadoop.hbase.util.FSTableDescriptors.createTableDescriptor(FSTableDescriptors.java:566)
+       at org.apache.hadoop.hbase.util.FSTableDescriptors.createTableDescriptor(FSTableDescriptors.java:535)
+       at org.apache.hadoop.hbase.util.FSTableDescriptors.createTableDescriptor(FSTableDescriptors.java:519)
+       at org.apache.hadoop.hbase.master.handler.CreateTableHandler.handleCreateTable(CreateTableHandler.java:140)
+       at org.apache.hadoop.hbase.master.handler.CreateTableHandler.process(CreateTableHandler.java:126)
+       at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:168)
+       at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+       at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+       at java.lang.Thread.run(Thread.java:619)
+This was due to how DistributedFileSystem.listStatus() in 0.22 handles non-existent directory:
+  @Override
+  public FileStatus[] listStatus(Path p) throws IOException {
+    String src = getPathName(p);
+
+    // fetch the first batch of entries in the directory
+    DirectoryListing thisListing = dfs.listPaths(
+        src, HdfsFileStatus.EMPTY_NAME);
+
+    if (thisListing == null) { // the directory does not exist
+      throw new FileNotFoundException("File " + p + " does not exist.");
+    }
+So in FSTableDescriptors.getTableInfoPath(), we should catch FileNotFoundException and treat it the same way as status being null.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Ted Yu
+Create date:
+07/Nov/11 05:07
+Update date:
+20/Nov/15 11:53
+Resolved date:
+09/Nov/11 04:39

@@ -1,0 +1,44 @@
+Summary:
+Improve Polygon.contains()
+Description:
+The current PIP algorithm could use some improvements. I think we should swap in the algorithm here: https://www.ecse.rpi.edu/~wrf/Research/Short_Notes/pnpoly.html
+It is a bit faster for complex polygons:
+n=50   
+19.3 QPS -> 20.4 QPS
+n=500   
+9.8 QPS -> 11.2 QPS
+n=1000 
+6.3 QPS -> 7.4 QPS
+It also has some nice properties:
+if you partition a region of the plane into polygons, i.e., form a planar graph, then PNPOLY will locate each point into exactly one polygon. In other words, PNPOLY considers each polygon to be topologically a semi-open set. This makes things simpler, i.e., causes fewer special cases, if you use PNPOLY as part of a larger system. Examples of this include locating a point in a planar graph, and intersecting two planar graphs.
+You can see the current issues here by writing tests that pick numbers that won't suffer from rounding errors, to see how the edges behave. For a rectangle as an example, the current code will treat all edges and corners as "contains=true", except for the top edge. This means that if you tried to e.g. form a grid of rectangles (like described above), some points would exist in more than one square.
+On the other hand if you port this same test to java.awt.Polygon, you will see that only the bottom left corner, bottom side, and left side are treated as "contains=true". So then your grid would work without any corner cases. This algorithm behaves the same way.
+Finally, it supports multiple components and holes directly. this is nice for the future because for a complex multipolygon, we can just have one tight loop.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.1, 7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+15/Apr/16 06:09
+Update date:
+17/Jun/16 13:11
+Resolved date:
+15/Apr/16 18:27

@@ -1,0 +1,60 @@
+Summary:
+Check for null super column for SC CF in ThriftValidation (and always validate the sc key)
+Description:
+Run the following via cli:
+[default@test] use test;
+Authenticated to keyspace: test
+[default@test] create column family super with column_type=Super and default_validation_class=CounterColumnType;
+d41df8e0-7055-11e0-0000-242d50cf1fbf
+Waiting for schema agreement...
+... schemas agree across the cluster
+[default@test] incr super['0']['0'];
+Value incremented.
+[default@test] incr super['0']['0']['0'];
+null
+Obviously the first incr call is invalid, even though it reports otherwise, as well as generates this exception:
+ERROR 17:38:05,871 Fatal exception in thread Thread[COMMIT-LOG-WRITER,5,main]
+java.lang.RuntimeException: java.lang.ClassCastException: org.apache.cassandra.db.CounterColumn cannot be cast to org.apache.cassandra.db.SuperColumn
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+        at java.lang.Thread.run(Thread.java:636)
+Caused by: java.lang.ClassCastException: org.apache.cassandra.db.CounterColumn cannot be cast to org.apache.cassandra.db.SuperColumn
+        at org.apache.cassandra.db.SuperColumnSerializer.serialize(SuperColumn.java:353)
+        at org.apache.cassandra.db.SuperColumnSerializer.serialize(SuperColumn.java:337)
+        at org.apache.cassandra.db.ColumnFamilySerializer.serializeForSSTable(ColumnFamilySerializer.java:88)
+        at org.apache.cassandra.db.ColumnFamilySerializer.serialize(ColumnFamilySerializer.java:74)
+        at org.apache.cassandra.db.RowMutation$RowMutationSerializer.serialize(RowMutation.java:353)
+        at org.apache.cassandra.db.RowMutation.getSerializedBuffer(RowMutation.java:236)
+        at org.apache.cassandra.db.commitlog.CommitLogSegment.write(CommitLogSegment.java:111)
+        at org.apache.cassandra.db.commitlog.CommitLog$LogRecordAdder.run(CommitLog.java:480)
+        at org.apache.cassandra.db.commitlog.PeriodicCommitLogExecutorService$1.runMayThrow(PeriodicCommitLogExecutorService.java:49)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+        ... 1 more
+But the second, proper incr call results in a bunch of exceptions and not a real increment.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.6, 0.8.0 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Mike Bulman
+Create date:
+26/Apr/11 22:53
+Update date:
+16/Apr/19 09:33
+Resolved date:
+29/Apr/11 17:11

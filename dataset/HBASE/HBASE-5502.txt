@@ -1,0 +1,51 @@
+Summary:
+region_mover.rb fails to load regions back to original server for regions only containing empty tables.
+Description:
+The region_mover loadRegion function incorrectly uses 'isSuccessfulScan':
+ 
+  for r in regions
+    exists = false
+    begin
+      exists = isSuccessfulScan(admin, r)
+    rescue org.apache.hadoop.hbase.NotServingRegionException => e
+      $LOG.info("Failed scan of " + e.message)
+    end
+isSuccessfulScan throws an exception when it fails rather than returning status.
+As a result empty regions don't get restored - this is the case in a fresh install (which is how I discovered this) with no user table.
+Modifying the code to set exists IF isSuccessfulScan does not throw an exception worked for me:
+  for r in regions
+    exists = false
+    begin
+      isSuccessfulScan(admin, r)
+      exists = true
+    rescue org.apache.hadoop.hbase.NotServingRegionException => e
+      $LOG.info("Failed scan of " + e.message)
+    end
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.1, 0.94.0
+Component:
+scripts
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+James Page
+Create date:
+01/Mar/12 11:40
+Update date:
+12/Oct/12 05:35
+Resolved date:
+01/Mar/12 17:51

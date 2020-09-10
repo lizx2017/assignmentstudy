@@ -1,0 +1,51 @@
+Summary:
+Race in HCM.getMaster stalls clients
+Description:
+I found this issue trying to run YCSB on 0.94, I don't think it exists on any other branch. I believe that this was introduced in HBASE-5058 "Allow HBaseAdmin to use an existing connection".
+The issue is that in HCM.getMaster it does this recipe:
+Check if the master is null and runs (if so, return)
+Grab a lock on masterLock
+nullify this.master
+try to get a new master
+The issue happens at 3, it should re-run 1 since while you're waiting on the lock someone else could have already fixed it for you. What happens right now is that the threads are all able to set the master to null before others are able to get out of getMaster and it's a complete mess.
+Figuring it out took me some time because it doesn't manifest itself right away, silent retries are done in the background. Basically the first clue was this:
+Error doing get: org.apache.hadoop.hbase.client.RetriesExhaustedException: Failed after attempts=10, exceptions:
+Tue Jun 19 23:40:46 UTC 2012, org.apache.hadoop.hbase.client.HTable$3@571a4bd4, java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@2eb0a3f5 closed
+Tue Jun 19 23:40:47 UTC 2012, org.apache.hadoop.hbase.client.HTable$3@571a4bd4, java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@2eb0a3f5 closed
+Tue Jun 19 23:40:48 UTC 2012, org.apache.hadoop.hbase.client.HTable$3@571a4bd4, java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@2eb0a3f5 closed
+Tue Jun 19 23:40:49 UTC 2012, org.apache.hadoop.hbase.client.HTable$3@571a4bd4, java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@2eb0a3f5 closed
+Tue Jun 19 23:40:51 UTC 2012, org.apache.hadoop.hbase.client.HTable$3@571a4bd4, java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@2eb0a3f5 closed
+Tue Jun 19 23:40:53 UTC 2012, org.apache.hadoop.hbase.client.HTable$3@571a4bd4, java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@2eb0a3f5 closed
+Tue Jun 19 23:40:57 UTC 2012, org.apache.hadoop.hbase.client.HTable$3@571a4bd4, java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@2eb0a3f5 closed
+Tue Jun 19 23:41:01 UTC 2012, org.apache.hadoop.hbase.client.HTable$3@571a4bd4, java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@2eb0a3f5 closed
+Tue Jun 19 23:41:09 UTC 2012, org.apache.hadoop.hbase.client.HTable$3@571a4bd4, java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@2eb0a3f5 closed
+Tue Jun 19 23:41:25 UTC 2012, org.apache.hadoop.hbase.client.HTable$3@571a4bd4, java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@2eb0a3f5 closed
+This was caused by the little dance up in HBaseAdmin where it deletes "stale" connections... which are not stale at all.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.0
+Fix_version:
+0.94.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+Jean-Daniel Cryans
+Create date:
+19/Jun/12 23:43
+Update date:
+12/Oct/12 05:36
+Resolved date:
+26/Jun/12 17:18

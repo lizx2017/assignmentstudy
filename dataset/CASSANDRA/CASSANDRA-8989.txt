@@ -1,0 +1,44 @@
+Summary:
+Reading from table which contains collection type using token function and with CL > ONE causes overwhelming writes to replicas
+Description:
+When reading from a table at the aforementioned conditions, each read from replica also casues write to the replica.
+Confimed in version 2.0.12 & 2.0.13, version 2.1.3 seems ok.
+To reproduce:
+CREATE KEYSPACE test WITH replication = {'class': 'NetworkTopologyStrategy', 'DC1': 2};
+USE test;
+CREATE TABLE bug(id int PRIMARY KEY, val map<int,int>);
+INSERT INTO bug(id, val) VALUES (1, {2: 3});
+CONSISTENCY LOCAL_QUORUM
+TRACING ON
+SELECT * FROM bug WHERE token(id) <= 0;
+trace contains twice:
+Appending to commitlog
+Adding to bug memtable
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Carl Yeksigian
+Reporter:
+Miroslaw Partyka
+Create date:
+18/Mar/15 16:16
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Apr/15 19:23

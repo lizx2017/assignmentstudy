@@ -1,0 +1,92 @@
+Summary:
+cqlsh failing to handle utf8 decode errors in certain cases
+Description:
+Under certain circumstances when a row to be returned in cqlsh contains a utf8 decoding error, no results will be printed. It seems that certain types of where clauses cause the decoding to fail.
+Preparation:
+[cqlsh 3.1.8 | Cassandra 1.2.16 | CQL spec 3.0.0 | Thrift protocol 19.36.2]
+...
+cqlsh:ks> CREATE TABLE test_utf8 ( a text PRIMARY KEY, b text );
+cqlsh:ks> INSERT INTO test_utf8 (a, b) VALUES (blobAsText(0x3031f6393130), '0110');
+cqlsh:ks> select * from test_utf8;
+
+ a           | b
+-------------+------
+ '01\xf6910' | 0110
+
+Failed to decode value '01\xf6910' (for column 'a') as text: 'utf8' codec can't decode byte 0xf6 in position 2: invalid start byte
+cqlsh:ks>
+Actual Results:
+cqlsh:ks> select * from test_utf8 where a = blobAsText(0x3031f6393130);
+
+value '01\xf6910' (in col 'a') can't be deserialized as text: 'utf8' codec can't decode byte 0xf6 in position 2: invalid start byte
+cqlsh:ks>
+Expected Results:
+cqlsh:ks> select * from test_utf8 where a = blobAsText(0x3031f6393130);
+
+ a           | b
+-------------+------
+ '01\xf6910' | 0110
+
+Failed to decode value '01\xf6910' (for column 'a') as text: 'utf8' codec can't decode byte 0xf6 in position 2: invalid start byte
+cqlsh:ks>
+Traceback with cqlsh --debug:
+cqlsh:ks> select * from test_utf8 where a = blobAsText(0x3031f6393130);
+
+Traceback (most recent call last):
+  File "bin/cqlsh", line 942, in onecmd
+    self.handle_statement(st, statementtext)
+  File "bin/cqlsh", line 982, in handle_statement
+    return self.handle_parse_error(cmdword, tokens, parsed, srcstr)
+  File "bin/cqlsh", line 991, in handle_parse_error
+    return self.perform_statement(cqlruleset.cql_extract_orig(tokens, srcstr))
+  File "bin/cqlsh", line 1031, in perform_statement
+    with_default_limit=with_default_limit)
+  File "bin/cqlsh", line 1059, in perform_statement_untraced
+    self.print_result(self.cursor, with_default_limit)
+  File "bin/cqlsh", line 1111, in print_result
+    self.print_static_result(cursor)
+  File "bin/cqlsh", line 1141, in print_static_result
+    formatted_values = [map(self.myformat_value, self.decode_row(cursor, row), cursor.column_types) for row in cursor.result]
+  File "bin/cqlsh", line 590, in decode_row
+    values.append(cursor.decoder.decode_value(val, vtype, nameinfo[0]))
+  File "bin/../lib/cql-internal-only-1.4.1.zip/cql-1.4.1/cql/decoders.py", line 54, in decode_value
+    vtype.cql_parameterized_type())
+  File "bin/../lib/cql-internal-only-1.4.1.zip/cql-1.4.1/cql/decoders.py", line 33, in value_decode_error
+    % (valuebytes, namebytes, expectedtype, err))
+ProgrammingError: value '01\xf6910' (in col 'a') can't be deserialized as text: 'utf8' codec can't decode byte 0xf6 in position 2: invalid start byte
+cqlsh:ks>
+Problematic statements:
+cqlsh:ks> select * from test_utf8 where token(a) > 0;
+cqlsh:ks> select * from test_utf8 where a in (blobAsText(0x3031f6393130));
+cqlsh:ks> select * from test_utf8 where a = blobAsText(0x3031f6393130);
+Statements that are ok:
+cqlsh:ks> select * from test_utf8 where token(a) < token('qwer');
+cqlsh:ks> select * from test_utf8;
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.17, 2.0.8, 2.1 beta2
+Component:
+Legacy/Tools
+Label:
+cqlsh
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mikhail Stepura
+Reporter:
+Colin B.
+Create date:
+09/Apr/14 21:01
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Apr/14 01:19

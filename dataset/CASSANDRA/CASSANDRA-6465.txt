@@ -1,0 +1,48 @@
+Summary:
+DES scores fluctuate too much for cache pinning
+Description:
+To quote the conf:
+# if set greater than zero and read_repair_chance is < 1.0, this will allow
+# 'pinning' of replicas to hosts in order to increase cache capacity.
+# The badness threshold will control how much worse the pinned host has to be
+# before the dynamic snitch will prefer other replicas over it.  This is
+# expressed as a double which represents a percentage.  Thus, a value of
+# 0.2 means Cassandra would continue to prefer the static snitch values
+# until the pinned host was 20% worse than the fastest.
+dynamic_snitch_badness_threshold: 0.1
+An assumption of this feature is that scores will vary by less than dynamic_snitch_badness_threshold during normal operations. Attached is the result of polling a node for the scores of 6 different endpoints at 1 Hz for 15 minutes. The endpoints to sample were chosen with `nodetool getendpoints` for row that is known to get reads. The node was acting as a coordinator for a few hundred req/second, so it should have sufficient data to work with. Other traces on a second cluster have produced similar results.
+The scores vary by far more than I would expect, as show by the difficulty of seeing anything useful in that graph.
+The difference between the best and next-best score is usually > 10% (default dynamic_snitch_badness_threshold).
+Neither ClientRequest nor ColumFamily metrics showed wild changes during the data gathering period.
+Attachments:
+jython script cobbled together to gather the data (based on work on the mailing list from Maki Watanabe a while back)
+csv of DES scores for 6 endpoints, polled about once a second
+Attempt at making a graph
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.5
+Component:
+None
+Label:
+gossip
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Chris Burroughs
+Create date:
+09/Dec/13 18:23
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Jan/14 21:18

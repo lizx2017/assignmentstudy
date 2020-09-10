@@ -1,0 +1,123 @@
+Summary:
+Text corruption
+Description:
+I use PDFBox 1.8.8 and try to add new text to existing pdf file. The problem is that text added by me is looking compressed for this specific pdf
+original pdf (i think this file is source of problem)
+(it is working for other pdfs).
+pdfbox generated file
+image of problem with explanation
+It was not shown in all originally but i fixed problem with this command (set font display mode)
+content.appendRawCommands("0 Tr ");  
+I was working with pdf matrix and checked almost everything ... and do not see way how may i fix the problem...
+content.setTextMatrix(1, 0, 0, 1, 0, 0);
+questions:
+1) why pdfbox not ignore page font settings and use default options of font on page?
+2) what mode was used in my pdf to archive such kind transformation how i may fix problem to show font correctly?
+private static void writePdfBoxStamp(PDDocument document, int page,
+        float topLeftX, float topLeftY, float width, float height,
+        String text, float  itemFontSize, int[] color, int rotation) throws IOException {
+
+    PDPage pdfPage = (PDPage) document.getDocumentCatalog().getAllPages().get(page);
+    PDPageContentStream content = new PDPageContentStream(document, pdfPage, true, true);
+
+
+    // COSDictionary pageFonts = pdfPage.getResources().getCOSDictionary();
+
+
+    //border draw
+    float lineWidth = 2;
+
+    float bottomLeftX = topLeftX;
+    float bottomLeftY = topLeftY - height;
+    float topRightX = topLeftX + width;
+    float topRightY = topLeftY;
+
+    float radius = 10;
+
+    content.setLineWidth(lineWidth);
+    content.setStrokingColor(new Color(color[0], color[1], color[2]));
+
+
+    content.setNonStrokingColor(new Color(color[0], color[1], color[2]));
+
+    PDFont font = PDType1Font.HELVETICA_BOLD;
+    int fontSize = (int) itemFontSize;
+
+
+    float linesHeight = font.getFontDescriptor().getFontBoundingBox()
+            .getHeight()
+            / 1000 * fontSize;
+    float txtLineWidth = font.getStringWidth(text)
+            / 1000 * fontSize;
+
+    content.setFont(font, fontSize);
+
+    content.beginText();
+
+    content.setFont(font, fontSize);
+
+    float  posTextX = topLeftX + (width-txtLineWidth)/2;
+    float  posTextY = topLeftY  - height/2 - linesHeight/2 + lineWidth;
+
+
+
+    if (rotation > 0) {
+        int  step = 0;
+        // clockwise rotation
+        if (rotation == 90) {
+            step = 6;
+            posTextX = topLeftX + (width + linesHeight)/2 - lineWidth;
+            posTextY = topLeftY - (height + txtLineWidth)/2;
+        }
+        if (rotation == 270) {
+            step = -6;
+            posTextX = topLeftX + (width - linesHeight/2)/2;
+            posTextY = topLeftY - (height - txtLineWidth)/2;
+        }
+        content.setTextRotation(-step*Math.PI*0.25, posTextX, posTextY);
+
+    } else {
+        content.moveTextPositionByAmount(posTextX,posTextY);
+
+    }
+
+    content.appendRawCommands("0 Tr "); //set normal text procession
+
+    content.drawString(text);
+
+
+    content.endText();
+
+    content.stroke();
+
+
+    content.close();
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+1.8.8
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+pupkin
+Create date:
+23/Dec/14 10:57
+Update date:
+24/Dec/14 20:18
+Resolved date:
+23/Dec/14 12:51

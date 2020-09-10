@@ -1,0 +1,82 @@
+Summary:
+Master cannot start if TableNotFoundException is thrown while partial table recovery
+Description:
+I was trying to create a table. The table creation failed
+java.io.IOException: java.util.concurrent.ExecutionException: java.lang.IllegalStateException: Could not instantiate a region instance.
+ at org.apache.hadoop.hbase.util.ModifyRegionUtils.createRegions(ModifyRegionUtils.java:133)
+ at org.apache.hadoop.hbase.master.handler.CreateTableHandler.handleCreateHdfsRegions(CreateTableHandler.java:256)
+ at org.apache.hadoop.hbase.master.handler.CreateTableHandler.handleCreateTable(CreateTableHandler.java:204)
+ at org.apache.hadoop.hbase.master.handler.CreateTableHandler.process(CreateTableHandler.java:153)
+ at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:130)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: java.util.concurrent.ExecutionException: java.lang.IllegalStateException: Could not instantiate a region instance.
+ at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+ at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+ at org.apache.hadoop.hbase.util.ModifyRegionUtils.createRegions(ModifyRegionUtils.java:126)
+ ... 7 more
+Caused by: java.lang.IllegalStateException: Could not instantiate a region instance.
+ at org.apache.hadoop.hbase.regionserver.HRegion.newHRegion(HRegion.java:3765)
+ at org.apache.hadoop.hbase.regionserver.HRegion.createHRegion(HRegion.java:3870)
+ at org.apache.hadoop.hbase.util.ModifyRegionUtils$1.call(ModifyRegionUtils.java:106)
+ at org.apache.hadoop.hbase.util.ModifyRegionUtils$1.call(ModifyRegionUtils.java:103)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ ... 3 more
+Caused by: java.lang.reflect.InvocationTargetException
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:39)
+ at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:27)
+ at java.lang.reflect.Constructor.newInstance(Constructor.java:513)
+ at org.apache.hadoop.hbase.regionserver.HRegion.newHRegion(HRegion.java:3762)
+ ... 11 more
+Caused by: java.lang.NoClassDefFoundError: org/apache/hadoop/hbase/CompoundConfiguration$1
+ at org.apache.hadoop.hbase.CompoundConfiguration.add(CompoundConfiguration.java:82)
+ at org.apache.hadoop.hbase.regionserver.HRegion.<init>(HRegion.java:438)
+ at org.apache.hadoop.hbase.regionserver.HRegion.<init>(HRegion.java:401)
+ ... 16 more
+Am not sure of the above failure. The same setup is able to create new tables.
+Now the table is already in ENABLING state. The master was restarted.
+Now as the table was found in ENABLING state but not added to META the EnableTableHandler
+2013-04-03 18:33:03,850 FATAL org.apache.hadoop.hbase.master.HMaster: Unhandled exception. Starting shutdown.
+org.apache.hadoop.hbase.exceptions.TableNotFoundException: TestTable
+ at org.apache.hadoop.hbase.master.handler.EnableTableHandler.prepare(EnableTableHandler.java:89)
+ at org.apache.hadoop.hbase.master.AssignmentManager.recoverTableInEnablingState(AssignmentManager.java:2586)
+ at org.apache.hadoop.hbase.master.AssignmentManager.joinCluster(AssignmentManager.java:390)
+ at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:777)
+ at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:522)
+ at java.lang.Thread.run(Thread.java:662)
+2013-04-03 18:33:03,880 INFO org.apache.hadoop.hbase.master.HMaster: Aborting
+This does not allow me to start my master further leading to unoperationable state of the whole cluster.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.6, 0.95.0
+Fix_version:
+0.98.0, 0.94.7, 0.95.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudevan
+Reporter:
+ramkrishna.s.vasudevan
+Create date:
+04/Apr/13 07:47
+Update date:
+27/Apr/13 15:55
+Resolved date:
+10/Apr/13 17:03

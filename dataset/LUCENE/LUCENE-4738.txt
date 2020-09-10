@@ -1,0 +1,47 @@
+Summary:
+Killed JVM when first commit was running will generate a corrupted index
+Description:
+1. Start a NEW IndexWriterBuilder on an empty folder,
+add some documents to the index
+2. Call commit
+3. When the segments_1 file with 0 byte was created, kill the JVM
+We will end with a corrupted index with an empty segments_1.
+We only have issue with the first commit crash.
+Also, if you tried to open an IndexSearcher on a new index. And the first commit on the index was not finished yet. Then you will see exception like:
+===========================================================================
+org.apache.lucene.index.IndexNotFoundException: no segments* file found in org.apache.lucene.store.MMapDirectory@C:\tmp\testdir lockFactory=org.apache.lucene.store.NativeFSLockFactory@6ee00df: files: [write.lock, _0.fdt, _0.fdx]
+at org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run(SegmentInfos.java:741)
+at org.apache.lucene.index.StandardDirectoryReader.open(StandardDirectoryReader.java:52)
+at org.apache.lucene.index.DirectoryReader.open(DirectoryReader.java:65)
+===========================================================================
+So when a new index was created, we should first create an empty index. We should not wait for the commit/close call to create the segment file.
+If we had an empty index there. It won't leave a corrupted index when there were a power issue on the first commit.
+And a concurrent IndexSearcher can access to the index(No match is better than exception).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+4.0
+Fix_version:
+4.3, 6.0
+Component:
+core/index
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Billow Gao
+Create date:
+30/Jan/13 21:21
+Update date:
+09/May/16 18:34
+Resolved date:
+10/Apr/13 22:06

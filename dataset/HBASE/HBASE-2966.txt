@@ -1,0 +1,69 @@
+Summary:
+HBase client stuck on org.apache.zookeeper.ClientCnxn.submitRequest(ClientCnxn.java:1278) holding regionLockObject lock
+Description:
+We noticed in one case the HBase client program got stuck on Zookeeper.exists() call.
+One of the threads was stuck here on the ZK call while holding an HBase level lock (regionLockObject in locateRegionInMeta()).
+ 
+"thrift-0-thread-8" prio=10 tid=0x00007f189ca4c000 nid=0x550f in Object.wait() [0x0000000044241000]
+   java.lang.Thread.State: WAITING (on object monitor)
+                at java.lang.Object.wait(Native Method)
+                at java.lang.Object.wait(Object.java:485)
+                at org.apache.zookeeper.ClientCnxn.submitRequest(ClientCnxn.java:1278)
+                - locked <0x00007f1903a0c280> (a org.apache.zookeeper.ClientCnxn$Packet)
+                at org.apache.zookeeper.ZooKeeper.exists(ZooKeeper.java:804)
+                at org.apache.zookeeper.ZooKeeper.exists(ZooKeeper.java:837)
+                at org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper.getRSDirectoryCount(ZooKeeperWrapper.java:765)
+                at org.apache.hadoop.hbase.client.HTable.getCurrentNrHRS(HTable.java:173)
+                at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:147)
+                at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:124)
+                at org.apache.hadoop.hbase.client.MetaScanner.metaScan(MetaScanner.java:89)
+                at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.prefetchRegionCache(HConnectionManager.java:734)
+                at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.locateRegionInMeta(HConnectionManager.java:785)
+                - locked <0x00007f190d868848> (a java.lang.Object)
+                at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.locateRegion(HConnectionManager.java:679)
+                at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.locateRegion(HConnectionManager.java:646)
+                at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.getRegionLocation(HConnectionManager.java:472)
+                at org.apache.hadoop.hbase.client.ServerCallable.instantiateServer(ServerCallable.java:57)
+                at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.getRegionServerWithRetries(HConnectionManager.java:1147)
+                at org.apache.hadoop.hbase.client.HTable.get(HTable.java:503)
+The remaining other threads are all waiting on the regionLockObject lock (held by the above thread) with stacks like:
+thrift-0-thread-7" prio=10 tid=0x00007f189ca4a800 nid=0x550e waiting for monitor entry [0x0000000044141000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+                at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.locateRegionInMeta(HConnectionManager.java:783)
+                - waiting to lock <0x00007f190d868848> (a java.lang.Object)
+                at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.locateRegion(HConnectionManager.java:679)
+                at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.locateRegion(HConnectionManager.java:646)
+                at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.getRegionLocation(HConnectionManager.java:472)
+                at org.apache.hadoop.hbase.client.ServerCallable.instantiateServer(ServerCallable.java:57)
+                at org.apache.hadoop.hbase.client.HConnectionManager$TableServers.getRegionServerWithRetries(HConnectionManager.java:1147)
+                at org.apache.hadoop.hbase.client.HTable.get(HTable.java:503)
+Any ideas?
+Meanwhile, I'll look into the ZK logs from the relevant time some more and get back if I have more information.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+08/Sep/10 05:46
+Update date:
+16/Jul/14 23:03
+Resolved date:
+16/Jul/14 23:03

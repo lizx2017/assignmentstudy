@@ -1,0 +1,41 @@
+Summary:
+SSTables are not updated with max timestamp on upgradesstables/compaction leading to non-optimal performance.
+Description:
+We upgraded from 0.7.9 to 1.0.7 on a cluster with a heavy update load. After converting all the reads to named column reads instead of get_slice calls, we noticed that we still weren't getting the performance improvements implemented in CASSANDRA-2498. A single named column read was still touching multiple SSTables according to nodetool cfhistograms.
+To verify whether or not this was a reporting issue or a real issue, we ran multiple tests with stress and noticed that it worked as expected. After changing stress so that it ran the read/write test directly in the CF having issues (3 times stress & flush), we noticed that stress also touched multiple SSTables (according to cfhistograms).
+So, the root of the problem is "something" left over from our pre-1.0 days. All SSTables were upgraded with upgradesstables, and have been written and compacted many times since the upgrade (4 months ago). The usage pattern for this CF is that it is constantly read and updated (overwritten), but no deletes.
+After discussing the problem with Brandon Williams on #cassandra, it seems the problem might be because a max timestamp has never been written for the old SSTables that were upgraded from pre 1.0. They have only been compacted, and the max timestamp is not recorded during compactions.
+A suggested fix is to special case this in upgradesstables so that a max timestamp always exists for all SSTables.
+06:08 < driftx> thorkild_: tx. The thing is we don't record the max timestamp on compactions, but we can do it specially for upgradesstables.
+06:08 < driftx> so, nothing in... nothing out.
+06:10 < thorkild_> driftx: ah, so when you upgrade from before the metadata was written, and that data is only feed through upgradesstables and compactions -> never properly written?
+06:10 < thorkild_> that makes sense.
+06:11 < driftx> right, we never create it, we just reuse it
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.10, 1.1.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Thorkild Stray
+Create date:
+01/May/12 04:26
+Update date:
+16/Apr/19 09:32
+Resolved date:
+03/May/12 23:04

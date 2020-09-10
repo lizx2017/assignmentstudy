@@ -1,0 +1,94 @@
+Summary:
+Problem SliceByNamesReadCommand on super column family after flush operation
+Description:
+I'm having a problem with doing a multiget_slice on a super column family
+after its first flush. Updates to the column values work properly, but
+trying to retrieve the updated values using a multiget_slice operation fail
+to get the updated values. Instead they return the values from before the
+flush. The problem is not apparent with standard column families.
+I've seen this problem in Cassandra v1.0.0 and v1.0.1. The problem
+is not present in Cassandra v0.7.6.
+Steps to reproduce:
+1. Create one or more super column entries
+2. Verify the sub column values can be updated and that you can retrieve
+the new values
+3. Use nodetool to flush the column family or restart cassandra
+4. Update the sub column values
+5. Verify they have been updated using cassandra-cli
+6. Verify you DO NOT get the updated values when doing a
+multiget_slice; instead you get the old values from before the flush
+You can get the most recent value by doing a flush followed by a major
+compaction. However, future updates are not retrieved properly either.
+With debug turned on, it looks like the multiget_slice query uses the
+following command/consistency level:
+SliceByNamesReadCommand(table='test_cassandra', key=666f6f,
+columnParent='QueryPath(columnFamilyName='test', superColumnName='null',
+columnName='null')', columns=[foo,])/QUORUM.
+Cassandra-cli uses the following command/consistency level for a get_slice:
+SliceFromReadCommand(table='test_cassandra', key='666f6f',
+column_parent='QueryPath(columnFamilyName='test', superColumnName='null',
+columnName='null')', start='', finish='', reversed=false,
+count=1000000)/QUORUM
+Notice the test program gets 'bar2' for the column values and cassandra-cli
+gets 'bar3' for the column values:
+tcpdump from test program using hector-core:1.0-1
+16:46:07.424562 IP iam.47158 > iam.9160: Flags [P.], seq 55:138, ack 30,
+win 257, options [nop,nop,TS val 27474096 ecr 27474095], length 83
+E....#@.@.PK.........6#.....].8......{.....
+..8...8.........multiget_slice................foo..........test................foo.........
+16:46:07.424575 IP iam.9160 > iam.47158: Flags [.], ack 138, win 256,
+options [nop,nop,TS val 27474096 ecr 27474096], length 0
+E..4..@.@.<.........#..6].8..........(.....
+..8...8.
+16:46:07.428771 IP iam.9160 > iam.47158: Flags [P.], seq 30:173, ack 138,
+win 256, options [nop,nop,TS val 27474097 ecr 27474096], length 143
+@.@.<&........#..6].8................
+............foo...............foo...............foo1.......bar2
+........6h........foo2.......bar2
+........I.....
+tcpdump of cassandra-cli:
+16:30:55.945123 IP iam.47134 > iam.9160: Flags [P.], seq 370:479, ack 5310,
+win 387, options [nop,nop,TS val 27246226 ecr 27241207], length 109
+E.....@.@.9q..........#..n.X\
+.............
+................get_range_slices..............test.........................................................d.........
+16:30:55.945152 IP iam.9160 > iam.47134: Flags [.], ack 479, win 256,
+options [nop,nop,TS val 27246226 ecr 27246226], length 0
+E..4..@.@.".........#...\
+...n.......(.....
+........
+16:30:55.949245 IP iam.9160 > iam.47134: Flags [P.], seq 5310:5461, ack
+479, win 256, options [nop,nop,TS val 27246227 ecr 27246226], length 151
+E.....@.@."V........#...\
+...n.............
+....................get_range_slices...................foo..................foo...............foo1.......bar3
+........&.........foo2.......bar3
+........: .....
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.3
+Component:
+None
+Label:
+supercolumns
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Mike Smith
+Create date:
+02/Nov/11 16:15
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Nov/11 17:55

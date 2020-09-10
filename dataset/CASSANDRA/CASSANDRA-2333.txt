@@ -1,0 +1,36 @@
+Summary:
+Clean up thread pool and queue sizes
+Description:
+Most of Cassandra assumes that ThreadPoolExecutor handles tasks by starting with Core threads, adding threads up to Max as tasks arrive, then queuing any additional. This is not correct:
+    If fewer than corePoolSize threads are running, the Executor always prefers adding a new thread rather than queuing.
+    If corePoolSize or more threads are running, the Executor always prefers queuing a request rather than adding a new thread.
+    If a request cannot be queued, a new thread is created unless this would exceed maximumPoolSize, in which case, the task will be rejected.
+CASSANDRA-2178 fixed this in one place but made it worse by default since most people run with a single data dir, meaning as soon as you have multiple CFs flushing (or a single one with indexes) then you will start blocking writes.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jonathan Ellis
+Create date:
+15/Mar/11 18:11
+Update date:
+16/Apr/19 09:33
+Resolved date:
+23/Mar/11 16:22

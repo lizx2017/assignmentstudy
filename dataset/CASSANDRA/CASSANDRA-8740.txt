@@ -1,0 +1,62 @@
+Summary:
+java.lang.AssertionError when reading saved cache
+Description:
+I have started seeing it recently. Not sure from which version but now it happens relatively often one some of my nodes.
+ INFO [main] 2015-02-04 18:18:09,253 ColumnFamilyStore.java (line 249) Initializing duo_xxxxxxxxxxx
+ INFO [main] 2015-02-04 18:18:09,254 AutoSavingCache.java (line 114) reading saved cache /var/lib/cassandra/saved_caches/duo_xxxxxxxxxxx-RowCach
+e-b.db
+ERROR [main] 2015-02-04 18:18:09,256 CassandraDaemon.java (line 513) Exception encountered during startup
+java.lang.AssertionError
+        at org.apache.cassandra.cache.SerializingCacheProvider$RowCacheSerializer.serialize(SerializingCacheProvider.java:41)
+        at org.apache.cassandra.cache.SerializingCacheProvider$RowCacheSerializer.serialize(SerializingCacheProvider.java:37)
+        at org.apache.cassandra.cache.SerializingCache.serialize(SerializingCache.java:118)
+        at org.apache.cassandra.cache.SerializingCache.put(SerializingCache.java:177)
+        at org.apache.cassandra.cache.InstrumentingCache.put(InstrumentingCache.java:44)
+        at org.apache.cassandra.cache.AutoSavingCache.loadSaved(AutoSavingCache.java:130)
+        at org.apache.cassandra.db.ColumnFamilyStore.initRowCache(ColumnFamilyStore.java:592)
+        at org.apache.cassandra.db.Keyspace.open(Keyspace.java:119)
+        at org.apache.cassandra.db.Keyspace.open(Keyspace.java:92)
+        at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:305)
+        at com.datastax.bdp.server.DseDaemon.setup(DseDaemon.java:419)
+        at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:496)
+        at com.datastax.bdp.server.DseDaemon.main(DseDaemon.java:659)
+ INFO [Thread-2] 2015-02-04 18:18:09,259 DseDaemon.java (line 505) DSE shutting down...
+ERROR [Thread-2] 2015-02-04 18:18:09,279 CassandraDaemon.java (line 199) Exception in thread Thread[Thread-2,5,main]
+java.lang.AssertionError
+        at org.apache.cassandra.gms.Gossiper.addLocalApplicationState(Gossiper.java:1274)
+        at com.datastax.bdp.gms.DseState.setActiveStatus(DseState.java:171)
+        at com.datastax.bdp.server.DseDaemon.stop(DseDaemon.java:506)
+        at com.datastax.bdp.server.DseDaemon$1.run(DseDaemon.java:408)
+ INFO [main] 2015-02-04 18:18:49,144 CassandraDaemon.java (line 135) Logging initialized
+ INFO [main] 2015-02-04 18:18:49,169 DseDaemon.java (line 382) DSE version: 4.6.0
+Cassandra version: 2.0.11.83 (DSE 4.6.0)
+Looks like similar issues were reported and fixed in the past - like CASSANDRA-6325.
+Maybe I am missing something, but I think that Cassandra should not crash and stop at startup if it cannot read a saved cache. This does not make the node inoperable and does not necessarily indicate a severe data corruption. I have applied a small change to my cluster config, restarted it and 30% of my nodes did not start because of that. Of course the solution is simple, but it requires to go to every node that failed to start, wipe the cache and start.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15, 2.1.5
+Component:
+None
+Label:
+None
+Environment:
+dse, oel
+Attachment number:
+0
+Assignee:
+Dave Brosius
+Reporter:
+Nikolai Grigoriev
+Create date:
+04/Feb/15 18:36
+Update date:
+16/Apr/19 09:31
+Resolved date:
+31/Mar/15 09:24

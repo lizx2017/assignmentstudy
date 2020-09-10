@@ -1,0 +1,66 @@
+Summary:
+PDFBox hangs indefinately when rendering certain files
+Description:
+There seems to be an issue with PDFBox when rendering certain PDF files, when calling renderImageWithDPI; the call seems to hang indefinitely.
+My jar file is ruunning with the parameter: -Dsun.java2d.cmm=sun.java2d.cmm.kcms.KcmsServiceProvider
+I noticed this issue on this file:[ https://1drv.ms/b/s!Av-Yk52R4YupvcUEZFueSnXFh6_pXw]
+Here is the call to renderImageWithDPI:
+PDDocument doc = PDDocument.load(file);
+PDFRenderer renderer = new PDFRenderer(doc);
+BufferedImage img = renderer.renderImageWithDPI(0, 300.0f, ImageType.RGB);
+checking the stack trace using jstack gives me the following:
+"pool-3-thread-1" #14 prio=5 os_prio=0 tid=0x00007f0bd41d2000 nid=0x76d4 runnable [0x00007f0bb44db000]
+java.lang.Thread.State: RUNNABLE
+at org.apache.log4j.Category.getEffectiveLevel(Category.java:442)
+at org.apache.log4j.Category.log(Category.java:855)
+at org.slf4j.impl.Log4jLoggerAdapter.log(Log4jLoggerAdapter.java:595)
+at org.apache.commons.logging.impl.SLF4JLocationAwareLog.warn(SLF4JLocationAwareLog.java:179)
+at org.apache.pdfbox.pdmodel.graphics.shading.Type4ShadingContext.collectTriangles(Type4ShadingContext.java:152)
+at org.apache.pdfbox.pdmodel.graphics.shading.Type4ShadingContext.<init>(Type4ShadingContext.java:64)
+at org.apache.pdfbox.pdmodel.graphics.shading.Type4ShadingPaint.createContext(Type4ShadingPaint.java:66)
+at sun.java2d.pipe.AlphaPaintPipe.startSequence(AlphaPaintPipe.java:84)
+at sun.java2d.pipe.AAShapePipe.renderTiles(AAShapePipe.java:168)
+at sun.java2d.pipe.AAShapePipe.renderPath(AAShapePipe.java:159)
+at sun.java2d.pipe.AAShapePipe.fill(AAShapePipe.java:68)
+at sun.java2d.pipe.PixelToParallelogramConverter.fill(PixelToParallelogramConverter.java:164)
+at sun.java2d.pipe.ValidatePipe.fill(ValidatePipe.java:160)
+at sun.java2d.SunGraphics2D.fill(SunGraphics2D.java:2527)
+at org.apache.pdfbox.rendering.PageDrawer.shadingFill(PageDrawer.java:933)
+at org.apache.pdfbox.contentstream.operator.graphics.ShadingFill.process(ShadingFill.java:41)
+at org.apache.pdfbox.contentstream.PDFStreamEngine.processOperator(PDFStreamEngine.java:815)
+at org.apache.pdfbox.contentstream.PDFStreamEngine.processStreamOperators(PDFStreamEngine.java:472)
+at org.apache.pdfbox.contentstream.PDFStreamEngine.processStream(PDFStreamEngine.java:446)
+at org.apache.pdfbox.contentstream.PDFStreamEngine.processPage(PDFStreamEngine.java:149)
+at org.apache.pdfbox.rendering.PageDrawer.drawPage(PageDrawer.java:189)
+at org.apache.pdfbox.rendering.PDFRenderer.renderImage(PDFRenderer.java:145)
+at org.apache.pdfbox.rendering.PDFRenderer.renderImageWithDPI(PDFRenderer.java:94)
+at com.documentconverter.PDFManager_Box.GetThumbPDF(PDFManager_Box.java:58)
+I left my application running over the weekend to see if the call will eventually return, three days later and still the application is at the same spot.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.3
+Fix_version:
+2.0.4, 3.0.0 PDFBox
+Component:
+Rendering
+Label:
+shading
+Environment:
+ubuntu, java 1.8
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Zaid Amir
+Create date:
+10/Nov/16 09:42
+Update date:
+25/Mar/17 18:12
+Resolved date:
+10/Nov/16 16:51

@@ -1,0 +1,46 @@
+Summary:
+Compaction USER_PRIORITY is slightly broken
+Description:
+The code to get compaction priority is as such:
+   public int getCompactPriority(int priority) {
+     // If this is a user-requested compaction, leave this at the highest priority
+     if(priority == Store.PRIORITY_USER) {
+       return Store.PRIORITY_USER;
+     } else {
+       return this.blockingStoreFileCount - this.storefiles.size();
+     }
+   }
+.
+PRIORITY_USER is 1.
+The priorities are compared as numbers in HRegion, so compactions of blocking stores will override user priority (probably intended); also, if you have blockingFiles minus one, your priority is suddenly PRIORITY_USER, which may cause at least this:
+LOG.debug("Warning, compacting more than " + comConf.getMaxFilesToCompact() +
+" files because of a user-requested major compaction");
+as well as some misleading logging.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+Compaction
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergey Shelukhin
+Reporter:
+Sergey Shelukhin
+Create date:
+08/Feb/13 00:10
+Update date:
+10/Apr/13 06:35
+Resolved date:
+09/Apr/13 22:38

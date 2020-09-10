@@ -1,0 +1,58 @@
+Summary:
+BlendedInfixSuggester dedup bug
+Description:
+I expect the following test to pass, but it's failing in the latest Lucene 5.2.1:
+FailingTest.java
+public void testBlendedInfixSuggesterDedupsOnWeightTitleAndPayload() throws Exception {
+
+//Only the payload is different
+    Input[] inputDocuments = new Input[]{
+        new Input("lend me your ear", 7, new BytesRef("uid1")),
+        new Input("lend me your ear", 7, new BytesRef("uid2")),
+    };
+
+    Analyzer a = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
+    BlendedInfixSuggester suggester = new BlendedInfixSuggester(newDirectory(), a, a, AnalyzingInfixSuggester.DEFAULT_MIN_PREFIX_CHARS,
+        BlendedInfixSuggester.BlenderType.POSITION_RECIPROCAL, 10, false);
+
+    InputArrayIterator inputArrayIterator = new InputArrayIterator(inputDocuments);
+    suggester.build(inputArrayIterator);
+
+    List<Lookup.LookupResult> results = suggester.lookup(TestUtil.stringToCharSequence("ear", random()), 10, true, true);
+
+    suggester.close();
+    a.close();
+
+    assertEquals(2, results.size());
+
+  }
+This test is failing because the BlendedInfixSuggester internally uses a TreeSet for storing the results and the corresponding Comparator only uses text+weight meaning that results with different payloads are collapsed into one.
+Michael McCandless, The idea here is that if two ingested documents have the same title and weight, but different payloads, then they are two different things and folding them into a single document would mean loosing the payload information.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+5.2.1
+Fix_version:
+5.3, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Arcadius Ahouansou
+Create date:
+15/Jul/15 15:06
+Update date:
+09/May/16 18:28
+Resolved date:
+15/Jul/15 21:45

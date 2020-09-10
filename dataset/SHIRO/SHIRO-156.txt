@@ -1,0 +1,42 @@
+Summary:
+SimpleAuthenticationInfo.merge does not merge principals if its internal principal collection is not mutable
+Description:
+In SimpleAuthenticationInfo.merge(AuthenticationInfo), there is the following code:
+        if (this.principals == null) {
+            this.principals = info.getPrincipals();
+        } else {
+            if (this.principals instanceof MutablePrincipalCollection) {
+                ((MutablePrincipalCollection) this.principals).addAll(info.getPrincipals());
+            } else {
+                this.principals = new SimplePrincipalCollection(this.principals);
+            }
+        }
+The logic in the nested else block appears incorrect. If the current "principals" collection is not MutablePrincipalCollection, a new SimplePrincipalCollection, which is mutable, is constructed from it. However, it does not copy the principals from other.getPrincipals(), which by that point in the method is known to be non-null and non-empty, after it makes a mutable principal collection.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.9
+Fix_version:
+1.0.0
+Component:
+Authentication (log-in)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Kalle Korhonen
+Reporter:
+Bryan Turner
+Create date:
+09/May/10 04:21
+Update date:
+11/Jun/10 22:01
+Resolved date:
+15/May/10 05:45

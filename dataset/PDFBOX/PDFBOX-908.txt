@@ -1,0 +1,38 @@
+Summary:
+Gracefull handle corrupt PDFs
+Description:
+I will use PDFBox for text extraction and one of the main requirements are that it should extract as much text as possible. If the PDF document contains something that isn't strictly correct according to the PDF specs it should try recover gracefully and continue scanning if possible if forceParsing is enabled. While testing against a large batch of PDF documents (including large ebooks) I found that the parser sometimes stops parsing and/or extracting text even with forceParsing enabled. I have attached a patch to make PDFBox handle some PDF problems more gracefully when forceParsing is enabled.
+Some of my patches tries to handle certain situations differently from the existing code. For example the existing code to handle cases when an endobj is missing seems to be very complex. In all of my tests it seems to work better when the code just assumes that the endobj was missing. Whether or not assuming that endobj is missing or whether the existing way to cope with this is better is of course debatable.
+A patch is included to handle situations where the data (DI) for an inline image contains the EI keyword. The EI is now only accepted if the char before EI is an end-of-line marker instead of whitespace.
+I have added the method #isContinueOnError to PDFParser. By default it returns forceParsing but implementors can override it to stop parsing when a certain limit is reached (for example on a timeout). This can be helpful to stop parsing when the parser gets stuck in an unlimited loop.
+BaseParser#readInt unread the data when a NumberFormatException was thrown. This resulted in an unlimited loop when forcParsing was enabled when testing with test-integer-too-large.pdf (see attached file). I think it's better to not unread data when an exception will be thrown because the risks are higher that you run into an unlimited loop.
+The other patches are just minor like checks for null values etc.
+I have attached four test PDF documents. These PDF documents are PDFs which I corrupted by hand to try to replicate similar situations I found in existing (copyrighted) ebooks.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.3.1, 2.0.0
+Fix_version:
+2.0.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Martijn Brinkers
+Create date:
+26/Nov/10 15:20
+Update date:
+17/Mar/16 19:08
+Resolved date:
+29/Jan/16 10:55

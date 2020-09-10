@@ -1,0 +1,54 @@
+Summary:
+Oracle JVM crashes because of embedded fonts.
+Description:
+Oracle's closed-source font rendering chokes on some fonts embedded in PDFs because their cmap data is either missing or invalid.
+Using OpenJDK, no crashes were observed.
+The JVM crashes right after attempting to draw a glyph vector using codepoints, which is called from within PDSimpleFont#drawString.
+Versions of pdfbox prior to 1.7.0 did not crash.
+The crashes look like this:
+JRE 6:
+JRE version: 6.0_45-b06
+Java VM: Java HotSpot(TM) 64-Bit Server VM (20.45-b01 mixed mode linux-amd64 compressed oops)
+Problematic frame:
+C [libfontmanager.so+0x242c8] imaginary long double+0xd8
+JRE 7:
+JRE version: 7.0_21-b11
+Java VM: Java HotSpot(TM) 64-Bit Server VM (23.21-b01 mixed mode linux-amd64 compressed oops)
+Problematic frame:
+C [libt2k.so+0x2e6b1] Compute_cmapClass_GlyphIndex+0x1
+Since older versions of pdfbox did not crash, I tracked the problem down to a call to java.awt.Font#canDisplayUpTo(String) that has been moved in 1.7.0 from the top of PDSimpleFont#drawString down to a branch. Moving the call back up prevented the crash.
+It looks like a call to java.awt.Font#canDisplay(int) initializes some internal data structures of Oracle's fontmanager, preventing the JVM crash.
+As I have observed this crash only for fonts that have been processed through PDType0Font, I have added a fix there, which should save us some cycles and, more importantly, should not create new problems.
+Oracle bug reports have been filed for both JRE 6 and 7, including a "minimal" test case:
+Oracle JRE 6: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=9002077
+Oracle JRE 7: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=9002078
+There have been a few other bug reports mentioning a similar crash on other platforms, older JRE versions, e.g.: PDFBOX-1426, PDFBOX-1336.
+The patch provided here might fix these bugs, too.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+1.7.0, (3)
+Fix_version:
+1.8.2
+Component:
+PDModel
+Label:
+PatchAvailable Regre
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Thomas Chojecki
+Reporter:
+Christian Kohlschütt
+Create date:
+26/Apr/13 15:00
+Update date:
+02/Jun/13 13:35
+Resolved date:
+30/Apr/13 20:15

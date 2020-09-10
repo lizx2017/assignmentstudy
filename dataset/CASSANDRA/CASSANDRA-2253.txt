@@ -1,0 +1,37 @@
+Summary:
+Gossiper Starvation
+Description:
+Gossiper periodic task will get into starvation in case large sstable files need to be deleted.
+Indeed the SSTableDeletingReference uses the same scheduledTasks pool (from StorageService) as the Gossiper and other periodic tasks, but the gossiper tasks should run each second to assure correct cluster status (liveness of nodes). In case of large sstable files to be deleted (several GB) the delete operation can take more than 30 sec, thus making the whole cluster going into a wrong state where nodes are marked as not living while they are!
+This will lead to unneeded additional load like hinted hand off, wrong cluster state, increase in latency.
+One of the possible solution is to use a separate pool for periodic and non periodic tasks.
+I've implemented such change and it resolves the problem.
+I can provide a patch
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.3
+Component:
+None
+Label:
+None
+Environment:
+linux, windows
+Attachment number:
+0
+Assignee:
+Mikael Sitruk
+Reporter:
+Mikael Sitruk
+Create date:
+27/Feb/11 16:03
+Update date:
+16/Apr/19 09:33
+Resolved date:
+28/Feb/11 23:53

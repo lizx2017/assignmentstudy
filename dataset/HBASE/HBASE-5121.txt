@@ -1,0 +1,40 @@
+Summary:
+MajorCompaction may affect scan's correctness
+Description:
+In our test, there are two families' keyvalue for one row.
+But we could find a infrequent problem when doing scan's next if majorCompaction happens concurrently.
+In the client's two continuous doing scan.next():
+1.First time, scan's next returns the result where family A is null.
+2.Second time, scan's next returns the result where family B is null.
+The two next()'s result have the same row.
+If there are more families, I think the scenario will be more strange...
+We find the reason is that storescanner.peek() is changed after majorCompaction if there are delete type KeyValue.
+This change causes the PriorityQueue<KeyValueScanner> of RegionScanner's heap is not sure to be sorted.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.92.1, 0.94.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+04/Jan/12 06:39
+Update date:
+12/Oct/12 05:34
+Resolved date:
+10/Jan/12 23:41

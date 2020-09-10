@@ -1,0 +1,40 @@
+Summary:
+HLog can be null when create table
+Description:
+As HBASE-4010 discussed, the HLog can be null.
+We have meet createTable failed because the no use hlog.
+When createHReagion, the HLog.LogSyncer is run sync(), in under layer it call the DFSClient.DFSOutputStream.sync().
+Then the hlog.closeAndDelete() was called，firstly the HLog.close() will interrupt the LogSyncer, and interrupt DFSClient.DFSOutputStream.sync().The DFSClient.DFSOutputStream will store the exception and throw it when we called DFSClient.close().
+The HLog.close() call the writer.close()/DFSClient.close() after interrupt the LogSyncer. And there is no catch exception for the close().
+So the Master throw exception to the client. There is no need to throw this exception, further， the hlog is no use.
+Our cluster is 0.90, the logs is attached, after "closing hlog writer", there is no log for the createTable().
+The trunk and 0.92, 0.94, we used just one hlog, and if the exception happends, the client will got createTable failed, but indeed ,we expect all the regions for the table can also be assigned.
+I will give the patch for this later.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.4, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ShiXing
+Reporter:
+ShiXing
+Create date:
+04/Jul/12 10:49
+Update date:
+26/Feb/13 08:22
+Resolved date:
+06/Sep/12 13:19

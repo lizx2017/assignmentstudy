@@ -1,0 +1,54 @@
+Summary:
+Flattening a pdf with refreshAppearances set to true causes a NullPointerException
+Description:
+Flattening a pdf with refreshAppearances set to true causes a NullPointerException. This is because some fields do not have a NormalAppearance set.
+For example:
+        try(PDDocument pdfDocument = PDDocument.load(new File("/Users/travis/Desktop/fdpAttachment2.pdf"))) {
+
+            pdfDocument.getDocumentCatalog().getAcroForm().flatten(pdfDocument.getDocumentCatalog().getAcroForm().getFields(), true);
+        }
+causes:
+Exception in thread "main" java.lang.NullPointerException
+at org.apache.pdfbox.pdmodel.interactive.form.PDButton.updateByValue(PDButton.java:356)
+at org.apache.pdfbox.pdmodel.interactive.form.PDButton.constructAppearances(PDButton.java:285)
+at org.apache.pdfbox.pdmodel.interactive.form.PDAcroForm.refreshAppearances(PDAcroForm.java:348)
+at org.apache.pdfbox.pdmodel.interactive.form.PDAcroForm.flatten(PDAcroForm.java:223)
+at org.kuali.coeus.sys.pdf.FlattenException.main(FlattenException.java:13)
+The workaround is pretty simple. Just make sure every widget without a NormalAppearance has one before calling flatten. I would think pdfbox could do a null check internally when trying to refresh appearance.
+        pdfDocument.getDocumentCatalog().getAcroForm().getFields()
+                .stream()
+                .flatMap(f -> f.getWidgets().stream())
+                .filter(w -> w.getAppearance() == null)
+                .forEach(w -> {
+                    final PDAppearanceDictionary appearance = new PDAppearanceDictionary(new COSDictionary());
+                    appearance.setNormalAppearance(new PDAppearanceEntry(new COSDictionary()));
+                    w.setAppearance(appearance);
+                });
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.5
+Fix_version:
+2.0.6, 3.0.0 PDFBox
+Component:
+AcroForm
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Maruan Sahyoun
+Reporter:
+Travis Schneeberger
+Create date:
+12/Apr/17 13:11
+Update date:
+08/Jun/17 16:08
+Resolved date:
+08/Jun/17 15:59

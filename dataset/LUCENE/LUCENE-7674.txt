@@ -1,0 +1,87 @@
+Summary:
+java.lang.IllegalStateException: Child query must not match same docs with parent filter. Combine them as must clauses (+) to find a problem doc. docId=2147483647, class org.apache.lucene.search.ConjunctionScorer
+Description:
+Started seeing this error message on a production Solr 6.3.0 system today making use of parent/child documents:
+java.lang.IllegalStateException: Child query must not match same docs with parent filter. Combine them as must clauses (+) to find a problem doc. docId=2147483647, class org.apache.lucene.search.ConjunctionScorer
+    at org.apache.lucene.search.join.ToParentBlockJoinQuery$BlockJoinScorer.checkOrthogonal(ToParentBlockJoinQuery.java:403)
+    at org.apache.lucene.search.join.ToParentBlockJoinQuery$BlockJoinScorer.access$400(ToParentBlockJoinQuery.java:206)
+    at org.apache.lucene.search.join.ToParentBlockJoinQuery$BlockJoinScorer$1.nextDoc(ToParentBlockJoinQuery.java:327)
+    at org.apache.lucene.search.Weight$DefaultBulkScorer.scoreAll(Weight.java:219)
+    at org.apache.lucene.search.Weight$DefaultBulkScorer.score(Weight.java:172)
+    at org.apache.lucene.search.BulkScorer.score(BulkScorer.java:39)
+    at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:669)
+    at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:473)
+    at org.apache.solr.search.DocSetUtil.createDocSetGeneric(DocSetUtil.java:106)
+    at org.apache.solr.search.DocSetUtil.createDocSet(DocSetUtil.java:95)
+    at org.apache.solr.search.SolrIndexSearcher.getDocSetNC(SolrIndexSearcher.java:1379)
+    at org.apache.solr.search.SolrIndexSearcher.getPositiveDocSet(SolrIndexSearcher.java:1057)
+    at org.apache.solr.search.SolrIndexSearcher.getProcessedFilter(SolrIndexSearcher.java:1227)
+    at org.apache.solr.search.SolrIndexSearcher.getDocListAndSetNC(SolrIndexSearcher.java:1842)
+    at org.apache.solr.search.SolrIndexSearcher.getDocListC(SolrIndexSearcher.java:1616)
+    at org.apache.solr.search.SolrIndexSearcher.search(SolrIndexSearcher.java:617)
+    at org.apache.solr.handler.component.QueryComponent.process(QueryComponent.java:531)
+    at org.apache.solr.handler.component.SearchHandler.handleRequestBody(SearchHandler.java:295)
+    at org.apache.solr.handler.RequestHandlerBase.handleRequest(RequestHandlerBase.java:153)
+    at org.apache.solr.core.SolrCore.execute(SolrCore.java:2213)
+    at org.apache.solr.servlet.HttpSolrCall.execute(HttpSolrCall.java:654)
+    at org.apache.solr.servlet.HttpSolrCall.call(HttpSolrCall.java:460)
+    at org.apache.solr.servlet.SolrDispatchFilter.doFilter(SolrDispatchFilter.java:303)
+    at org.apache.solr.servlet.SolrDispatchFilter.doFilter(SolrDispatchFilter.java:254)
+    at org.eclipse.jetty.servlet.ServletHandler$CachedChain.doFilter(ServletHandler.java:1668)
+    at org.eclipse.jetty.servlet.ServletHandler.doHandle(ServletHandler.java:581)
+    at org.eclipse.jetty.server.handler.ScopedHandler.handle(ScopedHandler.java:143)
+    at org.eclipse.jetty.security.SecurityHandler.handle(SecurityHandler.java:548)
+    at org.eclipse.jetty.server.session.SessionHandler.doHandle(SessionHandler.java:226)
+    at org.eclipse.jetty.server.handler.ContextHandler.doHandle(ContextHandler.java:1160)
+    at org.eclipse.jetty.servlet.ServletHandler.doScope(ServletHandler.java:511)
+    at org.eclipse.jetty.server.session.SessionHandler.doScope(SessionHandler.java:185)
+    at org.eclipse.jetty.server.handler.ContextHandler.doScope(ContextHandler.java:1092)
+    at org.eclipse.jetty.server.handler.ScopedHandler.handle(ScopedHandler.java:141)
+    at org.eclipse.jetty.server.handler.ContextHandlerCollection.handle(ContextHandlerCollection.java:213)
+    at org.eclipse.jetty.server.handler.HandlerCollection.handle(HandlerCollection.java:119)
+    at org.eclipse.jetty.server.handler.HandlerWrapper.handle(HandlerWrapper.java:134)
+    at org.eclipse.jetty.server.Server.handle(Server.java:518)
+    at org.eclipse.jetty.server.HttpChannel.handle(HttpChannel.java:308)
+    at org.eclipse.jetty.server.HttpConnection.onFillable(HttpConnection.java:244)
+    at org.eclipse.jetty.io.AbstractConnection$ReadCallback.succeeded(AbstractConnection.java:273)
+    at org.eclipse.jetty.io.FillInterest.fillable(FillInterest.java:95)
+    at org.eclipse.jetty.io.SelectChannelEndPoint$2.run(SelectChannelEndPoint.java:93)
+    at org.eclipse.jetty.util.thread.strategy.ExecuteProduceConsume.produceAndRun(ExecuteProduceConsume.java:246)
+    at org.eclipse.jetty.util.thread.strategy.ExecuteProduceConsume.run(ExecuteProduceConsume.java:156)
+    at org.eclipse.jetty.util.thread.QueuedThreadPool.runJob(QueuedThreadPool.java:654)
+    at org.eclipse.jetty.util.thread.QueuedThreadPool$3.run(QueuedThreadPool.java:572)
+    at java.lang.Thread.run(Thread.java:745)
+The "docId=2147483647" part seems suspicious since that corresponds to Integer.MAX_VALUE and my index only has 102,013,289 docs in it. According to the Solr searcher stats page I have:
+numDocs: 71,870,998
+maxDocs: 102,013,289
+deletedDocs: 30,142,291
+I took the query that was failing and attempted to intersect my parent query with the child query to find any problem docs but that came back with 0 results.
+After performing an optimize (via the Solr UI) on the index the problem has gone away and the query that previously triggered this error works as it should.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+6.3
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Tim Underwood
+Create date:
+02/Feb/17 21:23
+Update date:
+16/Feb/17 22:03
+Resolved date:
+

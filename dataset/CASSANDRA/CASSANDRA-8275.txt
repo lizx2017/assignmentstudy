@@ -1,0 +1,58 @@
+Summary:
+Some queries with multicolumn relation do not behave properly when secondary index is used
+Description:
+In the case where we perform a select using a multicolumn relation over multiple columns that use a secondary index the error message returned is wrong.
+The following unit test can be use to reproduce the problem:
+    @Test
+    public void testMultipleClusteringWithIndex() throws Throwable
+    {
+        createTable("CREATE TABLE %s (a int, b int, c int, d int, PRIMARY KEY (a, b, c, d))");
+        createIndex("CREATE INDEX ON %s (b)"); 
+        
+        execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)", 0, 0, 0, 0);
+        execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)", 0, 0, 1, 0);
+        execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)", 0, 0, 1, 1);
+
+        execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)", 0, 1, 0, 0);
+        execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)", 0, 1, 1, 0);
+        execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)", 0, 1, 1, 1);
+
+        assertRows(execute("SELECT * FROM %s WHERE (b) = (?)", 1),
+                   row(0, 1, 0, 0),
+                   row(0, 1, 1, 0),
+                   row(0, 1, 1, 1)
+               );
+        
+        assertRows(execute("SELECT * FROM %s WHERE (b, c) = (?, ?) ALLOW FILTERING", 1, 1),
+                   row(0, 1, 1, 0),
+                   row(0, 1, 1, 1)
+               );
+    }
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+Feature/2i Index, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Benjamin Lerer
+Create date:
+07/Nov/14 09:43
+Update date:
+16/Apr/19 09:31
+Resolved date:
+10/Feb/15 21:11

@@ -1,0 +1,45 @@
+Summary:
+NullPointerException Creating Digest
+Description:
+In the consistency_test.TestConsistency.short_read_test dtest against cassandra-2.1, the following error occured:
+ERROR [ReadRepairStage:3] 2015-05-22 16:35:25,034 CassandraDaemon.java:223 - Exception in thread Thread[ReadRepairStage:3,5,main]
+java.lang.NullPointerException: null
+    at org.apache.cassandra.db.ColumnFamily.updateDigest(ColumnFamily.java:390) ~[main/:na]
+    at org.apache.cassandra.db.ColumnFamily.digest(ColumnFamily.java:383) ~[main/:na]
+    at org.apache.cassandra.service.RowDigestResolver.resolve(RowDigestResolver.java:84) ~[main/:na]
+    at org.apache.cassandra.service.RowDigestResolver.resolve(RowDigestResolver.java:28) ~[main/:na]
+    at org.apache.cassandra.service.ReadCallback$AsyncRepairRunner.run(ReadCallback.java:176) ~[main/:na]
+    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145) ~[na:1.7.0_80]
+    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615) ~[na:1.7.0_80]
+    at java.lang.Thread.run(Thread.java:745) ~[na:1.7.0_80]
+From a glance at the code in the stacktrace, it looks like there was a null cell in the ColumnFamily that we were creating a digest of. This error is probably particular to "short reads".
+Here's the failing test: http://cassci.datastax.com/job/cassandra-2.1_dtest/lastCompletedBuild/testReport/consistency_test/TestConsistency/short_read_test/. I've attached the logs for the node with the error.
+We saw this issue against 2.1, but the problem may also exist with 2.0 and/or 2.2.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.9, 2.2.1
+Component:
+Legacy/Local Write-Read Paths
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+T Jake Luciani
+Reporter:
+Tyler Hobbs
+Create date:
+22/May/15 17:58
+Update date:
+16/Apr/19 09:31
+Resolved date:
+25/Aug/15 13:22

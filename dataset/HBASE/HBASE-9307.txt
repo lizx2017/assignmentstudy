@@ -1,0 +1,39 @@
+Summary:
+HalfStoreFileReader needs to handle the faked key else compactions go into infinite loops
+Description:
+I found this while trying out 0.95.2
+I couldn't shut my cluster down because one region was still compacting, but it already had been doing that for an hour and it only had 80MBs of data.
+Debugging I saw that it was a post-split compaction, specifically for the top part of the HFiles, and that it was just spinning on the first entry in the file.
+Eventually I saw that the anonymous HFileScanner inside HalfStoreFileReader.getScanner (that's so dirty) wasn't handling HConstants.INDEX_KEY_MAGIC in seekTo() when calling this:
+this.delegate.seekTo(splitkey)
+Instead it would treat this as if the split key wasn't in the file, but still seek back to the beginning of the file then read on from there.
+During the compaction it would see a KV that's not even part of the region, and it just tries to find the correct block over and over again.
+This came from HBASE-7845.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.98.0, 0.96.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+22/Aug/13 20:42
+Update date:
+20/Nov/15 11:55
+Resolved date:
+27/Aug/13 21:01

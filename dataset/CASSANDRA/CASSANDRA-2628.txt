@@ -1,0 +1,79 @@
+Summary:
+Empty Result with Secondary Index Queries with "limit 1"
+Description:
+Empty result is returned by secondary index queries with "limit 1". Cassandra returns correct result for other numbers than "1" (e.g. limit 2, limit 3, etc.).
+You can reproduce the problem with programs attached on CASSANDRA-2406.
+1. Start Cassandra cluster. It consists of 3 cassandra nodes and distributes data by ByteOrderedPartitioner. Initial tokens of those nodes are ["31", "32", "33"].
+2. Create keyspace and column family, according to "create_table.cli",
+3. Execute "secondary_index_insertv2.py", inserting a few hundred columns to cluster
+4. Here, when you first use cassandra-cli and execute following lines, you can get correct result.
+% bin/cassandra-cli
+[default@unknown] connect localhost/9160;
+[default@unknown] use SampleKS;
+[default@SampleKS] get SampleCF where up = 'up' limit 3;
+-------------------
+RowKey: 150
+=> (column=date, value=150, timestamp=1304937931)
+=> (column=up, value=up, timestamp=1304937931)
+-------------------
+RowKey: 151
+=> (column=date, value=151, timestamp=1304937932)
+=> (column=up, value=up, timestamp=1304937932)
+-------------------
+RowKey: 152
+=> (column=date, value=152, timestamp=1304937932)
+=> (column=up, value=up, timestamp=1304937932)
+3 Rows Returned.
+On the other hand, if you set limit to "1", you can reproduce the problem.
+[default@SampleKS] get SampleCF where up = 'up' and date > 150 limit 1;
+0 Row Returned.
+There are two factors to cause this problem:
+1. scanned first column doesn't match at specified clause like "date > 150".
+2. "limit 1"
+Only one factor doesn't cause problem. For example, I can get correct data when I specify as following:
+"limit 1" -> "limit 2"
+[default@SampleKS] get SampleCF where up = 'up' and date > 150 limit 2;
+-------------------
+RowKey: 151
+=> (column=date, value=151, timestamp=1304937932)
+=> (column=up, value=up, timestamp=1304937932)
+-------------------
+RowKey: 152
+=> (column=date, value=152, timestamp=1304937932)
+=> (column=up, value=up, timestamp=1304937932)
+2 Rows Returned.
+"date > 150" -> "date >= 150"
+[default@SampleKS] get SampleCF where up = 'up' and date >= 150 limit 1;
+-------------------
+RowKey: 150
+=> (column=date, value=150, timestamp=1304937931)
+=> (column=up, value=up, timestamp=1304937931)
+1 Row Returned.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.6, 0.8.0
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Muga Nishizawa
+Create date:
+09/May/11 13:29
+Update date:
+16/Apr/19 09:32
+Resolved date:
+12/May/11 15:14

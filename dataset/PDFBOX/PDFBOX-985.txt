@@ -1,0 +1,75 @@
+Summary:
+PDF Printing Orientation
+Description:
+I try to print a PDF using the following code
+// aDevice is the printer device Name
+// aData is a byte array of my PDF (stored on a DB)
+....
+   vPrintService = this.getPrintService(aDevice);
+   vPrinterJob = java.awt.print.PrinterJob.getPrinterJob();
+   vPrinterJob.setPrintService(vPrintService);
+   vPDDocument = this.getPDDocument(aData);
+   vPDDocument.silentPrint(vPrinterJob);
+--
+Unable to find source-code formatter for language: suppors methods. Available languages are: actionscript, ada, applescript, bash, c, c#, c++, cpp, css, erlang, go, groovy, haskell, html, java, javascript, js, json, lua, none, nyan, objc, perl, php, python, r, rainbow, ruby, scala, sh, sql, swift, visualbasic, xml, yaml
+         
+public PrintService getPrintService(String aDevice) throws Exception
+{
+ javax.print.PrintService[] vPrintServices = java.awt.print.PrinterJob.lookupPrintServices();
+    boolean printerFound = false;
+    for(int i = 0; i < vPrintServices.length; i++)
+    {
+     if(vPrintServices[i].getName().trim().equals(aDevice.trim()))
+         return vPrintServices[i];
+    }
+  return null;
+}
+
+public PDDocument getPDDocument(GenericBean aData) throws Exception
+{
+   byte[] vPageData  =  (byte[])aData.getValueAtKey("Byte");
+   return PDDocument.load( new ByteArrayInputStream(vPageData) );
+}
+But if my PDF is LANDSCAPE and the printer instead as PORTRAIT as default, PORTRAIT wins and so the report is not well printed.
+Checking the code (based on 1.5.0 and also from lateast trunk) for class PDPageable... probably I found the issue.. and I believe that the implementation is not right (at least from my point of view).
+Get a look to the getPageFormat method.
+As first it get the page format from the job (PrinterJob)
+PageFormat format = job.defaultPage();
+after it get the (optional) print service from the job (Printer Job)
+PrintService service = job.getPrintService(); // can be null
+If the printer service is not null and it have LANDSCAPE as orientation.. it force LANDSCAPE as orientation in the page format otherwise it force it as PORTRAIT
+But... in my mind, it should get the orientation from the PDF Page.. and not from the printer job / print service.
+I can print documents with different orientation on the same printer and also I can have in the same document pages with different orientation.
+Of couse I can make same mistake and read the code in the wrong way... (I found this project yesterday....)
+Maybe the "findRotation" method on the PDPage should be invoked and "checked".. or something else....
+It this a bug on PDFBox ?
+thanks
+Roberto
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.5.0
+Fix_version:
+1.8.0
+Component:
+PDModel
+Label:
+print
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Roberto Mazzola
+Create date:
+21/Mar/11 11:30
+Update date:
+23/Mar/13 12:56
+Resolved date:
+03/Mar/13 14:54

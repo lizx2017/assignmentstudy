@@ -1,0 +1,44 @@
+Summary:
+Use cl.loadClass(...) instead of Class.forName(..., cl) in SPIClassIterator
+Description:
+This issue is initially described in Eclipse Bug 517935 and prevents multiple versions of Lucene Core coexisting in an Equinox environment (FYI, Equinox is the OSGi container used by the Eclipse IDE).
+Here’s how the problem manifests: While Equinox cleanly separates two versions of the same Lucene Core bundle (e.g., org.apache.lucene.core_5.2.1 and org.apache.lucene.core_6.1.0) using two different bundle class loaders, it uses a single context classloader for all threads: the ContextFinder. When asked to load a class, the ContextFinder initiates a search through all bundle class loaders currently “on“ the call stack; the class to be loaded is then defined by the respective bundle’s class loader.
+And here is where the use of Class.forName(..., classLoader) rather than classLoader.loadClass(...) causes problems. Consider the following sequence of events:
+The NamedSPILoader of bundle o.a.l.core_5.2.1 (re)loads some service (e.g., the Lucene50PostingFormat).
+It (through SPIClassIterator) first uses Class.forName with the bundle class loader of o.a.l.core_5.2.1 (as per LUCENE-4713) to successfully load Lucene50PostingFormat from the o.a.l.core_5.2.1 bundle.
+Then (through another SPIClassIterator) it uses Class.forName with the thread’s context class loader (here: ContextFinder) to load Lucene50PostingFormat. The ContextFinder delegates loading to the o.a.l.core_5.2.1 bundle’s class loader, as that bundle is topmost on the call stack. This bundle class loader (again) successfully loads Lucene50PostingFormat from the o.a.l.core_5.2.1 bundle.
+Later, the NamedSPILoader of another bundle o.a.l.core_6.1.0 loads the Lucene50PostingFormat service.
+It (through SPIClassIterator) first uses Class.forName with the bundle class loader of o.a.l.core_6.1.0 to successfully load Lucene50PostingFormat from the o.a.l.core_6.1.0 bundle.
+Then (through another SPIClassIterator) it uses Class.forName with the thread’s context class loader (the same ContextFinder again) to load Lucene50PostingFormat. As Class.forName remembers that the ContextFinder has successfully initiated the loading of Lucene50PostingFormat before, it simply returns the Class instance defined earlier in step 1.2. But that class was defined by a different bundle class loader, namely that of o.a.l.core_5.2.1! This cache look up happens in native code; the ContextFinder‘s loadClass method isn’t even called, so there’s no way it can load the class from the o.a.l.core_6.1.0 bundle, even though it now is topmost on the stack.
+Casting the Lucene50PostingFormat loading from bundle o.a.l.core_5.2.1 to PostingFormat from bundle o.a.l.core_6.1.0 then fails, leaving the o.a.l.core_6.1.0 bundle in a broken state.
+It SPIClassIterator.next() would use classLoader.loadClass(...) rather than Class.forName(..., classLoader), then class loading in step 1.2 wouldn’t lock in the Lucene50PostingFormat class from org.apache.lucene.core_5.2.1; instead, step 2.2 would perform a completely independent look up that retrieves the class from the correct bundle. The cast in step 2.3 would then succeed.
+At Eclipse Orbit, we plan to distribute a patched version of Lucene Core, but obviously we would like to see the (one-line) change included in the upstream project.
+BTW, if you fear that bypassing Class.forName “caching” affects performance, then there’s no need to worry: Most ClassLoader implementations cache as well (findLoadedClass); it’s only ContextFinder that overrides loadClass wholesale, as it dynamically (based on the current call stack) delegates to the (caching) bundle class loaders.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+5.2.1, 6.1
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+eclipse
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Andreas Sewe
+Create date:
+08/Jun/17 11:38
+Update date:
+3 days ago
+Resolved date:
+08/Jun/17 18:05

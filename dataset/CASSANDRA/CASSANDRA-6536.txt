@@ -1,0 +1,63 @@
+Summary:
+SStable gets corrupted after keyspace drop and recreation
+Description:
+ERROR [ReadStage:41] 2014-01-02 14:27:00,629 CassandraDaemon.java (line 191) Exception in thread Thread[ReadStage:41,5,main]
+java.lang.RuntimeException: org.apache.cassandra.io.sstable.CorruptSSTableException: java.io.IOException: Corrupt (negative) value length encountered
+When running a test like this the SECOND TIME:
+DROP KEYSPACE testspace;
+CREATE KEYSPACE testspace with REPLICATION =
+{'class':'SimpleStrategy', 'replication_factor':1}
+AND durable_writes = false;
+USE testspace;
+CREATE TABLE testtable (id text PRIMARY KEY, group text) WITH compression =
+{'sstable_compression':'LZ4Compressor'}
+;
+CREATE INDEX testindex ON testtable (group);
+INSERT INTO testtable (id, group) VALUES ('00001', 'beta');
+INSERT INTO testtable (id, group) VALUES ('00002', 'gamma');
+INSERT INTO testtable (id, group) VALUES ('00003', 'delta');
+INSERT INTO testtable (id, group) VALUES ('00004', 'epsilon');
+INSERT INTO testtable (id, group) VALUES ('00005', 'alpha');
+INSERT INTO testtable (id, group) VALUES ('00006', 'beta');
+INSERT INTO testtable (id, group) VALUES ('00007', 'gamma');
+INSERT INTO testtable (id, group) VALUES ('00008', 'delta');
+INSERT INTO testtable (id, group) VALUES ('00009', 'epsilon');
+INSERT INTO testtable (id, group) VALUES ('00010', 'alpha');
+INSERT INTO testtable (id, group) VALUES ('00011', 'beta');
+INSERT INTO testtable (id, group) VALUES ('00012', 'gamma');
+INSERT INTO testtable (id, group) VALUES ('00013', 'delta');
+INSERT INTO testtable (id, group) VALUES ('00014', 'epsilon');
+INSERT INTO testtable (id, group) VALUES ('00015', 'alpha');
+INSERT INTO testtable (id, group) VALUES ('00016', 'beta');
+INSERT INTO testtable (id, group) VALUES ('00017', 'gamma');
+...
+INSERT INTO testtable (id, group) VALUES ('100000', 'alpha');
+SELECT COUNT FROM testspace.testtable WHERE group = 'alpha' LIMIT 100001;
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Russ Hatch
+Reporter:
+Dominic Letz
+Create date:
+02/Jan/14 06:42
+Update date:
+16/Apr/19 09:31
+Resolved date:
+27/Mar/14 21:46

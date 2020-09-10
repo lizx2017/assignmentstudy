@@ -1,0 +1,53 @@
+Summary:
+Filtering for CONTAINS (KEY) on frozen collection clustering columns within a partition does not work
+Description:
+Create a table like this:
+CREATE TABLE foo (
+    a int,
+    b int,
+    c frozen<set<int>>
+    d int,
+    PRIMARY KEY (a, b, c, d)
+)
+and add an index on it:
+CREATE INDEX ON foo(b)
+A query across all partitions will work correctly:
+cqlsh:ks1> insert into foo (a, b, c, d) VALUES (0, 0, {1, 2}, 0);
+cqlsh:ks1> SELECT * FROM foo WHERE b=0 AND c CONTAINS 2 and d=0 ALLOW FILTERING;
+
+ a | b | c      | d
+---+---+--------+---
+ 0 | 0 | {1, 2} | 0
+
+(1 rows)
+But if the query is restricted to a single partition, it is considered invalid (and the error message isn't great):
+cqlsh:ks1> SELECT * FROM foo WHERE a=0 AND b=0 AND c CONTAINS 2 and d=0 ALLOW FILTERING;
+code=2200 [Invalid query] message="No secondary indexes on the restricted columns support the provided operators: "
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Tyler Hobbs
+Create date:
+12/Nov/14 19:50
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Nov/14 17:40

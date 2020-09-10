@@ -1,0 +1,45 @@
+Summary:
+PDFTextStripper character suppression
+Description:
+When parsing the file posted as an example for PDFBox-659, I noticed that numerous characters were missing from the extracted text.
+They are getting 'suppressed' in the PDFTextStripper.processTextPosition(TextPosition) method in a section that is meant to try to filter duplicate chars found in some MS Word - generated documents.
+The problem is that the filter is over-zealous (in the case of this document) and matches real characters against other real characters in the text. Example
+This is some text that has the letter 'e' in it multiple times.
+The filter might match one of the later 'e's to an earlier 'e' incorrectly (for example, the one at the end of 'some'), resulting in the extracted text:
+This is some text that has the letter 'e' in it multiple tims.
+.
+From what I can tell this is because it is using the raw, padded coordinates rather than resolved coordinates.
+The example PDF document (see PDFBOX-659) has pages that use both positive and negative raw coordinates that upon my cursory inspection don't always resolve on the same offset point.
+The suppression test logic compares textposition elements that seem to have different offsets, possibly due to different amounts of padding. Thus the 'overlap' that it detects is wrong. Its not comparing apples to apples.
+The document renders perfectly in Acrobat, so I believe we are not handling the coordinates correctly.
+A workaround is possible through suppressing the filtering by setting the
+PDFTextStripper.setSuppressDuplicateOverlappingText(boolean)
+attribute to false. But that is just hiding the fact that the logic is wrong.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.0.0
+Fix_version:
+1.4.0
+Component:
+Text extraction
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Mel Martinez
+Create date:
+15/Mar/10 22:27
+Update date:
+13/Oct/14 17:42
+Resolved date:
+13/Oct/14 17:42

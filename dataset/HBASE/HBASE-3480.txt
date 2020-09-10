@@ -1,0 +1,52 @@
+Summary:
+Reduce the size of Result serialization
+Description:
+When faced with a gigabit ethernet network connection, things are pretty slow actually. For example, let's take a 2 MB reply, using a 120MB/sec line rate, we are talking about about 16ms to transfer that data across a gige line. This is a pretty significant amount of time.
+So this JIRA is about reducing the size of the Result[] serialization. By exploiting family and qualifier and rowkey duplication, I created a simple encoding scheme to use a dictionary instead of literal strings.
+in my testing, I am seeing some success with the sizes. Average serialized size is about 1/2 of previous, but time to serialize on the regionserver side is way up, by a factor of 10x. This might be due to the simplistic first implementation however.
+Here is the post change size:
+grep 'Serialized size' * | perl -ne '/Serialized size: (\d+?) in (\d+?) ns/ ; print $1, " ", $2, "\n" if $1 > 10000;' | cut -f1 -d' ' | perl -ne '$sum = $_; $count+; END
+{print $sum/$count, "\n"}'
+377047.1125
+
+Here is the pre change size:
+grep 'Serialized size' * | perl -ne '/Serialized size: (\d+?) in (\d+?) ns/ ; print $1, " ", $2, "\n" if $1 > 10000;' | cut -f1 -d' ' | perl -ne '$sum = $_; $count+; END {print $sum/$count, "n"}
+'
+601078.505882353
+That is about a 60% improvement in size.
+But times are not so good, here are some samples of the old, in (size) (time in ns)
+3874599 10685836
+5582725 11525888
+so that is about 11ms to serialize 3-5mb of data.
+In the new implementation:
+1898788 118504672
+1630058 91133003
+this is 118-91ms for serialized sizes of 1.6-1.8 MB.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+0.90.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+ryan rawson
+Create date:
+26/Jan/11 06:55
+Update date:
+12/Aug/14 19:15
+Resolved date:
+12/Aug/14 19:15

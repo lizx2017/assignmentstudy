@@ -1,0 +1,67 @@
+Summary:
+NullPointerException in Streaming During Repair
+Description:
+In cassandra-2.0, I can trigger a NullPointerException with a repair. These steps should reproduce the issue:
+create a three node ccm cluster (with vnodes)
+start a stress write (I'm using tools/bin/cassandra-stress --replication-factor=3 -n 10000000 -k -t 1)
+stop node3 while stress is running, then wait a minute
+start node 3
+run "ccm node3 repair"
+In the logs for node1, I see this:
+ERROR [STREAM-OUT-/127.0.0.3] 2014-04-04 17:40:08,547 CassandraDaemon.java (line 198) Exception in thread Thread[STREAM-OUT-/127.0.0.3,5,main]
+java.lang.NullPointerException
+        at org.apache.cassandra.streaming.ConnectionHandler$MessageHandler.signalCloseDone(ConnectionHandler.java:249)
+        at org.apache.cassandra.streaming.ConnectionHandler$OutgoingMessageHandler.run(ConnectionHandler.java:375)
+        at java.lang.Thread.run(Thread.java:724)
+After applying Yuki's suggested patch:
+diff --git a/src/java/org/apache/cassandra/streaming/ConnectionHandler.java b/src/java/org/apache/cassandra/streaming/ConnectionHandler.java
+index 356138b..b06a818 100644
+--- a/src/java/org/apache/cassandra/streaming/ConnectionHandler.java
++++ b/src/java/org/apache/cassandra/streaming/ConnectionHandler.java
+@@ -366,7 +366,7 @@ public class ConnectionHandler
+             {
+                 throw new AssertionError(e);
+             }
+-            catch (IOException e)
++            catch (Throwable e)
+             {
+                 session.onError(e);
+             }
+I see a new NPE:
+ERROR [STREAM-OUT-/127.0.0.3] 2014-04-04 18:12:35,912 StreamSession.java (line 420) [Stream #9b592af0-bc4e-11e3-a6f9-43eb3a328df9] Streaming error occurred
+java.lang.NullPointerException
+        at org.apache.cassandra.streaming.StreamSession.fileSent(StreamSession.java:465)
+        at org.apache.cassandra.streaming.messages.OutgoingFileMessage$1.serialize(OutgoingFileMessage.java:60)
+        at org.apache.cassandra.streaming.messages.OutgoingFileMessage$1.serialize(OutgoingFileMessage.java:42)
+        at org.apache.cassandra.streaming.messages.StreamMessage.serialize(StreamMessage.java:45)
+        at org.apache.cassandra.streaming.ConnectionHandler$OutgoingMessageHandler.sendMessage(ConnectionHandler.java:383)
+        at org.apache.cassandra.streaming.ConnectionHandler$OutgoingMessageHandler.run(ConnectionHandler.java:355)
+        at java.lang.Thread.run(Thread.java:724)
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Tyler Hobbs
+Create date:
+04/Apr/14 23:31
+Update date:
+16/Apr/19 09:31
+Resolved date:
+08/Apr/14 18:08

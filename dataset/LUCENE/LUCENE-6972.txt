@@ -1,0 +1,44 @@
+Summary:
+QueryBuilder should not differentiate single position and multiple positions queries when the analyzer produces synonyms.
+Description:
+When synonyms are involved the querybuilder differentiate two cases. When there is only one position the query is composed of one BooleanQuery which contains multiple should clauses. This does not interact well when trying to apply a minimum_should_match to the query. For instance if a field has a synonym rule like "foo,bar" the query "foo" will produce:
+(foo bar)
+... two optional clauses at the root level. If we apply a minimum should match of 50% then the query becomes:
+(foo bar)~1
+This seems wrong, the terms are at the same position.
+IMO the querybuilder should produce the following query:
+((foo bar))
+... and a minimum should match of 50% should be not applicable to a query with only one optional clause at the root level.
+The case with multiple positions works as expected.
+The user query "test foo" generates:
+(test (foo bar))
+... and if we apply a minimum should match of 50%:
+(test (foo bar))~1
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+5.4, 5.5
+Fix_version:
+6.7, 7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adrien Grand
+Reporter:
+Jim Ferenczi
+Create date:
+11/Jan/16 23:02
+Update date:
+08/Jun/17 23:29
+Resolved date:
+

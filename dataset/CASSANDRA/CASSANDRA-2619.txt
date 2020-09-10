@@ -1,0 +1,125 @@
+Summary:
+secondary index not dropped until restart
+Description:
+when dropping the secondary index (via cassandra-cli), the describe keyspace still shows the Built index entry. Only after a restart of the CassandraDaemon then the Built Index entry is gone. This seems indicate a problem with the index not really been dropped completed.
+to test, use a single node, create an index, then drop it from the cli (issue an update column family ... with metadata fields but not the index info)
+below is the original:
+Column Families:
+ColumnFamily: inode
+"Stores file meta data"
+Key Validation Class: org.apache.cassandra.db.marshal.BytesType
+Default column value validator: org.apache.cassandra.db.marshal.BytesType
+Columns sorted by: org.apache.cassandra.db.marshal.BytesType
+Row cache size / save period in seconds: 0.0/0
+Key cache size / save period in seconds: 0.0/14400
+Memtable thresholds: 0.103125/22/1440 (millions of ops/MB/minutes)
+GC grace seconds: 60
+Compaction min/max thresholds: 4/32
+Read repair chance: 1.0
+Replicate on write: false
+Built indexes: [inode.path, inode.sentinel]
+Column Metadata:
+Column Name: path (70617468)
+Validation Class: org.apache.cassandra.db.marshal.BytesType
+Index Name: path
+Index Type: KEYS
+Column Name: sentinel (73656e74696e656c)
+Validation Class: org.apache.cassandra.db.marshal.BytesType
+Index Name: sentinel
+Index Type: KEYS
+issue an update:
+[default@unknown] use cfs;
+Authenticated to keyspace: cfs
+[default@cfs] update column family inode with comparator=BytesType and column_metadata=[{column_name:70617468, validation_class:BytesType}, {column_name:73656e74696e656c,validation_class:BytesType}];
+fca46d00-783c-11e0-0000-242d50cf1fff
+Waiting for schema agreement...
+... schemas agree across the cluster
+describe the keyspace again:
+Keyspace: cfs:
+Replication Strategy: org.apache.cassandra.locator.NetworkTopologyStrategy
+Options: [Brisk:1, Cassandra:0]
+Column Families:
+ColumnFamily: inode
+"Stores file meta data"
+Key Validation Class: org.apache.cassandra.db.marshal.BytesType
+Default column value validator: org.apache.cassandra.db.marshal.BytesType
+Columns sorted by: org.apache.cassandra.db.marshal.BytesType
+Row cache size / save period in seconds: 0.0/0
+Key cache size / save period in seconds: 0.0/14400
+Memtable thresholds: 0.103125/22/1440 (millions of ops/MB/minutes)
+GC grace seconds: 60
+Compaction min/max thresholds: 4/32
+Read repair chance: 1.0
+Replicate on write: false
+Built indexes: [inode.path, inode.sentinel]
+Column Metadata:
+Column Name: path (70617468)
+Validation Class: org.apache.cassandra.db.marshal.BytesType
+Column Name: sentinel (73656e74696e656c)
+Validation Class: org.apache.cassandra.db.marshal.BytesType
+notice the red line on Built Indexes
+restart CassandraDaemon, describe again:
+Keyspace: cfs:
+Replication Strategy: org.apache.cassandra.locator.NetworkTopologyStrategy
+Options: [Brisk:1, Cassandra:0]
+Column Families:
+ColumnFamily: inode
+"Stores file meta data"
+Key Validation Class: org.apache.cassandra.db.marshal.BytesType
+Default column value validator: org.apache.cassandra.db.marshal.BytesType
+Columns sorted by: org.apache.cassandra.db.marshal.BytesType
+Row cache size / save period in seconds: 0.0/0
+Key cache size / save period in seconds: 0.0/14400
+Memtable thresholds: 0.103125/22/1440 (millions of ops/MB/minutes)
+GC grace seconds: 60
+Compaction min/max thresholds: 4/32
+Read repair chance: 1.0
+Replicate on write: false
+Built indexes: []
+Column Metadata:
+Column Name: path (70617468)
+Validation Class: org.apache.cassandra.db.marshal.BytesType
+Column Name: sentinel (73656e74696e656c)
+Validation Class: org.apache.cassandra.db.marshal.BytesType
+on another note, upon re-create the index, it does not appear the index is actually rebuilt. There is no need to restart CassandraDaemon for the Built Index to show up from the describe. But the update goes very fast. We could tell the index is not being rebuilt because we were getting NPE from:
+java.lang.RuntimeException: java.lang.NullPointerException
+ at org.apache.cassandra.service.IndexScanVerbHandler.doVerb(IndexScanVerbHandler.java:51)
+ at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:72)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: java.lang.NullPointerException
+ at org.apache.cassandra.db.ColumnFamilyStore.satisfies(ColumnFamilyStore.java:1647)
+ at org.apache.cassandra.db.ColumnFamilyStore.scan(ColumnFamilyStore.java:1594)
+ at org.apache.cassandra.service.IndexScanVerbHandler.doVerb(IndexScanVerbHandler.java:42)
+and after re-create the index, the exception resurface (the exception does not surface upon drop).
+If we drop the index files and remove them, then re-create the index, the NPE is resolved:
+$ find /var/lib/cassandra/data/cfs -name "*path*" -o -name "*sentinel* -exec rm {} \;"
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.6, 0.8.0
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jackson Chung
+Create date:
+07/May/11 00:36
+Update date:
+16/Apr/19 09:32
+Resolved date:
+09/May/11 07:09

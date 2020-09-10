@@ -1,0 +1,52 @@
+Summary:
+start_column in get_page_slice has odd behaivor
+Description:
+get_paged_slice is described as so:
+ /**
+   returns a range of columns, wrapping to the next rows if necessary to collect max_results.
+  */
+  list<KeySlice> get_paged_slice(1:required string column_family,
+                                 2:required KeyRange range,
+                                 3:required binary start_column,
+                                 4:required ConsistencyLevel consistency_level=ConsistencyLevel.ONE)
+                 throws (1:InvalidRequestException ire, 2:UnavailableException ue, 3:TimedOutException te),
+The term max_results is not defined, I take it to mean key_range.count.
+The larger issue I have found is that start_column seems to be ignored in some cases.
+testNormal() produces this error
+junit.framework.ComparisonFailure: null expected:<[c]> but was:<[a]>
+The problem seems to be KeyRanges that use tokens and not keys.
+KeyRange kr = new KeyRange();
+      kr.setCount(3);
+      kr.setStart_token("");
+      kr.setEnd_token("");   
+A failing test is here:
+https://github.com/edwardcapriolo/cassandra/compare/pg?expand=1
+Is this a bug? It feels like one, or is this just undefined behaviour. If it is a bug I would like to fix.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Edward Capriolo
+Reporter:
+Edward Capriolo
+Create date:
+04/Apr/14 00:50
+Update date:
+16/Apr/19 09:31
+Resolved date:
+24/Feb/15 00:08

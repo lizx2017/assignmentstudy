@@ -1,0 +1,110 @@
+Summary:
+RPCAddress directive appears to be ignored in storage-conf.xml
+Description:
+Using the following configuration file, Thrift is always bound to 10.10.8.161 IP, when it should be bound to 192.168.74.161
+<Storage>
+<ClusterName>Test</ClusterName>
+<AutoBootstrap>true</AutoBootstrap>
+<Keyspaces>
+<Keyspace Name="Keyspace1">
+<!--
+<ColumnFamily CompareWith="BytesType"
+Name="Standard1"
+RowsCached="10%"
+KeysCached="0"/>
+<ColumnFamily CompareWith="UTF8Type" Name="Standard2"/>
+<ColumnFamily CompareWith="TimeUUIDType" Name="StandardByUUID1"/>
+<ColumnFamily ColumnType="Super"
+CompareWith="UTF8Type"
+CompareSubcolumnsWith="UTF8Type"
+Name="Super1"
+RowsCached="1000"
+KeysCached="50%"
+Comment="A column family with supercolumns, whose column and subcolumn names are UTF8 strings"/>
+<ReplicaPlacementStrategy>org.apache.cassandra.locator.RackAwareStrategy</ReplicaPlacementStrategy>
+<ReplicationFactor>3</ReplicationFactor>
+<EndPointSnitch>org.apache.cassandra.locator.EndPointSnitch</EndPointSnitch>
+</Keyspace>
+<Authenticator>org.apache.cassandra.auth.SimpleAuthenticator</Authenticator>
+<Partitioner>org.apache.cassandra.dht.OrderPreservingPartitioner</Partitioner>
+<InitialToken></InitialToken>
+<CommitLogDirectory>/var/lib/cassandra/commitlog</CommitLogDirectory>
+<DataFileDirectories>
+<DataFileDirectory>/var/lib/cassandra/data</DataFileDirectory>
+</DataFileDirectories>
+<CalloutLocation>/var/lib/cassandra/callouts</CalloutLocation>
+<StagingFileDirectory>/var/lib/cassandra/staging</StagingFileDirectory>
+<Seeds>
+<Seed>10.10.8.161</Seed>
+<Seed>10.10.8.162</Seed>
+</Seeds>
+<RpcTimeoutInMillis>10000</RpcTimeoutInMillis>
+<CommitLogRotationThresholdInMB>128</CommitLogRotationThresholdInMB>
+<ListenAddress>10.10.8.161</ListenAddress> -->
+<StoragePort>7000</StoragePort> -->
+<RPCAddress>192.168.74.161</RPCAddress>
+<RPCPort>9160</RPCPort>
+<ThriftFramedTransport>false</ThriftFramedTransport>
+<DiskAccessMode>auto</DiskAccessMode>
+<SlicedBufferSizeInKB>512</SlicedBufferSizeInKB>
+<FlushDataBufferSizeInMB>32</FlushDataBufferSizeInMB>
+<FlushIndexBufferSizeInMB>8</FlushIndexBufferSizeInMB>
+<ColumnIndexSizeInKB>256</ColumnIndexSizeInKB>
+<MemtableThroughputInMB>32</MemtableThroughputInMB>
+<BinaryMemtableThroughputInMB>256</BinaryMemtableThroughputInMB>
+<MemtableOperationsInMillions>0.3</MemtableOperationsInMillions>
+<MemtableFlushAfterMinutes>300</MemtableFlushAfterMinutes>
+<ConcurrentReads>32</ConcurrentReads>
+<ConcurrentWrites>60</ConcurrentWrites>
+<CommitLogSync>periodic</CommitLogSync>
+<CommitLogSyncPeriodInMS>10000</CommitLogSyncPeriodInMS>
+<GCGraceSeconds>864000</GCGraceSeconds>
+</Storage>
+Relevant startup log:
+[cassandra@cass01 cassandra-0.6.0-rc1]$ bin/cassandra -f
+INFO 01:53:59,396 Auto DiskAccessMode determined to be mmap
+INFO 01:53:59,755 Deleted /var/lib/cassandra/data/system/LocationInfo-1-Data.db
+INFO 01:53:59,755 Deleted /var/lib/cassandra/data/system/LocationInfo-2-Data.db
+INFO 01:53:59,755 Deleted /var/lib/cassandra/data/system/LocationInfo-3-Data.db
+INFO 01:53:59,755 Sampling index for /var/lib/cassandra/data/system/LocationInfo-5-Data.db
+INFO 01:53:59,755 Deleted /var/lib/cassandra/data/system/LocationInfo-4-Data.db
+INFO 01:53:59,755 Replaying /var/lib/cassandra/commitlog/CommitLog-1270025575900.log
+INFO 01:53:59,755 Log replay complete
+INFO 01:53:59,811 Saved Token found: uju5FX87SROAwe4w
+INFO 01:53:59,811 Saved ClusterName found: Test Cluster
+INFO 01:53:59,811 Creating new commitlog segment /var/lib/cassandra/commitlog/CommitLog-1270025639811.log
+INFO 01:53:59,811 Starting up server gossip
+INFO 01:53:59,867 Binding thrift service to /10.10.8.161:9160
+INFO 01:53:59,867 Cassandra starting up...
+INFO 01:53:59,923 Node /10.10.8.162 is now part of the cluster
+INFO 01:54:00,539 InetAddress /10.10.8.162 is now UP
+Machine is CentOS 5.4 x64 configured with 2 adapters, eth0 10.10.8.161/23 and eth1 192.168.74.161/23. Running 0.6.0-rc1 in a 2-node cluster (second machine is *.162, and the same is observed)
+If I change RPCAddress to something bogus, say <RPCAddress>bogus address</RPCAddress> it would still startup with the same result as above. Leaving it blank or 0.0.0.0 makes no difference either, it still binds to 10.10.8.161 IP (and not "all")
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Invalid
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Eric Evans
+Reporter:
+Vitaly Pecharsky
+Create date:
+31/Mar/10 09:04
+Update date:
+16/Apr/19 09:33
+Resolved date:
+31/Mar/10 19:35

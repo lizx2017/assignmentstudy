@@ -1,0 +1,61 @@
+Summary:
+SpanPayloadCheckQuery and PayloadScoreQuery are missing rewrite methods
+Description:
+If used with a wildcard query, the result is a failure saying: "Rewrite query first"
+The SpanNearQuery has the rewrite method; however the SpanPayloadCheckQuery just returns the query itself.
+this works:
+```
+spanNear([vectrfield:ebyuugz, SpanMultiTermQueryWrapper(vectrfield:e*), SpanMultiTermQueryWrapper(vectrfield:m*), SpanMultiTermQueryWrapper(vectrfield:f*)], 0, true)
+```
+code to generate the query:
+```
+private Query getSpanQuery(String[] parts, int howMany, boolean truncate) throws UnsupportedEncodingException {
+SpanQuery[] clauses = new SpanQuery[howMany+1];
+clauses[0] = new SpanTermQuery(new Term("vectrfield", parts[0])); // surname
+for (int i = 0; i < howMany; i++) {
+if (truncate)
+{ SpanMultiTermQueryWrapper<WildcardQuery> q = new SpanMultiTermQueryWrapper<WildcardQuery>(new WildcardQuery(new Term("vectrfield", parts[i+1].substring(0, 1) + "*"))); clauses[i+1] = q; }
+else
+{ clauses[i+1] = new SpanTermQuery(new Term("vectrfield", parts[i+1])); }
+}
+SpanNearQuery sq = new SpanNearQuery(clauses, 0, true); // match in order
+return sq;
+}
+```
+and this fails:
+```
+spanPayCheck(spanNear([vectrfield:ebyuugz, SpanMultiTermQueryWrapper(vectrfield:e*), SpanMultiTermQueryWrapper(vectrfield:m*), SpanMultiTermQueryWrapper(vectrfield:f*)], 1, true), payloadRef: 0;1;2;3
+```
+each clause is made of:
+```
+new SpanMultiTermQueryWrapper<WildcardQuery>(new WildcardQuery(new Term("vectrfield", parts[i+1].substring(0, 1) + "*")));
+```
+It is a regression; the code was working well in SOLR4.x
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.6, 7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Erik Hatcher
+Reporter:
+Roman Chyla
+Create date:
+06/Oct/16 22:06
+Update date:
+07/Mar/18 15:24
+Resolved date:
+27/Apr/17 23:54

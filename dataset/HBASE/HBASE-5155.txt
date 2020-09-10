@@ -1,0 +1,66 @@
+Summary:
+ServerShutDownHandler And Disable/Delete should not happen parallely leading to recreation of regions that were deleted
+Description:
+ServerShutDownHandler and disable/delete table handler races. This is not an issue due to TM.
+-> A regionserver goes down. In our cluster the regionserver holds lot of regions.
+-> A region R1 has two daughters D1 and D2.
+-> The ServerShutdownHandler gets called and scans the META and gets all the user regions
+-> Parallely a table is disabled. (No problem in this step).
+-> Delete table is done.
+-> The tables and its regions are deleted including R1, D1 and D2.. (So META is cleaned)
+-> Now ServerShutdownhandler starts to processTheDeadRegion
+ if (hri.isOffline() && hri.isSplit()) {
+      LOG.debug("Offlined and split region " + hri.getRegionNameAsString() +
+        "; checking daughter presence");
+      fixupDaughters(result, assignmentManager, catalogTracker);
+As part of fixUpDaughters as the daughers D1 and D2 is missing for R1
+    if (isDaughterMissing(catalogTracker, daughter)) {
+      LOG.info("Fixup; missing daughter " + daughter.getRegionNameAsString());
+      MetaEditor.addDaughter(catalogTracker, daughter, null);
+
+      // TODO: Log WARN if the regiondir does not exist in the fs.  If its not
+      // there then something wonky about the split -- things will keep going
+      // but could be missing references to parent region.
+
+      // And assign it.
+      assignmentManager.assign(daughter, true);
+we call assign of the daughers.
+Now after this we again start with the below code.
+        if (processDeadRegion(e.getKey(), e.getValue(),
+            this.services.getAssignmentManager(),
+            this.server.getCatalogTracker())) {
+          this.services.getAssignmentManager().assign(e.getKey(), true);
+Now when the SSH scanned the META it had R1, D1 and D2.
+So as part of the above code D1 and D2 which where assigned by fixUpDaughters
+is again assigned by
+this.services.getAssignmentManager().assign(e.getKey(), true);
+Thus leading to a zookeeper issue due to bad version and killing the master.
+The important part here is the regions that were deleted are recreated which i think is more critical.
+Status:
+RESOLVED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+09/Jan/12 13:16
+Update date:
+10/Jan/15 02:15
+Resolved date:
+10/Jan/15 02:15

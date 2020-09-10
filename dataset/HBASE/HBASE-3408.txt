@@ -1,0 +1,52 @@
+Summary:
+AssignmentManager NullPointerException
+Description:
+If AssignmentManager tries to move a region to an invalid destination server, rather than choosing a random server as intended, it throws an NPE.
+Line 1009 should check if existingPlan.getDestination()!=null:
+if (existingPlan == null || forceNewPlan ||
+(existingPlan.getDestination() != null && existingPlan.getDestination().equals(serverToExclude))) {
+I triggered it by trying to manually move regions around, probably to an invalid destination server. I'm not currently able to build the project to test if that's the extent of the problem, so here's a little more info...
+It leaves a stranded region-in-transition until the master and/or regionserver are restarted and causes problems like the following. "hbck -fix" was unable to repair it.
+2011-01-04 00:14:10,948 DEBUG org.apache.hadoop.hbase.master.CatalogJanitor: Scanned 4287 catalog row(s) and gc'd 0 unreferenced parent region(s)
+2011-01-04 00:14:18,574 DEBUG org.apache.hadoop.hbase.master.HMaster: Not running balancer because 1 region(s) in transition:
+{23ebce9a5d174f87bfb96ed1da387fdc=RandomValue,,1291219068335.23ebce9a5d174f87bfb96ed1da387fdc. state=OFFLINE, ts=1294118046139}
+2011-01-04 00:14:36,142 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: RandomValue,,1291219068335.23ebce9a5d174f87bfb96ed1da387fdc. state=OFFLINE, ts=1294118046139
+2011-01-04 00:14:36,142 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been OFFLINE for too long, reassigning RandomValue,,1291219068335.23ebce9a5d174f87bfb96ed1da387fdc. to a random server
+2011-01-04 00:14:36,142 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Forcing OFFLINE; was=RandomValue,,1291219068335.23ebce9a5d174f87bfb96ed1da387fdc. state=OFFLINE, ts=1294118046139
+2011-01-04 00:14:36,142 ERROR org.apache.hadoop.hbase.master.AssignmentManager$TimeoutMonitor: Caught exception
+java.lang.NullPointerException
+at org.apache.hadoop.hbase.master.AssignmentManager.getRegionPlan(AssignmentManager.java:934) (i think this is .90.0RC1, so same bug on a different line number)
+at org.apache.hadoop.hbase.master.AssignmentManager.getRegionPlan(AssignmentManager.java:909)
+at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:822)
+at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:663)
+at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:643)
+at org.apache.hadoop.hbase.master.AssignmentManager$TimeoutMonitor.chore(AssignmentManager.java:1481)
+at org.apache.hadoop.hbase.Chore.run(Chore.java:66)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Matt Corgan
+Create date:
+04/Jan/11 05:22
+Update date:
+20/Nov/15 12:41
+Resolved date:
+05/Jan/11 00:03

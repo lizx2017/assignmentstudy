@@ -1,0 +1,50 @@
+Summary:
+Skip EOF Errors during Log Recovery
+Description:
+While testing a cluster, we hit upon the following assert during region assigment. We were killing the master during a long run of splits. We think what happened is that the HMaster was killed while splitting, woke up & split again. If this happens, we will have 2 files: 1 partially written and 1 complete one. Since encountering partial log splits upon Master failure is considered normal behavior, we should continue at the RS level if we encounter an EOFException & not an filesystem-level exception, even with skip.errors == false.
+2010-08-20 16:59:07,718 ERROR org.apache.hadoop.hbase.regionserver.HRegionServer: Error opening MailBox_dsanduleac,57db45276ece7ce03ef7e8d9969eb189:99900000000008@facebook.com,1280960828959.7c542d24d4496e273b739231b01885e6.
+java.io.EOFException
+at java.io.DataInputStream.readInt(DataInputStream.java:375)
+at org.apache.hadoop.io.SequenceFile$Reader.readRecordLength(SequenceFile.java:1902)
+at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1932)
+at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1837)
+at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1883)
+at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.next(SequenceFileLogReader.java:121)
+at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.next(SequenceFileLogReader.java:113)
+at org.apache.hadoop.hbase.regionserver.HRegion.replayRecoveredEdits(HRegion.java:1981)
+at org.apache.hadoop.hbase.regionserver.HRegion.replayRecoveredEdits(HRegion.java:1956)
+at org.apache.hadoop.hbase.regionserver.HRegion.replayRecoveredEditsIfAny(HRegion.java:1915)
+at org.apache.hadoop.hbase.regionserver.HRegion.initialize(HRegion.java:344)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.instantiateRegion(HRegionServer.java:1490)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.openRegion(HRegionServer.java:1437)
+at org.apache.hadoop.hbase.regionserver.HRegionServer$Worker.run(HRegionServer.java:1345)
+at java.lang.Thread.run(Thread.java:619)
+2010-08-20 16:59:07,719 ERROR org.apache.hadoop.hbase.regionserver.RSZookeeperUpdater: Aborting open of region 7c542d24d4496e273b739231b01885e6
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Spiegelberg
+Reporter:
+Nicolas Spiegelberg
+Create date:
+21/Aug/10 01:07
+Update date:
+20/Nov/15 12:42
+Resolved date:
+16/Oct/10 05:29

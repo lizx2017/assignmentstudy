@@ -1,0 +1,49 @@
+Summary:
+The shutdown RegionServer could be added to AssignmentManager.servers again
+Description:
+The folling steps can easily recreate the problem:
+1. There's thousands of regions in the cluster.
+2. Stop the cluster.
+3. Start the cluster. Killing one regionserver while the regions were opening. Restarted it after 10 seconds.
+The shutted regionserver will appear in the AssignmentManager.servers list again.
+For example:
+Issue 1:
+2011-06-23 14:14:30,775 DEBUG org.apache.hadoop.hbase.master.LoadBalancer: Server information: 167-6-1-12,20020,1308803390123=2220, 167-6-1-13,20020,1308803391742=2374, 167-6-1-11,20020,1308803386333=2205, 167-6-1-13,20020,1308803514394=2183
+Two regionservers(One of it had aborted) had the same hostname but different startcode:
+167-6-1-13,20020,1308803391742=2374
+167-6-1-13,20020,1308803514394=2183
+Issue 2:
+(1).The Rs 167-6-1-11,20020,1308105402003 finished shutdown at "10:46:37,774":
+10:46:37,774 INFO org.apache.hadoop.hbase.master.handler.ServerShutdownHandler: Finished processing of shutdown of 167-6-1-11,20020,1308105402003
+(2).Overwriting happened, it seemed the RS was still exist in the set of AssignmentManager#regions:
+10:45:55,081 WARN org.apache.hadoop.hbase.master.AssignmentManager: Overwriting 612342de1fe4733f72299d70addb6d11 on serverName=167-6-1-11,20020,1308105402003, load=(requests=0, regions=0, usedHeap=0, maxHeap=0)
+(3).Region was assigned to this dead RS again at "10:50:20,671":
+10:50:20,671 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region Jeason10,08058613800000030,1308032774777.612342de1fe4733f72299d70addb6d11. to 167-6-1-11,20020,1308105402003
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.90.4
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jieshan Bean
+Reporter:
+Jieshan Bean
+Create date:
+25/Jun/11 02:11
+Update date:
+20/Nov/15 11:54
+Resolved date:
+07/Jul/11 19:58

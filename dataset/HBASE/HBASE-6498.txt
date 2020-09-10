@@ -1,0 +1,463 @@
+Summary:
+-ROOT-, .META. will not come up after installing in hbase-0.94.0
+Description:
+Hi Dear:
+I met problem with starting Hbase:
+I have 5 machines (Ubuntu)
+109.123.121.23 rsmm-master.example.com
+109.123.121.24 rsmm-slave-1.example.com
+109.123.121.25 rsmm-slave-2.example.com
+109.123.121.26 rsmm-slave-3.example.com
+109.123.121.27 rsmm-slave-4.example.com
+Hadoop 0.20.205.0
+Zookeeper: zookeeper-3.3.5.jar
+Hbase: hbase-0.94.0
+The configuration file:
+1. /etc/hosts seting is fine
+#127.0.0.1 localhost
+109.123.121.23 rsmm-master.example.com
+109.123.121.24 rsmm-slave-1.example.com
+109.123.121.25 rsmm-slave-2.example.com
+109.123.121.26 rsmm-slave-3.example.com
+109.123.121.27 rsmm-slave-4.example.com
+The following lines are desirable for IPv6 capable hosts
+::1 ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+2. /home/hduser/hadoop-0.20.205.0/conf/core-site.xml:
+<property>
+<name>hadoop.tmp.dir</name>
+<value>/home/hduser/hadoop-0.20.205.0/data</value>
+</property>
+<property>
+<name>fs.default.name</name>
+<value>hdfs://rsmm-master.example.com:9000</value>
+</property>
+3. I use individual zookeeper. /home/hduser/zookeeper/conf/zoo.cfg
+tickTime=2000
+dataDir=/home/hduser/zookeeper/conf
+dataLogDir=/home/hduser/zookeeper/logs
+clientPort=2181
+initLimit=10
+syncLimit=5
+minSessionTimeout=10000
+maxSessionTimeout=20000
+server.1=rsmm-master.example.com:2888:3888
+server.2=rsmm-slave-1.example.com:2888:3888
+server.3=rsmm-slave-2.example.com:2888:3888
+server.4=rsmm-slave-3.example.com:2888:3888
+server.5=rsmm-slave-4.example.com:2888:3888
+4. /home/hduser/hbase/conf/hbase-site.xml
+<property>
+<name>hbase.zookeeper.quorum</name>
+<value>rsmm-master.example.com,rsmm-slave-1.example.com,rsmm-slave-2.example.com,rsmm-slave-3.example.com,rsmm-slave-4.example.com</value>
+</property>
+<property>
+<name>hbase.master</name>
+<value>rsmm-master.example.com:60000</value>
+</property>
+<property>
+<name>hbase.zookeeper.property.dataDir</name>
+<value>/home/hduser/zookeeper/conf</value>
+</property>
+<property>
+<name>hbase.rootdir</name>
+<value>hdfs://rsmm-master.example.com:9000/hbase</value>
+</property>
+<property>
+<name>dfs.support.append</name>
+<value>true</value>
+</property>
+<property>
+<name>hbase.cluster.distributed</name>
+<value>true</value>
+</property>
+<property>
+<name>hbase.master.maxclockskew</name>
+<value>180000</value>
+</property>
+<property>
+<name>hbase.master.distributed.log.splitting</name>
+<value>false</value>
+</property>
+<property>
+<name>hbase.master.info.port</name>
+<value>60010</value>
+</property>
+<property>
+<name>hbase.master.port</name>
+<value>60000</value></property>
+<property>
+<name>hbase.defaults.for.version.skip</name>
+<value>true</value>
+</property>
+5. /home/hduser/hbase/conf/hbase-env.sh
+export JAVA_HOME=/usr/java/jre1.6.0_33
+export HADOOP_HOME=/home/hduser/hadoop-0.20.205.0
+export HBASE_HOME=/home/hduser/hbase
+export PATH=$PATH:/home/hduser/hbase/bin
+export HBASE_CLASSPATH=/home/hduser/hadoop-0.20.205.0/conf
+export HBASE_HEAPSIZE=2048
+export HBASE_OPTS="-XX:+UseConcMarkSweepGC"
+export HBASE_MANAGES_ZK=false
+I have checked the configuration file, I believe it is set OK
+=============================================================================
+Then I start hadoop, it is OK
+because I could visit:
+http://109.123.121.23:50030/jobtracker.jsp
+http://109.123.121.23:50070/dfshealth.jsp
+http://109.123.121.24:50060/tasktracker.jsp
+http://109.123.121.25:50060/tasktracker.jsp
+http://109.123.121.26:50060/tasktracker.jsp
+http://109.123.121.26:50060/tasktracker.jsp
+I start zookeeper in all the clusters,
+runnig /home/hduser/zookeeper/bin/zkServer.sh status
+JMX enabled by default
+Using config: /home/hduser/zookeeper/bin/../conf/zoo.cfg
+Mode: follower
+Then I log in zookeeper command line:
+I could view, create ,etc..
+Then I start HBASE, then jps
+2778 NameNode
+19996 HMaster
+3209 JobTracker
+30732 Jps
+3126 SecondaryNameNode
+3382 QuorumPeerMain
+in hbase shell: status
+4 servers, 0 dead, 0.5000 average load
+it looks good but the log shows:
+Tue Dec 12 15:04:21 CST 2028 Starting master on rsmm-master.example.com
+core file size (blocks, -c) 0
+data seg size (kbytes, -d) unlimited
+scheduling priority (-e) 0
+file size (blocks, -f) unlimited
+pending signals (-i) 26056
+max locked memory (kbytes, -l) 64
+max memory size (kbytes, -m) unlimited
+open files (-n) 32768
+pipe size (512 bytes, -p) 8
+POSIX message queues (bytes, -q) 819200
+real-time priority (-r) 0
+stack size (kbytes, -s) 8192
+cpu time (seconds, -t) unlimited
+max user processes (-u) 26056
+virtual memory (kbytes, -v) unlimited
+file locks (-x) unlimited
+2028-12-12 15:04:21,916 INFO org.apache.hadoop.hbase.util.VersionInfo: HBase 0.94.0
+2028-12-12 15:04:21,917 INFO org.apache.hadoop.hbase.util.VersionInfo: Subversion https://svn.apache.org/repos/asf/hbase/branches/0.94 -r 1332822
+2028-12-12 15:04:21,917 INFO org.apache.hadoop.hbase.util.VersionInfo: Compiled by jenkins on Tue May 1 21:43:54 UTC 2012
+2028-12-12 15:04:22,219 DEBUG org.apache.hadoop.hbase.master.HMaster: Set serverside HConnection retries=100
+2028-12-12 15:04:23,181 INFO org.apache.hadoop.ipc.HBaseServer: Starting Thread-1
+2028-12-12 15:04:23,181 INFO org.apache.hadoop.ipc.HBaseServer: Starting Thread-1
+2028-12-12 15:04:23,182 INFO org.apache.hadoop.ipc.HBaseServer: Starting Thread-1
+2028-12-12 15:04:23,182 INFO org.apache.hadoop.ipc.HBaseServer: Starting Thread-1
+2028-12-12 15:04:23,183 INFO org.apache.hadoop.ipc.HBaseServer: Starting Thread-1
+2028-12-12 15:04:23,184 INFO org.apache.hadoop.ipc.HBaseServer: Starting Thread-1
+2028-12-12 15:04:23,184 INFO org.apache.hadoop.ipc.HBaseServer: Starting Thread-1
+2028-12-12 15:04:23,185 INFO org.apache.hadoop.ipc.HBaseServer: Starting Thread-1
+2028-12-12 15:04:23,185 INFO org.apache.hadoop.ipc.HBaseServer: Starting Thread-1
+2028-12-12 15:04:23,186 INFO org.apache.hadoop.ipc.HBaseServer: Starting Thread-1
+2028-12-12 15:04:23,204 INFO org.apache.hadoop.hbase.ipc.HBaseRpcMetrics: Initializing RPC Metrics with hostName=HMaster, port=60000
+2028-12-12 15:04:23,468 INFO org.apache.zookeeper.ZooKeeper: Client environment:zookeeper.version=3.3.5-1301095, built on 03/15/2012 19:48 GMT
+2028-12-12 15:04:23,468 INFO org.apache.zookeeper.ZooKeeper: Client environment:host.name=rsmm-master.example.com
+2028-12-12 15:04:23,468 INFO org.apache.zookeeper.ZooKeeper: Client environment:java.version=1.6.0_33
+2028-12-12 15:04:23,468 INFO org.apache.zookeeper.ZooKeeper: Client environment:java.vendor=Sun Microsystems Inc.
+2028-12-12 15:04:23,468 INFO org.apache.zookeeper.ZooKeeper: Client environment:java.home=/usr/java/jre1.6.0_33
+2028-12-12 15:04:23,469 INFO org.apache.zookeeper.ZooKeeper: Client environment:java.class.path=/home/hduser/hbase/conf:/usr/java/jre1.6.0_33/lib/tools.jar:/home/hduser/hbase:/home/hduser/hbase/hbase-0.94.0.jar:/home/hduser/hbase/hbase-0.94.0-tests.jar:/home/hduser/hbase/lib/activation-1.1.jar:/home/hduser/hbase/lib/asm-3.1.jar:/home/hduser/hbase/lib/avro-1.5.3.jar:/home/hduser/hbase/lib/avro-ipc-1.5.3.jar:/home/hduser/hbase/lib/commons-beanutils-1.7.0.jar:/home/hduser/hbase/lib/commons-beanutils-core-1.8.0.jar:/home/hduser/hbase/lib/commons-cli-1.2.jar:/home/hduser/hbase/lib/commons-codec-1.4.jar:/home/hduser/hbase/lib/commons-collections-3.2.1.jar:/home/hduser/hbase/lib/commons-configuration-1.6.jar:/home/hduser/hbase/lib/commons-digester-1.8.jar:/home/hduser/hbase/lib/commons-el-1.0.jar:/home/hduser/hbase/lib/commons-httpclient-3.1.jar:/home/hduser/hbase/lib/commons-io-2.1.jar:/home/hduser/hbase/lib/commons-lang-2.5.jar:/home/hduser/hbase/lib/commons-logging-1.1.1.jar:/home/hduser/hbase/lib/commons-math-2.1.jar:/home/hduser/hbase/lib/commons-net-1.4.1.jar:/home/hduser/hbase/lib/core-3.1.1.jar:/home/hduser/hbase/lib/guava-r09.jar:/home/hduser/hbase/lib/hadoop-core-0.20.205.0.jar:/home/hduser/hbase/lib/high-scale-lib-1.1.1.jar:/home/hduser/hbase/lib/httpclient-4.1.2.jar:/home/hduser/hbase/lib/httpcore-4.1.3.jar:/home/hduser/hbase/lib/jackson-core-asl-1.5.5.jar:/home/hduser/hbase/lib/jackson-jaxrs-1.5.5.jar:/home/hduser/hbase/lib/jackson-mapper-asl-1.5.5.jar:/home/hduser/hbase/lib/jackson-xc-1.5.5.jar:/home/hduser/hbase/lib/jamon-runtime-2.3.1.jar:/home/hduser/hbase/lib/jasper-compiler-5.5.23.jar:/home/hduser/hbase/lib/jasper-runtime-5.5.23.jar:/home/hduser/hbase/lib/jaxb-api-2.1.jar:/home/hduser/hbase/lib/jaxb-impl-2.1.12.jar:/home/hduser/hbase/lib/jersey-core-1.4.jar:/home/hduser/hbase/lib/jersey-json-1.4.jar:/home/hduser/hbase/lib/jersey-server-1.4.jar:/home/hduser/hbase/lib/jettison-1.1.jar:/home/hduser/hbase/lib/jetty-6.1.26.jar:/home/hduser/hbase/lib/jetty-util-6.1.26.jar:/home/hduser/hbase/lib/jruby-complete-1.6.5.jar:/home/hduser/hbase/lib/jsp-2.1-6.1.14.jar:/home/hduser/hbase/lib/jsp-api-2.1-6.1.14.jar:/home/hduser/hbase/lib/libthrift-0.8.0.jar:/home/hduser/hbase/lib/log4j-1.2.16.jar:/home/hduser/hbase/lib/netty-3.2.4.Final.jar:/home/hduser/hbase/lib/protobuf-java-2.4.0a.jar:/home/hduser/hbase/lib/servlet-api-2.5-6.1.14.jar:/home/hduser/hbase/lib/slf4j-api-1.5.8.jar:/home/hduser/hbase/lib/slf4j-log4j12-1.5.8.jar:/home/hduser/hbase/lib/snappy-java-1.0.3.2.jar:/home/hduser/hbase/lib/stax-api-1.0.1.jar:/home/hduser/hbase/lib/velocity-1.7.jar:/home/hduser/hbase/lib/xmlenc-0.52.jar:/home/hduser/hbase/lib/zookeeper-3.3.5.jar:/home/hduser/hadoop-0.20.205.0/conf:/home/hduser/hadoop-0.20.205.0/libexec/../conf:/usr/java/jre1.6.0_33/lib/tools.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/hadoop-core-0.20.205.0.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/asm-3.2.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/aspectjrt-1.6.5.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/aspectjtools-1.6.5.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-beanutils-1.7.0.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-beanutils-core-1.8.0.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-cli-1.2.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-codec-1.4.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-collections-3.2.1.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-configuration-1.6.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-daemon-1.0.1.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-digester-1.8.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-el-1.0.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-httpclient-3.0.1.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-lang-2.4.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-logging-1.1.1.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-logging-api-1.0.4.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-math-2.1.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/commons-net-1.4.1.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/core-3.1.1.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/hadoop-capacity-scheduler-0.20.205.0.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/hadoop-fairscheduler-0.20.205.0.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/hadoop-thriftfs-0.20.205.0.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/hsqldb-1.8.0.10.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jackson-core-asl-1.0.1.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jackson-mapper-asl-1.0.1.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jasper-compiler-5.5.12.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jasper-runtime-5.5.12.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jdeb-0.8.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jersey-core-1.8.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jersey-json-1.8.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jersey-server-1.8.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jets3t-0.6.1.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jetty-6.1.26.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jetty-util-6.1.26.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jsch-0.1.42.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/junit-4.5.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/kfs-0.2.2.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/log4j-1.2.15.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/mockito-all-1.8.5.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/oro-2.0.8.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/servlet-api-2.5-20081211.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/slf4j-api-1.5.8.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/slf4j-log4j12-1.4.3.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/slf4j-log4j12-1.5.8.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/xmlenc-0.52.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jsp-2.1/jsp-2.1.jar:/home/hduser/hadoop-0.20.205.0/libexec/../share/hadoop/lib/jsp-2.1/jsp-api-2.1.jar:/home/hduser/hbase/hbase-0.94.0.jar:/home/hduser/zookeeper/zookeeper-3.3.5.jar
+2028-12-12 15:04:23,469 INFO org.apache.zookeeper.ZooKeeper: Client environment:java.library.path=/home/hduser/hadoop-0.20.205.0/libexec/../lib:/home/hduser/hbase/lib/native/Linux-i386-32
+2028-12-12 15:04:23,469 INFO org.apache.zookeeper.ZooKeeper: Client environment:java.io.tmpdir=/tmp
+2028-12-12 15:04:23,469 INFO org.apache.zookeeper.ZooKeeper: Client environment:java.compiler=<NA>
+2028-12-12 15:04:23,469 INFO org.apache.zookeeper.ZooKeeper: Client environment:os.name=Linux
+2028-12-12 15:04:23,469 INFO org.apache.zookeeper.ZooKeeper: Client environment:os.arch=i386
+2028-12-12 15:04:23,469 INFO org.apache.zookeeper.ZooKeeper: Client environment:os.version=3.0.0-24-generic
+2028-12-12 15:04:23,469 INFO org.apache.zookeeper.ZooKeeper: Client environment:user.name=hduser
+2028-12-12 15:04:23,469 INFO org.apache.zookeeper.ZooKeeper: Client environment:user.home=/home/hduser
+2028-12-12 15:04:23,469 INFO org.apache.zookeeper.ZooKeeper: Client environment:user.dir=/home/hduser/hbase/bin
+2028-12-12 15:04:23,470 INFO org.apache.zookeeper.ZooKeeper: Initiating client connection, connectString=rsmm-slave-3.example.com:2181,rsmm-slave-2.example.com:2181,rsmm-slave-1.example.com:2181,rsmm-master.example.com:2181,rsmm-slave-4.example.com:2181 sessionTimeout=180000 watcher=master:60000
+2028-12-12 15:04:23,489 INFO org.apache.zookeeper.ClientCnxn: Opening socket connection to server rsmm-slave-4.example.com/109.123.121.27:2181
+2028-12-12 15:04:23,496 INFO org.apache.zookeeper.ClientCnxn: Socket connection established to rsmm-slave-4.example.com/109.123.121.27:2181, initiating session
+2028-12-12 15:04:23,496 INFO org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper: The identifier of this process is 10155@rsmm-master.example.com
+2028-12-12 15:04:23,520 INFO org.apache.zookeeper.ClientCnxn: Session establishment complete on server rsmm-slave-4.example.com/109.123.121.27:2181, sessionid = 0xffb11d36a60b0004, negotiated timeout = 20000
+2028-12-12 15:04:23,598 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server Responder: starting
+2028-12-12 15:04:23,602 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server listener on 60000: starting
+2028-12-12 15:04:23,625 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 0 on 60000: starting
+2028-12-12 15:04:23,626 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 1 on 60000: starting
+2028-12-12 15:04:23,626 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 2 on 60000: starting
+2028-12-12 15:04:23,626 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 3 on 60000: starting
+2028-12-12 15:04:23,627 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 4 on 60000: starting
+2028-12-12 15:04:23,627 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 5 on 60000: starting
+2028-12-12 15:04:23,627 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 6 on 60000: starting
+2028-12-12 15:04:23,627 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 7 on 60000: starting
+2028-12-12 15:04:23,627 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 8 on 60000: starting
+2028-12-12 15:04:23,628 INFO org.apache.hadoop.ipc.HBaseServer: IPC Server handler 9 on 60000: starting
+2028-12-12 15:04:23,632 INFO org.apache.hadoop.metrics.jvm.JvmMetrics: Initializing JVM Metrics with processName=Master, sessionId=rsmm-master.example.com,60000,1860217463298
+2028-12-12 15:04:23,640 INFO org.apache.hadoop.hbase.metrics: MetricsString added: revision
+2028-12-12 15:04:23,640 INFO org.apache.hadoop.hbase.metrics: MetricsString added: hdfsUser
+2028-12-12 15:04:23,640 INFO org.apache.hadoop.hbase.metrics: MetricsString added: hdfsDate
+2028-12-12 15:04:23,640 INFO org.apache.hadoop.hbase.metrics: MetricsString added: hdfsUrl
+2028-12-12 15:04:23,640 INFO org.apache.hadoop.hbase.metrics: MetricsString added: date
+2028-12-12 15:04:23,640 INFO org.apache.hadoop.hbase.metrics: MetricsString added: hdfsRevision
+2028-12-12 15:04:23,640 INFO org.apache.hadoop.hbase.metrics: MetricsString added: user
+2028-12-12 15:04:23,640 INFO org.apache.hadoop.hbase.metrics: MetricsString added: hdfsVersion
+2028-12-12 15:04:23,640 INFO org.apache.hadoop.hbase.metrics: MetricsString added: url
+2028-12-12 15:04:23,640 INFO org.apache.hadoop.hbase.metrics: MetricsString added: version
+2028-12-12 15:04:23,640 INFO org.apache.hadoop.hbase.metrics: new MBeanInfo
+2028-12-12 15:04:23,641 INFO org.apache.hadoop.hbase.metrics: new MBeanInfo
+2028-12-12 15:04:23,642 INFO org.apache.hadoop.hbase.master.metrics.MasterMetrics: Initialized
+2028-12-12 15:04:23,658 INFO org.apache.hadoop.hbase.master.ActiveMasterManager: Deleting ZNode for /hbase/backup-masters/rsmm-master.example.com,60000,1860217463298 from backup master directory
+2028-12-12 15:04:23,674 WARN org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper: Node /hbase/backup-masters/rsmm-master.example.com,60000,1860217463298 already deleted, and this is not a retry
+2028-12-12 15:04:23,675 INFO org.apache.hadoop.hbase.master.ActiveMasterManager: Master=rsmm-master.example.com,60000,1860217463298
+2028-12-12 15:04:24,081 DEBUG org.apache.hadoop.hbase.catalog.CatalogTracker: Starting catalog tracker org.apache.hadoop.hbase.catalog.CatalogTracker@1c3e9ba
+2028-12-12 15:04:24,142 INFO org.apache.hadoop.hbase.master.HMaster: Server active/primary master; rsmm-master.example.com,60000,1860217463298, sessionid=0xffb11d36a60b0004, cluster-up flag was=false
+2028-12-12 15:04:24,184 DEBUG org.apache.hadoop.hbase.executor.ExecutorService: Starting executor service name=MASTER_OPEN_REGION-rsmm-master.example.com,60000,1860217463298, corePoolSize=5, maxPoolSize=5
+2028-12-12 15:04:24,184 DEBUG org.apache.hadoop.hbase.executor.ExecutorService: Starting executor service name=MASTER_CLOSE_REGION-rsmm-master.example.com,60000,1860217463298, corePoolSize=5, maxPoolSize=5
+2028-12-12 15:04:24,184 DEBUG org.apache.hadoop.hbase.executor.ExecutorService: Starting executor service name=MASTER_SERVER_OPERATIONS-rsmm-master.example.com,60000,1860217463298, corePoolSize=3, maxPoolSize=3
+2028-12-12 15:04:24,185 DEBUG org.apache.hadoop.hbase.executor.ExecutorService: Starting executor service name=MASTER_META_SERVER_OPERATIONS-rsmm-master.example.com,60000,1860217463298, corePoolSize=5, maxPoolSize=5
+2028-12-12 15:04:24,185 DEBUG org.apache.hadoop.hbase.executor.ExecutorService: Starting executor service name=MASTER_TABLE_OPERATIONS-rsmm-master.example.com,60000,1860217463298, corePoolSize=1, maxPoolSize=1
+2028-12-12 15:04:24,187 DEBUG org.apache.hadoop.hbase.master.LogCleaner: Add log cleaner in chain: org.apache.hadoop.hbase.master.TimeToLiveLogCleaner
+2028-12-12 15:04:24,259 INFO org.mortbay.log: Logging to org.slf4j.impl.Log4jLoggerAdapter(org.mortbay.log) via org.mortbay.log.Slf4jLog
+2028-12-12 15:04:24,348 INFO org.apache.hadoop.http.HttpServer: Added global filtersafety (class=org.apache.hadoop.http.HttpServer$QuotingInputFilter)
+2028-12-12 15:04:24,358 INFO org.apache.hadoop.http.HttpServer: Port returned by webServer.getConnectors()[0].getLocalPort() before open() is -1. Opening the listener on 60010
+2028-12-12 15:04:24,359 INFO org.apache.hadoop.http.HttpServer: listener.getLocalPort() returned 60010 webServer.getConnectors()[0].getLocalPort() returned 60010
+2028-12-12 15:04:24,359 INFO org.apache.hadoop.http.HttpServer: Jetty bound to port 60010
+2028-12-12 15:04:24,359 INFO org.mortbay.log: jetty-6.1.26
+2028-12-12 15:04:24,865 INFO org.mortbay.log: Started SelectChannelConnector@0.0.0.0:60010
+2028-12-12 15:04:24,865 DEBUG org.apache.hadoop.hbase.master.HMaster: Started service threads
+2028-12-12 15:04:24,865 INFO org.apache.hadoop.hbase.master.ServerManager: Waiting for region servers count to settle; currently checked in 0, slept for 0 ms, expecting minimum of 1, maximum of 2147483647, timeout of 4500 ms, interval of 1500 ms.
+2028-12-12 15:04:25,338 WARN org.apache.hadoop.hbase.master.ServerManager: Reported time for server rsmm-slave-3.example.com,60020,1860217439763 is out of sync with master by 25058ms. (Warning threshold is 10000ms; error threshold is 180000ms)
+2028-12-12 15:04:25,339 INFO org.apache.hadoop.hbase.master.ServerManager: Registering server=rsmm-slave-3.example.com,60020,1860217439763
+2028-12-12 15:04:25,366 INFO org.apache.hadoop.hbase.master.ServerManager: Waiting for region servers count to settle; currently checked in 1, slept for 501 ms, expecting minimum of 1, maximum of 2147483647, timeout of 4500 ms, interval of 1500 ms.
+2028-12-12 15:04:25,580 INFO org.apache.hadoop.hbase.master.ServerManager: Registering server=rsmm-slave-1.example.com,60020,1860217460976
+2028-12-12 15:04:25,603 WARN org.apache.hadoop.hbase.master.ServerManager: Reported time for server rsmm-slave-4.example.com,60020,1860217451403 is out of sync with master by 13667ms. (Warning threshold is 10000ms; error threshold is 180000ms)
+2028-12-12 15:04:25,603 INFO org.apache.hadoop.hbase.master.ServerManager: Registering server=rsmm-slave-4.example.com,60020,1860217451403
+2028-12-12 15:04:25,617 INFO org.apache.hadoop.hbase.master.ServerManager: Waiting for region servers count to settle; currently checked in 3, slept for 752 ms, expecting minimum of 1, maximum of 2147483647, timeout of 4500 ms, interval of 1500 ms.
+2028-12-12 15:04:25,649 WARN org.apache.hadoop.hbase.master.ServerManager: Reported time for server rsmm-slave-2.example.com,60020,1860217448183 is out of sync with master by 16960ms. (Warning threshold is 10000ms; error threshold is 180000ms)
+2028-12-12 15:04:25,650 INFO org.apache.hadoop.hbase.master.ServerManager: Registering server=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:25,668 INFO org.apache.hadoop.hbase.master.ServerManager: Waiting for region servers count to settle; currently checked in 4, slept for 803 ms, expecting minimum of 1, maximum of 2147483647, timeout of 4500 ms, interval of 1500 ms.
+2028-12-12 15:04:27,170 INFO org.apache.hadoop.hbase.master.ServerManager: Finished waiting for region servers count to settle; checked in 4, slept for 2305 ms, expecting minimum of 1, maximum of 2147483647, master is running.
+2028-12-12 15:04:27,176 INFO org.apache.hadoop.hbase.master.MasterFileSystem: Log folder hdfs://rsmm-master.example.com:9000/hbase/.logs/rsmm-slave-1.example.com,60020,1860217460976 belongs to an existing region server
+2028-12-12 15:04:27,176 INFO org.apache.hadoop.hbase.master.MasterFileSystem: Log folder hdfs://rsmm-master.example.com:9000/hbase/.logs/rsmm-slave-2.example.com,60020,1860217448183 belongs to an existing region server
+2028-12-12 15:04:27,176 INFO org.apache.hadoop.hbase.master.MasterFileSystem: Log folder hdfs://rsmm-master.example.com:9000/hbase/.logs/rsmm-slave-3.example.com,60020,1860217439763 belongs to an existing region server
+2028-12-12 15:04:27,177 INFO org.apache.hadoop.hbase.master.MasterFileSystem: Log folder hdfs://rsmm-master.example.com:9000/hbase/.logs/rsmm-slave-4.example.com,60020,1860217451403 belongs to an existing region server
+2028-12-12 15:04:27,177 INFO org.apache.hadoop.hbase.master.MasterFileSystem: No logs to split
+2028-12-12 15:04:28,185 INFO org.apache.hadoop.hbase.catalog.RootLocationEditor: Unsetting ROOT region location in ZooKeeper
+2028-12-12 15:04:28,193 WARN org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper: Node /hbase/root-region-server already deleted, and this is not a retry
+2028-12-12 15:04:28,196 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0xffb11d36a60b0004 Creating (or updating) unassigned node for 70236052 with OFFLINE state
+2028-12-12 15:04:28,223 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan was found (or we are ignoring an existing plan) for ROOT,,0.70236052 so generated a random one; hri=ROOT,,0.70236052, src=, dest=rsmm-slave-2.example.com,60020,1860217448183; 4 (online=4, available=4) available servers
+2028-12-12 15:04:28,223 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region ROOT,,0.70236052 to rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:28,224 DEBUG org.apache.hadoop.hbase.master.ServerManager: New connection to rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:28,225 INFO org.apache.zookeeper.ZooKeeper: Initiating client connection, connectString=rsmm-slave-3.example.com:2181,rsmm-slave-2.example.com:2181,rsmm-slave-1.example.com:2181,rsmm-master.example.com:2181,rsmm-slave-4.example.com:2181 sessionTimeout=180000 watcher=hconnection
+2028-12-12 15:04:28,227 INFO org.apache.zookeeper.ClientCnxn: Opening socket connection to server rsmm-slave-4.example.com/109.123.121.27:2181
+2028-12-12 15:04:28,228 INFO org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper: The identifier of this process is 10155@rsmm-master.example.com
+2028-12-12 15:04:28,230 INFO org.apache.zookeeper.ClientCnxn: Socket connection established to rsmm-slave-4.example.com/109.123.121.27:2181, initiating session
+2028-12-12 15:04:28,239 INFO org.apache.zookeeper.ClientCnxn: Session establishment complete on server rsmm-slave-4.example.com/109.123.121.27:2181, sessionid = 0xffb11d36a60b0006, negotiated timeout = 20000
+2028-12-12 15:04:28,440 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=rsmm-slave-2.example.com,60020,1860217448183, region=70236052/ROOT, which is more than 15 seconds late
+2028-12-12 15:04:28,728 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=rsmm-slave-2.example.com,60020,1860217448183, region=70236052/ROOT, which is more than 15 seconds late
+2028-12-12 15:04:28,754 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=rsmm-slave-2.example.com,60020,1860217448183, region=70236052/ROOT, which is more than 15 seconds late
+2028-12-12 15:04:28,758 INFO org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Handling OPENED event for ROOT,,0.70236052 from rsmm-slave-2.example.com,60020,1860217448183; deleting unassigned node
+2028-12-12 15:04:28,759 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0xffb11d36a60b0004 Deleting existing unassigned node for 70236052 that is in expected state RS_ZK_REGION_OPENED
+2028-12-12 15:04:28,769 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: The znode of region ROOT,,0.70236052 has been deleted.
+2028-12-12 15:04:28,769 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0xffb11d36a60b0004 Successfully deleted unassigned node for region 70236052 in expected state RS_ZK_REGION_OPENED
+2028-12-12 15:04:28,771 INFO org.apache.hadoop.hbase.master.AssignmentManager: The master has opened the region ROOT,,0.70236052 that was online on rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:28,776 INFO org.apache.hadoop.hbase.master.HMaster: ROOT assigned=1, rit=false, location=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:28,791 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:28,794 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:28,884 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:28,936 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:28,937 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:28,943 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:28,994 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:28,995 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,000 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,051 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,052 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,057 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,109 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,110 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,115 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,166 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,167 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,172 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,223 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,224 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,229 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,281 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,282 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,287 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,338 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,339 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,345 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,396 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,397 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,403 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,454 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,455 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,460 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,511 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,512 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,517 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,568 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,569 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,577 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,628 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,629 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,636 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,687 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,688 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,693 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,744 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,745 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,753 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,804 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,805 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,810 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:29,811 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,812 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,816 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0xffb11d36a60b0004 Creating (or updating) unassigned node for 1028785192 with OFFLINE state
+2028-12-12 15:04:29,831 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=M_ZK_REGION_OFFLINE, server=rsmm-master.example.com,60000,1860217463298, region=1028785192/.META.
+2028-12-12 15:04:29,851 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan was found (or we are ignoring an existing plan) for .META.,,1.1028785192 so generated a random one; hri=.META.,,1.1028785192, src=, dest=rsmm-slave-4.example.com,60020,1860217451403; 4 (online=4, available=4) available servers
+2028-12-12 15:04:29,851 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region .META.,,1.1028785192 to rsmm-slave-4.example.com,60020,1860217451403
+2028-12-12 15:04:29,851 DEBUG org.apache.hadoop.hbase.master.ServerManager: New connection to rsmm-slave-4.example.com,60020,1860217451403
+2028-12-12 15:04:29,992 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,993 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:29,997 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:30,015 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=rsmm-slave-4.example.com,60020,1860217451403, region=1028785192/.META.
+2028-12-12 15:04:30,048 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,049 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,073 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:30,125 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,126 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,130 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:30,131 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,133 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,137 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:30,189 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,191 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,195 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:30,211 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=rsmm-slave-4.example.com,60020,1860217451403, region=1028785192/.META.
+2028-12-12 15:04:30,246 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,247 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,252 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:30,253 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,254 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,259 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:30,310 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,311 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,318 INFO org.apache.hadoop.hbase.catalog.CatalogTracker: Failed verification of .META.,,1 at address=rsmm-slave-4.example.com,60020,1860211448024; org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: .META.,,1
+2028-12-12 15:04:30,357 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=rsmm-slave-4.example.com,60020,1860217451403, region=1028785192/.META.
+2028-12-12 15:04:30,358 INFO org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Handling OPENED event for .META.,,1.1028785192 from rsmm-slave-4.example.com,60020,1860217451403; deleting unassigned node
+2028-12-12 15:04:30,359 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0xffb11d36a60b0004 Deleting existing unassigned node for 1028785192 that is in expected state RS_ZK_REGION_OPENED
+2028-12-12 15:04:30,365 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0xffb11d36a60b0004 Successfully deleted unassigned node for region 1028785192 in expected state RS_ZK_REGION_OPENED
+2028-12-12 15:04:30,365 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: The znode of region .META.,,1.1028785192 has been deleted.
+2028-12-12 15:04:30,365 INFO org.apache.hadoop.hbase.master.AssignmentManager: The master has opened the region .META.,,1.1028785192 that was online on rsmm-slave-4.example.com,60020,1860217451403
+2028-12-12 15:04:30,365 DEBUG org.apache.hadoop.hbase.catalog.CatalogTracker: Current cached META location, null, is not valid, resetting
+2028-12-12 15:04:30,366 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,368 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,374 DEBUG org.apache.hadoop.hbase.catalog.CatalogTracker: Set new cached META location: rsmm-slave-4.example.com,60020,1860217451403
+2028-12-12 15:04:30,374 INFO org.apache.hadoop.hbase.master.HMaster: .META. assigned=2, rit=false, location=rsmm-slave-4.example.com,60020,1860217451403
+2028-12-12 15:04:30,377 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,380 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Creating scanner over ROOT starting at key ''
+2028-12-12 15:04:30,380 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Advancing internal scanner to startKey at ''
+2028-12-12 15:04:30,382 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,392 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Finished with scanning at
+{NAME => '-ROOT-,,0', STARTKEY => '', ENDKEY => '', ENCODED => 70236052,}
+2028-12-12 15:04:30,392 INFO org.apache.hadoop.hbase.catalog.MetaMigrationRemovingHTD: Meta version=0; migrated=true
+2028-12-12 15:04:30,392 INFO org.apache.hadoop.hbase.catalog.MetaMigrationRemovingHTD: ROOT/Meta already up-to date with new HRI.
+2028-12-12 15:04:30,395 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@76f2e8; serverName=rsmm-slave-2.example.com,60020,1860217448183
+2028-12-12 15:04:30,409 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Cached location for .META.,,1.1028785192 is rsmm-slave-4.example.com:60020
+2028-12-12 15:04:30,409 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Creating scanner over .META. starting at key ''
+2028-12-12 15:04:30,409 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Advancing internal scanner to startKey at ''
+2028-12-12 15:04:30,434 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Finished with scanning at
+{NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192,}
+2028-12-12 15:04:30,435 INFO org.apache.hadoop.hbase.master.AssignmentManager: Clean cluster startup. Assigning userregions
+2028-12-12 15:04:30,435 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0xffb11d36a60b0004 Deleting any existing unassigned nodes
+2028-12-12 15:04:30,437 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Creating scanner over .META. starting at key ''
+2028-12-12 15:04:30,437 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Advancing internal scanner to startKey at ''
+2028-12-12 15:04:30,441 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Finished with scanning at {NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192,}
+2028-12-12 15:04:30,444 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Creating scanner over .META. starting at key ''
+2028-12-12 15:04:30,445 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Advancing internal scanner to startKey at ''
+2028-12-12 15:04:30,448 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Finished with scanning at
+{NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192,}
+2028-12-12 15:04:30,454 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Creating scanner over .META. starting at key ''
+2028-12-12 15:04:30,455 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Advancing internal scanner to startKey at ''
+2028-12-12 15:04:30,460 INFO org.apache.hadoop.hbase.master.HMaster: Registered HMaster MXBean
+2028-12-12 15:04:30,460 INFO org.apache.hadoop.hbase.master.HMaster: Master has completed initialization
+2028-12-12 15:04:30,461 DEBUG org.apache.hadoop.hbase.client.ClientScanner: Finished with scanning at {NAME => '.META.,,1', STARTKEY => '', ENDKEY => '', ENCODED => 1028785192,}
+2028-12-12 15:04:30,462 DEBUG org.apache.hadoop.hbase.master.CatalogJanitor: Scanned 0 catalog row(s) and gc'd 0 unreferenced parent region(s)
+I think problem accurs at:
+2028-12-12 15:04:28,185 INFO org.apache.hadoop.hbase.catalog.RootLocationEditor: Unsetting ROOT region location in ZooKeeper
+2028-12-12 15:04:28,193 WARN org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper: Node /hbase/root-region-server already deleted, and this is not a retry
+2028-12-12 15:04:28,196 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0xffb11d36a60b0004 Creating (or updating) unassigned node for 70236052 with OFFLINE state
+also the zookeeper.out shows:
+2028-12-12 15:04:25,119 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn$Factory@251] - Accepted socket connection from /109.123.121.26:46752
+2028-12-12 15:04:25,125 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@777] - Client attempting to establish new session at /109.123.121.26:46752
+2028-12-12 15:04:25,141 - INFO [CommitProcessor:1:NIOServerCnxn@1580] - Established session 0xffb11d36ceac0007 with negotiated timeout 20000 for client /109.123.121.26:46752
+2028-12-12 15:05:19,944 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn$Factory@251] - Accepted socket connection from /109.123.121.23:33868
+2028-12-12 15:05:19,974 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@777] - Client attempting to establish new session at /109.123.121.23:33868
+2028-12-12 15:05:19,990 - INFO [CommitProcessor:1:NIOServerCnxn@1580] - Established session 0xffb11d36ceac0008 with negotiated timeout 20000 for client /109.123.121.23:33868
+2028-12-12 15:05:20,694 - WARN [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@634] - EndOfStreamException: Unable to read additional data from client sessionid 0xffb11d36ceac0008, likely client has closed socket
+2028-12-12 15:05:20,695 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@1435] - Closed socket connection for client /109.123.121.23:33868 which had sessionid 0xffb11d36ceac0008
+2028-12-12 15:11:54,277 - WARN [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@634] - EndOfStreamException: Unable to read additional data from client sessionid 0xffb11d36ceac0007, likely client has closed socket
+2028-12-12 15:11:54,278 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@1435] - Closed socket connection for client /109.123.121.26:46752 which had sessionid 0xffb11d36ceac0007
+2028-12-12 15:15:34,480 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn$Factory@251] - Accepted socket connection from /109.123.121.25:51911
+2028-12-12 15:15:34,485 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@777] - Client attempting to establish new session at /109.123.121.25:51911
+2028-12-12 15:15:34,499 - INFO [CommitProcessor:1:NIOServerCnxn@1580] - Established session 0xffb11d36ceac0009 with negotiated timeout 20000 for client /109.123.121.25:51911
+2028-12-12 15:16:13,803 - WARN [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@634] - EndOfStreamException: Unable to read additional data from client sessionid 0xffb11d36ceac0009, likely client has closed socket
+2028-12-12 15:16:13,803 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@1435] - Closed socket connection for client /109.123.121.25:51911 which had sessionid 0xffb11d36ceac0009
+2028-12-12 15:19:05,925 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn$Factory@251] - Accepted socket connection from /127.0.0.1:52703
+2028-12-12 15:19:05,939 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@777] - Client attempting to establish new session at /127.0.0.1:52703
+2028-12-12 15:19:05,957 - INFO [CommitProcessor:1:NIOServerCnxn@1580] - Established session 0xffb11d36ceac000a with negotiated timeout 20000 for client /127.0.0.1:52703
+2028-12-12 15:20:29,063 - WARN [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@634] - EndOfStreamException: Unable to read additional data from client sessionid 0xffb11d36ceac000a, likely client has closed socket
+2028-12-12 15:20:29,065 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@1435] - Closed socket connection for client /127.0.0.1:52703 which had sessionid 0xffb11d36ceac000a
+2028-12-12 15:20:40,446 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn$Factory@251] - Accepted socket connection from /109.123.121.27:39656
+2028-12-12 15:20:40,458 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@777] - Client attempting to establish new session at /109.123.121.27:39656
+2028-12-12 15:20:40,467 - INFO [CommitProcessor:1:NIOServerCnxn@1580] - Established session 0xffb11d36ceac000b with negotiated timeout 20000 for client /109.123.121.27:39656
+2028-12-12 15:21:05,316 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn$Factory@251] - Accepted socket connection from /109.123.121.23:34048
+2028-12-12 15:21:05,343 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@777] - Client attempting to establish new session at /109.123.121.23:34048
+2028-12-12 15:21:05,356 - INFO [CommitProcessor:1:NIOServerCnxn@1580] - Established session 0xffb11d36ceac000c with negotiated timeout 20000 for client /109.123.121.23:34048
+2028-12-12 15:21:06,057 - WARN [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@634] - EndOfStreamException: Unable to read additional data from client sessionid 0xffb11d36ceac000c, likely client has closed socket
+2028-12-12 15:21:06,058 - INFO [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@1435] - Close
+Then I tried this, everything is OK:
+ping rsmm-master.example.com
+ping rsmm-slave-1.example.com
+ping rsmm-slave-2.example.com
+ping rsmm-slave-3.example.com
+ping rsmm-slave-4.example.com
+nslookup rsmm-master is OK
+Server: 109.123.121.23
+Address: 109.123.121.23#53
+Name: rsmm-master.example.com
+Address: 109.123.121.23
+This problem has troubled me for at least 10 days, I have already tried my best...
+Thanks so much if you could respond
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Invalid
+Affects_version:
+0.94.0
+Fix_version:
+None
+Component:
+build
+Label:
+None
+Environment:
+hadoop
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+liuli
+Create date:
+02/Aug/12 08:02
+Update date:
+02/Aug/12 17:23
+Resolved date:
+02/Aug/12 17:23

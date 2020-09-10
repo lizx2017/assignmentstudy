@@ -1,0 +1,38 @@
+Summary:
+Scanners not closed properly in certain circumstances (memory leak)
+Description:
+Scanners are sometimes leaked by the KeyValueHeap class. The constructor adds each scanner to a heap, but only if the scanner's peek() method returns not null (line 58). Otherwise the scanner is dropped without being closed.
+Unfortunately some scanners (like StoreScanner and MemStoreScanner) register themselves to some global list when constructed and only deregister on close(). This can cause a memory leak, for example with MemStoreScanners on an empty memory store.
+The quick fix is to add an else clause to the if on line 58:
+} else {
+scanner.close()
+}
+The root cause is that ownership of the scanners is transferred from the caller to the KeyValueHeap on construction. Maybe this should be made clear in the documentation or changed.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.1
+Fix_version:
+0.20.2, 0.90.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+Erik Rozendaal
+Create date:
+22/Oct/09 07:31
+Update date:
+12/Oct/12 06:13
+Resolved date:
+22/Oct/09 18:54

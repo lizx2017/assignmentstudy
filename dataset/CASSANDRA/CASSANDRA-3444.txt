@@ -1,0 +1,33 @@
+Summary:
+Secondary Index doesn't clean up indexed CFS on remove and Streaming test failure.
+Description:
+The initial reason for that issue is because StreamingTransferTest is broken in trunk. It has been broken by CASSANDRA-3116 because the latter is too efficient. More precisely StreamingTransferTest create a CF with an index, then it calls unreferenceSSTables() on that CF to remove all sstable, and then try a transfer (that recreate the file and index basically). But when unreferenceSSTables() is called, it does fully remove the indexes in that the CFS object for the indexes stays. Post CASSANDRA-3116, this is problem because that CFS has been invalidated and thus nothing can be added back to it.
+Long story short, I believe that the fact that SecondaryIndexManager.removeAllIndex doesn't really unreference the CFS objects is not expected in the first place. The patch fixes that and update the StreamingTransferTest accordingly (fixing it as far as trunk is concerned).
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+1.0.3
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+02/Nov/11 13:19
+Update date:
+16/Apr/19 09:32
+Resolved date:
+07/Nov/11 11:09

@@ -1,0 +1,68 @@
+Summary:
+Races between schema changes and StorageService operations
+Description:
+I only tested this on 0.7.0, but it judging by the 0.7.3 code (latest I've looked at) the same thing should happen.
+The case in particular that I ran into is this: I force a compaction for all CFs in a keyspace, and while the compaction is happening I add another CF to the keyspace. I get the following exception because the underlying set of CFs has changed while being iterated over.
+java.util.ConcurrentModificationException
+        at java.util.HashMap$HashIterator.nextEntry(Unknown Source)
+        at java.util.HashMap$ValueIterator.next(Unknown Source)
+        at java.util.Collections$UnmodifiableCollection$1.next(Unknown Source)
+        at org.apache.cassandra.service.StorageService.forceTableCompaction(StorageService.java:1140)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+        at java.lang.reflect.Method.invoke(Unknown Source)
+        at com.sun.jmx.mbeanserver.StandardMBeanIntrospector.invokeM2(Unknown Source)
+        at com.sun.jmx.mbeanserver.StandardMBeanIntrospector.invokeM2(Unknown Source)
+        at com.sun.jmx.mbeanserver.MBeanIntrospector.invokeM(Unknown Source)
+        at com.sun.jmx.mbeanserver.PerInterface.invoke(Unknown Source)
+        at com.sun.jmx.mbeanserver.MBeanSupport.invoke(Unknown Source)
+        at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.invoke(Unknown Source)
+        at com.sun.jmx.mbeanserver.JmxMBeanServer.invoke(Unknown Source)
+        at javax.management.remote.rmi.RMIConnectionImpl.doOperation(Unknown Source)
+        at javax.management.remote.rmi.RMIConnectionImpl.access$200(Unknown Source)
+        at javax.management.remote.rmi.RMIConnectionImpl$PrivilegedOperation.run(Unknown Source)
+        at javax.management.remote.rmi.RMIConnectionImpl.doPrivilegedOperation(Unknown Source)
+        at javax.management.remote.rmi.RMIConnectionImpl.invoke(Unknown Source)
+        at sun.reflect.GeneratedMethodAccessor84.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+        at java.lang.reflect.Method.invoke(Unknown Source)
+        at sun.rmi.server.UnicastServerRef.dispatch(Unknown Source)
+        at sun.rmi.transport.Transport$1.run(Unknown Source)
+        at java.security.AccessController.doPrivileged(Native Method)
+        at sun.rmi.transport.Transport.serviceCall(Unknown Source)
+        at sun.rmi.transport.tcp.TCPTransport.handleMessages(Unknown Source)
+        at sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run0(Unknown Source)
+        at sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run(Unknown Source)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Unknown Source)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+        at java.lang.Thread.run(Unknown Source) 
+The problem is a little more fundamental than that, though, as I believe any schema change of CFs in the keyspace during one of these operations (e.g. flush, compaction, etc) has the potential to cause a race. I'm not sure what would happen if the set of CFs to compact was acquired and one of them was dropped before it had been compacted.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jeffrey Wang
+Create date:
+17/Mar/11 18:30
+Update date:
+16/Apr/19 09:33
+Resolved date:
+18/Mar/11 13:20

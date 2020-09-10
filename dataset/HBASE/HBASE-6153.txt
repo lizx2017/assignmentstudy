@@ -1,0 +1,57 @@
+Summary:
+RS aborted due to rename problem (maybe a race)
+Description:
+I had a RS crash with the following:
+2012-05-31 18:34:42,534 DEBUG org.apache.hadoop.hbase.regionserver.Store: Renaming flushed file at hdfs://ip-10-140-14-134.ec2.internal:8020/apps/hbase/data/TestLoadAndVerify_1338488017181/8974506aa04c5a04e5cc23c11de0039d/.tmp/294a7a31f04949b8bf07682a43157b35 to hdfs://ip-10-140-14-134.ec2.internal:8020/apps/hbase/data/TestLoadAndVerify_1338488017181/8974506aa04c5a04e5cc23c11de0039d/f1/294a7a31f04949b8bf07682a43157b35
+2012-05-31 18:34:42,536 WARN org.apache.hadoop.hbase.regionserver.Store: Unable to rename hdfs://ip-10-140-14-134.ec2.internal:8020/apps/hbase/data/TestLoadAndVerify_1338488017181/8974506aa04c5a04e5cc23c11de0039d/.tmp/294a7a31f04949b8bf07682a43157b35 to hdfs://ip-10-140-14-134.ec2.internal:8020/apps/hbase/data/TestLoadAndVerify_1338488017181/8974506aa04c5a04e5cc23c11de0039d/f1/294a7a31f04949b8bf07682a43157b35
+2012-05-31 18:34:42,541 FATAL org.apache.hadoop.hbase.regionserver.HRegionServer: ABORTING region server ip-10-68-7-146.ec2.internal,60020,1338343120038: Replay of HLog required. Forcing server shutdown
+org.apache.hadoop.hbase.DroppedSnapshotException: region: TestLoadAndVerify_1338488017181,\x15\xD9\x01\x00\x00\x00\x00\x00/000087_0,1338491364569.8974506aa04c5a04e5cc23c11de0039d.
+at org.apache.hadoop.hbase.regionserver.HRegion.internalFlushcache(HRegion.java:1288)
+at org.apache.hadoop.hbase.regionserver.HRegion.internalFlushcache(HRegion.java:1172)
+at org.apache.hadoop.hbase.regionserver.HRegion.flushcache(HRegion.java:1114)
+at org.apache.hadoop.hbase.regionserver.MemStoreFlusher.flushRegion(MemStoreFlusher.java:400)
+at org.apache.hadoop.hbase.regionserver.MemStoreFlusher.flushRegion(MemStoreFlusher.java:374)
+at org.apache.hadoop.hbase.regionserver.MemStoreFlusher.run(MemStoreFlusher.java:243)
+at java.lang.Thread.run(Thread.java:662)
+Caused by: java.io.FileNotFoundException: File does not exist: /apps/hbase/data/TestLoadAndVerify_1338488017181/8974506aa04c5a04e5cc23c11de0039d/f1/294a7a31f04949b8bf07682a43157b35
+at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.openInfo(DFSClient.java:1901)
+at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.<init>(DFSClient.java:1892)
+at org.apache.hadoop.hdfs.DFSClient.open(DFSClient.java:636)
+at org.apache.hadoop.hdfs.DistributedFileSystem.open(DistributedFileSystem.java:154)
+at org.apache.hadoop.fs.FileSystem.open(FileSystem.java:427)
+at org.apache.hadoop.hbase.io.hfile.HFile.createReader(HFile.java:387)
+at org.apache.hadoop.hbase.regionserver.StoreFile$Reader.<init>(StoreFile.java:1008)
+at org.apache.hadoop.hbase.regionserver.StoreFile.open(StoreFile.java:470)
+at org.apache.hadoop.hbase.regionserver.StoreFile.createReader(StoreFile.java:548)
+at org.apache.hadoop.hbase.regionserver.Store.internalFlushCache(Store.java:595)
+On the NameNode logs:
+2012-05-31 18:34:42,588 WARN org.apache.hadoop.hdfs.StateChange: DIR* FSDirectory.unprotectedRenameTo: failed to rename /apps/hbase/data/TestLoadAndVerify_1338488017181/8974506aa04c5a04e5cc23c11de0039d/.tmp/294a7a31f04949b8bf07682a43157b35 to /apps/hbase/data/TestLoadAndVerify_1338488017181/8974506aa04c5a04e5cc23c11de0039d/f1/294a7a31f04949b8bf07682a43157b35 because destination's parent does not exist
+I haven't looked deeply yet but I guess it is a race of some sort.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.92.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Devaraj Das
+Create date:
+02/Jun/12 01:06
+Update date:
+22/Apr/15 00:47
+Resolved date:
+22/Apr/15 00:47

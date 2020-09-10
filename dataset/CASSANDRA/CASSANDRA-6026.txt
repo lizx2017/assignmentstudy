@@ -1,0 +1,57 @@
+Summary:
+NPE when running sstablesplit on valid sstable
+Description:
+#create cluster
+ccm create --cassandra-version git:cassandra-1.2 test
+ccm populate -n 1
+ccm start
+#run stress
+ccm node1 stress -n 10000000 -o insert
+ccm node1 compact
+cd ~/.ccm/test/node1/data
+../bin/sstablesplit -n 100 ./Keyspace1/Standard1/Keyspace1-Standard1-ic-16-Data.db
+#Expected
+single large sstable should be split into multiple sstables with max size 100 MB
+#Actual
+ERROR 10:14:06,992 Error in ThreadPoolExecutor
+java.lang.NullPointerException
+at org.apache.cassandra.io.sstable.SSTableDeletingTask.run(SSTableDeletingTask.java:70)
+at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$201(ScheduledThreadPoolExecutor.java:178)
+at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:292)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+at java.lang.Thread.run(Thread.java:724)
+Notes: It seems like the split occurs and can be recompacted.
+Last known commit where split was working on 1.2 branch: 47b2cd6620894bf0c4c4584036eab49a2e14a50e
+Have not bisected further.
+sstablesplit is also broken on 2.0 branch; however, it fails differently. Filing separate bug on that.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.10
+Component:
+None
+Label:
+None
+Environment:
+java 1.7
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Daniel Meyer
+Create date:
+13/Sep/13 17:45
+Update date:
+16/Apr/19 09:32
+Resolved date:
+17/Sep/13 07:12

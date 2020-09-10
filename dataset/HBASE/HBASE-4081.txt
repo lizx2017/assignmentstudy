@@ -1,0 +1,60 @@
+Summary:
+Issues with HRegion.compactStores methods
+Description:
+HRegion.java,
+byte [] compactStores(final boolean majorCompaction)
+throws IOException {
+if (majorCompaction)
+{ this.triggerMajorCompaction(); }
+return compactStores();
+}
+/**
+Compact all the stores and return the split key of the first store that needs
+to be split.
+*/
+public byte[] compactStores() throws IOException {
+for(Store s : getStores().values()) {
+CompactionRequest cr = s.requestCompaction();
+if(cr != null)
+Unknown macro: { try { compact(cr); } finally { s.finishRequest(cr); } }
+byte[] splitRow = s.checkSplit();
+if (splitRow != null)
+{ return splitRow; }
+}
+return null;
+}
+1. It seems the second method's intention is to compact all the stores. However, if a store requires split, the process will stop.
+2. Only MetaUtils, HRegion.merge, HRegion.processTable use these two methods. No caller uses the return value.
+3. HRegion.merge expects major compaction for each store after the call and has code like below to check error condition.
+// Because we compacted the source regions we should have no more than two
+// HStoreFiles per family and there will be no reference store
+if (srcFiles.size() == 2)
+So it seems like the fixes are: a) take out s.CheckSplit() call inside compactStores. b) make the return type "void" for these two compactStores functions.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ming Ma
+Reporter:
+Ming Ma
+Create date:
+08/Jul/11 23:35
+Update date:
+20/Nov/15 11:55
+Resolved date:
+15/Aug/11 22:40

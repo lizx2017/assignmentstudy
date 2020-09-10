@@ -1,0 +1,95 @@
+Summary:
+Ec2Snitch nodetool issue after upgrade to 0.8.5
+Description:
+Upgraded one ring that has four nodes from 0.8.0 to 0.8.5 with only one minor problem. It relates to Ec2Snitch when running a 'nodetool ring' from two of the four nodes. the rest are all working fine:
+Address DC Rack Status State Load Owns Token
+148362247927262972740864614603570725035
+172.16.12.11 ap-southeast1a Up Normal 1.58 MB 24.02% 19095547144942516281182777765338228798
+172.16.12.10 ap-southeast1a Up Normal 1.63 MB 22.11% 56713727820156410577229101238628035242
+172.16.14.10 ap-southeast1b Up Normal 1.85 MB 33.33% 113427455640312821154458202477256070484
+172.16.14.12 ap-southeast1b Up Normal 1.36 MB 20.53% 14836224792726297274086461460357072503
+works ... on 2 nodes which happen to be on the 172.16.14.0/24 network.
+the nodes where the error appears are on the 172.16.12.0/24 network and this is what is shown when nodetool ring is run:
+Address DC Rack Status State Load Owns Token
+148362247927262972740864614603570725035
+172.16.12.11 ap-southeast1a Up Normal 1.58 MB 24.02% 19095547144942516281182777765338228798
+172.16.12.10 ap-southeast1a Up Normal 1.62 MB 22.11% 56713727820156410577229101238628035242
+Exception in thread "main" java.lang.NullPointerException
+at org.apache.cassandra.locator.Ec2Snitch.getDatacenter(Ec2Snitch.java:93)
+at org.apache.cassandra.locator.DynamicEndpointSnitch.getDatacenter(DynamicEndpointSnitch.java:122)
+at org.apache.cassandra.locator.EndpointSnitchInfo.getDatacenter(EndpointSnitchInfo.java:49)
+at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at com.sun.jmx.mbeanserver.StandardMBeanIntrospector.invokeM2(StandardMBeanIntrospector.java:93)
+at com.sun.jmx.mbeanserver.StandardMBeanIntrospector.invokeM2(StandardMBeanIntrospector.java:27)
+at com.sun.jmx.mbeanserver.MBeanIntrospector.invokeM(MBeanIntrospector.java:208)
+at com.sun.jmx.mbeanserver.PerInterface.invoke(PerInterface.java:120)
+at com.sun.jmx.mbeanserver.MBeanSupport.invoke(MBeanSupport.java:262)
+at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.invoke(DefaultMBeanServerInterceptor.java:836)
+at com.sun.jmx.mbeanserver.JmxMBeanServer.invoke(JmxMBeanServer.java:761)
+at javax.management.remote.rmi.RMIConnectionImpl.doOperation(RMIConnectionImpl.java:1427)
+at javax.management.remote.rmi.RMIConnectionImpl.access$200(RMIConnectionImpl.java:72)
+at javax.management.remote.rmi.RMIConnectionImpl$PrivilegedOperation.run(RMIConnectionImpl.java:1265)
+at javax.management.remote.rmi.RMIConnectionImpl.doPrivilegedOperation(RMIConnectionImpl.java:1360)
+at javax.management.remote.rmi.RMIConnectionImpl.invoke(RMIConnectionImpl.java:788)
+at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at sun.rmi.server.UnicastServerRef.dispatch(UnicastServerRef.java:305)
+at sun.rmi.transport.Transport$1.run(Transport.java:159)
+at java.security.AccessController.doPrivileged(Native Method)
+at sun.rmi.transport.Transport.serviceCall(Transport.java:155)
+at sun.rmi.transport.tcp.TCPTransport.handleMessages(TCPTransport.java:535)
+at sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run0(TCPTransport.java:790)
+at sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run(TCPTransport.java:649)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+I've stopped the node and started it ... still doesn't make a difference. I've also shut down all nodes in the ring so that it was fully offline, and then brought them all back up ... issue still persists on two of the nodes.
+There are no firewall rules restricting traffic between these nodes. For example, on a node where the ring throws the exception, the two hosts that don't show up i can still get nestats for:
+nodetool -h 172.16.12.11 -p 9090 netstats 172.16.14.10
+Mode: Normal
+Nothing streaming to /172.16.14.10
+Nothing streaming from /172.16.14.10
+Pool Name Active Pending Completed
+Commands n/a 0 3
+Responses n/a 1 1483
+nodetool -h 172.16.12.11 -p 9090 netstats 172.16.14.12
+Mode: Normal
+Nothing streaming to /172.16.14.12
+Nothing streaming from /172.16.14.12
+Pool Name Active Pending Completed
+Commands n/a 0 3
+Responses n/a 0 1784
+Problem only looks to appear via nodetool, and doesn't seem to be impacting anything else.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Invalid
+Affects_version:
+
+Fix_version:
+0.8.6
+Component:
+None
+Label:
+ec2snitch nodetool
+Environment:
+
+Attachment number:
+0
+Assignee:
+Vijay
+Reporter:
+Sasha Dolgy
+Create date:
+10/Sep/11 21:25
+Update date:
+16/Apr/19 09:32
+Resolved date:
+12/Sep/11 20:17

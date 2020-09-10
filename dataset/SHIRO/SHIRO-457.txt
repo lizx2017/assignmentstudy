@@ -1,0 +1,68 @@
+Summary:
+Login without static VM security manager cause exception in debug
+Description:
+I have run into a possible issue with regards to using the Subject login(use,pwd) api when the SecurityUtils SecurityManager has not been set (SecurityUtils.setSecurityManager(secMgr).
+Subject currentUser = new Subject.Builder(securityManager).buildSubject();
+UsernamePasswordToken token = new UsernamePasswordToken(userName, password);
+currentUser.login(token);
+The code above results in an exception (this exception is not the end of the world as later in the code the current default security manager will get set so all should be ok):
+15:31:01.325 [main] DEBUG o.a.s.s.s.DefaultSubjectContext - No SecurityManager available via SecurityUtils. Heuristics exhausted.
+org.apache.shiro.UnavailableSecurityManagerException: No SecurityManager accessible to the calling code, either bound to the org.apache.shiro.util.ThreadContext or as a vm static singleton. This is an invalid application configuration.
+at org.apache.shiro.SecurityUtils.getSecurityManager(SecurityUtils.java:123) ~[shiro-core-1.2.1.jar:1.2.1]
+at org.apache.shiro.subject.support.DefaultSubjectContext.resolveSecurityManager(DefaultSubjectContext.java:106) ~[shiro-core-1.2.1.jar:1.2.1]
+at org.apache.shiro.mgt.DefaultSecurityManager.ensureSecurityManager(DefaultSecurityManager.java:411) [shiro-core-1.2.1.jar:1.2.1]
+at org.apache.shiro.mgt.DefaultSecurityManager.createSubject(DefaultSecurityManager.java:333) [shiro-core-1.2.1.jar:1.2.1]
+at org.apache.shiro.mgt.DefaultSecurityManager.createSubject(DefaultSecurityManager.java:183) [shiro-core-1.2.1.jar:1.2.1]
+at org.apache.shiro.mgt.DefaultSecurityManager.login(DefaultSecurityManager.java:283) [shiro-core-1.2.1.jar:1.2.1]
+at org.apache.shiro.subject.support.DelegatingSubject.login(DelegatingSubject.java:256) [shiro-core-1.2.1.jar:1.2.1]
+I think the issue rises from line 1 of the following code in DefaultSecurityManager:
+protected Subject createSubject(AuthenticationToken token, AuthenticationInfo info, Subject existing) {
+SubjectContext context = createSubjectContext(); <-- Results in a context with no security manager
+context.setAuthenticated(true);
+context.setAuthenticationToken(token);
+context.setAuthenticationInfo(info);
+if (existing != null)
+{ context.setSubject(existing); }
+return createSubject(context); <-- This complains about no security manager
+}
+
+Could the DefaultSecurityManager code instead be as follows?
+
+protected Subject createSubject(AuthenticationToken token, AuthenticationInfo info, Subject existing) {
+SubjectContext context = createSubjectContext();
+context.setAuthenticated(true);
+context.setAuthenticationToken(token);
+context.setAuthenticationInfo(info);
+context.setSecurityManager(this); <-- Set the security manager before the createSubject
+if (existing != null) { context.setSubject(existing); }
+return createSubject(context);
+}
+This exception can be masked but I think it would be better not to raise it in this scenario.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+1.2.2
+Fix_version:
+None
+Component:
+Authentication (log-in)
+Label:
+None
+Environment:
+mac os x, java 1.6
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Stuart Broad
+Create date:
+16/Sep/13 08:38
+Update date:
+08/May/18 04:22
+Resolved date:
+

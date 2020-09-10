@@ -1,0 +1,48 @@
+Summary:
+Verify that 1D point values are visited in order
+Description:
+The new PointInSetQuery (LUCENE-7048) hit a tricky test failure
+(https://builds.apache.org/job/Lucene-Solr-Tests-trunk-Java8/871/)
+where point values were sometimes not visited in order like it
+expected.
+I pushed a hack to fix the query, but I think we should do a better
+fix, here, making the "values in order in the 1D case" part of the
+API, fixing CheckIndex, AssertingPointFormat to verify this, and
+removing the buggy MultiPointValues.
+I also found a possibly serious bug in BKDWriter, where it was doing
+writeInt/writeLong to its offline files, but then reading with
+readVInt/readVLong! It's hard to provoke, though: it only strikes
+in the tie-break case (same values across docs), and even then only if
+the IntroSorter does a non-stable sort. I made a failing test
+case and fixed that bug, and also removed the unnecessary ord tie
+breaking from BKDWriter's comparator.
+Finally, I saw BKDWriter was failing to pass on its
+maxMBSortInHeap down to OfflineSorter, and fixed that.
+Status:
+RESOLVED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+01/Mar/16 23:55
+Update date:
+09/May/16 18:37
+Resolved date:
+02/Mar/16 16:46

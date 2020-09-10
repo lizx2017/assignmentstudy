@@ -1,0 +1,45 @@
+Summary:
+Zero length BigInteger exception causing processing to freeze
+Description:
+We attempted to migrate our developers to Cassandra 2.0.7 from 1.2.
+Everything worked perfectly, but we have experienced a massive drop in developer velocity.
+We run integration tests with Cucumber BDD and 1000 BDDs went from 7 minutes (Cassandra 1.2) to 15 minutes (2.0.7),
+This is when we run Cassandra of the ramdisk (/dev/shm) to make it run faster on dev boxes.
+When we tried pointed to actual drives the difference was dramatic: the entire suite took over 70 minutes vs 15 in Cassandra 1.2.
+After investigation, we found that most of the time is spent in the truncation logic between every scenario, where we truncate all the column families and start with a clean DB for the next test case.
+This used to be super fast in 1.2, is now very slow in 2.0.
+It may not seem important, but upgrading to 2.0 has basically cut down developer velocity by 100%, just by more than doubling the time it takes to run our BDD suite.
+We truncate the CFs using the Ruby driver:
+$cassandra.column_families.each do |column_family|
+name = column_family[0].to_s
+$cassandra.truncate! name
+end
+I am attaching our cassandra.yaml. Please note we already switched off auto_compaction before truncate, just as we did in 1.2 for dev boxes, Made no difference.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.9
+Component:
+None
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Jacek Furmankiewicz
+Create date:
+24/Apr/14 21:40
+Update date:
+16/Apr/19 09:31
+Resolved date:
+08/May/14 16:05

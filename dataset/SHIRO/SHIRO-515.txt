@@ -1,0 +1,40 @@
+Summary:
+ExecutorServiceSessionValidationScheduler leaks resources due to improper synchronization
+Description:
+Related to SHIRO-514, which talks about a bunch of threads with "ugly" names. This ticket is about why there are multiple of those in the first place.
+From my heap dump I can see about 71 ThreadFactory instances of ExecutorServiceSessionValidationScheduler$1, each actually linking to a distinct ScheduledThreadPoolExecutor, and each running one thread.
+However, there are only 2 ExecutorServiceSessionValidationScheduler instances.
+The problem is in AbstractValidatingSessionManager#enableSessionValidationIfNecessary(): if this method is called from multiple threads, and those threads race in such a way that multiple ones see an unset/not-yet-enabled scheduler, they will each run #enableSessionValidation(), which creates a scheduler, sets it (still disabled), and then runs SessionValidationScheduler#enableSessionValidation(), which might set its 'enabled' flag to true. In the case of the default ExecutorServiceSessionValidationScheduler this creates the thread pool executor, and schedules the validation run iff there is a positive interval configured.
+The race is not particularly unlikely when an application using shiro is deployed and many requests hit it immediately. As Shiro is leaking both JVM and system resources here it's also not a benign race.
+The attached patch changes the sessionValidationScheduler to be volatile, and makes #enableSessionValidation() as well as #disableSessionValidation() synchronized.
+#enableSessionValidationIfNecessary() is not synchronized in the common case to avoid too much blocking when everything is properly warmed up, but rather uses double-checked locking. Shiro targets a 1.5 JVM from what I can see, so this should be ok.
+Note that callers can possibly still produce issues by modifying the field directly.
+Additionally the ExecutorServiceSessionValidationScheduler was changed to report 'enabled' when someone tried enabling the validation, regardless of whether the interval was 0 or not. The rationale here is that someone might try disabling the validation by setting the interval, which would mean useless calls to #enableSessionValidation() in every request.
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+1.2.3
+Fix_version:
+1.3.0
+Component:
+Session Management
+Label:
+patch
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Andreas Kohn
+Create date:
+20/Aug/14 13:51
+Update date:
+29/Jun/16 22:22
+Resolved date:
+29/Jun/16 17:32

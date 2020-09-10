@@ -1,0 +1,116 @@
+Summary:
+Table change response returns as keyspace change response
+Description:
+When an index is dropped, its existence is still persisted across the keyspace metadata. This happens because the response to drop the index from the metadata is never received, as a keyspace change response is (incorrectly) received by the driver instead of a table change response. Related to PYTHON-241: https://datastax-oss.atlassian.net/browse/PYTHON-241
+Test:
+self.session.execute("CREATE TABLE %s (k int PRIMARY KEY, a int)" % self.table_name)
+
+ks_meta = self.cluster.metadata.keyspaces[self.keyspace_name]
+table_meta = ks_meta.tables[self.table_name]
+self.assertNotIn('a_idx', ks_meta.indexes)
+self.assertNotIn('b_idx', ks_meta.indexes)
+self.assertNotIn('a_idx', table_meta.indexes)
+self.assertNotIn('b_idx', table_meta.indexes)
+
+self.session.execute("CREATE INDEX a_idx ON %s (a)" % self.table_name)
+self.session.execute("ALTER TABLE %s ADD b int" % self.table_name)
+self.session.execute("CREATE INDEX b_idx ON %s (b)" % self.table_name)
+
+ks_meta = self.cluster.metadata.keyspaces[self.keyspace_name]
+table_meta = ks_meta.tables[self.table_name]
+self.assertIsInstance(ks_meta.indexes['a_idx'], IndexMetadata)
+self.assertIsInstance(ks_meta.indexes['b_idx'], IndexMetadata)
+self.assertIsInstance(table_meta.indexes['a_idx'], IndexMetadata)
+self.assertIsInstance(table_meta.indexes['b_idx'], IndexMetadata)
+
+# both indexes updated when index dropped
+self.session.execute("DROP INDEX a_idx")
+ks_meta = self.cluster.metadata.keyspaces[self.keyspace_name]
+table_meta = ks_meta.tables[self.table_name]
+self.assertNotIn('a_idx', ks_meta.indexes)
+Output:
+AssertionError: 'a_idx' unexpectedly found in {u'b_idx': <cassandra.metadata.IndexMetadata object at 0x7f2dd87d4590>, u'a_idx': <cassandra.metadata.IndexMetadata object at 0x7f2dd87d4a10>}
+Debug log:
+cassandra.connection: DEBUG: Message pushed from server: <EventMessage(stream_id=-1, event_type=u'SCHEMA_CHANGE', event_args={'keyspace': u'index_map_tests', 'change_type': u'CREATED', 'table': u''}, trace_id=None)>
+cassandra.cluster: DEBUG: Refreshing schema in response to schema change. Keyspace: index_map_tests; Table: , Type: None
+cassandra.cluster: DEBUG: [control connection] Waiting for schema agreement
+cassandra.cluster: DEBUG: [control connection] Schemas mismatched, trying again
+cassandra.cluster: DEBUG: [control connection] Schemas mismatched, trying again
+cassandra.cluster: DEBUG: [control connection] Schemas mismatched, trying again
+cassandra.cluster: DEBUG: [control connection] Schemas match
+cassandra.cluster: DEBUG: [control connection] Waiting for schema agreement
+cassandra.cluster: DEBUG: [control connection] Fetched keyspace info for index_map_tests, rebuilding metadata
+cassandra.cluster: DEBUG: [control connection] Schemas match
+cassandra.cluster: DEBUG: [control connection] Fetched keyspace info for index_map_tests, rebuilding metadata
+cassandra.connection: DEBUG: Message pushed from server: <EventMessage(stream_id=-1, event_type=u'SCHEMA_CHANGE', event_args={'keyspace': u'index_map_tests', 'change_type': u'CREATED', 'table': u'test_index_updates'}, trace_id=None)>
+cassandra.cluster: DEBUG: Refreshing schema in response to schema change. Keyspace: index_map_tests; Table: test_index_updates, Type: None
+cassandra.cluster: DEBUG: [control connection] Waiting for schema agreement
+cassandra.cluster: DEBUG: [control connection] Schemas mismatched, trying again
+cassandra.cluster: DEBUG: [control connection] Schemas mismatched, trying again
+cassandra.cluster: DEBUG: [control connection] Schemas match
+cassandra.cluster: DEBUG: [control connection] Fetched table info for index_map_tests.test_index_updates, rebuilding metadata
+cassandra.connection: DEBUG: Message pushed from server: <EventMessage(stream_id=-1, event_type=u'SCHEMA_CHANGE', event_args={'keyspace': u'index_map_tests', 'change_type': u'UPDATED', 'table': u'test_index_updates'}, trace_id=None)>
+cassandra.cluster: DEBUG: Ignoring schedule_unique for already-scheduled task: (<bound method ControlConnection.refresh_schema of <cassandra.cluster.ControlConnection object at 0x7f9c6864fc90>>, (u'index_map_tests', u'test_index_updates', None))
+cassandra.cluster: DEBUG: Refreshing schema in response to schema change. Keyspace: index_map_tests; Table: test_index_updates, Type: None
+cassandra.cluster: DEBUG: [control connection] Waiting for schema agreement
+cassandra.cluster: DEBUG: [control connection] Schemas mismatched, trying again
+cassandra.cluster: DEBUG: [control connection] Schemas mismatched, trying again
+cassandra.cluster: DEBUG: [control connection] Schemas match
+cassandra.cluster: DEBUG: [control connection] Fetched table info for index_map_tests.test_index_updates, rebuilding metadata
+cassandra.cluster: DEBUG: [control connection] Waiting for schema agreement
+cassandra.cluster: DEBUG: [control connection] Schemas match
+cassandra.cluster: DEBUG: [control connection] Fetched table info for index_map_tests.test_index_updates, rebuilding metadata
+cassandra.connection: DEBUG: Message pushed from server: <EventMessage(stream_id=-1, event_type=u'SCHEMA_CHANGE', event_args={'keyspace': u'index_map_tests', 'change_type': u'UPDATED', 'table': u'test_index_updates'}, trace_id=None)>
+cassandra.cluster: DEBUG: Refreshing schema in response to schema change. Keyspace: index_map_tests; Table: test_index_updates, Type: None
+cassandra.cluster: DEBUG: [control connection] Waiting for schema agreement
+cassandra.cluster: DEBUG: [control connection] Schemas mismatched, trying again
+cassandra.cluster: DEBUG: [control connection] Schemas mismatched, trying again
+cassandra.cluster: DEBUG: [control connection] Schemas match
+cassandra.cluster: DEBUG: [control connection] Fetched table info for index_map_tests.test_index_updates, rebuilding metadata
+cassandra.cluster: DEBUG: [control connection] Waiting for schema agreement
+cassandra.cluster: DEBUG: [control connection] Schemas match
+cassandra.cluster: DEBUG: [control connection] Fetched table info for index_map_tests.test_index_updates, rebuilding metadata
+cassandra.cluster: DEBUG: Refreshing schema in response to schema change. Keyspace: index_map_tests; Table: test_index_updates, Type: None
+cassandra.cluster: DEBUG: [control connection] Waiting for schema agreement
+cassandra.connection: DEBUG: Message pushed from server: <EventMessage(stream_id=-1, event_type=u'SCHEMA_CHANGE', event_args={'keyspace': u'index_map_tests', 'change_type': u'UPDATED', 'table': u'test_index_updates'}, trace_id=None)>
+cassandra.cluster: DEBUG: [control connection] Schemas mismatched, trying again
+cassandra.cluster: DEBUG: [control connection] Schemas mismatched, trying again
+cassandra.cluster: DEBUG: [control connection] Schemas match
+cassandra.cluster: DEBUG: [control connection] Waiting for schema agreement
+cassandra.cluster: DEBUG: [control connection] Schemas match
+cassandra.cluster: DEBUG: [control connection] Fetched table info for index_map_tests.test_index_updates, rebuilding metadata
+cassandra.cluster: DEBUG: [control connection] Fetched table info for index_map_tests.test_index_updates, rebuilding metadata
+cassandra.connection: DEBUG: Message pushed from server: <EventMessage(stream_id=-1, event_type=u'SCHEMA_CHANGE', event_args={'keyspace': u'index_map_tests', 'change_type': u'UPDATED', 'table': u'test_index_updates'}, trace_id=None)>
+cassandra.cluster: DEBUG: Refreshing schema in response to schema change. Keyspace: index_map_tests; Table: , Type: None
+cassandra.cluster: DEBUG: [control connection] Waiting for schema agreement
+cassandra.cluster: DEBUG: [control connection] Schemas mismatched, trying again
+cassandra.cluster: DEBUG: [control connection] Schemas match
+cassandra.cluster: DEBUG: [control connection] Fetched keyspace info for index_map_tests, rebuilding metadata
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.16, 2.1.6
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+c*, python
+Attachment number:
+0
+Assignee:
+Carl Yeksigian
+Reporter:
+Kishan Karunaratne
+Create date:
+05/May/15 21:14
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/May/15 14:34

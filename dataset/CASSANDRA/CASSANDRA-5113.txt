@@ -1,0 +1,44 @@
+Summary:
+RepairCallback breaks CL guarantees
+Description:
+RepairCallback does not validate the consistency level of the query. It seems that this was done on purpose as the comments there says:
+/**
+ * The main difference between this and ReadCallback is, ReadCallback has a ConsistencyLevel
+ * it needs to achieve.  Repair on the other hand is happy to repair whoever replies within the timeout.
+ */
+Concretely, the get() method of RepairCallback:
+waits for all endpoints, even if there is more than strictly required by the CL.
+if it timeouts, doesn't check it and always return a response.
+for some reason, it returns null unless there is strictly more than 1 response.
+All of that seems wrong to me. The result of RepairCallback is what is returned to the client in case of a digest mismatch on the first read. So we must ensure that the CL has been reached. Also, returning null where there is 1 response (or none) seems clearly wrong.
+In fact I don't think we need a special callback for this "read all data" phase as it is a "normal" read (the fact we do a first read with digests is just an "optimization"). The only difference between the two phases should be how we resolve the responses (in the first case we have digest and in the 2nd we don't) but that's handled by the resolver.
+So attaching a patch that removes RepairCallback and use ReadCallback instead. I'm also attaching a 2nd trivial patch that renames RowRepairResolver to RowDataResolver because I think it describe better what this actually do (i.e. the main goal is to resolve a full data read to answer the right value to the client, repairing inconsistent nodes is secondary).
+The patch is against 1.1, because I think breaking CL guarantees is probably serious enough to warrant pushing this to 1.1.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+04/Jan/13 16:25
+Update date:
+16/Apr/19 09:32
+Resolved date:
+07/Jan/13 10:13

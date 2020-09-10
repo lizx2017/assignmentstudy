@@ -1,0 +1,51 @@
+Summary:
+Master aborted when hbck asked the master to assign a region that was already online
+Description:
+Came across this situation (with a version of 0.96 very close to RC5 version created on 10/11):
+The sequence of events that happened:
+1. The hbck tool couldn't communicate with the RegionServer hosting namespace region due to some security exceptions. hbck INCORRECTLY assumed the region was not deployed.
+In output.log (client side):
+2013-10-12 10:42:57,067|beaver.machine|INFO|ERROR: Region { meta => hbase:namespace,,1381564449706.a0ac0825ba2d0830614e7f808f31787a., hdfs => hdfs://gs-hdp2-secure-1381559462-hbase-12.cs1cloud.internal:8020/apps/hbase/data/data/hbase/namespace/a0ac0825ba2d0830614e7f808f31787a, deployed =>  } not deployed on any region server.
+2013-10-12 10:42:57,067|beaver.machine|INFO|Trying to fix unassigned region...
+2. This led to the hbck tool trying to tell the master to "assign" the region.
+In master log (hbase-hbase-master-gs-hdp2-secure-1381559462-hbase-12.log):
+2013-10-12 10:52:35,960 INFO  [RpcServer.handler=4,port=60000] master.HMaster: Client=hbase//172.18.145.105 assign hbase:namespace,,1381564449706.a0ac0825ba2d0830614e7f808f31787a.
+3. The master went through the steps - sent a CLOSE to the RegionServer hosting namespace region.
+From master log:
+2013-10-12 10:52:35,981 DEBUG [RpcServer.handler=4,port=60000] master.AssignmentManager: Sent CLOSE to gs-hdp2-secure-1381559462-hbase-1.cs1cloud.internal,60020,1381564439794 for region hbase:namespace,,1381564449706.a0ac0825ba2d0830614e7f808f31787a.
+4. The master then tried to assign the namespace region to a region server, and in the process ABORTED:
+From master log:
+2013-10-12 10:52:36,025 DEBUG [RpcServer.handler=4,port=60000] master.AssignmentManager: No previous transition plan found (or ignoring an existing plan) for hbase:namespace,,1381564449706.a0ac0825ba2d0830614e7f808f31787a.; generated random plan=hri=hbase:namespace,,1381564449706.a0ac0825ba2d0830614e7f808f31787a., src=, dest=gs-hdp2-secure-1381559462-hbase-9.cs1cloud.internal,60020,1381564439807; 4 (online=4, available=4) available servers, forceNewPlan=true
+2013-10-12 10:52:36,026 FATAL [RpcServer.handler=4,port=60000] master.HMaster: Master server abort: loaded coprocessors are: [org.apache.hadoop.hbase.security.access.AccessController]
+2013-10-12 10:52:36,027 FATAL [RpcServer.handler=4,port=60000] master.HMaster: Unexpected state : {a0ac0825ba2d0830614e7f808f31787a state=OPEN, ts=1381564451344, server=gs-hdp2-secure-1381559462-hbase-1.cs1cloud.internal,60020,1381564439794} .. Cannot transit it to OFFLINE.
+java.lang.IllegalStateException: Unexpected state : {a0ac0825ba2d0830614e7f808f31787a state=OPEN, ts=1381564451344, server=gs-hdp2-secure-1381559462-hbase-1.cs1cloud.internal,60020,1381564439794} .. Cannot transit it to OFFLINE.
+AssignmentManager.assign(HRegionInfo region, boolean setOfflineInZK, boolean forceNewPlan)
+is the method that does all the above. This was called from the HMaster with true for both the boolean arguments.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.96.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Devaraj Das
+Create date:
+15/Oct/13 20:43
+Update date:
+16/Dec/13 18:46
+Resolved date:
+17/Oct/13 17:29

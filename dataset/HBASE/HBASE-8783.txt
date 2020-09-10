@@ -1,0 +1,45 @@
+Summary:
+RSSnapshotManager.ZKProcedureMemberRpcs may be initialized with the wrong server name
+Description:
+The ZKProcedureMemberRpcs of the RegionServerSnapshotManager may be initialized with the wrong memberName.
+2013-06-21 05:03:41,732 DEBUG org.apache.hadoop.hbase.regionserver.HRegionServer: Initialize Snapshot Manager
+...
+2013-06-21 05:03:41,875 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Master passed us hostname to use. Was=0.0.0.0, Now=srv-5.test.cloudera.com
+The Region Server Name is used as memberName, but since the snapshot manger is initialized before the RS receives the server name used by the master, the zkprocedure will use the wrong name (0.0.0.0).
+This will case the snapshot to fail with a TimeoutException since the master will not receive the expected RS
+Master:
+ZKProcedureCoordinatorRpcs: Watching for acquire node:/hbase/online-snapshot/acquired/foo23/srv-5.test.cloudera.com,60020,1371813451915
+
+RS:
+ZKProcedureMemberRpcs: Member: '0.0.0.0,60020,1371814996779' joining acquired barrier for procedure (foo23) in zk
+
+...
+org.apache.hadoop.hbase.errorhandling.TimeoutException: Timeout elapsed! Source:Timeout caused Foreign Exception Start:1371798732141, End:1371798792141, diff:60000, max:60000 ms
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.8, 0.95.1
+Fix_version:
+0.98.0, 0.95.2, 0.94.9
+Component:
+snapshots
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Matteo Bertozzi
+Reporter:
+Matteo Bertozzi
+Create date:
+21/Jun/13 13:08
+Update date:
+04/Jul/13 22:10
+Resolved date:
+24/Jun/13 08:17

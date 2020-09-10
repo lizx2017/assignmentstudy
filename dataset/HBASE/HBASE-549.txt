@@ -1,0 +1,58 @@
+Summary:
+Don't CLOSE region if message is not from server that opened it or is opening it
+Description:
+We assign a region to a server. It takes too long to open (HBASE-505). Region gets assigned to another server. Meantime original host returns a MSG_REPORT_CLOSE (because other regions opening messes it up moving files on disk out from under it). We queue a shutdown which marks the region as needing reassignment. Second server reports in that it successfully opened the region. Master tells it it should not have opened it. Churn ensues.
+Fix is to ignore the CLOSE if its reported server/startcode does not match that of the server currently trying to open region. Fix is not easy because currently we don't keep list of server info in unassigned regions.
+Here's master log snippet showing problem:
+...
+2008-03-25 19:16:43,711 INFO org.apache.hadoop.hbase.HMaster: assigning region enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482 to server XX.XX.XX.220:60020
+2008-03-25 19:16:46,725 DEBUG org.apache.hadoop.hbase.HMaster: Received MSG_REPORT_PROCESS_OPEN : enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482 from XX.XX.XX.220:60020
+2008-03-25 19:18:06,411 DEBUG org.apache.hadoop.hbase.HMaster: shutdown scanner looking at enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482
+2008-03-25 19:18:06,811 DEBUG org.apache.hadoop.hbase.HMaster: shutdown scanner looking at enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482
+2008-03-25 19:19:46,841 INFO org.apache.hadoop.hbase.HMaster: assigning region enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482 to server XX.XX.XX.221:60020
+2008-03-25 19:19:49,849 DEBUG org.apache.hadoop.hbase.HMaster: Received MSG_REPORT_PROCESS_OPEN : enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482 from XX.XX.XX.221:60020
+2008-03-25 19:19:56,883 DEBUG org.apache.hadoop.hbase.HMaster: Received MSG_REPORT_CLOSE : enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482 from XX.XX.XX.220:60020
+2008-03-25 19:19:56,883 INFO org.apache.hadoop.hbase.HMaster: XX.XX.XX.220:60020 no longer serving regionname: enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482, startKey: <iLStZ0yTnfVUziYcNVVxWV==>, endKey: <jLB27Q4hKls4tSvp64rJfF==
+>, encodedName: 1857033608, tableDesc: {name: enwiki_080103, families: {alternate_title:={name: alternate_title, max versions: 3, compression: NONE, in memory: false, max length: 2147483647, bloom filter: none}, alternate_url:={name: al
+ternate_url, max versions: 3, compression: NONE, in memory: false, max length: 2147483647, bloom filter: none}, anchor:={name: anchor, max versions: 3, compression: NONE, in memory: false, max length: 2147483647, bloom filter: none}, mi
+sc:={name: misc, max versions: 3, compression: NONE, in memory: false, max length: 2147483647, bloom filter: none}, page:={name: page, max versions: 3, compression: NONE, in memory: false, max length: 2147483647, bloom filter: none}, re
+direct:={name: redirect, max versions: 3, compression: NONE, in memory: false, max length: 2147483647, bloom filter: none}}}
+2008-03-25 19:19:56,885 DEBUG org.apache.hadoop.hbase.HMaster: Main processing loop: ProcessRegionClose of enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482, true, false
+2008-03-25 19:19:56,885 INFO org.apache.hadoop.hbase.HMaster: region closed: enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482
+2008-03-25 19:19:56,887 INFO org.apache.hadoop.hbase.HMaster: reassign region: enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482
+2008-03-25 19:19:57,288 INFO org.apache.hadoop.hbase.HMaster: assigning region enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482 to server XX.XX.XX.189:60020
+2008-03-25 19:20:00,296 DEBUG org.apache.hadoop.hbase.HMaster: Received MSG_REPORT_PROCESS_OPEN : enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482 from XX.XX.XX.189:60020
+2008-03-25 19:20:16,885 DEBUG org.apache.hadoop.hbase.HMaster: Received MSG_REPORT_OPEN : enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482 from XX.XX.XX.221:60020
+2008-03-25 19:20:16,885 DEBUG org.apache.hadoop.hbase.HMaster: region server XX.XX.XX.221:60020 should not have opened region enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482
+2008-03-25 19:23:51,707 DEBUG org.apache.hadoop.hbase.HMaster: shutdown scanner looking at enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482
+2008-03-25 19:23:51,834 DEBUG org.apache.hadoop.hbase.HMaster: shutdown scanner looking at enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482
+2008-03-25 19:23:53,947 INFO org.apache.hadoop.hbase.HMaster: assigning region enwiki_080103,iLStZ0yTnfVUziYcNVVxWV==,1205393076482 to server XX.XX.XX.97:60020
+...
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+0.16.0, (3)
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+27/Mar/08 15:58
+Update date:
+07/Dec/10 20:32
+Resolved date:
+07/Dec/10 20:32

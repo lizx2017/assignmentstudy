@@ -1,0 +1,52 @@
+Summary:
+AnalyzingInfixSuggester needs duplicate handling
+Description:
+Spinoff from LUCENE-5833 but else unrelated.
+Using AnalyzingInfixSuggester which is backed by a Lucene index and stores payload and score together with the suggest text.
+I did some testing with Solr, producing the DocumentDictionary from an index with multiple documents containing the same text, but with random weights between 0-100. Then I got duplicate identical suggestions sorted by weight:
+{
+  "suggest":{"languages":{
+      "engl":{
+        "numFound":101,
+        "suggestions":[{
+            "term":"<b>Engl</b>ish",
+            "weight":100,
+            "payload":"0"},
+          {
+            "term":"<b>Engl</b>ish",
+            "weight":99,
+            "payload":"0"},
+          {
+            "term":"<b>Engl</b>ish",
+            "weight":98,
+            "payload":"0"},
+---etc all the way down to 0---
+I also reproduced the same behavior in AnalyzingInfixSuggester directly. So there is a need for some duplicate removal here, either while building the local suggest index or during lookup. Only the highest weight suggestion for a given term should be returned.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+4.10.3, 5.0
+Fix_version:
+None
+Component:
+None
+Label:
+lookup suggester
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jan Høydahl
+Reporter:
+Jan Høydahl
+Create date:
+04/Mar/15 13:17
+Update date:
+17/Nov/18 14:30
+Resolved date:
+

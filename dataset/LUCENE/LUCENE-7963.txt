@@ -1,0 +1,82 @@
+Summary:
+Useless getAttribute() in DefaultIndexingChain causes performance drop
+Description:
+Some background: We have spotted a significant drop in indexing throughput on machines with a large number of cores (see https://github.com/elastic/elasticsearch/issues/26339 for details).
+We finally managed to isolate the behavior in a JMH "microbenchmark". Here is the output of running that benchmark with 32 threads with JMH's perfasm profiler (also Oracle Development Studio finds the same hotspot):
+....[Hottest Region 1]..............................................................................
+C2, level 4, org.apache.lucene.index.DefaultIndexingChain$PerField::invert, version 1231 (792 bytes)
+
+                          0x00007f52d56b026a: xor    %r10d,%r10d        ;*invokevirtual isAssignableFrom
+                                                                        ; - org.apache.lucene.util.AttributeSource::addAttribute@28 (line 207)
+                                                                        ; - org.apache.lucene.document.Field$BinaryTokenStream::&lt;init&gt;@8 (line 512)
+                                                                        ; - org.apache.lucene.document.Field::tokenStream@82 (line 491)
+                                                                        ; - org.apache.lucene.index.DefaultIndexingChain$PerField::invert@99 (line 729)
+                          0x00007f52d56b026d: mov    $0x8,%r11d         ;*invokeinterface iterator
+                                                                        ; - org.apache.lucene.util.AttributeSource::getCurrentState@46 (line 254)
+                                                                        ; - org.apache.lucene.util.AttributeSource::clearAttributes@1 (line 269)
+                                                                        ; - org.apache.lucene.document.Field$BinaryTokenStream::incrementToken@10 (line 532)
+                                                                        ; - org.apache.lucene.index.DefaultIndexingChain$PerField::invert@153 (line 736)
+  0.00%    0.02%       ↗  0x00007f52d56b0273: test   %r10,%r10
+                  ╭    │  0x00007f52d56b0276: je     0x00007f52d56b0292  ;*getfield fieldsData
+                  │    │                                                ; - org.apache.lucene.document.Field::binaryValue@1 (line 441)
+                  │    │                                                ; - org.apache.lucene.document.Field::tokenStream@65 (line 487)
+                  │    │                                                ; - org.apache.lucene.index.DefaultIndexingChain$PerField::invert@99 (line 729)
+  0.00%    0.00%  │    │  0x00007f52d56b0278: mov    (%r11),%rsi        ;*getfield next
+                  │    │                                                ; - java.util.HashMap::getNode@137 (line 580)
+                  │    │                                                ; - java.util.LinkedHashMap::get@6 (line 440)
+                  │    │                                                ; - org.apache.lucene.util.AttributeSource::getAttribute@6 (line 245)
+                  │    │                                                ; - org.apache.lucene.index.DefaultIndexingChain$PerField::invert@143 (line 734)
+  0.09%    0.51%  │    │  0x00007f52d56b027b: mov    0x18(%rsi),%r8
+ 23.70%    3.54%  │    │  0x00007f52d56b027f: mov    $0x7f4926a81d88,%rcx  ;   {metadata(&apos;org/apache/lucene/analysis/tokenattributes/CharTermAttribute&apos;)}
+  0.00%    0.00%  │    │  0x00007f52d56b0289: cmp    %rcx,%r8
+                  │    │  0x00007f52d56b028c: jne    0x00007f52d56b0949  ;*instanceof
+                  │    │                                                ; - org.apache.lucene.document.Field::binaryValue@4 (line 441)
+                  │    │                                                ; - org.apache.lucene.document.Field::tokenStream@65 (line 487)
+                  │    │                                                ; - org.apache.lucene.index.DefaultIndexingChain$PerField::invert@99 (line 729)
+  0.01%    0.00%  ↘    │  0x00007f52d56b0292: test   %r10,%r10
+                       │  0x00007f52d56b0295: je     0x00007f52d56b1e0d  ;*invokevirtual addAttributeImpl
+                       │                                                ; - org.apache.lucene.util.AttributeSource::addAttribute@80 (line 213)
+                       │                                                ; - org.apache.lucene.document.Field$StringTokenStream::&lt;init&gt;@8 (line 550)
+                       │                                                ; - org.apache.lucene.document.Field::tokenStream@47 (line 483)
+                       │                                                ; - org.apache.lucene.index.DefaultIndexingChain$PerField::invert@99 (line 729)
+  0.01%    0.00%       │  0x00007f52d56b029b: mov    (%r11),%rsi        ;*invokevirtual hashCode
+                       │                                                ; - java.util.HashMap::hash@9 (line 338)
+                       │                                                ; - java.util.LinkedHashMap::get@2 (line 440)
+                       │                                                ; - org.apache.lucene.util.AttributeSource::getAttribute@6 (line 245)
+                       │                                                ; - org.apache.lucene.index.DefaultIndexingChain$PerField::invert@143 (line 734)
+You can see that a significant amount of time is spent in mov $0x7f4926a81d88,%rcx. It turns out that this maps to the following line in Java (DefaultIndexingChain$PerField::invert):
+CharTermAttribute termAtt = tokenStream.getAttribute(CharTermAttribute.class);
+Which is - luckily - unused (and removed by the attached patch).
+We have verified the impact of the change with an Elasticsearch macrobenchmark which indexes 165,346,692 documents (~ 74GB) with 24 clients concurrently. The reported numbers are median indexing throughput during that benchmark against a single Elasticsearch node:
+Without the patch: 125418 documents/s
+With the patch: 221237 documents/s
+Details about the benchmark setup etc. are mentioned in the Elasticsearch issue #26339 if you're interested.
+Unfortunately, it is beyond me why writing this register to main memory takes such a long time and why C2 did not eliminate this line as dead code to begin with.
+Status:
+RESOLVED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+7.0
+Fix_version:
+7.0
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Uwe Schindler
+Reporter:
+Daniel Mitterdorfer
+Create date:
+08/Sep/17 11:11
+Update date:
+11/Sep/17 05:53
+Resolved date:
+08/Sep/17 15:43

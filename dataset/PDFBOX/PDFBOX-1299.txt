@@ -1,0 +1,47 @@
+Summary:
+BaseParser.readUntilEndOfStream can stop too early, causing IOException on valid PDFs
+Description:
+The purpose of BaseParser.readUntilEndOfStream is to scan ahead,
+copying bytes to the output, stopping once it sees "endstream".
+The problem with this approach is sometimes the stream data itself
+contains endstream causing readUntilEndOfStream to stop too early.
+This can legitimately happen when the stream is an embedded PDF; I'll
+attach a test PDF showing this.
+However, the stream dict declares the stream length (in bytes)... so
+it seems like we should be respecting that length (if present) and
+simply copy over that many bytes, instead of scanning the stream bytes
+for endstream? This should be a lot faster too...
+I imagine we always scan so that we are more robust if the length is
+missing/invalid? Is that why this method was used? (I don't know the
+history here...). If so, maybe we can have an option to use
+the declared stream length if present.
+I have a patch to use the declared stream length (if present), and it enables
+at least this test PDF to correctly parse.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.6.0
+Fix_version:
+1.7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Timo Boehme
+Reporter:
+Michael McCandless
+Create date:
+29/Apr/12 13:44
+Update date:
+21/May/12 15:51
+Resolved date:
+21/May/12 14:07

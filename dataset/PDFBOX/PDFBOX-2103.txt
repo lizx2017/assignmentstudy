@@ -1,0 +1,44 @@
+Summary:
+JPXFilter fails to decode some Jpeg2000 images
+Description:
+Most of the images in the attached PDF are missing when rendered via PDFBox (tested in 2.0 head). The reason is a NullPointerException in ImageIO:
+java.lang.NullPointerException
+at com.sun.media.imageioimpl.plugins.jpeg2000.J2KMetadata.replace(J2KMetadata.java:962)
+at com.sun.media.imageioimpl.plugins.jpeg2000.J2KMetadata.addNode(J2KMetadata.java:631)
+at jj2000.j2k.fileformat.reader.FileFormatReader.readFileFormat(FileFormatReader.java:279)
+at com.sun.media.imageioimpl.plugins.jpeg2000.J2KReadState.initializeRead(J2KReadState.java:418)
+at com.sun.media.imageioimpl.plugins.jpeg2000.J2KReadState.<init>(J2KReadState.java:189)
+at com.sun.media.imageioimpl.plugins.jpeg2000.J2KImageReader.read(J2KImageReader.java:443)
+at javax.imageio.ImageReader.read(Unknown Source)
+at org.apache.pdfbox.filter.JPXFilter.readJPX(JPXFilter.java:84)
+at org.apache.pdfbox.filter.JPXFilter.decode(JPXFilter.java:58)
+...
+To avoid the problem, the ImageIO has to be instructed to skip reading metadata of the image, i.e. use reader.setInput(iis, true, true) instead of reader.setInput(iis) as shown in the attached patch. This is also what ImageIO.read(stream) does - the method that was used before the commit 1570806.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+Rendering
+Label:
+JPEG2000
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Petr Slaby
+Create date:
+30/May/14 09:08
+Update date:
+17/Mar/16 19:06
+Resolved date:
+30/May/14 15:39

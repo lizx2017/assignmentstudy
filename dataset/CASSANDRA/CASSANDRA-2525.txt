@@ -1,0 +1,63 @@
+Summary:
+CQL: create keyspace does not the replication factor argument and allows invalid sql to pass thru
+Description:
+I ran the following SQL in cqlsh and immediately received a socket closed error. After that point, I couldn't run nodetool, and then got an exception starting up the cluster.
+Please Note: The following syntax is valid in 0.74 but invalid in 0.8.
+The 0.8 cassandra-cli errors on the following statement, so the resolution of the bug is to have cqlsh block this incorrect syntax.
+create keyspace testcli with replication_factor=1
+and placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy';
+CREATE KEYSPACE testcql with replication_factor = 1 and strategy_class = 'org.apache.cassandra.locator.SimpleStrategy'; 
+ERROR 01:29:26,989 Exception encountered during startup.
+java.lang.RuntimeException: org.apache.cassandra.config.ConfigurationException: SimpleStrategy requires a replication_factor strategy option.
+ at org.apache.cassandra.db.Table.<init>(Table.java:278)
+ at org.apache.cassandra.db.Table.open(Table.java:110)
+ at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:160)
+ at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:314)
+ at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:80)
+Caused by: org.apache.cassandra.config.ConfigurationException: SimpleStrategy requires a replication_factor strategy option.
+ at org.apache.cassandra.locator.SimpleStrategy.validateOptions(SimpleStrategy.java:79)
+ at org.apache.cassandra.locator.AbstractReplicationStrategy.createReplicationStrategy(AbstractReplicationStrategy.java:262)
+ at org.apache.cassandra.db.Table.createReplicationStrategy(Table.java:328)
+ at org.apache.cassandra.db.Table.<init>(Table.java:274)
+ ... 4 more
+Exception encountered during startup.
+java.lang.RuntimeException: org.apache.cassandra.config.ConfigurationException: SimpleStrategy requires a replication_factor strategy option.
+ at org.apache.cassandra.db.Table.<init>(Table.java:278)
+ at org.apache.cassandra.db.Table.open(Table.java:110)
+ at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:160)
+ at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:314)
+ at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:80)
+Caused by: org.apache.cassandra.config.ConfigurationException: SimpleStrategy requires a replication_factor strategy option.
+ at org.apache.cassandra.locator.SimpleStrategy.validateOptions(SimpleStrategy.java:79)
+ at org.apache.cassandra.locator.AbstractReplicationStrategy.createReplicationStrategy(AbstractReplicationStrategy.java:262)
+ at org.apache.cassandra.db.Table.createReplicationStrategy(Table.java:328)
+ at org.apache.cassandra.db.Table.<init>(Table.java:274)
+ ... 4 more
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.0 beta 2
+Component:
+None
+Label:
+cql
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Cathy Daw
+Create date:
+21/Apr/11 01:35
+Update date:
+16/Apr/19 09:33
+Resolved date:
+22/Apr/11 20:50

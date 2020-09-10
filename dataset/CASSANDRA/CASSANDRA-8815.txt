@@ -1,0 +1,37 @@
+Summary:
+Race in sstable ref counting during streaming failures
+Description:
+We have a seen a machine in Prod whose all read threads are blocked(spinning) on trying to acquire the reference lock on stables. There are also some stream sessions which are doing the same.
+On looking at the heap dump, we could see that a live sstable which is part of the View has a ref count = 0. This sstable is also not compacting or is part of any failed compaction.
+On looking through the code, we could see that if ref goes to zero and the stable is part of the View, all reader threads will spin forever.
+On further looking through the code of streaming, we could see that if StreamTransferTask.complete is called after closeSession has been called due to error in OutgoingMessageHandler, it will double decrement the ref count of an sstable.
+This race can happen and we see through exception in logs that closeSession was triggered by OutgoingMessageHandler.
+The fix for this is very simple i think. In StreamTransferTask.abort, we can remove a file from "files” before decrementing the ref count. This will avoid this race.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.13
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+sankalp kohli
+Create date:
+16/Feb/15 22:27
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/Feb/15 11:55

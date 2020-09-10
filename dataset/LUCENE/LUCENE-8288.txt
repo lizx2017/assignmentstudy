@@ -1,0 +1,46 @@
+Summary:
+Context query with regex "." produces an assertion failure
+Description:
+When a RegexCompletionQuery of "." is provided to ContextQuery, the following assertion failure occurs:
+java.lang.AssertionError: input should not end with a context separator followed by SEP_LABEL
+
+at org.apache.lucene.search.suggest.document.ContextQuery$ContextCompletionWeight.setInnerWeight(ContextQuery.java:299)
+at org.apache.lucene.search.suggest.document.ContextQuery$ContextCompletionWeight.setNextMatch(ContextQuery.java:275)
+at org.apache.lucene.search.suggest.document.NRTSuggester.lookup(NRTSuggester.java:221)
+at org.apache.lucene.search.suggest.document.CompletionScorer.score(CompletionScorer.java:70)
+at org.apache.lucene.search.BulkScorer.score(BulkScorer.java:39)
+at org.apache.lucene.search.suggest.document.SuggestIndexSearcher.suggest(SuggestIndexSearcher.java:78)
+at org.apache.lucene.search.suggest.document.SuggestIndexSearcher.suggest(SuggestIndexSearcher.java:58)
+at org.apache.lucene.search.suggest.document.TestContextQuery.testDotRegexQuery(TestContextQuery.java:188)
+Note that this is a related, but distinct issue from https://issues.apache.org/jira/browse/LUCENE-8287, where the RegexCompletionQuery is empty.
+The attached patch provides a reproduction of the issue, as the test case TestContextQuery#testRegexDotQuery. To reproduce, Java assertions must be enabled (as in the default configuration for tests).
+The patch also provides a test case for the normal behavior of an empty RegexCompletionQuery, when it is not wrapped in ContextQuery (TestRegexCompletionQuery#testRegexDotQuery). In this case, there is no error, and all suggestions are returned.
+From a quick look, it seems as though "." doesn't capture any characters past  CompletionAnalyzer.SEP_LABEL, so the matching prefix in ContextCompletionWeight#setInnerWeight is unexpectedly empty.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Julie Tibshirani
+Create date:
+01/May/18 21:55
+Update date:
+07/May/18 19:13
+Resolved date:
+

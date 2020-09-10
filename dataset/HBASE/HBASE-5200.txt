@@ -1,0 +1,47 @@
+Summary:
+AM.ProcessRegionInTransition() and AM.handleRegion() race thus leaving the region assignment inconsistent
+Description:
+This is the scenario
+Consider a case where the balancer is going on thus trying to close regions in a RS.
+Before we could close a master switch happens.
+On Master switch the set of nodes that are in RIT is collected and we first get Data and start watching the node
+After that the node data is added into RIT.
+Now by this time (before adding to RIT) if the RS to which close was called does a transition in AM.handleRegion() we miss the handling saying RIT state was null.
+2012-01-13 10:50:46,358 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received CLOSED for region a66d281d231dfcaea97c270698b26b6f from server HOST-192-168-47-205,20020,1326363111288 but region was in  the state null and not in expected PENDING_CLOSE or CLOSING states
+2012-01-13 10:50:46,358 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received CLOSED for region c12e53bfd48ddc5eec507d66821c4d23 from server HOST-192-168-47-205,20020,1326363111288 but region was in  the state null and not in expected PENDING_CLOSE or CLOSING states
+2012-01-13 10:50:46,358 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received CLOSED for region 59ae13de8c1eb325a0dd51f4902d2052 from server HOST-192-168-47-205,20020,1326363111288 but region was in  the state null and not in expected PENDING_CLOSE or CLOSING states
+2012-01-13 10:50:46,359 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received CLOSED for region f45bc9614d7575f35244849af85aa078 from server HOST-192-168-47-205,20020,1326363111288 but region was in  the state null and not in expected PENDING_CLOSE or CLOSING states
+2012-01-13 10:50:46,359 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received CLOSED for region cc3ecd7054fe6cd4a1159ed92fd62641 from server HOST-192-168-47-204,20020,1326342744518 but region was in  the state null and not in expected PENDING_CLOSE or CLOSING states
+2012-01-13 10:50:46,359 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received CLOSED for region 3af40478a17fee96b4a192b22c90d5a2 from server HOST-192-168-47-205,20020,1326363111288 but region was in  the state null and not in expected PENDING_CLOSE or CLOSING states
+2012-01-13 10:50:46,359 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received CLOSED for region e6096a8466e730463e10d3d61f809b92 from server HOST-192-168-47-204,20020,1326342744518 but region was in  the state null and not in expected PENDING_CLOSE or CLOSING states
+2012-01-13 10:50:46,359 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received CLOSED for region 4806781a1a23066f7baed22b4d237e24 from server HOST-192-168-47-204,20020,1326342744518 but region was in  the state null and not in expected PENDING_CLOSE or CLOSING states
+2012-01-13 10:50:46,359 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received CLOSED for region d69e104131accaefe21dcc01fddc7629 from server HOST-192-168-47-205,20020,1326363111288 but region was in  the state null and not in expected PENDING_CLOSE or CLOSING states
+In branch the CLOSING node is created by RS thus leading to more inconsistency.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.5
+Fix_version:
+0.92.1, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+14/Jan/12 10:07
+Update date:
+12/Oct/12 05:35
+Resolved date:
+18/Feb/12 20:21

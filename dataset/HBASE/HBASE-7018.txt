@@ -1,0 +1,53 @@
+Summary:
+Fix and Improve TableDescriptor caching for bulk assignment
+Description:
+HBASE-6214 backported HBASE-5998 (Bulk assignment: regionserver optimization by using a temporary cache for table descriptors when receiving an open regions request), but it's buggy on 0.94 (0.96 appears correct):
+    HTableDescriptor htd = null;
+    if (htds == null) {
+      htd = this.tableDescriptors.get(region.getTableName());
+    } else {
+      htd = htds.get(region.getTableNameAsString());
+      if (htd == null) {
+        htd = this.tableDescriptors.get(region.getTableName());
+        htds.put(region.getRegionNameAsString(), htd);
+      }
+    }
+i.e. we get the tableName from the map but write the regionName.
+Even fixing this, it looks like there are areas for improvement:
+1) FSTableDescriptors already has a cache (though it goes to the NameNode each time through to check we have the latest copy. May as well combine these two caches, might be a performance win as well since we don't need to write to multiple caches.
+2) FSTableDescriptors makes two RPCs to the NameNode when it encounters a new table. So the total number of RPCs necessary for a bulk assign (without caching is):
+#regions + #tables
+(with caching):
+min(#regions,#tables) + #tables = #tables + #tables = 2 * #tables
+We can make this only one RPC, yielding:
+#tables
+Probably not a big deal for most users, but in a multi-tenant situation where the number of regions being bulk assigned approaches the number of tables being bulk assigned, this could be a nice performance win.
+Benchmarks coming.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.3, 0.95.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gregory Chanan
+Reporter:
+Gregory Chanan
+Create date:
+19/Oct/12 21:34
+Update date:
+26/Feb/13 08:20
+Resolved date:
+24/Oct/12 01:11

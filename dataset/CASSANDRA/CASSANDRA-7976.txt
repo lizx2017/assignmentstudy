@@ -1,0 +1,125 @@
+Summary:
+Changes to index_interval table properties revert after subsequent modifications
+Description:
+It appears that if you want to increase the sampling in *-Summary.db files, you would change the default for index_interval table property from the 128 default value to 256 on a given CQL TABLE.
+However, if you ALTER TABLE after setting the value, index_interval returns to the default, 128. This is unexpected behavior. I would expect the value for index_interval to not be affected by subsequent ALTER TABLE statements.
+As noted in Environment, this was seen with a 2.0.9-SNAPSHOT built w/ `ccm`.
+If I just use a table from one of DataStax documentation tutorials (musicdb as mdb):
+cqlsh:mdb> DESC TABLE songs;
+
+CREATE TABLE songs (
+  id uuid,
+  album text,
+  artist text,
+  data blob,
+  reviews list<text>,
+  tags set<text>,
+  title text,
+  venue map<timestamp, text>,
+  PRIMARY KEY ((id))
+) WITH
+  bloom_filter_fp_chance=0.010000 AND
+  caching='KEYS_ONLY' AND
+  comment='' AND
+  dclocal_read_repair_chance=0.100000 AND
+  gc_grace_seconds=864000 AND
+  index_interval=128 AND
+  read_repair_chance=0.000000 AND
+  replicate_on_write='true' AND
+  populate_io_cache_on_flush='false' AND
+  default_time_to_live=0 AND
+  speculative_retry='99.0PERCENTILE' AND
+  memtable_flush_period_in_ms=0 AND
+  compaction={'class': 'SizeTieredCompactionStrategy'} AND
+  compression={'sstable_compression': 'LZ4Compressor'};
+We've got 128 as expected.
+We alter it:
+cqlsh:mdb> ALTER TABLE songs WITH index_interval = 256; 
+And the change appears:
+cqlsh:mdb> DESC TABLE songs;
+
+CREATE TABLE songs (
+  id uuid,
+  album text,
+  artist text,
+  data blob,
+  reviews list<text>,
+  tags set<text>,
+  title text,
+  venue map<timestamp, text>,
+  PRIMARY KEY ((id))
+) WITH
+  bloom_filter_fp_chance=0.010000 AND
+  caching='KEYS_ONLY' AND
+  comment='' AND
+  dclocal_read_repair_chance=0.100000 AND
+  gc_grace_seconds=864000 AND
+  index_interval=256 AND
+  read_repair_chance=0.000000 AND
+  replicate_on_write='true' AND
+  populate_io_cache_on_flush='false' AND
+  default_time_to_live=0 AND
+  speculative_retry='99.0PERCENTILE' AND
+  memtable_flush_period_in_ms=0 AND
+  compaction={'class': 'SizeTieredCompactionStrategy'} AND
+  compression={'sstable_compression': 'LZ4Compressor'};
+But if do another ALTER TABLE, say, change the caching or comment, the index_interval will revert back to 128.
+cqlsh:mdb> ALTER TABLE songs WITH caching = 'none'; 
+cqlsh:mdb> DESC TABLE songs; 
+
+CREATE TABLE songs (
+  id uuid,
+  album text,
+  artist text,
+  data blob,
+  reviews list<text>,
+  tags set<text>,
+  title text,
+  venue map<timestamp, text>,
+  PRIMARY KEY ((id))
+) WITH
+  bloom_filter_fp_chance=0.010000 AND
+  caching='NONE' AND
+  comment='' AND
+  dclocal_read_repair_chance=0.100000 AND
+  gc_grace_seconds=864000 AND
+  index_interval=128 AND
+  read_repair_chance=0.000000 AND
+  replicate_on_write='true' AND
+  populate_io_cache_on_flush='false' AND
+  default_time_to_live=0 AND
+  speculative_retry='99.0PERCENTILE' AND
+  memtable_flush_period_in_ms=0 AND
+  compaction={'class': 'SizeTieredCompactionStrategy'} AND
+  compression={'sstable_compression': 'LZ4Compressor'};
+It should be index_interval=256.
+I know that 2.1 will replace index_interval.
+I have not confirmed any behavior with min_index_interval nor max_index_interval (which is described in resolved #6379).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15
+Component:
+Local/Config
+Label:
+cql3 metadata
+Environment:
+
+Attachment number:
+0
+Assignee:
+Stefania
+Reporter:
+Andrew Lenards
+Create date:
+19/Sep/14 00:05
+Update date:
+16/Apr/19 09:31
+Resolved date:
+31/Mar/15 16:39

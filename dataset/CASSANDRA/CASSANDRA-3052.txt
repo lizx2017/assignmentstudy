@@ -1,0 +1,132 @@
+Summary:
+CQL: ResultSet.next() gives NPE when run after an INSERT or CREATE statement
+Description:
+This test script used to work until I upgraded the jdbc driver to 1.0.4.
+CQL 1.0.4: apache-cassandra-cql-1.0.4-SNAPSHOT.jar build at revision 1158979
+Repro Script:
+drop in test directory, change package declaration and run: ant test -Dtest.name=resultSetNPE
+The script gives you a NullPointerException when you uncomment out the following lines after a CREATE or INSERT statement.
+colCount = res.getMetaData().getColumnCount();
+
+res.next();
+Please note that there is no need to comment out those lines if a SELECT statement was run prior.
+package com.datastax.bugs;
+
+import java.sql.DriverManager;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+import org.junit.Test;
+
+public class resultSetNPE {
+    
+    @Test
+    public void createKS() throws Exception {   
+        Connection initConn = null;
+        Connection connection = null;
+
+        ResultSet res;
+        Statement stmt;
+        int colCount = 0;
+        
+        Class.forName("org.apache.cassandra.cql.jdbc.CassandraDriver");
+        
+        // Check create keyspace
+        initConn = DriverManager.getConnection("jdbc:cassandra://127.0.0.1:9160/default");     
+        stmt = initConn.createStatement();
+
+        try {
+          System.out.println("Running DROP KS Statement");  
+          res = stmt.executeQuery("DROP KEYSPACE ks1");  
+          // res.next();
+          
+        } catch (SQLException e) {
+            if (e.getMessage().startsWith("Keyspace does not exist")) 
+            {
+                // Do nothing - this just means you tried to drop something that was not there.
+                // res = stmt.executeQuery("CREATE KEYSPACE ks1 with strategy_class =  'org.apache.cassandra.locator.SimpleStrategy' and strategy_options:replication_factor=1");  
+            } 
+        }   
+          
+        System.out.println("Running CREATE KS Statement");
+        res = stmt.executeQuery("CREATE KEYSPACE ks1 with strategy_class =  'org.apache.cassandra.locator.SimpleStrategy' and strategy_options:replication_factor=1");  
+        // res.next();
+
+        initConn.close();    
+    }  
+ 
+    @Test
+    public void createCF() throws Exception 
+    {   
+
+        Class.forName("org.apache.cassandra.cql.jdbc.CassandraDriver");
+        int colCount = 0;
+
+        Connection connection = DriverManager.getConnection("jdbc:cassandra://127.0.0.1:9160/ks1");     
+        Statement stmt = connection.createStatement();
+
+        System.out.print("Running CREATE CF Statement");
+        ResultSet res = stmt.executeQuery("CREATE COLUMNFAMILY users (KEY varchar PRIMARY KEY, password varchar, gender varchar, session_token varchar, state varchar, birth_year bigint)");    
+        
+        //colCount = res.getMetaData().getColumnCount();
+        System.out.println(" -- Column Count: " + colCount); 
+        //res.next();
+        
+        connection.close();               
+    }  
+    
+    @Test
+    public void simpleSelect() throws Exception 
+    {   
+        Class.forName("org.apache.cassandra.cql.jdbc.CassandraDriver");
+        int colCount = 0;
+
+        Connection connection = DriverManager.getConnection("jdbc:cassandra://127.0.0.1:9160/ks1");     
+        Statement stmt = connection.createStatement();
+        
+        System.out.print("Running INSERT Statement");
+        ResultSet res = stmt.executeQuery("INSERT INTO users (KEY, password) VALUES ('user1', 'ch@nge')");  
+        //colCount = res.getMetaData().getColumnCount();
+        System.out.println(" -- Column Count: " + colCount); 
+        //res.next();
+        
+        System.out.print("Running SELECT Statement");
+        res = stmt.executeQuery("SELECT KEY, gender, state FROM users");  
+        colCount = res.getMetaData().getColumnCount();
+        System.out.println(" -- Column Count: " + colCount); 
+        res.getRow();
+        res.next();
+            
+        connection.close(); 
+    }  
+}
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.5
+Component:
+None
+Label:
+JDBC cql
+Environment:
+
+Attachment number:
+0
+Assignee:
+Rick Shaw
+Reporter:
+Cathy Daw
+Create date:
+18/Aug/11 01:32
+Update date:
+16/Apr/19 09:32
+Resolved date:
+22/Aug/11 17:04

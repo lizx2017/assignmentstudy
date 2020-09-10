@@ -1,0 +1,51 @@
+Summary:
+the problem in hbase thrift client when scan/get rows by timestamp
+Description:
+I want to scan rows by specified timestamp. I use following hbase shell command :
+scan 'testcrawl',
+{TIMESTAMP=>1312268202071}
+
+ROW COLUMN+CELL
+put1.com column=crawl:data, timestamp=1312268202071, value=<html>put1</html>
+put1.com column=crawl:type, timestamp=1312268202071, value=html
+put1.com column=links:outlinks, timestamp=1312268202071, value=www.163.com;www.sina.com
+As I expected, I can get the rows which timestamp is 1312268202071.
+But when I use thift client to do the same thing ,the return data is the rows which time before specified timestamp , not the same as hbase shell.following is timestamp of return data:
+1312179170000
+1312268202059
+I look up the source in hbase/src/main/java/org/apache/hadoop/hbase/thrift/ThriftServer.java, it use following code to set time parameter .
+scan.setTimeRange(Long.MIN_VALUE, timestamp);
+This cause thrift client return rows before specified row ,not the rows timestamp specified.
+But in hbase client and avro client ，it use following code to set time parameter.
+scan.setTimeStamp(timestamp);
+this will return rows timestamp specified.
+Is this a feature or a bug in thrift client ?
+if this is a feature, which method in thrift client can get the rows by specified timestamp?
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Incomplete
+Affects_version:
+0.90.0
+Fix_version:
+None
+Component:
+Thrift
+Label:
+thrift
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+zezhou
+Create date:
+02/Aug/11 13:20
+Update date:
+22/Apr/15 00:34
+Resolved date:
+22/Apr/15 00:34

@@ -1,0 +1,46 @@
+Summary:
+MultiFieldQueryParser.getFieldQuery() drops queries that are neither BooleanQuery nor TermQuery
+Description:
+From http://mail-archives.apache.org/mod_mbox/lucene-java-user/201609.mbox/%3c944985a6ac27425681bd27abe9d90602@ska-wn-e132.ptvag.ptv.de%3e, Oliver Kaleske reports:
+Hi,
+in updating Lucene from 6.1.0 to 6.2.0 I came across the following:
+We have a subclass of MultiFieldQueryParser (MFQP) for creating a custom type of Query, which calls getFieldQuery() on its base class (MFQP).
+For each of its search fields, this method has a Query created by calling getFieldQuery() on QueryParserBase.
+Ultimately, we wind up in QueryBuilder's createFieldQuery() method, which depending on the number of tokens (etc.) decides what type of Query to return: a TermQuery, BooleanQuery, PhraseQuery, or MultiPhraseQuery.
+Back in MFQP.getFieldQuery(), a variable maxTerms is determined depending on the type of Query returned: for a TermQuery or a BooleanQuery, its value will in general be nonzero, clauses are created, and a non-null Query is returned.
+However, other Query subclasses result in maxTerms=0, an empty list of clauses, and finally null is returned.
+To me, this seems like a bug, but I might as well be missing something. The comment "// happens for stopwords" on the return null statement, however, seems to suggest that Query types other than TermQuery and BooleanQuery were not considered properly here.
+I should point out that our custom MFQP subclass so far does some rather unsophisticated tokenization before calling getFieldQuery() on each token, so characters like '*' may still slip through. So perhaps with proper tokenization, it is guaranteed that only TermQuery and BooleanQuery can come out of the chain of getFieldQuery() calls, and not handling (Multi)PhraseQuery in MFQP.getFieldQuery() can never cause trouble?
+The code in MFQP.getFieldQuery dates back to
+LUCENE-2605: Add classic QueryParser option setSplitOnWhitespace() to control whether to split on whitespace prior to text analysis. Default behavior remains unchanged: split-on-whitespace=true.
+(06 Jul 2016), when it was substantially expanded.
+Best regards,
+Oliver
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.2.2, 6.3, 7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Steve Rowe
+Reporter:
+Steve Rowe
+Create date:
+30/Sep/16 19:42
+Update date:
+09/Nov/16 08:37
+Resolved date:
+04/Oct/16 15:16

@@ -1,0 +1,47 @@
+Summary:
+-ROOT- may be offline forever after FullGC of RS
+Description:
+1.FullGC happen on ROOT regionserver.
+2.ZK session timeout, master expire the regionserver and submit to ServerShutdownHandler
+3.Regionserver complete the FullGC
+4.In the process of ServerShutdownHandler, verifyRootRegionLocation returns true
+5.ServerShutdownHandler skip assigning ROOT region
+6.Regionserver abort itself because it reveive YouAreDeadException after a regionserver report
+7.ROOT is offline now, and won't be assigned any more unless we restart master
+Master Log:
+2012-10-31 19:51:39,043 DEBUG org.apache.hadoop.hbase.master.ServerManager: Added=dw88.kgb.sqa.cm4,60020,1351671478752 to dead servers, submitted shutdown handler to be executed, root=true, meta=false
+2012-10-31 19:51:39,045 INFO org.apache.hadoop.hbase.master.handler.ServerShutdownHandler: Splitting logs for dw88.kgb.sqa.cm4,60020,1351671478752
+2012-10-31 19:51:50,113 INFO org.apache.hadoop.hbase.master.handler.ServerShutdownHandler: Server dw88.kgb.sqa.cm4,60020,1351671478752 was carrying ROOT. Trying to assign.
+2012-10-31 19:52:15,939 DEBUG org.apache.hadoop.hbase.master.ServerManager: Server REPORT rejected; currently processing dw88.kgb.sqa.cm4,60020,1351671478752 as dead server
+2012-10-31 19:52:15,945 INFO org.apache.hadoop.hbase.master.handler.ServerShutdownHandler: Skipping log splitting for dw88.kgb.sqa.cm4,60020,1351671478752
+No log of assigning ROOT
+Regionserver log:
+2012-10-31 19:52:15,923 WARN org.apache.hadoop.hbase.util.Sleeper: We slept 229128ms instead of 100000ms, this is likely due to a long garbage collecting pause and it's usually bad, see http://hbase.apache.org/book.html#trouble.rs.runtime.zkexpired
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.3
+Fix_version:
+0.94.5, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+07/Jan/13 09:42
+Update date:
+26/Feb/13 08:27
+Resolved date:
+11/Jan/13 05:29

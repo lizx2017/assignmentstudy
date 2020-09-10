@@ -1,0 +1,61 @@
+Summary:
+ROOT and META region never be assigned if IOE throws in verifyRootRegionLocation
+Description:
+Patch in HBASE-3914 fixed root assigned in two regionservers. But it seemed like root region will never be assigned if verifyRootRegionLocation throws IOE.
+Like following master logs:
+2011-10-19 19:13:34,873 ERROR org.apache.hadoop.hbase.executor.EventHandler: Caught throwable while processing event M_META_SERVER_S
+HUTDOWN
+org.apache.hadoop.ipc.RemoteException: org.apache.hadoop.hbase.ipc.ServerNotRunningException: Server is not running yet
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1090)
+
+        at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:771)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:256)
+        at $Proxy7.getRegionInfo(Unknown Source)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.verifyRegionLocation(CatalogTracker.java:424)
+        at org.apache.hadoop.hbase.catalog.CatalogTracker.verifyRootRegionLocation(CatalogTracker.java:471)
+        at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.verifyAndAssignRoot(ServerShutdownHandler.java:90)
+        at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.process(ServerShutdownHandler.java:126)
+        at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:151)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:662)
+After this, ROOT's region won't be assigned, like this:
+2011-10-19 19:18:40,000 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: locateRegionInMeta parent
+Table=-ROOT-, metaLocation=address: dw79.kgb.sqa.cm4:60020, regioninfo: -ROOT-,,0.70236052, attempt=0 of 10 failed; retrying after s
+leep of 1000 because: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: -ROOT-,,0
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:2771)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.getClosestRowBefore(HRegionServer.java:1802)
+        at sun.reflect.GeneratedMethodAccessor7.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:569)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1091)
+So we should rewrite the verifyRootRegionLocation method.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+0.90.4
+Fix_version:
+0.90.7
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+mingjian
+Reporter:
+mingjian
+Create date:
+09/Nov/11 03:25
+Update date:
+08/Sep/15 16:39
+Resolved date:
+08/Sep/15 16:39

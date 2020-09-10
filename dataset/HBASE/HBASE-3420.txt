@@ -1,0 +1,52 @@
+Summary:
+Handling a big rebalance, we can queue multiple instances of a Close event; messes up state
+Description:
+This is pretty ugly. In short, on a heavily loaded cluster, we are queuing multiple instances of region close. They all try to run confusing state.
+Long version:
+I have a messy cluster. Its 16k regions on 8 servers. One node has 5k or so regions on it. Heaps are 1G all around. My master had OOME'd. Not sure why but not too worried about it for now. So, new master comes up and is trying to rebalance the cluster:
+2011-01-05 00:48:07,385 INFO org.apache.hadoop.hbase.master.LoadBalancer: Calculated a load balance in 14ms. Moving 3666 regions off of 6 overloaded servers onto 3 less loaded servers
+The balancer ends up sending many closes to a single overloaded server are taking so long, the close times out in RIT. We then do this:
+              case CLOSED:
+                LOG.info("Region has been CLOSED for too long, " +
+                    "retriggering ClosedRegionHandler");
+                AssignmentManager.this.executorService.submit(
+                    new ClosedRegionHandler(master, AssignmentManager.this,
+                        regionState.getRegion()));
+                break;
+We queue a new close (Should we?).
+We time out a few more times (9 times) and each time we queue a new close.
+Eventually the close succeeds, the region gets assigned a new location.
+Then the next close pops off the eventhandler queue.
+Here is the telltale signature of stuff gone amiss:
+2011-01-05 00:52:19,379 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Forcing OFFLINE; was=TestTable,0487405776,1294125523541.b1fa38bb610943e9eadc604babe4d041. state=OPEN, ts=1294188709030
+Notice how state is OPEN when we are forcing offline (It was actually just successfully opened). We end up assigning same server because plan was still around:
+2011-01-05 00:52:20,705 WARN org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Attempted open of TestTable,0487405776,1294125523541.b1fa38bb610943e9eadc604babe4d041. but already online on this server
+But later when plan is cleared, we assign new server and we have dbl-assignment.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+05/Jan/11 17:51
+Update date:
+20/Nov/15 12:40
+Resolved date:
+05/Jan/11 21:08

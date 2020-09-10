@@ -1,0 +1,34 @@
+Summary:
+Tests that use RegionServer.openRegion such as TestHBaseFsck#testHBaseFsck should call openRegion synchronously
+Description:
+Certain test cases like HBaseFsck#testHBaseFsck make calls to assign region servers and then read meta. The tests or hbck should be modified to make the RegionServer.openRegion call act synchronously.
+The main issue isn't what is returned, but when. Specifically in HBaseFsck#testHBaseFsck, the first 'hbck -fix', the master makes a call to the regionserver to issue an asynchronous request to open the region (which adds data to meta). The regionserver returns right away. The next hbck call will cause the master query meta again which is used to check consistency. A race is exposed – sometimes the new meta entries are fixed before the second hbck call is done (failing the test), sometimes it is not (not failing).
+The hack in HBASE-4842 introduces a slight delay which usually allows the open request to finish and the meta entry to be updated before the subsequent 'hbck' call.
+Status:
+REOPENED
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+0.92.0, 0.94.0
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jonathan Hsieh
+Create date:
+22/Nov/11 23:17
+Update date:
+31/Aug/12 16:49
+Resolved date:
+

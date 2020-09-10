@@ -1,0 +1,60 @@
+Summary:
+Possible livelock during commit log playback
+Description:
+In CommitLog.recover, there seems to be the possibility of concurrent inserts to tablesRecovered (a HashSet) in the Runnables instantiated a bit below (line 323 in 1.0.7). This apparently happened during a commit log playback during startup of a node that had not shut down cleanly (the cluster was under heavy load previously and there were several gigabytes of commit logs), resulting in two threads running in perpetuity (2 cores were at 100% from running these threads), preventing the node from coming up. The relevant portion of the stack trace is:
+INFO   | jvm 1    | 2012/01/16 16:54:42 | "MutationStage:25" prio=10 tid=0x00002aaad01e0800 nid=0x6f62 runnable [0x0000000044d54000]
+INFO   | jvm 1    | 2012/01/16 16:54:42 |    java.lang.Thread.State: RUNNABLE
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.HashMap.put(HashMap.java:374)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.HashSet.add(HashSet.java:200)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at org.apache.cassandra.db.commitlog.CommitLog$2.runMayThrow(CommitLog.java:338)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.lang.Thread.run(Thread.java:662)
+INFO   | jvm 1    | 2012/01/16 16:54:42 | 
+INFO   | jvm 1    | 2012/01/16 16:54:42 | "MutationStage:21" prio=10 tid=0x00002aaad00a2800 nid=0x6f5e runnable [0x0000000044950000]
+INFO   | jvm 1    | 2012/01/16 16:54:42 |    java.lang.Thread.State: RUNNABLE
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.HashMap.put(HashMap.java:374)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.HashSet.add(HashSet.java:200)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at org.apache.cassandra.db.commitlog.CommitLog$2.runMayThrow(CommitLog.java:338)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+INFO   | jvm 1    | 2012/01/16 16:54:42 |  at java.lang.Thread.run(Thread.java:662)
+The most recently modified file in the commit log directory was this entry:
+-rw-r----- 1 <redacted> <redacted>    0 Jan 16 16:03 CommitLog-1326758622599.log
+though I'm not sure if this was related or not.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.10, 1.0.8
+Component:
+None
+Label:
+commitlog
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+John Chakerian
+Create date:
+18/Jan/12 05:19
+Update date:
+16/Apr/19 09:32
+Resolved date:
+01/Feb/12 19:43

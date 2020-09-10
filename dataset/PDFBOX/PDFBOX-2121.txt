@@ -1,0 +1,152 @@
+Summary:
+NullPointerException when calling org.apache.pdfbox.pdmodel.edit.PDPageContentStream.setFont()
+Description:
+*Context / how to reproduce *
+When creating a table and writing it to a pdf file, i get a NPE when setting the font size above a given size. As a result my application crashes. It seems to occur when the text i try to write is too large for the page.
+Stack trace
+java.lang.NullPointerException: null
+at org.apache.pdfbox.pdmodel.edit.PDPageContentStream.setFont(PDPageContentStream.java:321) ~[pdfbox-1.8.5.jar:na]
+at qa.reportgenerator.report.pdf.table.PDFTable.drawRow(PDFTable.java:67) ~[classes/:na]
+at qa.reportgenerator.report.pdf.SummaryGenerator.drawTableLine(SummaryGenerator.java:365) ~[classes/:na]
+at qa.reportgenerator.report.pdf.SummaryGenerator.drawTable(SummaryGenerator.java:268) ~[classes/:na]
+at qa.reportgenerator.report.pdf.SummaryGenerator.draw(SummaryGenerator.java:62) ~[classes/:na]
+at qa.reportgenerator.report.pdf.PDFReportGenerator.generate(PDFReportGenerator.java:28) ~[classes/:na]
+at qa.reportgenerator.report.pdf.PDFReportGenerator.generate(PDFReportGenerator.java:18) ~[classes/:na]
+at qa.reportgenerator.Runner.generatePDFReport(Runner.java:257) [classes/:na]
+at qa.reportgenerator.Runner.execute(Runner.java:76) [classes/:na]
+Additional info
+PDFTable, is a class allowing me to easily create tables (adding cells, rows, setting text orientation, font /color / background of each cell, horizonal/vertical text alignment, etc.) The content of the line "qa.reportgenerator.report.pdf.table.PDFTable.drawRow(PDFTable.java:67)" is :
+this.contentStream.setFont(cell.getFont(), cell.getFontSize());
+On this line, contentStream is a PDPageContentStream instance, and when the MPE occurs, cell.getFont returns PDType1Font.HELVETICA and cell.getFontSize returns 6.
+I get no NPE when font size is < 6 or when the width of the text I try to write is smaller.
+I do not close manually the PDPageContentStream.
+Page size is A4.
+Debuger data
+When debugging, it appears that the problem occurs when calling the setFont method of the last cell of a row.
+Indeed, when calling setFont on the cell left to the last cell of the table, the content of the "resources" variable is :
+resources PDResources  (id=1692) 
+ colorspaces null 
+ fontMappings HashMap<K,V>  (id=2032) 
+  cache null 
+  elementCount 2 
+  elementData HashMap$Entry<K,V>[16]  (id=1714) 
+  hashMask 0 
+  keySet null 
+  loadFactor 0.75 
+  modCount 2 
+  threshold 12 
+  useAltHashing false 
+  valuesCollection null 
+ fonts HashMap<K,V>  (id=1964) 
+ graphicsStates null 
+ images null 
+ patterns null 
+ resources COSDictionary  (id=2802) 
+  direct false 
+  items LinkedHashMap<K,V>  (id=1036) 
+   accessOrder false 
+   cache null 
+   elementCount 2 
+   elementData LinkedHashMap$LinkedHashMapEntry<K,V>[16]  (id=1274) 
+   hashMask 0 
+   head LinkedHashMap$LinkedHashMapEntry<K,V>  (id=1166) 
+   keySet LinkedHashMap$1  (id=1811) 
+   loadFactor 0.75 
+   modCount 2 
+   tail LinkedHashMap$LinkedHashMapEntry<K,V>  (id=2803) 
+   threshold 12 
+   useAltHashing false 
+   valuesCollection null 
+  needToBeUpdate false 
+ shadings null 
+ xobjectMappings HashMap<K,V>  (id=1253) 
+  cache null 
+  elementCount 1 
+  elementData HashMap$Entry<K,V>[16]  (id=1796) 
+  hashMask 0 
+  keySet null 
+  loadFactor 0.75 
+  modCount 1 
+  threshold 12 
+  useAltHashing false 
+  valuesCollection null 
+ xobjects HashMap<K,V>  (id=1947) 
+  cache null 
+  elementCount 1 
+  elementData HashMap$Entry<K,V>[16]  (id=1580) 
+  hashMask 0 
+  keySet HashMap$1  (id=1463) 
+   this$0 HashMap<K,V>  (id=1947) 
+  loadFactor 0.75 
+  modCount 1 
+  threshold 12 
+  useAltHashing false 
+  valuesCollection null 
+then the NPE occurs on the next call to setFont(). The resources object is not null, but it has then changed :
+resources PDResources  (id=1168) 
+ colorspaces null 
+ fontMappings HashMap<K,V>  (id=1665) 
+  cache null 
+  elementCount 0 
+  elementData HashMap$Entry<K,V>[16]  (id=1505) 
+  hashMask 0 
+  keySet null 
+  loadFactor 0.75 
+  modCount 0 
+  threshold 12 
+  useAltHashing false 
+  valuesCollection null 
+ fonts null 
+ graphicsStates null 
+ images null 
+ patterns null 
+ resources COSDictionary  (id=2802) 
+  direct false 
+  items LinkedHashMap<K,V>  (id=1036) 
+   accessOrder false 
+   cache null 
+   elementCount 2 
+   elementData LinkedHashMap$LinkedHashMapEntry<K,V>[16]  (id=1274) 
+   hashMask 0 
+   head LinkedHashMap$LinkedHashMapEntry<K,V>  (id=1166) 
+   keySet LinkedHashMap$1  (id=1811) 
+   loadFactor 0.75 
+   modCount 2 
+   tail LinkedHashMap$LinkedHashMapEntry<K,V>  (id=2803) 
+   threshold 12 
+   useAltHashing false 
+   valuesCollection null 
+  needToBeUpdate false 
+ shadings null 
+ xobjectMappings null 
+ xobjects null 
+I hope that you have enough information.
+Thank you for your help !
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Cannot Reproduce
+Affects_version:
+1.8.5
+Fix_version:
+None
+Component:
+Writing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Michel Pawlak
+Create date:
+06/Jun/14 15:21
+Update date:
+06/Nov/14 05:48
+Resolved date:
+06/Nov/14 05:48

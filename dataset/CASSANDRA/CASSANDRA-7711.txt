@@ -1,0 +1,85 @@
+Summary:
+composite column not sliced when using IN clause on (other) composite columns
+Description:
+Hi,
+I'm storing data points in cassandra keyed by a number of values and a timestamp. I'd want to use IN clauses to select points and sliced by time. The in clauses work, but I can't get it to work in combination with the slicing: all values are returned / the range in the where clause seems to be ignored.
+A dumbed down abstract version of my layout and some sample data:
+create table tbl (
+  a text,
+  b text,
+  c int,
+  d int,
+  primary key ((a), b, c)
+);
+
+insert into tbl (a,b,c,d) values ('a1', 'b1', 1, 1);
+insert into tbl (a,b,c,d) values ('a1', 'b1', 2, 2);
+insert into tbl (a,b,c,d) values ('a1', 'b2', 1, 1);
+insert into tbl (a,b,c,d) values ('a1', 'b2', 2, 2);
+insert into tbl (a,b,c,d) values ('a2', 'b1', 1, 1);
+insert into tbl (a,b,c,d) values ('a2', 'b1', 2, 2);
+insert into tbl (a,b,c,d) values ('a3', 'b2', 1, 1);
+insert into tbl (a,b,c,d) values ('a3', 'b2', 2, 2);
+So the table contains:
+ a  | b  | c | d
+----+----+---+---
+ a1 | b1 | 1 | 1
+ a1 | b1 | 2 | 2
+ a1 | b2 | 1 | 1
+ a1 | b2 | 2 | 2
+ a2 | b1 | 1 | 1
+ a2 | b1 | 2 | 2
+ a3 | b2 | 1 | 1
+ a3 | b2 | 2 | 2
+When performing select * from tbl where a in ('a1', 'a2') and (b) in (('b1'), ('b2')) and c > 1; I get:
+ a  | b  | c | d
+----+----+---+---
+ a1 | b1 | 1 | 1
+ a1 | b1 | 2 | 2
+ a1 | b2 | 1 | 1
+ a1 | b2 | 2 | 2
+ a2 | b1 | 1 | 1
+ a2 | b1 | 2 | 2
+But I expected:
+ a  | b  | c | d
+----+----+---+---
+ a1 | b1 | 2 | 2
+ a1 | b2 | 2 | 2
+ a2 | b1 | 2 | 2
+Am I doing something wrong? Or is c > 1 incorrectly ignored?
+select * from tbl where a in ('a1', 'a2') and b='b1' and c > 1; does correctly produce:
+a  | b  | c | d
+----+----+---+---
+ a1 | b1 | 2 | 2
+ a2 | b1 | 2 | 2
+So I expect this behaviour to relate to the interworking of the IN clause on the clustering column b and the > predicate on column c.
+Cheers,
+Frens Jan
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.11, 2.1.1
+Component:
+Legacy/CQL
+Label:
+cql
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Frens Jan Rumph
+Create date:
+07/Aug/14 10:19
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Sep/14 18:06

@@ -1,0 +1,50 @@
+Summary:
+HBASE-4789 does overzealous pruning of seqids
+Description:
+Working w/ J-D on failing replication test turned up hole in seqids made by the patch over in hbase-4789. With this patch in place we see lots of instances of the suspicious: 'Last sequenceid written is empty. Deleting all old hlogs'
+At a minimum, these lines need removing:
+diff --git a/src/main/java/org/apache/hadoop/hbase/regionserver/wal/HLog.java b/src/main/java/org/apache/hadoop/hbase/regionserver/wal/HLog.java
+index 623edbe..a0bbe01 100644
+--- a/src/main/java/org/apache/hadoop/hbase/regionserver/wal/HLog.java
++++ b/src/main/java/org/apache/hadoop/hbase/regionserver/wal/HLog.java
+@@ -1359,11 +1359,6 @@ public class HLog implements Syncable {
+       // Cleaning up of lastSeqWritten is in the finally clause because we
+       // don't want to confuse getOldestOutstandingSeqNum()
+       this.lastSeqWritten.remove(getSnapshotName(encodedRegionName));
+-      Long l = this.lastSeqWritten.remove(encodedRegionName);
+-      if (l != null) {
+-        LOG.warn("Why is there a raw encodedRegionName in lastSeqWritten? name=" +
+-          Bytes.toString(encodedRegionName) + ", seqid=" + l);
+-       }
+       this.cacheFlushLock.unlock();
+     }
+   }
+... but above is no good w/o figuring why WALs are not being rotated off.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+22/Nov/11 23:53
+Update date:
+12/Oct/12 05:34
+Resolved date:
+30/Nov/11 19:09

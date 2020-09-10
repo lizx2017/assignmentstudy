@@ -1,0 +1,61 @@
+Summary:
+Range query with strict bound on clustering column can return less results than required for compact tables
+Description:
+What's wrong:
+CREATE TABLE test (
+    k int,
+    v int,
+    PRIMARY KEY (k, v)
+) WITH COMPACT STORAGE;
+
+INSERT INTO test(k, v) VALUES (0, 0);
+INSERT INTO test(k, v) VALUES (0, 1);
+INSERT INTO test(k, v) VALUES (1, 0);
+INSERT INTO test(k, v) VALUES (1, 1);
+INSERT INTO test(k, v) VALUES (2, 0);
+INSERT INTO test(k, v) VALUES (2, 1);
+
+SELECT * FROM test WHERE v > 0 LIMIT 3 ALLOW FILTERING;
+
+ k | v
+---+---
+ 1 | 1
+ 0 | 1
+That last query should return 3 results.
+The problem lies into how we deal with 'strict greater than' (>) for "wide" compact storage table. Namely, for those tables, we internally only support inclusive bounds (for CQL3 tables this is not a problem as we deal with this using the 'end-of-component' of the CompositeType encoding). So we "compensate" by asking one more result than asked by the user, and we trim afterwards if that was unnecessary. This works fine for per-partition queries, but don't for "range" queries since we potentially would have to ask for X more results where X is the number of partition fetched, but we don't know X beforehand.
+I'll note that:
+this has always be there
+this only (potentially) affect compact tables
+this only affect range queries that have a strict bound on the clustering column (this means only ALLOW FILTERING) queries in particular.
+this only matters if a LIMIT is set on the query.
+As for fixes, it's not entirely trivial. The "right" fix would probably be to start supporting non-inclusive bound internally, but that's far from a small fix and is "at best" a 2.1 fix (since we'll have to make a messaging protocol change to ship some additional info for SliceQueryFilter). Also, this might be a lot of work for something that only affect some ALLOW FILTERING queries on compact tables.
+Another (somewhat simpler) solution might be to detect when we have this kind of queries and use a pager with no limit. We would then query a first page using the user limit (plus some smudge factor to avoid being inefficient too often) and would continue paging unless either we've exhausted all results or we can prove that post-processing we do have enough results to satisfy the user limit. This does mean in some case we might do 2 or more internal queries, but in practice we can probably make that case very rare, and since the query is an ALLOW FILTERING one, the user is somewhat warned that the query may not be terribly efficient.
+Lastly, we could always start by disallowing the kind of query that is potentially problematic (until we have a proper fix), knowing that users can work around that by either using non-strict bounds or removing the LIMIT, whichever makes the most sense in their case. In 1.2 in particular, we don't have the query pagers, so the previous solution I describe would be a bit of a mess to implement.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.9
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+21/Apr/14 09:30
+Update date:
+16/Apr/19 09:31
+Resolved date:
+26/Jun/14 08:13

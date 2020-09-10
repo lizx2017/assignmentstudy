@@ -1,0 +1,62 @@
+Summary:
+Search word request on Chinese is not working properly
+Description:
+Originally we used Lucene 2.3 in the project for years.
+Some time ago we made an update to the 5.0.0 version of Lucene.
+After that Chinese analyzing stopped working normally (I did not test it on Japanese or Korean)
+We have the following code to process the search request:
+1. analyzer = new ClassicAnalyzer();
+2. logger.Write2Log(queryString);
+3. QueryParser qp = new QueryParser(fieldName, analyzer);
+4. Query query = qp.parse(queryString);
+5. logger.Write2Log(query.toString(fieldName));
+6. int hits = searcher.search(query, 1).totalHits;
+Analyzer on line 1 could be changed by config.
+Line 2 is printing what we put to the Lucene.
+Line 5 is printing how the query modified in Lucene
+Normally we are using the string 打不开~0.7 for 70% or more accuracy and 打不开 to find exact this word.
+~0.7 functionality was marked as deprecated since 4.0 version, however it is still worked on English at least.
+What was before (on Lucene 2.3):
+Line 2: 打不开~0.7
+Line 5: 打不开~0.7
+If we provide the correct string for analysis, line 6 returns correct result
+The same for case of 打不开 without accuracy (without ~0.7)
+What is now (on Lucene 5.0):
+Line 2: 打不开~0.7
+Line 5: 打不开~0
+As I understood it is modifying of deprecated parameter to newly supported one with a little different meaning (at least it is working like I said on English).
+The string for analysis contains the 打不开, however line 6 shows nothing is found.
+Line 2: 打不开
+Line 5: 打 不 开
+Lucene added spaces, which are interpreted as OR operator. As result Line 6 returns that keyword found even if it is only one 不 symbol in the string for analysis.
+The same scenario was tested on the CJKAnalyzer, ClassicAnalyzer and SmartChineseAnalyzer. Results are the same: neither one of them has the same functionality as analyzer on Lucene 2.3
+Is it known problem in the product? Could you please explain or provide any docs about how the search should work for Chinese in mentioned cases.
+Thanks
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+5.0
+Fix_version:
+None
+Component:
+core/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Alex Simatov
+Create date:
+14/Jul/16 13:02
+Update date:
+14/Jul/16 13:02
+Resolved date:
+

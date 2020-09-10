@@ -1,0 +1,112 @@
+Summary:
+[SNAPSHOTS]: Restore fails to restore snapshot of a deleted table
+Description:
+Expected behavior:
+A user should be able to:
+1. Take a snapshot of a table
+2. Delete that table
+3. Use the snapshot to restore that deleted table
+Observed behavior:
+During a restore, we attempt to create a snapshot of the table should the restore go awry. However, the snapshot fails because the table that we want to snapshot is not present.
+Stack trace:
+
+org.apache.hadoop.hbase.exceptions.SnapshotCreationException: org.apache.hadoop.hbase.exceptions.SnapshotCreationException: Could not build snapshot handler
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:39)
+ at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:27)
+ at java.lang.reflect.Constructor.newInstance(Constructor.java:513)
+ at org.apache.hadoop.ipc.RemoteException.instantiateException(RemoteException.java:95)
+ at org.apache.hadoop.ipc.RemoteException.unwrapRemoteException(RemoteException.java:79)
+ at org.apache.hadoop.hbase.ipc.ProtobufRpcClientEngine$Invoker.invoke(ProtobufRpcClientEngine.java:146)
+ at $Proxy24.snapshot(Unknown Source)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation$MasterProtocolHandler.invoke(HConnectionManager.java:1703)
+ at org.apache.hadoop.hbase.client.$Proxy25.snapshot(Unknown Source)
+ at org.apache.hadoop.hbase.client.HBaseAdmin$18.call(HBaseAdmin.java:2337)
+ at org.apache.hadoop.hbase.client.HBaseAdmin$18.call(HBaseAdmin.java:1)
+ at org.apache.hadoop.hbase.client.HBaseAdmin.executeCallable(HBaseAdmin.java:2637)
+ at org.apache.hadoop.hbase.client.HBaseAdmin.execute(HBaseAdmin.java:2612)
+ at org.apache.hadoop.hbase.client.HBaseAdmin.takeSnapshotAsync(HBaseAdmin.java:2334)
+ at org.apache.hadoop.hbase.client.HBaseAdmin.snapshot(HBaseAdmin.java:2279)
+ at org.apache.hadoop.hbase.client.HBaseAdmin.snapshot(HBaseAdmin.java:2252)
+ at org.apache.hadoop.hbase.client.HBaseAdmin.snapshot(HBaseAdmin.java:2204)
+ at org.apache.hadoop.hbase.client.HBaseAdmin.restoreSnapshot(HBaseAdmin.java:2417)
+ at org.apache.hadoop.hbase.client.TestRestoreSnapshotFromClient.testRestoreSnapshotOfDeleted(TestRestoreSnapshotFromClient.java:266)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:47)
+ at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+ at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:44)
+ at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+ at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+ at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+ at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:271)
+ at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:70)
+ at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:50)
+ at org.junit.runners.ParentRunner$3.run(ParentRunner.java:238)
+ at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:63)
+ at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:236)
+ at org.junit.runners.ParentRunner.access$000(ParentRunner.java:53)
+ at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:229)
+ at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+ at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+ at org.junit.runners.ParentRunner.run(ParentRunner.java:309)
+ at org.eclipse.jdt.internal.junit4.runner.JUnit4TestReference.run(JUnit4TestReference.java:50)
+ at org.eclipse.jdt.internal.junit.runner.TestExecution.run(TestExecution.java:38)
+ at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:467)
+ at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:683)
+ at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.run(RemoteTestRunner.java:390)
+ at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.main(RemoteTestRunner.java:197)
+Caused by: org.apache.hadoop.hbase.ipc.RemoteWithExtrasException: org.apache.hadoop.hbase.exceptions.SnapshotCreationException: Could not build snapshot handler
+ at org.apache.hadoop.hbase.master.snapshot.SnapshotManager.snapshotDisabledTable(SnapshotManager.java:573)
+ at org.apache.hadoop.hbase.master.snapshot.SnapshotManager.takeSnapshot(SnapshotManager.java:524)
+ at org.apache.hadoop.hbase.master.HMaster.snapshot(HMaster.java:2521)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.apache.hadoop.hbase.ipc.ProtobufRpcServerEngine$Server.call(ProtobufRpcServerEngine.java:174)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1871)
+Caused by: java.io.IOException: HTableDescriptor missing for testtb-1366407250932
+ at org.apache.hadoop.hbase.master.snapshot.TakeSnapshotHandler.loadTableDescriptor(TakeSnapshotHandler.java:125)
+ at org.apache.hadoop.hbase.master.snapshot.TakeSnapshotHandler.prepare(TakeSnapshotHandler.java:136)
+ at org.apache.hadoop.hbase.master.snapshot.DisabledTableSnapshotHandler.prepare(DisabledTableSnapshotHandler.java:77)
+ at org.apache.hadoop.hbase.master.snapshot.SnapshotManager.snapshotDisabledTable(SnapshotManager.java:557)
+ ... 8 more
+
+ at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:1321)
+ at org.apache.hadoop.hbase.ipc.ProtobufRpcClientEngine$Invoker.invoke(ProtobufRpcClientEngine.java:131)
+ ... 44 more
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+0.98.0, 0.94.7, 0.95.1
+Fix_version:
+0.98.0, 0.94.8, 0.95.1
+Component:
+snapshots, Usability
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksandr Shulman
+Reporter:
+Aleksandr Shulman
+Create date:
+19/Apr/13 21:29
+Update date:
+04/Jun/13 00:06
+Resolved date:
+15/May/13 13:45

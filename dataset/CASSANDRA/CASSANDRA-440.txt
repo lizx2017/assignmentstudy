@@ -1,0 +1,71 @@
+Summary:
+get_key_range problems when a node is down
+Description:
+I'm running Cassandra on 5 nodes using the
+OrderPreservingPartitioner, and have populated Cassandra with 78
+records, and I can use get_key_range via Thrift just fine. Then, if I
+manually kill one of the nodes (if I kill off node #5), the node (node
+#1) which I've been using to call get_key_range will timeout and the
+error:
+Thrift: Internal error processing get_key_range
+The Cassandra output traceback:
+ERROR - Encountered IOException on connection:
+java.nio.channels.SocketChannel[closed]
+java.net.ConnectException: Connection refused
+at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:592)
+at org.apache.cassandra.net.TcpConnection.connect(TcpConnection.java:349)
+at org.apache.cassandra.net.SelectorManager.doProcess(SelectorManager.java:131)
+at org.apache.cassandra.net.SelectorManager.run(SelectorManager.java:98)
+WARN - Closing down connection java.nio.channels.SocketChannel[closed]
+ERROR - Internal error processing get_key_range
+java.lang.RuntimeException: java.util.concurrent.TimeoutException:
+Operation timed out.
+at org.apache.cassandra.service.StorageProxy.getKeyRange(StorageProxy.java:573)
+at org.apache.cassandra.service.CassandraServer.get_key_range(CassandraServer.java:595)
+at org.apache.cassandra.service.Cassandra$Processor$get_key_range.process(Cassandra.java:853)
+at org.apache.cassandra.service.Cassandra$Processor.process(Cassandra.java:606)
+at org.apache.thrift.server.TThreadPoolServer$WorkerProcess.run(TThreadPoolServer.java:253)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:675)
+Caused by: java.util.concurrent.TimeoutException: Operation timed out.
+at org.apache.cassandra.net.AsyncResult.get(AsyncResult.java:97)
+at org.apache.cassandra.service.StorageProxy.getKeyRange(StorageProxy.java:569)
+... 7 more
+The error starts as soon as the downed node #5 goes down and lasts
+until I restart the downed node #5.
+bin/nodeprobe cluster is accurate (it knows quickly when #5 is down,
+and when it is up again)
+Since I set the replication set to 3, I'm confused as to why (after
+the first few seconds or so) there is an error just because one host
+is down temporarily.
+(Jonathan Ellis and I discussed this on the mailing list, let me know if more information is needed.)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.4, 0.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Simon Smith
+Create date:
+11/Sep/09 13:37
+Update date:
+16/Apr/19 09:33
+Resolved date:
+15/Sep/09 02:54

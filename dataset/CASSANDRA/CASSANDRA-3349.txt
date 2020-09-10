@@ -1,0 +1,49 @@
+Summary:
+NPE on malformed CQL
+Description:
+It's not clear why, but the CQL grammar specification in Cql.g allows for an empty WHERE clause on DELETE, i.e.:
+DELETE FROM someCF WHERE;
+When this is used, with or without a column list, it causes an NPE on the node processing the CQL. Traceback on a recent 1.0.0 build:
+ERROR [pool-2-thread-1] 2011-10-11 15:45:25,655 Cassandra.java (line 4082) Internal error processing execute_cql_query
+java.lang.NullPointerException
+        at org.apache.cassandra.cql.CqlParser.deleteStatement(CqlParser.java:1994)
+        at org.apache.cassandra.cql.CqlParser.query(CqlParser.java:292)
+        at org.apache.cassandra.cql.QueryProcessor.getStatement(QueryProcessor.java:984)
+        at org.apache.cassandra.cql.QueryProcessor.process(QueryProcessor.java:500)
+        at org.apache.cassandra.thrift.CassandraServer.execute_cql_query(CassandraServer.java:1268)
+        at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.process(Cassandra.java:4072)
+        at org.apache.cassandra.thrift.Cassandra$Processor.process(Cassandra.java:2889)
+        at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:187)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:680)
+The CQL client gets an error with the message, "Internal application error".
+It might be better to allow leaving off the "WHERE" as well as the condition, to match SQL semantics, although fixing that probably won't solve this problem.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.8, 1.0.1
+Component:
+None
+Label:
+lhf
+Environment:
+
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+paul cannon
+Create date:
+11/Oct/11 21:17
+Update date:
+16/Apr/19 09:32
+Resolved date:
+12/Oct/11 14:53

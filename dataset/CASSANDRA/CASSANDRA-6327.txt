@@ -1,0 +1,57 @@
+Summary:
+select with "in" clause wrongly returns empty result
+Description:
+This query returns no result:
+cqlsh:tick_data> select syd from current_prices where shard = 1 and syd in (1, 556129);
+(0 rows)
+However this query does return a result, showing that the previous query was wrong to return no result:
+cqlsh:tick_data> select syd from current_prices where shard = 1 and syd in (556129);
+syd
+--------
+556129
+(1 rows)
+This can be reproduced as follows:
+(a) Create a keyspace tick_data:
+create keyspace tick_data WITH replication =
+{'class': 'SimpleStrategy', 'replication_factor': 1}
+;
+(b) Create a table current_prices:
+CREATE TABLE current_prices (
+shard int,
+syd int,
+ask decimal,
+bid decimal,
+currency ascii,
+when timeuuid,
+PRIMARY KEY (shard, syd)
+);
+(c) Stop Cassandra and untar the attached tar file in /var/lib/cassandra/data/tick_data/. It populates the current_prices table.
+(d) Restart Cassandra and perform the above selects.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.3
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Duncan Sands
+Create date:
+10/Nov/13 17:42
+Update date:
+16/Apr/19 09:32
+Resolved date:
+14/Nov/13 08:33

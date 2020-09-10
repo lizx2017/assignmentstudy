@@ -1,0 +1,50 @@
+Summary:
+Store doReconstructionLog will fail if oldlogfile.log is empty and won't load region
+Description:
+doReconstructionLog doesn't handle empty files correctly:
+    FileStatus stat = this.fs.getFileStatus(reconstructionLog);
+    if (stat.getLen() <= 0) {
+      LOG.warn("Passed reconstruction log " + reconstructionLog +
+        " is zero-length. Deleting existing file");
+       fs.delete(reconstructionLog, false);
+      return -1;
+    }
+Notice it actually compares the length of the array instead of the file length.
+It should call getLen() and delete the file afterwards
+   FileStatus stat = this.fs.getFileStatus(reconstructionLog);
+    if (stat.getLen() <= 0) {
+      LOG.warn("Passed reconstruction log " + reconstructionLog +
+        " is zero-length. Deleting existing file");
+       fs.delete(reconstructionLog, false);
+      return -1;
+    }
+Also. This is a situation that shouldn't happen as an empty oldlogfile.log should be deleted when HMaster does the split in HLog.splitLog().
+I couldn't figure what would make it leave it there as I also see in the logs that other empty logs are deleted. This might expose a thornier situation.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.3
+Fix_version:
+0.20.4, 0.90.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Cosmin Lehene
+Reporter:
+Cosmin Lehene
+Create date:
+22/Mar/10 18:01
+Update date:
+12/Oct/12 06:15
+Resolved date:
+22/Mar/10 21:40

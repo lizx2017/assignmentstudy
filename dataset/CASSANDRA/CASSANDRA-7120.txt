@@ -1,0 +1,45 @@
+Summary:
+Bad paging state returned for prepared statements for last page
+Description:
+When executing a paged query with a prepared statement, a non-null paging state is sometimes being returned for the final page, causing an endless paging loop.
+Specifically, this is the schema being used:
+    CREATE KEYSPACE test3rf WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '3'}';
+    USE test3rf;
+    CREATE TABLE test3rf.test (
+                k int PRIMARY KEY,
+                v int
+    )
+The inserts are like so:
+INSERT INTO test3rf.test (k, v) VALUES (?, 0)
+With values from [0, 99] used for k.
+The query is SELECT * FROM test3rf.test with a fetch size of 3.
+The final page returns the row with k=3, and the paging state is 0004000000420004000176007fffffa2. This matches the paging state from three pages earlier. When executing this with a non-prepared statement, no paging state is returned for this page.
+This problem doesn't happen with the 2.0 branch.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc1
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Tyler Hobbs
+Create date:
+30/Apr/14 17:34
+Update date:
+16/Apr/19 09:31
+Resolved date:
+23/May/14 07:35

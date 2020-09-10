@@ -1,0 +1,40 @@
+Summary:
+Upper bound of outstanding WALs can be overrun; take 2 (take 1 was hbase-2053)
+Description:
+So hbase-2053 is not aggressive enough. WALs can still overwhelm the upper limit on log count. While the code added by HBASE-2053, when done, will ensure we let go of the oldest WAL, to do it, we might have to flush many regions. E.g:
+2010-02-15 14:20:29,351 INFO org.apache.hadoop.hbase.regionserver.HLog: Too many hlogs: logs=45, maxlogs=32; forcing flush of 5 regions(s): test1,193717,1266095474624, test1,194375,1266108228663, test1,195690,1266095539377, test1,196348,1266095539377, test1,197939,1266069173999
+This takes time. If we are taking on edits a furious rate, we might have rolled the log again, meantime, maybe more than once.
+Also log rolls happen inline with a put/delete as soon as it hits the 64MB (default) boundary whereas the necessary flushing is done in background by a single thread and the memstore can overrun the (default) 64MB size. Flushes needed to release logs will be mixed in with "natural" flushes as memstores fill. Flushes may take longer than the writing of an HLog because they can be larger.
+So, on an RS that is struggling the tendency would seem to be for a slight rise in WALs. Only if the RS gets a breather will the flusher catch up.
+If HBASE-2087 happens, then the count of WALs get a boost.
+Ideas to fix this for good would be :
++ Priority queue for queuing up flushes with those that are queued to free up WALs having priority
++ Improve the HBASE-2053 code so that it will free more than just the last WAL, maybe even queuing flushes so we clear all WALs such that we are back under the maximum WALS threshold again.
+Status:
+OPEN
+Priority:
+Critical
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+regionserver, wal
+Label:
+moved_from_0_20_5
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+18/Feb/10 06:17
+Update date:
+07/Jul/15 10:44
+Resolved date:
+

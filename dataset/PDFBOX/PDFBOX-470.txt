@@ -1,0 +1,67 @@
+Summary:
+corrupt zip stream causes document to not parse
+Description:
+This is with svn revision 774426
+PDFParser is not very forgiving with respect to bad compressed input streams. I am processing a set of 13,000 pdf files, and I see 10 exceptions of the form,
+Caused by: java.io.EOFException: Unexpected end of ZLIB input stream
+at java.util.zip.InflaterInputStream.fill(InflaterInputStream.java:223)
+at java.util.zip.InflaterInputStream.read(InflaterInputStream.java:141)
+at org.apache.pdfbox.filter.FlateFilter.decode(FlateFilter.java:101)
+at org.apache.pdfbox.cos.COSStream.doDecode(COSStream.java:301)
+at org.apache.pdfbox.cos.COSStream.doDecode(COSStream.java:221)
+at org.apache.pdfbox.cos.COSStream.getUnfilteredStream(COSStream.java:156)
+at org.apache.pdfbox.pdfparser.PDFStreamParser.<init>(PDFStreamParser.java:87)
+at org.apache.pdfbox.cos.COSStream.getStreamTokens(COSStream.java:118)
+at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:204)
+at org.apache.pdfbox.util.PDFStreamEngine.processStream(PDFStreamEngine.java:176)
+at org.apache.pdfbox.util.PDFTextStripper.processPage(PDFTextStripper.java:358)
+at org.apache.pdfbox.util.PDFTextStripper.processPages(PDFTextStripper.java:282)
+at org.apache.pdfbox.util.PDFTextStripper.writeText(PDFTextStripper.java:238)
+at org.apache.pdfbox.util.PDFTextStripper.getText(PDFTextStripper.java:171)
+And one,
+Caused by: java.util.zip.ZipException: invalid bit length repeat
+at java.util.zip.InflaterInputStream.read(InflaterInputStream.java:147)
+at org.apache.pdfbox.filter.FlateFilter.decode(FlateFilter.java:101)
+at org.apache.pdfbox.cos.COSStream.doDecode(COSStream.java:301)
+at org.apache.pdfbox.cos.COSStream.doDecode(COSStream.java:221)
+at org.apache.pdfbox.cos.COSStream.getUnfilteredStream(COSStream.java:156)
+at org.apache.pdfbox.pdfparser.PDFStreamParser.<init>(PDFStreamParser.java:87)
+at org.apache.pdfbox.cos.COSStream.getStreamTokens(COSStream.java:118)
+at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:204)
+at org.apache.pdfbox.util.PDFStreamEngine.processStream(PDFStreamEngine.java:176)
+at org.apache.pdfbox.util.PDFTextStripper.processPage(PDFTextStripper.java:358)
+at org.apache.pdfbox.util.PDFTextStripper.processPages(PDFTextStripper.java:282)
+at org.apache.pdfbox.util.PDFTextStripper.writeText(PDFTextStripper.java:238)
+at org.apache.pdfbox.util.PDFTextStripper.getText(PDFTextStripper.java:171)
+It would be nice if we could recover from this error, rather than failing to parse the file. By commenting out line 314 of COSStrean
+if( !done )
+{ //throw exception; }
+The parser works correctly, and I am able to extract text from these documents.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.8.0-incubator
+Fix_version:
+0.8.0-incubator
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Sean Bridges
+Create date:
+13/May/09 17:15
+Update date:
+21/Oct/09 09:52
+Resolved date:
+03/Jul/09 16:14

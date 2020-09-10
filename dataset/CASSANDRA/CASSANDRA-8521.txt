@@ -1,0 +1,33 @@
+Summary:
+RangeSliceQueryPager may fetch too much data in the first partition
+Description:
+As described in CASSANDRA-8087, it looks like RangeSliceQueryPager may fetch more than it needs to in the first partition:
+when we actually query the underlying partition, the slice filter count might be a lot more than what we care for (it could be Integer.MAX_VALUE if there wasn't any LIMIT on the statement in the first place) and if that's the case, we will read a lot more than we should. This will be only true for the first partition, because after that we will update the SliceQueryFilter at the end of the loop of CFS.filter(), but still, it's potentially inefficient for that that first partition and might even end up blowing up the heap if the partition is big, which defeats the purpose of paging. I'll note that provided we don't blow up the heap then the resultSet returned to the user will be fine since we'll trim it in SelectStatement, but it's still a bug (provided I'm not missing something).
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Tyler Hobbs
+Create date:
+19/Dec/14 18:28
+Update date:
+16/Apr/19 09:31
+Resolved date:
+22/Jan/16 14:33

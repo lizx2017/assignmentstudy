@@ -1,0 +1,73 @@
+Summary:
+email format field in doc.add(new Field("userID", message.getUserID(), false, true, false)); can not be searched
+Description:
+public static Document messageToDoc(ForumMessage message){
+Document doc = new Document();
+ThreadPeer threadPeer = new ThreadPeer();
+ForumThread thread = null;
+try
+{ thread = threadPeer.getThread(message.getThreadID()); }
+catch(Exception e)
+{ return null; }
+doc.add(Field.Keyword("messageID", Long.toString(message.getID())));
+doc.add(new Field("userID", message.getUserID(), false, true, false));
+doc.add(new Field("threadID", Long.toString(message.getThreadID()), false,
+true, false));
+doc.add(new Field("forumID", Long.toString(thread.getForumID()), false, true,
+false));
+if(message.getSubject() != null)
+{ doc.add(Field.UnStored("subject", message.getSubject())); }
+
+if(message.getBody() != null)
+{ doc.add(Field.UnStored("body", message.getBody())); }
+
+doc.add(new Field("creationDate",
+DateField.dateToString(message.getCreationDate()), false, true, false));
+log.debug("messageToDoc messageID:" + message.getID() + ",userID:" +
+message.getUserID() + ",threadID:" + message.getThreadID() + ",forumID:" +
+thread.getForumID() + ", subject:" + message.getSubject() + ",body:" +
+message.getBody());
+return doc;
+}
+public static void addMessagesIndex(ForumMessage[] messages)throws IOException{
+String searchIndexDir = getSearchIndexRoot();
+IndexWriter writer = new IndexWriter(searchIndexDir, getDefaultAnalyzer(), true);
+for (int i = 0; i < messages.length; i++){
+Document doc = messageToDoc(messages[i]);
+if (doc != null)
+{ writer.addDocument(doc, getMessageAnalyzer(messages[i])); }
+
+}
+writer.optimize();
+writer.close();
+}
+when userID is email format like soap@263.net, i can not search in
+userID:soap@263.net
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Incomplete
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+javabug
+Create date:
+31/Mar/04 04:02
+Update date:
+02/Jun/11 22:04
+Resolved date:
+27/May/06 01:37

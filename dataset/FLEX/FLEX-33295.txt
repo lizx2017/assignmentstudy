@@ -1,0 +1,78 @@
+Summary:
+Flash player will go into an infinite loop on certain cases of trying to wrap text.
+Description:
+Setting text on a spark textarea depending on how the word wrap lays, will crash flashplayer on windows only with this error:
+Error: Error #1502: A script has executed for longer than the default timeout period of 15 seconds.
+at flashx.textLayout.elements::FlowElement/getAbsoluteStart()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\elements\FlowElement.as:888]
+at flashx.textLayout.compose::TextFlowLine/get location()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\TextFlowLine.as:351]
+at flashx.textLayout.compose::TextFlowLine/get spaceBefore()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\TextFlowLine.as:504]
+at flashx.textLayout.compose::BaseCompose/fitLineToParcel()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\BaseCompose.as:1613]
+at flashx.textLayout.compose::ComposeState/composeNextLine()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\ComposeState.as:399]
+at flashx.textLayout.compose::BaseCompose/composeParagraphElementIntoLines()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\BaseCompose.as:791]
+at flashx.textLayout.compose::BaseCompose/composeParagraphElement()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\BaseCompose.as:688]
+at flashx.textLayout.compose::ComposeState/composeParagraphElement()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\ComposeState.as:316]
+at flashx.textLayout.compose::BaseCompose/composeBlockElement()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\BaseCompose.as:358]
+at flashx.textLayout.compose::BaseCompose/composeInternal()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\BaseCompose.as:673]
+at flashx.textLayout.compose::ComposeState/composeInternal()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\ComposeState.as:143]
+at flashx.textLayout.compose::BaseCompose/composeTextFlow()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\BaseCompose.as:458]
+at flashx.textLayout.compose::ComposeState/composeTextFlow()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\ComposeState.as:106]
+at flashx.textLayout.compose::StandardFlowComposer/http://ns.adobe.com/textLayout/internal/2008::callTheComposer()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\StandardFlowComposer.as:676]
+at flashx.textLayout.compose::StandardFlowComposer/internalCompose()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\StandardFlowComposer.as:760]
+at flashx.textLayout.compose::StandardFlowComposer/updateToController()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\StandardFlowComposer.as:556]
+at flashx.textLayout.compose::StandardFlowComposer/updateAllControllers()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\compose\StandardFlowComposer.as:517]
+at flashx.textLayout.container::TextContainerManager/updateContainer()[C:\Vellum\branches\v2\2.0\dev\output\openSource\textLayout\src\flashx\textLayout\container\TextContainerManager.as:1343]
+at spark.components::RichEditableText/updateDisplayList()[E:\dev\4.y\frameworks\projects\spark\src\spark\components\RichEditableText.as:2974]
+at mx.core::UIComponent/validateDisplayList()[E:\dev\4.y\frameworks\projects\framework\src\mx\core\UIComponent.as:8999]
+at mx.managers::LayoutManager/validateDisplayList()[E:\dev\4.y\frameworks\projects\framework\src\mx\managers\LayoutManager.as:736]
+at mx.managers::LayoutManager/doPhasedInstantiation()[E:\dev\4.y\frameworks\projects\framework\src\mx\managers\LayoutManager.as:819]
+at mx.managers::LayoutManager/doPhasedInstantiationCallback()[E:\dev\4.y\frameworks\projects\framework\src\mx\managers\LayoutManager.as:1180]
+I have been able to recreate this with a real use client case, as well as some lorem ipsum text of the same length(but not every time since the lorem ipsum text is randomly generated). Removing the first two words in the text fixes the issue, however still remains when removing the same amount of characters at the end of the text instead. This leads me to believe this is a random text wrapping issue.
+We tried testing on a mac and everything ran as expected, it appears to be a windows only issue.
+Here is some simple code to reproduce the issue:
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600" creationComplete="application1_creationCompleteHandler(event)">
+<fx:Declarations>
+<!-- Place non-visual elements (e.g., services, value objects) here -->
+</fx:Declarations>
+<fx:Script>
+<![CDATA[
+import mx.events.FlexEvent;
+[Bindable]private var testText:String = '';
+protected function application1_creationCompleteHandler(event:FlexEvent):void
+{ testText = "The learning tasks and activities are aligned with the instructional outcomes and are designed to challenge student thinking, resulting in active intellectual engagement by students and teacher scaffolding. The pacing of the lesson is appropriate providing most students the time needed to be intellectually engaged.Ms. Pruden begins the math and Reading lesson by strategically placing her chair between two rows of desks and methodically assisting one student then another. She first assists a student to her left (Artice) on simple addition, such as 1 + 4 = 5; then she turns to her right to work with another student (Fode) on reading the numbers of his address. She methodically moves her chair down the middle of the two rows to work with the other remaining students. One student (Dexter) works independently on a calendar; he places the word 'cloudy' on today's date: October 25. He is getting his assignments from his individual basket of daily tasks. Ms. Pruden then worked with Aujana who isworking on a ruber puzzle of the alphabet. She asks her t repeat after her as she points to each letter and names each letter of the alphabet. Ms. Pruden worked back and forth with Fode, Artice and Auana. Ms. Gordon, her teacher assistant, worked with Dejuan as he counts dots that are pasted on a paper dinosaur. After 45 minutes, Ms. Pruden stops and directs all of the students to join her at the semi-circle table to work on consonant sound for the letter 'C.' The teacher passes out a picture of a cat, and emphasizes the 'KK' sound as she hands the cat to each student. Then, sheallows time for students to color their picture. Then she passes out a picture of cupcake, and follows the same procedure." }
+]]>
+</fx:Script>
+<s:TextArea width="729" height="200" text="
+{testText}
+"/>
+</s:Application>
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.6 (
+Fix_version:
+None
+Component:
+Spark: TextArea
+Label:
+textarea
+Environment:
+Win 7x64, Win 8x64
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Tyler Hansen
+Create date:
+11/Dec/12 22:33
+Update date:
+13/Dec/12 09:36
+Resolved date:
+

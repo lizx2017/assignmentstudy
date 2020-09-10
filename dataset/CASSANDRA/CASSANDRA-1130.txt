@@ -1,0 +1,55 @@
+Summary:
+Row iteration can stomp start-of-row mark
+Description:
+Hello,
+I am trying to use TTL (timeToLive) feature in SuperColumns.
+My usecase is:
+I have a SuperColumn and 3 subcolumns.
+I try to expire data after 60 seconds.
+While Cassandra is up and running, I am successfully able to push and read data without any problems. Data compaction and all occurs fine. After inserting say about 100000 records, I stop Cassandra while data is still coming.
+On startup Cassandra throws an exception and won't start up. (This happens 1 in every 3 times). Exception varies like:
+EOFException while reading data
+negative value encountered exception
+Heap Space Exception
+Cassandra simply won't start up.
+Again I get this problem only when I use TTL with SuperColumns. There are no issues with using TTL with regular Columns.
+I tried to diagnose the problem and it seems to happen on startup when it sees a Column that is marked Deleted and its trying to read data. Its off by some bytes and hence all these exceptions.
+Caused by: java.io.IOException: Corrupt (negative) value length encountered
+at org.apache.cassandra.utils.FBUtilities.readByteArray(FBUtilities.java:317)
+at org.apache.cassandra.db.ColumnSerializer.deserialize(ColumnSerializer.java:84)
+at org.apache.cassandra.db.SuperColumnSerializer.deserialize(SuperColumn.java:336)
+at org.apache.cassandra.db.SuperColumnSerializer.deserialize(SuperColumn.java:285)
+at org.apache.cassandra.db.filter.SSTableSliceIterator$ColumnGroupReader.getNextBlock(SSTableSliceIterator.java:235)
+at org.apache.cassandra.db.filter.SSTableSliceIterator$ColumnGroupReader.pollColumn(SSTableSliceIterator.java:195)
+... 18 more
+Let me know if you need more information.
+Thanks,
+Jignesh
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Jignesh Dhruv
+Create date:
+25/May/10 18:13
+Update date:
+16/Apr/19 09:33
+Resolved date:
+14/Jun/10 18:06

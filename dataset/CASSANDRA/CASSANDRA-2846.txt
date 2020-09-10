@@ -1,0 +1,55 @@
+Summary:
+Changing replication_factor using "update keyspace" not working
+Description:
+Unless I've misunderstood the new way to do this with 0.8 I think "update keyspace" is broken:
+[default@unknown] create keyspace Test with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy' and strategy_options = [{replication_factor:1}];
+37f70d40-a3e9-11e0-0000-242d50cf1fbf
+Waiting for schema agreement...
+... schemas agree across the cluster
+[default@unknown] describe keyspace Test;
+Keyspace: Test:
+  Replication Strategy: org.apache.cassandra.locator.SimpleStrategy
+  Durable Writes: true
+    Options: [replication_factor:1]
+  Column Families:
+[default@unknown] update keyspace Test with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy' and strategy_options = [{replication_factor:2}];
+489fe220-a3e9-11e0-0000-242d50cf1fbf
+Waiting for schema agreement...
+... schemas agree across the cluster
+[default@unknown] describe keyspace Test;                                                                                                                   Keyspace: Test:
+  Replication Strategy: org.apache.cassandra.locator.SimpleStrategy
+  Durable Writes: true
+    Options: [replication_factor:1]
+  Column Families:
+Isn't the second "describe keyspace" supposed to to say "replication_factor:2"?
+Relevant bits from system.log:
+Migration.java (line 116) Applying migration 489fe220-a3e9-11e0-0000-242d50cf1fbf Update keyspace Testrep strategy:SimpleStrategy{}durable_writes: true to Testrep strategy:SimpleStrategy{}durable_writes: true
+UpdateKeyspace.java (line 74) Keyspace updated. Please perform any manual operations
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jonas Borgström
+Create date:
+01/Jul/11 14:15
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Jul/11 16:20

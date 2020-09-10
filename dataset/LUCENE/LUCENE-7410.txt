@@ -1,0 +1,43 @@
+Summary:
+Make cache keys and closed listeners less trappy
+Description:
+IndexReader currently exposes getCoreCacheKey(), getCombinedCoreAndDeletesKey(), addCoreClosedListener() and addReaderClosedListener(). They are typically used to manage resources whose lifetime needs to mimic the lifetime of segments/indexes, typically caches.
+I think this is trappy for various reasons:
+Memory leaks
+When maintaining a cache, entries are added to the cache based on the cache key and then evicted using the cache key that is given back by the close listener, so it is very important that both keys are the same.
+But if a filter reader happens to delegate get*Key() and not add*ClosedListener() or vice-versa then there is potential for a memory leak since the closed listener will be called on a different key and entries will never be evicted from the cache.
+Lifetime expectations
+The expectation of using the core cache key is that it will not change in case of deletions, but this is only true on SegmentReader and LeafReader impls that delegate to it. Other implementations such as composite readers or parallel leaf readers use the same key for "core" and "combined core and deletes".
+Throw-away wrappers cause cache trashing
+An application might want to either expose more (with a ParrallelReader or MultiReader) or less information (by filtering fields/docs that can be seen) depending on the user who is logged in. In that case the application would typically maintain a DirectoryReader and then wrap it per request depending on the logged user and throw away the wrapper once the request is completed.
+The problem is that these wrappers have their own cache keys and the application may build something costly and put it in a cache to throw it away a couple milliseconds later. I would rather like for such readers to have a way to opt out from caching on order to avoid this performance trap.
+Type safety
+The keys that are exposed are plain java.lang.Object instances, which requires caches to look like a Map<Object, ?> which makes it very easy to either try to get, put or remove on the wrong object since any object would be accepted.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adrien Grand
+Create date:
+10/Aug/16 08:34
+Update date:
+03/Mar/17 16:44
+Resolved date:
+28/Feb/17 14:59

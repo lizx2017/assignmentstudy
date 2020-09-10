@@ -1,0 +1,153 @@
+Summary:
+org.apache.pdfbox.cos.COSDocument finalize, did not close a PDF Document
+Description:
+The error below keeps occurring when I run several PDF files.
+[Error]Mar 28, 2011 10:18:24 AM org.apache.pdfbox.cos.COSDocument finalize
+WARNING: Warning: You did not close a PDF Document
+Mar 28, 2011 10:18:24 AM org.apache.pdfbox.cos.COSDocument finalize
+WARNING: Warning: You did not close a PDF Document
+Mar 28, 2011 10:18:24 AM org.apache.pdfbox.cos.COSDocument finalize
+WARNING: Warning: You did not close a PDF Document
+Mar 28, 2011 10:18:24 AM org.apache.pdfbox.cos.COSDocument finalize
+WARNING: Warning: You did not close a PDF Document
+Mar 28, 2011 10:18:24 AM org.apache.pdfbox.cos.COSDocument finalize
+WARNING: Warning: You did not close a PDF Document
+Mar 28, 2011 10:18:24 AM org.apache.pdfbox.cos.COSDocument finalize
+WARNING: Warning: You did not close a PDF Document[/Error]
+Here's my code:
+public void methodForPDF() throws SQLException
+{
+//fullFilePath is always changing and this method is called by another method for several times.
+PDDocument doc = null;
+PDActionURI uri = null;
+ResultSet resultSet = null;
+Statement statement = null;
+int newURI = 0, type = 0;
+String newuri = "";
+String oldLink ="", line="", oldId="";
+int pos = 0;
+CharSequence char0 = "abc";
+File f = new File(fullFilePath);
+try
+{
+statement = dbConnection.createStatement();
+doc = PDDocument.load(fullFilePath, false);
+List allPages = doc.getDocumentCatalog().getAllPages();
+for( int i=0; i<allPages.size(); i++ )
+{
+PDPage page = (PDPage)allPages.get( i );
+List annotations = page.getAnnotations();
+for( int j=0; j<annotations.size(); j++ )
+{
+PDAnnotation annot = (PDAnnotation)annotations.get( j );
+if( annot instanceof PDAnnotationLink )
+{
+PDAnnotationLink link = (PDAnnotationLink)annot;
+PDAction action = link.getAction();
+if( action instanceof PDActionURI )
+{
+uri = (PDActionURI)action;
+String oldURI = uri.getURI();
+if(oldURI.contains(char0))
+{
+line = oldURI;
+pos = line.lastIndexOf("=");
+oldLink = line.substring(0, pos+1);
+line = line.replace(oldLink, newWebformUrl+"?"+newArtName);
+pos = line.lastIndexOf("=");
+oldId = line.substring(pos+1, line.length());
+resultSet = statement.executeQuery("SELECT newid, type "
++ "FROM prrm.temp_migration_lookup WHERE oldid = " + oldId);
+if (null != resultSet) {
+while (resultSet.next())
+{ newURI = resultSet.getInt("newid"); type = resultSet.getInt("type"); }
+}
+newuri = newURI + "";
+String newurl = line.replace(oldId,newuri);
+newurl = newurl + "?type=" + type;
+//System.out.println( "Page " + (i+1) +": Replacing " + oldURI + " with " + newurl );
+uri.setURI( newurl );
+}
+}
+}
+}
+}
+doc.save(fullFilePath);
+resultSet.close();
+statement.close();
+doc.close();
+System.out.println("1: Close 1 File");
+} catch (IOException e)
+{ e.printStackTrace(); }
+catch (COSVisitorException e)
+{ // TODO Auto-generated catch block e.printStackTrace(); }
+finally
+{
+if( doc != null )
+{
+try
+{ doc.close(); doc = null; System.out.println("2: Close 1 File"); }
+catch (IOException e)
+{ // TODO Auto-generated catch block e.printStackTrace(); }
+}
+}
+}
+Here's the results of the run:
+1: Close 1 File
+2: Close 1 File
+Done 1 PDF file
+1: Close 1 File
+2: Close 1 File
+Done 1 PDF file
+1: Close 1 File
+2: Close 1 File
+Done 1 PDF file
+1: Close 1 File
+2: Close 1 File
+Done 1 PDF file
+1: Close 1 File
+2: Close 1 File
+Done 1 PDF file
+Mar 28, 2011 10:56:41 AM org.apache.pdfbox.cos.COSDocument finalize
+WARNING: Warning: You did not close a PDF Document
+Mar 28, 2011 10:56:41 AM org.apache.pdfbox.cos.COSDocument finalize
+WARNING: Warning: You did not close a PDF Document
+Mar 28, 2011 10:56:41 AM org.apache.pdfbox.cos.COSDocument finalize
+WARNING: Warning: You did not close a PDF Document
+Mar 28, 2011 10:56:41 AM org.apache.pdfbox.cos.COSDocument finalize
+WARNING: Warning: You did not close a PDF Document
+Mar 28, 2011 10:56:41 AM org.apache.pdfbox.cos.COSDocument finalize
+WARNING: Warning: You did not close a PDF Document
+Mar 28, 2011 10:56:41 AM org.apache.pdfbox.cos.COSDocument finalize
+WARNING: Warning: You did not close a PDF Document
+1: Close 1 File
+2: Close 1 File
+Done 1 PDF file
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.4.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+eclipse, java 1.6, windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ayaka Shota
+Create date:
+28/Mar/11 02:29
+Update date:
+28/Mar/11 08:49
+Resolved date:
+28/Mar/11 08:48

@@ -1,0 +1,100 @@
+Summary:
+Text extraction fails due to font problem with Type0, supplement-0 font
+Description:
+Text extraction fails. In particular, download and view pg23 or others (1-based) of:
+http://www.encana.com/investors/financial/annualreports/2008/pdfs/annual-report-2008.pdf
+With pdfbox text extraction, last 5 lines of page are displayed as "?". Other pages in the file have similar problems.
+Text extraction yields multiple "?" because "font.encode(buf,i,2)" returns null.
+The font COSDictionary contains:
+COSName
+{Subtype}=COSName{Type0}
+COSName{DescendantFonts}=COSArray{[COSObject{554, 0}]}
+COSName{BaseFont}=COSName{HelveticaNeueLTStd-Lt-Identity-H}
+COSName{Encoding}=COSName{Identity-H}
+COSName{Type}=COSName{Font}
+
+The "font.descendentFont" has the following COSDictionary items:
+COSName{Subtype}
+=COSName
+{CIDFontType0}
+COSName
+{FontDescriptor}=COSObject{540, 0}
+COSName{BaseFont}=COSName{ALJOHE+HelveticaNeueLTStd-Lt}
+COSName{W}=...
+COSName{CIDSystemInfo}=COSDictionary{(COSName{Supplement}:COSInt{0}) (COSName{Ordering}:COSString{Identity},(COSName{Registry}:COSString{Adobe}) }
+COSName{DW}=COSInt{1000}
+COSName{Type}=COSName{Font}
+
+The "fontDescriptor" of the descendentFont is:
+{COSName{StemV}=COSInt{58},
+COSName{FontName}=COSName{ALJOHE+HelveticaNeueLTStd-Lt},
+COSName{FontFile3}=COSObject{543, 0},
+COSName{CIDSet}=COSObject{545, 0},
+COSName{Flags}=COSInt{6},
+COSName{Descent}=COSInt{-271},
+COSName{FontBBox}=COSArray{[COSInt{-166}, COSInt{-214}, COSInt{1050}, COSInt{967}]}, COSName{Ascent}=COSInt{752},
+COSName{CapHeight}=COSInt{737},
+COSName{XHeight}=COSInt{553},
+COSName{Type}=COSName{FontDescriptor}
+,
+COSName
+{ItalicAngle}
+=COSInt
+{0}
+,
+COSName
+{StemH}
+=COSInt{45}}
+The last 5 lines on the page are:
+"Increased Cash Flow by 11 percent to $9,386 million;"
+"Increased Operating Earnings by ..."
+etc
+These 5 lines are encoded as 2 bytes per character (it is a type0 font)
+Each 2 byte code is offset by 31 from its displayed value.
+For instance, code "0x00, 0x01" should convert to ascii "0x0020" (a space).
+The font is an "Identity" font, which means codes should just map to latin ISO chars.
+Yeah, this is a Type0 font which can display a subset of another font (the latin ISO),
+but how come codes differ from the ascii by +31?
+This same 31 offset is found on all other pages of the file using this font.
+The font descriptor for the descendentFont has "Flags=6". Bit 3 is "Symbolic".
+PDF Spec 5.7.1 "Font contains glyphs outside the Adobe standard Latin character set."
+Maybe because the Font is "Symbolic" there is not a 1:1 map from codes to ascii.
+The question is whether the PDF file specifies the +31 offset, and pdfbox fails to properly account for this offset.. I can't find any reference to such an offset in the PDF spec. The 'getFirstChar()' in the descendentFont is -1, but the real value is"32". Maybe this +31 offset just equals 'firstChar-1'?
+The real firstChar can be found via:
+COSDictionary fontDict = (COSDictionary)font.getCOSObject();
+COSArray descendantFontArray = (COSArray)fontDict.getDictionaryObject(COSName.DESCENDANT_FONTS);
+if (descendantFontArray != null)
+{ COSDictionary descendantFontDictionary = (COSDictionary)descendantFontArray.getObject(0); PDFont descendentFont = PDFontFactory.createFont(descendantFontDictionary); Encoding encoding = descendentFont.getEncoding(); Iterator keyIterator = codeMap.keySet().iterator(); int firstChar=Integer.MAX_VALUE; while (keyIterator.hasNext()) firstChar = Math.min(firstChar,((Integer)keyIterator.next()).intValue()); }
+Other example on page 3 of the document:
+Text "Portfolio of ...." displays in Acrobat Reader, but the byte[] contains:
+[0, 49, 0, 80, 0, 83, 0, 85, 0, 71, 0, 80, 0, 77, 0, 74, 0, 80, 0, 1, 0, 80, 0, 71, 0, 1, 0, 70, 0, 84, 0, 85, 0, 66, 0, 67, 0, 77, 0, 74, 0, 84, 0, 73, 0, 70, 0, 69, 0, 1, 0, 83]
+Again, if +31 is added to each of these 2-byte codes then the Ascii is found.
+Where does this "+31" come from? Acrobat reader gets it right. How about pdfbox?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.2.0
+Fix_version:
+2.0.0
+Component:
+Text extraction
+Label:
+None
+Environment:
+fedora, windows
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Peter Costello
+Create date:
+10/May/10 20:47
+Update date:
+17/Mar/16 19:08
+Resolved date:
+02/Nov/13 15:45

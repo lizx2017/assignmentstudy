@@ -1,0 +1,41 @@
+Summary:
+HBaseClient never recovers for single HTable.get() calls with no retries when regions move
+Description:
+Steps to reproduce this bug:
+1) Gracefull restart a region server causing regions to get redistributed.
+2) Client call to this region keeps failing since Meta Cache is never purged on the client for the region that moved.
+Reason behind the bug:
+1) Client continues to hit the old region server.
+2) The old region server throws NotServingRegionException which is not handled correctly and the META cache entries are never purged for that server causing the client to keep hitting the old server.
+The reason lies in ServerCallable code since we only purge META cache entries when there is a RetriesExhaustedException, SocketTimeoutException or ConnectException. However, there is no case check for NotServingRegionException(s).
+Why is this not a problem for Scan(s) and Put(s) ?
+a) If a region server is not hosting a region/scanner, then an UnknownScannerException is thrown which causes a relocateRegion() call causing a refresh of the META cache for that particular region.
+b) For put(s), the processBatchCallback() interface in HConnectionManager is used which clears out META cache entries for all kinds of exceptions except DoNotRetryException.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.6.1
+Fix_version:
+0.98.0, 0.94.7, 0.95.1
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Varun Sharma
+Reporter:
+Varun Sharma
+Create date:
+06/Apr/13 20:36
+Update date:
+27/Apr/13 15:55
+Resolved date:
+15/Apr/13 20:49

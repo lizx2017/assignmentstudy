@@ -1,0 +1,51 @@
+Summary:
+Subcolumns not removed when compacting tombstoned super column
+Description:
+When we compact a tombstone for a super column with the old data for that super column, we end up writing the deleted super column and all the subcolumn data that is now worthless to the new sstable. This is especially inefficient when reads need to scan tombstones during a slice.
+Here is the output of a simple test I ran to confirm:
+insert supercolumn, then flush
+Nicks-MacBook-Pro:12:20:52 cassandra-1.0] cassandra$ bin/sstable2json ~/.ccm/1node/node1/data/Keyspace2/Super4-hd-1-Data.db 
+{
+"6b657931": {"supercol1": {"deletedAt": -9223372036854775808, "subColumns": [["737562636f6c31","7468697320697320612074657374",1340990212532000]]}}
+}
+delete supercolumn, flush again
+[Nicks-MacBook-Pro:12:20:59 cassandra-1.0] cassandra$ bin/nodetool -h localhost flush
+[Nicks-MacBook-Pro:12:22:41 cassandra-1.0] cassandra$ bin/sstable2json ~/.ccm/1node/node1/data/Keyspace2/Super4-hd-2-Data.db 
+{
+"6b657931": {"supercol1": {"deletedAt": 1340990544005000, "subColumns": []}}
+}
+compact and check resulting sstable
+[Nicks-MacBook-Pro:12:22:55 cassandra-1.0] cassandra$ bin/nodetool -h localhost compact 
+[Nicks-MacBook-Pro:12:23:09 cassandra-1.0] cassandra$ bin/sstable2json ~/.ccm/1node/node1/data/Keyspace2/Super4-hd-3-Data.db 
+{
+"6b657931": {"supercol1": {"deletedAt": 1340990544005000, "subColumns": [["737562636f6c31","7468697320697320612074657374",1340990212532000]]}}
+}
+[Nicks-MacBook-Pro:12:23:20 cassandra-1.0] cassandra$ 
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.11, 1.1.3
+Component:
+None
+Label:
+compaction
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Nick Bailey
+Create date:
+29/Jun/12 17:34
+Update date:
+16/Apr/19 09:32
+Resolved date:
+10/Jul/12 13:36

@@ -1,0 +1,48 @@
+Summary:
+Memtable.maybeUpdateLiveRatio goes into an endless loop when currentOperations is zero
+Description:
+Hi,
+I was describing an error the other day on the mailing list, where the MemoryMeter would go into an endless loop. This happened multiple times last week, unfortunetaly I cannot reproduce it at the moment.
+The whole cassandra server got unresponsive and logged about 7000k messages per second into the log:
+...
+INFO [MemoryMeter:1] 2014-06-14 19:24:09,488 Memtable.java (line 481) CFS(Keyspace='MDS', ColumnFamily='ResponsePortal') liveRatio is 64.0 (just-counted was 64.0). calculation took 0ms for 0 cells
+...
+The cause for this seems to be Memtable.maybeUpdateLiveRatio(), which cannot handle currentOperations (and liveRatioComputedAt) to be zero. The loop will iterate endlessly:
+            ...
+            if (operations < 2 * last) // does never break when zero: 0 < 0 is not true
+                break;
+            ...
+One thing I cannot explain: How can the operationcount be zero when maybeUpdateLiveRatio() gets called?
+is it possible that addAndGet in resolve() increases by 0 in some cases?
+currentOperations.addAndGet(cf.getColumnCount() + (cf.isMarkedForDelete() ? 1 : 0) + cf.deletionInfo().rangeCount()); // can this be zero? 
+Nevertheless, the attached patch fixes the endless loop. Feel free to reassign this ticket or create a followup ticket if currentOperations should not be zero.
+kind regards,
+Christian
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.9
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Christian Spriegel
+Reporter:
+Christian Spriegel
+Create date:
+16/Jun/14 09:58
+Update date:
+16/Apr/19 09:31
+Resolved date:
+18/Jun/14 01:12

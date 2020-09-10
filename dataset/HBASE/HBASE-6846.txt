@@ -1,0 +1,63 @@
+Summary:
+BitComparator bug - ArrayIndexOutOfBoundsException
+Description:
+The HBase 0.94.1 BitComparator introduced a bug in the method "compareTo":
+@Override
+  public int compareTo(byte[] value, int offset, int length) {
+    if (length != this.value.length) {
+      return 1;
+    }
+    int b = 0;
+    //Iterating backwards is faster because we can quit after one non-zero byte.
+    for (int i = value.length - 1; i >= 0 && b == 0; i--) {
+      switch (bitOperator) {
+        case AND:
+          b = (this.value[i] & value[i+offset]) & 0xff;
+          break;
+        case OR:
+          b = (this.value[i] | value[i+offset]) & 0xff;
+          break;
+        case XOR:
+          b = (this.value[i] ^ value[i+offset]) & 0xff;
+          break;
+      }
+    }
+    return b == 0 ? 1 : 0;
+  }
+I've encountered this problem when using a BitComparator with a configured this.value.length=8, and in the HBase table there were KeyValues with keyValue.getBuffer().length=207911 bytes. In this case:
+    for (int i = 207910; i >= 0 && b == 0; i--) {
+      switch (bitOperator) {
+        case AND:
+          b = (this.value[207910] ... ==> ArrayIndexOutOfBoundsException
+          break;
+That loop should use:
+  for (int i = length - 1; i >= 0 && b == 0; i--) { (or this.value.length.)
+Should I provide a patch for correcting the problem?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.1
+Fix_version:
+0.94.3, 0.95.0
+Component:
+Filters
+Label:
+None
+Environment:
+HBase 0.94.1 + Hadoop 2.0.0-cdh4.0.1
+Attachment number:
+0
+Assignee:
+Lucian George Iordache
+Reporter:
+Lucian George Iordache
+Create date:
+20/Sep/12 14:33
+Update date:
+26/Feb/13 08:21
+Resolved date:
+27/Oct/12 21:29

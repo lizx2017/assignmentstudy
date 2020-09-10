@@ -1,0 +1,103 @@
+Summary:
+DateType in Column MetaData causes server crash
+Description:
+when creating a column family with column metadata containing a date, there is a server crash that will prevent startup.
+To recreate from the cli:
+create keyspace test;
+use test;
+create column family foo
+  with column_type = 'Standard'
+  and comparator = 'CompositeType(LongType,DateType)'
+  and default_validation_class = 'UTF8Type'
+  and key_validation_class = 'UTF8Type'
+  and column_metadata = [ 
+    { column_name : '1234:1350695443433', validation_class : BooleanType} 
+  ];
+Produces this error in the logs:
+ERROR 21:11:18,795 Error occurred during processing of message.
+java.lang.RuntimeException: java.util.concurrent.ExecutionException: org.apache.cassandra.db.marshal.MarshalException: unable to coerce '2012-10-19 21' to a  formatted date (long)
+ at org.apache.cassandra.utils.FBUtilities.waitOnFuture(FBUtilities.java:373)
+ at org.apache.cassandra.service.MigrationManager.announce(MigrationManager.java:194)
+ at org.apache.cassandra.service.MigrationManager.announceNewColumnFamily(MigrationManager.java:141)
+ at org.apache.cassandra.thrift.CassandraServer.system_add_column_family(CassandraServer.java:931)
+ at org.apache.cassandra.thrift.Cassandra$Processor$system_add_column_family.getResult(Cassandra.java:3410)
+ at org.apache.cassandra.thrift.Cassandra$Processor$system_add_column_family.getResult(Cassandra.java:3398)
+ at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+ at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:186)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:680)
+Caused by: java.util.concurrent.ExecutionException: org.apache.cassandra.db.marshal.MarshalException: unable to coerce '2012-10-19 21' to a  formatted date (long)
+ at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+ at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+ at org.apache.cassandra.utils.FBUtilities.waitOnFuture(FBUtilities.java:369)
+ ... 11 more
+Caused by: org.apache.cassandra.db.marshal.MarshalException: unable to coerce '2012-10-19 21' to a  formatted date (long)
+ at org.apache.cassandra.db.marshal.DateType.dateStringToTimestamp(DateType.java:117)
+ at org.apache.cassandra.db.marshal.DateType.fromString(DateType.java:85)
+ at org.apache.cassandra.db.marshal.AbstractCompositeType.fromString(AbstractCompositeType.java:213)
+ at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:257)
+ at org.apache.cassandra.config.CFMetaData.addColumnDefinitionSchema(CFMetaData.java:1318)
+ at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1250)
+ at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:299)
+ at org.apache.cassandra.db.DefsTable.mergeColumnFamilies(DefsTable.java:434)
+ at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:346)
+ at org.apache.cassandra.service.MigrationManager$1.call(MigrationManager.java:217)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ ... 3 more
+Caused by: java.text.ParseException: Unable to parse the date: 2012-10-19 21
+ at org.apache.commons.lang.time.DateUtils.parseDate(DateUtils.java:285)
+ at org.apache.cassandra.db.marshal.DateType.dateStringToTimestamp(DateType.java:113)
+ ... 14 more
+ERROR 21:11:18,795 Exception in thread Thread[MigrationStage:1,5,main]
+org.apache.cassandra.db.marshal.MarshalException: unable to coerce '2012-10-19 21' to a  formatted date (long)
+ at org.apache.cassandra.db.marshal.DateType.dateStringToTimestamp(DateType.java:117)
+ at org.apache.cassandra.db.marshal.DateType.fromString(DateType.java:85)
+ at org.apache.cassandra.db.marshal.AbstractCompositeType.fromString(AbstractCompositeType.java:213)
+ at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:257)
+ at org.apache.cassandra.config.CFMetaData.addColumnDefinitionSchema(CFMetaData.java:1318)
+ at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1250)
+ at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:299)
+ at org.apache.cassandra.db.DefsTable.mergeColumnFamilies(DefsTable.java:434)
+ at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:346)
+ at org.apache.cassandra.service.MigrationManager$1.call(MigrationManager.java:217)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:680)
+Caused by: java.text.ParseException: Unable to parse the date: 2012-10-19 21
+ at org.apache.commons.lang.time.DateUtils.parseDate(DateUtils.java:285)
+ at org.apache.cassandra.db.marshal.DateType.dateStringToTimestamp(DateType.java:113)
+ ... 14 more
+This error is repeated when attempting to restart the server, and results in the server failing to start.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.7, 1.2.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Russell Bradberry
+Create date:
+20/Oct/12 01:20
+Update date:
+16/Apr/19 09:32
+Resolved date:
+24/Oct/12 18:41

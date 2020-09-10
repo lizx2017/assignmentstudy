@@ -1,0 +1,53 @@
+Summary:
+Compaction strategy is not reloaded when compaction strategy options is updated
+Description:
+The AbstractCompactionStrategy constructor receives an options map on its constructor:
+    protected AbstractCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options)
+    {
+        assert cfs != null;
+        this.cfs = cfs;
+        this.options = options;
+    ...
+This map is currently the same reference as CFMetadata.compactionStrategyOptions, so ColumnFamilyStore.reload() does not reload the compaction strategy when a compaction strategy option changes:
+    private void maybeReloadCompactionStrategy()
+    {
+        // Check if there is a need for reloading
+        if (metadata.compactionStrategyClass.equals(compactionStrategy.getClass()) 
+            && metadata.compactionStrategyOptions.equals(compactionStrategy.options)) //metadata.compactionStrategyOptions == compactionStrategy.options, so compaction is never reloaded
+            return;
+I spotted this in my test, when I tried changing the value of "unchecked_tombstone_compaction" from false to true and calling ColumnFamilyStore.reload() was not reloading the compaction strategy. I don't know if ColumnFamilyStore.reload() is only called during tests, or also whenever the schema changes.
+In order to fix the bug, I made AbstractCompactionStrategy.options an ImmutableMap, so if CFMetadata.compactionStrategyOptions is updated, ColumnFamilyStore.maybeReloadCompactionStrategy will actually reload the compaction strategy:
+    protected AbstractCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options)
+    {
+        assert cfs != null;
+        this.cfs = cfs;
+        this.options = ImmutableMap.copyOf(options);
+    ...
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.9
+Component:
+Local/Compaction
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Paulo Motta
+Reporter:
+Paulo Motta
+Create date:
+23/May/14 00:17
+Update date:
+16/Apr/19 09:31
+Resolved date:
+27/May/14 08:31

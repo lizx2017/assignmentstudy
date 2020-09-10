@@ -1,0 +1,38 @@
+Summary:
+CompactionAwareWriterTest is broken with compression
+Description:
+CompactionAwareWriterTest generates a relatively small sstable and expect different types of compaction to split it at relatively precise sizes. However, the implementations of CompactionAwareWriter use writer.getOnDiskFilePointer() to decide when to split and with compression that value is updated only when an compressed block is written. Which means that with compression the splitting is not as precise as the test expects it to be and the test fails.
+Note that this imprecision in splitting is not a big deal in practice (you might even call it a feature) since you expect to split sstables at sizes that are a lot bigger than the compression block size (besides, we already know we are imprecise in our splitting size since we only split at partition boundaries). But this does make things a bit harder to test.
+So I guess we could either:
+make the test use much bigger values so it's not affected by the imprecision (with the small downside that it will make the test slower)
+remove that imprecision by making the CompactionAwareWriter implementations use writer.getFilePointer().
+I don't have much personal preference but using getFilePointer sounds like the simpler fix, and it feels overall more predictable.
+Note that the test is not failing on trunk because unit tests do not use compression, you have to call ant test-compression for that (in which case it will fail). We might want to make compression one our randomized parameter of tests in the near future as I'm not sure anyone is really running ant test-compression on a regular basis.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Sylvain Lebresne
+Create date:
+22/Apr/15 15:44
+Update date:
+16/Apr/19 09:31
+Resolved date:
+24/Apr/15 08:43

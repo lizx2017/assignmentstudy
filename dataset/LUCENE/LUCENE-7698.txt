@@ -1,0 +1,60 @@
+Summary:
+CommonGramsQueryFilter in the query analyzer chain breaks phrase queries
+Description:
+(Please pardon me if the project or component are wrong!)
+CommonGramsQueryFilter breaks phrase queries. The behavior also seems to change with addition or removal of adjacent terms.
+Steps to reproduce:
+1.) Download and extract Solr (in my test case version 6.4.1) somewhere.
+2.) Modify server/solr/configsets/sample_techproducts_configs/conf/managed-schema and modify text_general fieldType by adding CommonGrams(Query)Filter before stopWordFilter:
+<fieldType name="text_general" class="solr.TextField" positionIncrementGap="100">
+<analyzer type="index">
+<tokenizer class="solr.StandardTokenizerFactory"/>
+<filter class="solr.CommonGramsFilterFactory" ignoreCase="true" words="stopwords.txt" />
+<filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" />
+<!-- in this example, we will only use synonyms at query time
+<filter class="solr.SynonymFilterFactory" synonyms="index_synonyms.txt" ignoreCase="true" expand="false"/>
+-->
+<filter class="solr.LowerCaseFilterFactory"/>
+</analyzer>
+<analyzer type="query">
+<tokenizer class="solr.StandardTokenizerFactory"/>
+<filter class="solr.CommonGramsQueryFilterFactory" ignoreCase="true" words="stopwords.txt"/>
+<filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" />
+<filter class="solr.SynonymFilterFactory" synonyms="synonyms.txt" ignoreCase="true" expand="true"/>
+<filter class="solr.LowerCaseFilterFactory"/>
+</analyzer>
+</fieldType>
+3.) Add "with" to server/solr/configsets/sample_techproducts_configs/conf/stopwords.txt and make sure the file has correct line endings (extracted from Solr zip it seems to contain DOS/Windows lien endings which may break things).
+4.) Run the techproducts example with "bin/solr -e techproducts"
+5.) Browse to <http://localhost:8983/solr/techproducts/select?q=%22iPod%20with%20Video%22&debugQuery=true>
+6.) Observe that parsedquery in the debug output is empty
+7.) Browse to <http://localhost:8983/solr/techproducts/select?q=%22Apple%2060%20GB%20iPod%20with%20Video%20Playback%20Black%22&debugQuery=true>
+8.) Observe that parsedquery contains ipod_with as expected but not with_video.
+Status:
+RESOLVED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+6.4, 6.4.1
+Fix_version:
+6.4.2, 7.0
+Component:
+core/queryparser
+Label:
+regression
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ere Maijala
+Create date:
+17/Feb/17 08:47
+Update date:
+22/Feb/17 10:55
+Resolved date:
+22/Feb/17 10:55

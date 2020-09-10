@@ -1,0 +1,81 @@
+Summary:
+Some valid index queries can be considered as invalid
+Description:
+Some secondary index queries are rejected or need ALLOW FILTERING but should not. It seems that in certain case SelectStatement use index filtering for clustering column restrictions while it should be using clustering column slices.
+The following unit tests can be used to reproduce the problem in 3.0
+    @Test
+    public void testMultipleClusteringWithIndex() throws Throwable
+    {
+        createTable("CREATE TABLE %s (a int, b int, c int, d int, e int, PRIMARY KEY (a, b, c, d))");
+        createIndex("CREATE INDEX ON %s (b)");
+        createIndex("CREATE INDEX ON %s (e)");
+
+        execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)", 0, 0, 0, 0, 0);
+        execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)", 0, 0, 1, 0, 1);
+        execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)", 0, 0, 1, 1, 2);
+
+        execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)", 0, 1, 0, 0, 0);
+        execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)", 0, 1, 1, 0, 1);
+        execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)", 0, 1, 1, 1, 2);
+
+        execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)", 0, 2, 0, 0, 0);
+
+        assertRows(execute("SELECT * FROM %s WHERE (b, c) = (?, ?)", 1, 1),
+                   row(0, 1, 1, 0, 1),
+                   row(0, 1, 1, 1, 2));
+    }
+
+    @Test
+    public void testMultiplePartitionKeyAndMultiClusteringWithIndex() throws Throwable
+    {
+        createTable("CREATE TABLE %s (a int, b int, c int, d int, e int, f int, PRIMARY KEY ((a, b), c, d, e))");
+        createIndex("CREATE INDEX ON %s (c)");
+        createIndex("CREATE INDEX ON %s (f)");
+
+        execute("INSERT INTO %s (a, b, c, d, e, f) VALUES (?, ?, ?, ?, ?, ?)", 0, 0, 0, 0, 0, 0);
+        execute("INSERT INTO %s (a, b, c, d, e, f) VALUES (?, ?, ?, ?, ?, ?)", 0, 0, 0, 1, 0, 1);
+        execute("INSERT INTO %s (a, b, c, d, e, f) VALUES (?, ?, ?, ?, ?, ?)", 0, 0, 0, 1, 1, 2);
+
+        execute("INSERT INTO %s (a, b, c, d, e, f) VALUES (?, ?, ?, ?, ?, ?)", 0, 0, 1, 0, 0, 3);
+        execute("INSERT INTO %s (a, b, c, d, e, f) VALUES (?, ?, ?, ?, ?, ?)", 0, 0, 1, 1, 0, 4);
+        execute("INSERT INTO %s (a, b, c, d, e, f) VALUES (?, ?, ?, ?, ?, ?)", 0, 0, 1, 1, 1, 5);
+
+        execute("INSERT INTO %s (a, b, c, d, e, f) VALUES (?, ?, ?, ?, ?, ?)", 0, 0, 2, 0, 0, 6);
+
+        assertRows(execute("SELECT * FROM %s WHERE a = ? AND (c) IN ((?), (?)) AND f = ?", 0, 1, 2, 5),
+                   row(0, 0, 1, 1, 1, 5));
+
+        assertRows(execute("SELECT * FROM %s WHERE a = ? AND (c, d) IN ((?, ?)) AND f = ?", 0, 1, 1, 5),
+                   row(0, 0, 1, 1, 1, 5));
+
+        assertRows(execute("SELECT * FROM %s WHERE a = ? AND (c) >= (?) AND f = ?", 0, 1, 5),
+                   row(0, 0, 1, 1, 1, 5));
+    }
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Benjamin Lerer
+Create date:
+10/Dec/14 20:59
+Update date:
+16/Apr/19 09:31
+Resolved date:
+12/Dec/14 11:02

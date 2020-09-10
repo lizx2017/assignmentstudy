@@ -1,0 +1,97 @@
+Summary:
+cqlsh and cassandra-cli show keys differently for data created via stress tool
+Description:
+// Run: stress --operation=INSERT --num-keys=5  --columns=2 --consistency-level=QUORUM --column-size=1 --threads=1 --replication-factor=1 --nodes=localhost
+
+// cqlsh
+cqlsh:Keyspace1> select * from Standard1;
+ KEY,3 | C0,c | C1,c | 
+ KEY,0 | 
+ KEY,2 | C0,c | C1,c | 
+ KEY,1 | C0,c | C1,c | 
+ KEY,4 | C0,c | C1,c | 
+
+cqlsh:Keyspace1> describe columnfamily Standard1;
+
+CREATE COLUMNFAMILY Standard1 (
+  KEY blob PRIMARY KEY
+) WITH
+  comment='' AND
+  comparator=ascii AND
+  row_cache_provider='ConcurrentLinkedHashCacheProvider' AND
+  key_cache_size=200000.000000 AND
+  row_cache_size=0.000000 AND
+  read_repair_chance=1.000000 AND
+  gc_grace_seconds=864000 AND
+  default_validation=blob AND
+  min_compaction_threshold=4 AND
+  max_compaction_threshold=32 AND
+  row_cache_save_period_in_seconds=0 AND
+  key_cache_save_period_in_seconds=14400 AND
+  replicate_on_write=True;
+
+
+// cassandra-cli
+[default@Keyspace1] list Standard1;    
+Using default limit of 100
+-------------------
+RowKey: 33
+=> (column=C0, value=63, timestamp=1326259960705)
+=> (column=C1, value=63, timestamp=1326259960705)
+-------------------
+RowKey: 30
+-------------------
+RowKey: 32
+=> (column=C0, value=63, timestamp=1326259960704)
+=> (column=C1, value=63, timestamp=1326259960704)
+-------------------
+RowKey: 31
+=> (column=C0, value=63, timestamp=1326259960704)
+=> (column=C1, value=63, timestamp=1326259960704)
+-------------------
+RowKey: 34
+=> (column=C0, value=63, timestamp=1326259960705)
+=> (column=C1, value=63, timestamp=1326259960705)
+
+[default@Keyspace1] describe Standard1;
+    ColumnFamily: Standard1
+      Key Validation Class: org.apache.cassandra.db.marshal.BytesType
+      Default column value validator: org.apache.cassandra.db.marshal.BytesType
+      Columns sorted by: org.apache.cassandra.db.marshal.AsciiType
+      Row cache size / save period in seconds / keys to save : 0.0/0/all
+      Row Cache Provider: org.apache.cassandra.cache.ConcurrentLinkedHashCacheProvider
+      Key cache size / save period in seconds: 200000.0/14400
+      GC grace seconds: 864000
+      Compaction min/max thresholds: 4/32
+      Read repair chance: 1.0
+      Replicate on write: true
+      Built indexes: []
+      Compaction Strategy: org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.8
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+paul cannon
+Reporter:
+Cathy Daw
+Create date:
+11/Jan/12 07:39
+Update date:
+16/Apr/19 09:32
+Resolved date:
+20/Jan/12 19:25

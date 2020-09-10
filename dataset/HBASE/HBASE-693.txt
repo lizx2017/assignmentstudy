@@ -1,0 +1,46 @@
+Summary:
+TestGet2::testGetClosestRowBefore() failed with NPE after HADOOP-3472
+Description:
+After HADOOP-3472, MapFile.getClosest(.., ..., true) gives the correct value.
+In the unit test, we have
+10
+20
+30
+35 <== deleted
+40
+in the MapFile. so in HStore.java's rowAtOrBeforeFromMapFile(MapFile.reader, bytes, ...)
+readkey = (HStoreKey)map.getClosest(searchKey, readval, true);
+it gets the deleted key 35. So it can not be added into candidateKeys.
+The next key is 40, which is after the search key 38. So, we ends up
+with empty candidateKeys. Therefore, we lastKey() is null. cause TestGet2.java
+line 236 failed with NPE.
+Since MapFile.Reader has no prev(key) method, not sure what's the best
+to do in HStore.java.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Duplicate
+Affects_version:
+0.2.0
+Fix_version:
+0.2.0
+Component:
+regionserver
+Label:
+None
+Environment:
+hadoop
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Rong-En Fan
+Create date:
+17/Jun/08 03:28
+Update date:
+22/Aug/08 21:13
+Resolved date:
+28/Jun/08 04:44

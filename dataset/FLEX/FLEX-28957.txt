@@ -1,0 +1,77 @@
+Summary:
+CLONE -DataGrid Problem
+Description:
+I have slightly edited the example below from the cloned problem:
+Steps to reproduce:
+Example Code:
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute">
+<mx:Script>
+<![CDATA[
+[Bindable]
+private var dp:Array = [
+{ STAFF_CODE: "admin", STAFF_NAME: "Sys Admin",isSelected:true}
+,
+{ STAFF_CODE: "6073", STAFF_NAME: "testuser",isSelected:false}
+,
+{ STAFF_CODE: "dormouse", STAFF_NAME: "no code",isSelected:false}
+];
+]]
+>
+</mx:Script>
+<mx:DataGrid dataProvider="
+{dp}
+" width="100%">
+<mx:columns>
+<mx:DataGridColumn headerText="isSelected" dataField="isSelected" visible="false"/>
+<mx:DataGridColumn headerText="Staff Code" dataField="STAFF_CODE"/>
+<mx:DataGridColumn headerText="Staff Name" dataField="STAFF_NAME"/>
+</mx:columns>
+</mx:DataGrid>
+</mx:Application>
+1.set 'isSelected' column visible="false"
+2.click 'Staff Name' column to sort
+3.click a letter on the keyboard. A flex error will pop up (in IE).
+DataGrid.as Source Code:
+Function:
+/**
+@private
+used by ListBase.findString. Shouldn't be used elsewhere
+because column's itemToLabel is preferred
+*/
+override public function itemToLabel(data:Object):String { return displayableColumns[sortIndex == -1 ? 0 : sortIndex].itemToLabel(data); }
+sortIndex is set using the columns array. In this case, it would be set to 2 ("STAFF_NAME" is in index [2] of columns). However, displayableColumns will only contain two elements, so displayableColumns[2] does not exist although it is being referenced.
+the sortIndex is columns index, the function should be like this:
+override public function itemToLabel(data:Object):String
+{ return _columns[sortIndex == -1 ? 0 : sortIndex].itemToLabel(data); }
+Or like this:
+override public function itemToLabel(data:Object):String
+{ return displaybleColumns[sortIndex == -1 ? 0 : absoluteToDisplayColumnIndex(sortIndex)].itemToLabel(data); }
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 3.5 (
+Fix_version:
+None
+Component:
+mx: DataGrid
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+10/Nov/11 08:29
+Update date:
+14/Sep/13 02:11
+Resolved date:
+

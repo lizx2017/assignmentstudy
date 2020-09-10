@@ -1,0 +1,78 @@
+Summary:
+Transparent PNG file display with black border
+Description:
+Hi,
+I have added Transparent PNG file in PDF with PDFBox and it's display black border around image. I have added same PNG file with IText and it's display good in PDF.
+I have used below function to add PNG file. I am using latest PDFBox SVN code to add PNG file.
+public void createPDFFromImage( String inputFile, String image, String outputFile )
+throws IOException, COSVisitorException
+{
+// the document
+PDDocument doc = null;
+try
+{
+doc = PDDocument.load( inputFile );
+//we will add the image to the first page.
+PDPage page = (PDPage)doc.getDocumentCatalog().getAllPages().get( 0 );
+PDXObjectImage ximage = null;
+/*if( image.toLowerCase().endsWith( ".jpg" ) )
+{ ximage = new PDJpeg(doc, new FileInputStream( image ) ); }
+else if (image.toLowerCase().endsWith(".tif") || image.toLowerCase().endsWith(".tiff"))
+{ ximage = new PDCcitt(doc, new RandomAccessFile(new File(image),"r")); }
+else
+{ BufferedImage awtImage = ImageIO.read( new File( image ) ); FileInputStream inputStream = new FileInputStream(image); PDStream stream = new PDStream(doc, inputStream); ximage = new PDPixelMap(stream); //throw new IOException( "Image type not supported:" + image ); }
+*/
+System.out.println("Testing");
+BufferedImage stampImage = null;
+try
+{ stampImage = ImageIO.read(new File(image)); }
+catch(Exception e)
+{ e.printStackTrace(); }
+ximage = new PDJpeg(doc, stampImage );
+//ximage = new PDPixelMap(doc, stampImage);
+COSStream stream = ximage.getCOSStream();
+PDStream pdStream = new PDStream(stream);
+ximage = new PDPixelMap(pdStream);
+//BoxImage imageData = BoxImage.getInstance(image);
+//System.out.println(""+imageData.getImageType());
+PDPageContentStream contentStream = new PDPageContentStream(doc, page, true, true, true);
+AffineTransform transform = new AffineTransform(stampImage.getWidth(), 0, 0, stampImage.getHeight(), 20, 200);
+//contentStream.drawImage( ximage, 20, 20 );
+contentStream.drawXObject(ximage, transform);
+contentStream.close();
+doc.save( outputFile );
+}
+finally
+{
+if( doc != null )
+{ doc.close(); }
+}
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+1.7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Manoj Patel
+Create date:
+12/May/12 05:31
+Update date:
+29/May/12 16:21
+Resolved date:
+14/May/12 15:24

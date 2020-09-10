@@ -1,0 +1,51 @@
+Summary:
+Review/improve HLog compression's memory consumption
+Description:
+From Ram in http://mail-archives.apache.org/mod_mbox/hbase-dev/201205.mbox/%3C00bc01cd31e6$7caf1320$760d3960$%25vasudevan@huawei.com%3E:
+One small observation after giving +1 on the RC.
+The WAL compression feature causes OOME and causes Full GC.
+The problem is, if we have 1500 regions and I need to create recovered.edits
+for each of the region (I don’t have much data in the regions (~300MB)).
+Now when I try to build the dictionary there is a Node object getting
+created.
+Each node object occupies 32 bytes.
+We have 5 such dictionaries.
+Initially we create indexToNodes array and its size is 32767.
+So now we have 32*5*32767 = ~5MB.
+Now I have 1500 regions.
+So 5MB*1500 = ~7GB.(Excluding actual data). This seems to a very high
+initial memory foot print and this never allows me to split the logs and I
+am not able to make the cluster up at all.
+Our configured heap size was 8GB, tested in 3 node cluster with 5000
+regions, very less data( 1GB in hdfs cluster including replication), some
+small data is spread evenly across all regions.
+The formula is 32(Node object size)*5(No of dictionary)*32767(no of node
+objects)*noofregions.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudevan
+Reporter:
+Jean-Daniel Cryans
+Create date:
+19/Dec/12 16:16
+Update date:
+23/Sep/13 19:22
+Resolved date:
+14/Aug/13 17:04

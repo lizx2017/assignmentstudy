@@ -1,0 +1,51 @@
+Summary:
+Query on compact storage with limit returns extra rows
+Description:
+I tested this on Cassandra 2.0.6 and 2.0.3 and got the same result on both:
+cqlsh> create KEYSPACE "test" WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+cqlsh> USE "test";
+cqlsh:test> CREATE COLUMNFAMILY "VerifyPagedColumnQueryStartAndEnd" ("keyId" text, "columnName" text, "value" text, PRIMARY KEY ("keyId", "columnName")) WITH COMPACT STORAGE;
+cqlsh:test> INSERT INTO "VerifyPagedColumnQueryStartAndEnd" ("keyId", "columnName", "value") VALUES ( 'key', 'a', '1' )  ;
+cqlsh:test> INSERT INTO "VerifyPagedColumnQueryStartAndEnd" ("keyId", "columnName", "value") VALUES ( 'key', 'b', '1' )  ;
+cqlsh:test> INSERT INTO "VerifyPagedColumnQueryStartAndEnd" ("keyId", "columnName", "value") VALUES ( 'key', 'c', '1' )  ;
+cqlsh:test> INSERT INTO "VerifyPagedColumnQueryStartAndEnd" ("keyId", "columnName", "value") VALUES ( 'key', 'd', '1' )  ;
+cqlsh:test> INSERT INTO "VerifyPagedColumnQueryStartAndEnd" ("keyId", "columnName", "value") VALUES ( 'key', 'e', '1' )  ;
+cqlsh:test> SELECT * FROM "VerifyPagedColumnQueryStartAndEnd" WHERE "keyId" = 'key' AND "columnName" > '' AND "columnName" <= 'e' LIMIT 2;
+
+ keyId | columnName | value
+-------+------------+-------
+   key |          a |     1
+   key |          b |     1
+   key |          c |     1
+
+(3 rows)
+
+cqlsh:test>
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.8
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Stuart Freeman
+Create date:
+17/Apr/14 20:39
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/Apr/14 10:07

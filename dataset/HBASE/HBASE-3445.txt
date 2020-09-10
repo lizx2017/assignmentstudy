@@ -1,0 +1,62 @@
+Summary:
+Master crashes on data that was moved from different host
+Description:
+While testing an upgrade to 0.90.0 RC3 I noticed that if I seeded our test data on one machine and transferred to another machine the HMaster on the new machine dies on startup.
+Based on the following stack trace it looks as though it is attempting to find the .meta region with the ip address of the original machine. Instead of waiting around for RegionServer's to register with new location data, HMaster throws it's hands up with a FATAL exception.
+Note that deleting the zookeeper dir makes no difference.
+Also note that so far I have only reproduced this in my own environment using the hbase-trx extension of HBase and an ApplicationStarter that starts the Master and RegionServer together in the same JVM. While the issue seems likely isolated from those factors it is far from a vanilla HBase environment.
+I will spend some time trying to reproduce the issue in a proper hbase test. But perhaps someone can beat me to it? How do I simulate the IP switch? May require a data.tar upload.
+[14/01/11 10:45:20] 6396 [ Thread-298] ERROR server.quorum.QuorumPeerConfig - Invalid configuration, only one server specified (ignoring)
+[14/01/11 10:45:21] 7178 [ main] INFO ion.service.HBaseRegionService - troove> region port: 60010
+[14/01/11 10:45:21] 7180 [ main] INFO ion.service.HBaseRegionService - troove> region interface: org.apache.hadoop.hbase.ipc.IndexedRegionInterface
+[14/01/11 10:45:21] 7180 [ main] INFO ion.service.HBaseRegionService - troove> root dir: hdfs://localhost:8701/hbase
+[14/01/11 10:45:21] 7180 [ main] INFO ion.service.HBaseRegionService - troove> Initializing region server.
+[14/01/11 10:45:21] 7631 [ main] INFO ion.service.HBaseRegionService - troove> Starting region server thread.
+[14/01/11 10:46:54] 100764 [ HMaster] FATAL he.hadoop.hbase.master.HMaster - Unhandled exception. Starting shutdown.
+java.net.SocketTimeoutException: 20000 millis timeout while waiting for channel to be ready for connect. ch : java.nio.channels.SocketChannel[connection-pending remote=192.168.1.102/192.168.1.102:60020]
+at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:213)
+at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:404)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.setupIOstreams(HBaseClient.java:311)
+at org.apache.hadoop.hbase.ipc.HBaseClient.getConnection(HBaseClient.java:865)
+at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:732)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:258)
+at $Proxy14.getProtocolVersion(Unknown Source)
+at org.apache.hadoop.hbase.ipc.HBaseRPC.getProxy(HBaseRPC.java:419)
+at org.apache.hadoop.hbase.ipc.HBaseRPC.getProxy(HBaseRPC.java:393)
+at org.apache.hadoop.hbase.ipc.HBaseRPC.getProxy(HBaseRPC.java:444)
+at org.apache.hadoop.hbase.ipc.HBaseRPC.waitForProxy(HBaseRPC.java:349)
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getHRegionConnection(HConnectionManager.java:954)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.getCachedConnection(CatalogTracker.java:384)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.getMetaServerConnection(CatalogTracker.java:283)
+at org.apache.hadoop.hbase.catalog.CatalogTracker.verifyMetaRegionLocation(CatalogTracker.java:478)
+at org.apache.hadoop.hbase.master.HMaster.assignRootAndMeta(HMaster.java:435)
+at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:382)
+at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:277)
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.1
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+James Kennedy
+Create date:
+14/Jan/11 19:14
+Update date:
+20/Nov/15 12:43
+Resolved date:
+20/Jan/11 23:15

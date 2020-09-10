@@ -1,0 +1,48 @@
+Summary:
+NPE in MultiFieldQueryParser
+Description:
+The method getRegexpQuery() in MultiFieldQueryParser is not overridden.
+That leads to RegexpQueries where field=null (see example below).
+QueryParser qp = new MultiFieldQueryParser(Version.LUCENE_41, new String[]{ "content" }, new StandardAnalyzer(Version.LUCENE_41)) 
+Query q = qp.parse("path:foo/bar/foo"); // throws no ParseException
+q.toString() // throws NPE
+Workaround for MultiFieldQueryParser:
+@Override
+protected Query getRegexpQuery(String field, String termStr) throws ParseException {
+  if (field == null) {
+    List<BooleanClause> clauses = new ArrayList<BooleanClause>();
+    for (int i = 0; i < fields.length; i++) {
+      clauses.add(new BooleanClause(getRegexpQuery(fields[i], termStr), BooleanClause.Occur.SHOULD));
+    }
+    return getBooleanQuery(clauses, true);
+  }
+  return super.getRegexpQuery(field, termStr);
+}
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+4.1
+Fix_version:
+None
+Component:
+core/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+André
+Create date:
+13/Feb/13 17:09
+Update date:
+13/Feb/13 17:11
+Resolved date:
+

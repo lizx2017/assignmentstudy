@@ -1,0 +1,51 @@
+Summary:
+GCInspector detected GC before ThreadPools are initialized
+Description:
+While running the dtest one_all_test (consistency_test.TestConsistency), I ran into the following exception:
+java.lang.RuntimeException: Error reading: org.apache.cassandra.metrics:type=ThreadPools,path=request,scope=ReadStage,name=ActiveTasks
+        at org.apache.cassandra.metrics.ThreadPoolMetrics.getJmxMetric(ThreadPoolMetrics.java:134)
+        at org.apache.cassandra.utils.StatusLogger.log(StatusLogger.java:55)
+        at org.apache.cassandra.service.GCInspector.handleNotification(GCInspector.java:147)
+        at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor$ListenerWrapper.handleNotification(DefaultMBeanServerInterceptor.java:1754)
+        at sun.management.NotificationEmitterSupport.sendNotification(NotificationEmitterSupport.java:156)
+        at sun.management.GarbageCollectorImpl.createGCNotification(GarbageCollectorImpl.java:150)
+Caused by: java.lang.reflect.UndeclaredThrowableException
+        at com.sun.proxy.$Proxy3.getValue(Unknown Source)
+        at org.apache.cassandra.metrics.ThreadPoolMetrics.getJmxMetric(ThreadPoolMetrics.java:123)
+        ... 5 more
+Caused by: javax.management.InstanceNotFoundException: org.apache.cassandra.metrics:type=ThreadPools,path=request,scope=ReadStage,name=ActiveTasks
+        at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.getMBean(DefaultMBeanServerInterceptor.java:1095)
+        at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.getAttribute(DefaultMBeanServerInterceptor.java:643)
+        at com.sun.jmx.mbeanserver.JmxMBeanServer.getAttribute(JmxMBeanServer.java:678)
+        at javax.management.MBeanServerInvocationHandler.invoke(MBeanServerInvocationHandler.java:267)
+        ... 7 more
+    
+Dtest didn't preserve the logs, which implies that this wasn't in the system.log, but printed to stderr somehow, it's unclear with all the piping dtest and ccm do. I have yet to reproduce the issue.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Philip Thompson
+Create date:
+23/Mar/15 16:42
+Update date:
+16/Apr/19 09:31
+Resolved date:
+06/Apr/15 22:34

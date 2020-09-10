@@ -1,0 +1,57 @@
+Summary:
+Data from truncated CF reappears after server restart
+Description:
+Configure 3 node cluster
+Ensure the java stress tool creates Keyspace1 with RF=3
+// Run Stress Tool to generate 10 keys, 1 column
+stress --operation=INSERT -t 2 --num-keys=50 --columns=20 --consistency-level=QUORUM --average-size-values --replication-factor=3 --create-index=KEYS --nodes=cathy1,cathy2
+
+// Verify 50 keys in CLI
+use Keyspace1; 
+list Standard1; 
+
+// TRUNCATE CF in CLI
+use Keyspace1;
+truncate counter1;
+list counter1;
+
+// Run stress tool and verify creation of 1 key with 10 columns
+stress --operation=INSERT -t 2 --num-keys=1 --columns=10 --consistency-level=QUORUM --average-size-values --replication-factor=3 --create-index=KEYS --nodes=cathy1,cathy2
+
+// Verify 1 key in CLI
+use Keyspace1; 
+list Standard1; 
+
+// Restart all three nodes
+
+// You will see 51 keys in CLI
+use Keyspace1; 
+list Standard1; 
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Cathy Daw
+Create date:
+26/Jul/11 20:56
+Update date:
+16/Apr/19 09:32
+Resolved date:
+11/Aug/11 19:36

@@ -1,0 +1,59 @@
+Summary:
+German Umlaute (mutated vowel) are rendered incorrect
+Description:
+German Umlate, specifically the 2 dots on top of the characters, are not rendered correctly after loading a PDDocument and creating a postscriptfile with the resulting ByteArrayOutputStream.
+I use a 2.0 nightbuild.
+PDFService.java
+private ByteArrayOutputStream pdf2ps(byte[] pdf) throws PrinterException, IOException {
+ DocFlavor flavor = DocFlavor.SERVICE_FORMATTED.PRINTABLE;
+ String psMimeType = DocFlavor.BYTE_ARRAY.POSTSCRIPT.getMimeType();
+ StreamPrintServiceFactory[] factories = StreamPrintServiceFactory
+    .lookupStreamPrintServiceFactories(flavor, psMimeType);
+ PDDocument doc = PDDocument.load(new ByteArrayInputStream(pdf), false);
+ ByteArrayOutputStream bout = new ByteArrayOutputStream();
+ // Use the first service available
+ PrintService sps = factories[0].getPrintService(bout);
+
+ // Define paper size
+ PrintRequestAttributeSet aset = new HashPrintRequestAttributeSet();
+ aset.add(MediaSizeName.ISO_A4);
+
+ PrinterJob pjob = PrinterJob.getPrinterJob();
+ pjob.setPrintService(sps);
+
+
+ PDFPrinter printer = new PDFPrinter(doc, Scaling.ACTUAL_SIZE, Orientation.AUTO);
+ printer.silentPrint(pjob);
+
+ doc.close();
+
+ return bout;
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Duplicate
+Affects_version:
+2.0.0
+Fix_version:
+None
+Component:
+FontBox, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Julian Ivancsuk
+Create date:
+12/Jun/14 12:30
+Update date:
+13/Jun/14 00:32
+Resolved date:
+13/Jun/14 00:32

@@ -1,0 +1,46 @@
+Summary:
+Region PENDING-OPEN timeout with un-expected ZK node state leads to an endless loop
+Description:
+I describe the scenario of how this problem happened:
+1.HMaster assigned the region A to RS1. So the RegionState was set to PENDING_OPEN.
+2.For there's too many opening requests, the open process on RS1 was blocked.
+3.Some time later, TimeoutMonitor found the assigning of A was timeout. For the RegionState was in PENDING_OPEN, went into the following handler process(Just put the region into an waiting-assigning set):
+case PENDING_OPEN:
+LOG.info("Region has been PENDING_OPEN for too " +
+"long, reassigning region=" +
+regionInfo.getRegionNameAsString());
+assigns.put(regionState.getRegion(), Boolean.TRUE);
+break;
+So we can see that, under this case, we consider the ZK node state was OFFLINE. Indeed, in an normal disposal, it's OK.
+4.But before the real-assigning, the requests of RS1 was disposed. So that affected the new-assigning. For it update the ZK node state from OFFLINE to OPENING.
+5.The new assigning started, so it send region to open in RS2. But while the opening, it should update the ZK node state from OFFLINE to OPENING. For the current state is OPENING, so this operation failed.
+So this region couldn't be open success anymore.
+So I think, to void this problem , under the case of PENDING_OPEN of TiemoutMonitor, we should transform the ZK node state to OFFLINE first.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+0.90.3
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jieshan Bean
+Reporter:
+Jieshan Bean
+Create date:
+31/May/11 01:46
+Update date:
+23/Sep/13 19:07
+Resolved date:
+23/Apr/13 23:44

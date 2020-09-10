@@ -1,0 +1,41 @@
+Summary:
+Splits writing one file only is untenable; need dir of recovered edits ordered by sequenceid.
+Description:
+This issue comes of tlipcon doing a bit of human unit testing. His speculation is:
+Let a region X deploy to server A. Server A opens the region, then closes it.
+Let region X now deploy to server B. Server B now crashes.
+Both server A and server B now have edits for region X in their WALs.
+The processing of server crashes is currently sequential.
+If server A crashes before server B, server A will write out a file of recovered edits for region X but region X was not deployed on server A so, the file will just sit there unused. The processing of server B crash will overwrite the recovered edits file written by the split of server A wal. This is ok.
+But if somehow, server B processing is done before server A's, then interesting issues will likely arise; in the main, there is danger that the server B's recovered edits could be overwritten.
+Another issue comes up in the review of hbase-1025. During the replay of edits on region deploy, if the hosting regionserver crashes before we have processed all of the recovered edits, we could lose some (the recovery of the regionserver that is replaying the edits could overwrite the log of edits only partially replayed).
+Discussing up on IRC, whats needed is a directory of edits to replay ordered by sequenceid. On recovery, we play the oldest through to the newest removing the edits only on successfully replay.
+Making blocker on 0.21 since this is a correctness issue.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+14/Jun/10 23:39
+Update date:
+20/Nov/15 12:40
+Resolved date:
+16/Jul/10 22:29

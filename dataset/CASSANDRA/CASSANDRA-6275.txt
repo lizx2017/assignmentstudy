@@ -1,0 +1,93 @@
+Summary:
+2.0.x leaks file handles
+Description:
+Looks like C* is leaking file descriptors when doing lots of CAS operations.
+$ sudo cat /proc/15455/limits
+Limit                     Soft Limit           Hard Limit           Units    
+Max cpu time              unlimited            unlimited            seconds  
+Max file size             unlimited            unlimited            bytes    
+Max data size             unlimited            unlimited            bytes    
+Max stack size            10485760             unlimited            bytes    
+Max core file size        0                    0                    bytes    
+Max resident set          unlimited            unlimited            bytes    
+Max processes             1024                 unlimited            processes
+Max open files            4096                 4096                 files    
+Max locked memory         unlimited            unlimited            bytes    
+Max address space         unlimited            unlimited            bytes    
+Max file locks            unlimited            unlimited            locks    
+Max pending signals       14633                14633                signals  
+Max msgqueue size         819200               819200               bytes    
+Max nice priority         0                    0                   
+Max realtime priority     0                    0                   
+Max realtime timeout      unlimited            unlimited            us 
+Looks like the problem is not in limits.
+Before load test:
+cassandra-test0 ~]$ lsof -n | grep java | wc -l
+166
+
+cassandra-test1 ~]$ lsof -n | grep java | wc -l
+164
+
+cassandra-test2 ~]$ lsof -n | grep java | wc -l
+180
+After load test:
+cassandra-test0 ~]$ lsof -n | grep java | wc -l
+967
+
+cassandra-test1 ~]$ lsof -n | grep java | wc -l
+1766
+
+cassandra-test2 ~]$ lsof -n | grep java | wc -l
+2578
+Most opened files have names like:
+java      16890 cassandra 1636r      REG             202,17  88724987     655520 /var/lib/cassandra/data/system/paxos/system-paxos-jb-644-Data.db
+java      16890 cassandra 1637r      REG             202,17 161158485     655420 /var/lib/cassandra/data/system/paxos/system-paxos-jb-255-Data.db
+java      16890 cassandra 1638r      REG             202,17  88724987     655520 /var/lib/cassandra/data/system/paxos/system-paxos-jb-644-Data.db
+java      16890 cassandra 1639r      REG             202,17 161158485     655420 /var/lib/cassandra/data/system/paxos/system-paxos-jb-255-Data.db
+java      16890 cassandra 1640r      REG             202,17  88724987     655520 /var/lib/cassandra/data/system/paxos/system-paxos-jb-644-Data.db
+java      16890 cassandra 1641r      REG             202,17 161158485     655420 /var/lib/cassandra/data/system/paxos/system-paxos-jb-255-Data.db
+java      16890 cassandra 1642r      REG             202,17  88724987     655520 /var/lib/cassandra/data/system/paxos/system-paxos-jb-644-Data.db
+java      16890 cassandra 1643r      REG             202,17 161158485     655420 /var/lib/cassandra/data/system/paxos/system-paxos-jb-255-Data.db
+java      16890 cassandra 1644r      REG             202,17  88724987     655520 /var/lib/cassandra/data/system/paxos/system-paxos-jb-644-Data.db
+java      16890 cassandra 1645r      REG             202,17 161158485     655420 /var/lib/cassandra/data/system/paxos/system-paxos-jb-255-Data.db
+java      16890 cassandra 1646r      REG             202,17  88724987     655520 /var/lib/cassandra/data/system/paxos/system-paxos-jb-644-Data.db
+java      16890 cassandra 1647r      REG             202,17 161158485     655420 /var/lib/cassandra/data/system/paxos/system-paxos-jb-255-Data.db
+java      16890 cassandra 1648r      REG             202,17  88724987     655520 /var/lib/cassandra/data/system/paxos/system-paxos-jb-644-Data.db
+java      16890 cassandra 1649r      REG             202,17 161158485     655420 /var/lib/cassandra/data/system/paxos/system-paxos-jb-255-Data.db
+java      16890 cassandra 1650r      REG             202,17  88724987     655520 /var/lib/cassandra/data/system/paxos/system-paxos-jb-644-Data.db
+java      16890 cassandra 1651r      REG             202,17 161158485     655420 /var/lib/cassandra/data/system/paxos/system-paxos-jb-255-Data.db
+java      16890 cassandra 1652r      REG             202,17  88724987     655520 /var/lib/cassandra/data/system/paxos/system-paxos-jb-644-Data.db
+java      16890 cassandra 1653r      REG             202,17 161158485     655420 /var/lib/cassandra/data/system/paxos/system-paxos-jb-255-Data.db
+java      16890 cassandra 1654r      REG             202,17  88724987     655520 /var/lib/cassandra/data/system/paxos/system-paxos-jb-644-Data.db
+java      16890 cassandra 1655r      REG             202,17 161158485     655420 /var/lib/cassandra/data/system/paxos/system-paxos-jb-255-Data.db
+java      16890 cassandra 1656r      REG             202,17  88724987     655520 /var/lib/cassandra/data/system/paxos/system-paxos-jb-644-Data.db
+Also, when that happens it's not always possible to shutdown server process via SIGTERM. Have to use SIGKILL.
+p.s. See mailing thread for more context information https://www.mail-archive.com/user@cassandra.apache.org/msg33035.html
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+graham sanderson
+Reporter:
+Mikhail Mazurskiy
+Create date:
+31/Oct/13 11:14
+Update date:
+16/Apr/19 09:32
+Resolved date:
+20/Nov/13 16:53

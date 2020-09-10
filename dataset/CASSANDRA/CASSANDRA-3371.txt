@@ -1,0 +1,44 @@
+Summary:
+Cassandra inferred schema and actual data don't match
+Description:
+It's looking like there may be a mismatch between the schema that's being reported by the latest CassandraStorage.java, and the data that's actually returned. Here's an example:
+rows = LOAD 'cassandra://Frap/PhotoVotes' USING CassandraStorage();
+DESCRIBE rows;
+rows: {key: chararray,columns: {(name: chararray,value: bytearray,photo_owner: chararray,value_photo_owner: bytearray,pid: chararray,value_pid: bytearray,matched_string: chararray,value_matched_string: bytearray,src_big: chararray,value_src_big: bytearray,time: chararray,value_time: bytearray,vote_type: chararray,value_vote_type: bytearray,voter: chararray,value_voter: bytearray)}}
+DUMP rows;
+(691831038_1317937188.48955,
+{(photo_owner,1596090180),(pid,6855155124568798560),(matched_string,),(src_big,),(time,Thu Oct 06 14:39:48 -0700 2011),(vote_type,album_dislike),(voter,691831038)}
+)
+getSchema() is reporting the columns as an inner bag of tuples, each of which contains 16 values. In fact, getNext() seems to return an inner bag containing 7 tuples, each of which contains two values.
+It appears that things got out of sync with this change:
+http://svn.apache.org/viewvc/cassandra/branches/cassandra-0.8/contrib/pig/src/java/org/apache/cassandra/hadoop/pig/CassandraStorage.java?r1=1177083&r2=1177082&pathrev=1177083
+See more discussion at:
+http://cassandra-user-incubator-apache-org.3065146.n2.nabble.com/pig-cassandra-problem-quot-Incompatible-field-schema-quot-error-tc6882703.html
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.8
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Pete Warden
+Create date:
+17/Oct/11 10:25
+Update date:
+16/Apr/19 09:32
+Resolved date:
+13/Feb/12 23:45

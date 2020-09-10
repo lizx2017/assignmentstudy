@@ -1,0 +1,37 @@
+Summary:
+describe_ring hangs with hsha thrift server
+Description:
+There is a strange bug with the thrift hsha server in 2.0 (we switched to lmax disruptor server).
+The bug is that the first call to describe_ring from one connection will hang indefinitely when the client is not connecting from localhost (or it at least looks like the client is not on the same host). Additionally the cluster must be using vnodes. When connecting from localhost the first call will work as expected. And in either case subsequent calls from the same connection will work as expected. According to git bisect the bad commit is the switch to the lmax disruptor server:
+https://github.com/apache/cassandra/commit/98eec0a223251ecd8fec7ecc9e46b05497d631c6
+I've attached the patch I used to reproduce the error in the unit tests. The command to reproduce is:
+PYTHONPATH=test nosetests --tests=system.test_thrift_server:TestMutations.test_describe_ring
+I reproduced on ec2 and a single machine by having the server bind to the private ip on ec2 and the client connect to the public ip (so it appears as if the client is non local). I've also reproduced with two different vms though.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Nick Bailey
+Create date:
+18/Nov/13 23:25
+Update date:
+16/Apr/19 09:31
+Resolved date:
+11/Jan/14 01:29

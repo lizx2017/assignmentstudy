@@ -1,0 +1,47 @@
+Summary:
+validation of time uuid is incorrect
+Description:
+It appears TimeUUIDType (as of 12/9) is checking the wrong bits when validating a time UUID as version 1.
+Per the comment and rfc4122, "version is bits 4-7 of byte 6", however validate() is actually checking the least significant bits:
+> if ((slice.get() & 0x0f) != 1)
+Sample java/hector code:
+// displays "version 1" but validation fails
+java.util.UUID uuid1 = java.util.UUID.fromString("00000000-0000-1000-0000-000000000000");
+System.out.println(uuid1 + " " + uuid1.version());
+TimeUUIDType.instance.validate(UUIDSerializer.get().toByteBuffer(uuid1));
+
+// displays "version 2" but validation succeeds
+java.util.UUID uuid2 = java.util.UUID.fromString("00000000-0000-2100-0000-000000000000");
+System.out.println(uuid2 + " " + uuid2.version());
+TimeUUIDType.instance.validate(UUIDSerializer.get().toByteBuffer(uuid2));
+The issue can be seen with any UUID where the timestamp doesn't start with 1:
+b54adc00-67f9-10d9-9669-0800200c9a66, (timestamp year 1776) version 1 fails
+b54adc00-67f9-12d9-9669-0800200c9a66, (timestamp year 2233) version 1 fails
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.9, 0.7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+Dave
+Create date:
+28/Dec/10 18:18
+Update date:
+16/Apr/19 09:33
+Resolved date:
+29/Dec/10 19:45

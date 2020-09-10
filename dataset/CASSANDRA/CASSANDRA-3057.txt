@@ -1,0 +1,51 @@
+Summary:
+secondary index on a column that has a value of size > 64k will fail on flush
+Description:
+exception seen on flush when an indexed column contain size > 64k:
+granted that having a value > 64k possibly mean something that shouldn't be indexed as it most likely would have a high cardinality, but i think there would still be some valid use case for it.
+test case:
+simply run the stress test with
+-n 1 -u 0 -c 2 -y Standard -o INSERT -S 65536 -x KEYS
+then call a flush
+exception:
+INFO [FlushWriter:8] 2011-08-18 21:49:33,214 Memtable.java (line 218) Writing Memtable-Standard1.Idx1@1652462853(16/20 serialized/live bytes, 1 ops)
+Standard1@980087547(196659/245823 serialized/live bytes, 3 ops)
+ERROR [FlushWriter:8] 2011-08-18 21:49:33,230 AbstractCassandraDaemon.java (line 133) Fatal exception in thread Thread[FlushWriter:8,5,RMI Runtime]
+java.lang.AssertionError: 65536
+at org.apache.cassandra.utils.ByteBufferUtil.writeWithShortLength(ByteBufferUtil.java:330)
+at org.apache.cassandra.io.sstable.SSTableWriter.append(SSTableWriter.java:164)
+at org.apache.cassandra.db.Memtable.writeSortedContents(Memtable.java:245)
+at org.apache.cassandra.db.Memtable.access$400(Memtable.java:49)
+at org.apache.cassandra.db.Memtable$3.runMayThrow(Memtable.java:270)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.5
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Jackson Chung
+Create date:
+18/Aug/11 22:02
+Update date:
+16/Apr/19 09:32
+Resolved date:
+19/Aug/11 01:54

@@ -1,0 +1,71 @@
+Summary:
+CQL 3 ALTER TABLE ... ADD causes OOB
+Description:
+To reproduce:
+./cqlsh
+Connected to Test Cluster at localhost:9160.
+[cqlsh 2.3.0 | Cassandra 1.2.0-SNAPSHOT | CQL spec 3.0.0 | Thrift protocol 19.35.0]
+Use HELP for help.
+cqlsh> create keyspace music with replication =
+{'CLASS' : ... 'SimpleStrategy', 'replication_factor' : 3}
+;
+cqlsh> use music
+... ;
+cqlsh:music> CREATE TABLE songs (
+... id uuid PRIMARY KEY,
+... title text,
+... album text,
+... artist text,
+... data blob
+... );
+cqlsh:music> insert into songs (id, title, artist, album) values ('a3e64f8f-bd44-4f28-b8d9-6938726e34d4', 'La Grange', 'ZZ Top', 'Tres Hombres');
+cqlsh:music> insert into songs (id, title, artist, album) values ('8a172618-b121-4136-bb10-f665cfc469eb', 'Moving in Stereo', 'Fu Manchu', 'We Must Obey');
+cqlsh:music> insert into songs (id, title, artist, album) values ('62c36092-82a1-3a00-93d1-46196ee77204', 'Outside Woman Blues', 'Back Door Slam', 'Roll Away');
+cqlsh:music> CREATE TABLE song_tags (
+... id uuid,
+... tag_name text,
+... PRIMARY KEY (id, tag_name)
+... );
+cqlsh:music> select * from song_tags;
+cqlsh:music> INSERT INTO song_tags (id, tag_name) VALUES ('a3e64f8f-bd44-4f28-b8d9-6938726e34d4', 'blues');
+cqlsh:music> INSERT INTO song_tags (id, tag_name) VALUES ('8a172618-b121-4136-bb10-f665cfc469eb', 'covers');
+cqlsh:music> INSERT INTO song_tags (id, tag_name) VALUES ('a3e64f8f-bd44-4f28-b8d9-6938726e34d4', '1973');
+cqlsh:music> INSERT INTO song_tags (id, tag_name) VALUES ('8a172618-b121-4136-bb10-f665cfc469eb', '2007');
+cqlsh:music> select * from song_tags;
+id | tag_name
+-------------------------------------+---------
+a3e64f8f-bd44-4f28-b8d9-6938726e34d4 | 1973
+a3e64f8f-bd44-4f28-b8d9-6938726e34d4 | blues
+8a172618-b121-4136-bb10-f665cfc469eb | 2007
+8a172618-b121-4136-bb10-f665cfc469eb | covers
+cqlsh:music> drop table song_tags;
+cqlsh:music> ALTER TABLE songs ADD tags set<text>;
+TSocket read 0 bytes
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.1
+Component:
+None
+Label:
+None
+Environment:
+mac os x, java
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+K. B. Hahn
+Create date:
+04/Jan/13 23:38
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Jan/13 08:49

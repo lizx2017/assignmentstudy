@@ -1,0 +1,62 @@
+Summary:
+Atomic Batch Statements Fail to Execute on Some Coordinators
+Description:
+Install and configure a three-node Cassandra cluster spread across two data centers (DCs). Place two Cassandra instances in DC1 and one Cassandra instance in DC2. (We have designated one node as a seed in each data center.)
+Gracefully shut down any one Cassandra instance in DC1. This can be done by running 'kill <process_id>' in Linux.
+Open a CQL Shell connection to the remaining node in DC1.
+Create the following keyspace: CREATE KEYSPACE batch_test WITH replication = {'class': 'NetworkTopologyStrategy', 'DC1': '2', 'DC2':'1'};
+Create the following table: CREATE TABLE batch_test.batch_table ( partition_key TEXT PRIMARY KEY );
+Execute the following atomic batch query: BEGIN BATCH INSERT INTO batch_test.batch_table (partition_key) VALUES ('a'); INSERT INTO batch_test.batch_table (partition_key) VALUES ('b'); APPLY BATCH;
+Observe an availability-related error, despite a sufficient number of nodes available to service the query. The trace below shows sample results from our cluster:
+DC1
+cqlsh> CONSISTENCY
+Current consistency level is ONE.
+cqlsh> BEGIN BATCH INSERT INTO batch_test.batch_table (partition_key) VALUES ('a'); INSERT INTO batch_test.batch_table (partition_key) VALUES ('b'); APPLY BATCH;
+Unable to complete request: one or more nodes were unavailable.
+cqlsh> CONSISTENCY QUORUM
+Consistency level set to QUORUM.
+cqlsh> BEGIN BATCH INSERT INTO batch_test.batch_table (partition_key) VALUES ('a'); INSERT INTO batch_test.batch_table (partition_key) VALUES ('b'); APPLY BATCH;
+Unable to complete request: one or more nodes were unavailable.
+cqlsh> BEGIN UNLOGGED BATCH INSERT INTO batch_test.batch_table (partition_key) VALUES ('a'); INSERT INTO batch_test.batch_table (partition_key) VALUES ('b'); APPLY BATCH;
+cqlsh>
+Note: an UNLOGGED BATCH executes successfully. A regular BATCH also executes successfully if it only contains one INSERT query.
+We now show a similar trace using a CQL Shell connected to the Cassandra instance in DC2:
+DC2
+—
+cqlsh> CONSISTENCY
+Current consistency level is ONE.
+cqlsh> BEGIN BATCH INSERT INTO batch_test.batch_table (partition_key) VALUES ('a'); INSERT INTO batch_test.batch_table (partition_key) VALUES ('b'); APPLY BATCH;
+cqlsh> CONSISTENCY QUORUM
+Consistency level set to QUORUM.
+cqlsh> BEGIN BATCH INSERT INTO batch_test.batch_table (partition_key) VALUES ('a'); INSERT INTO batch_test.batch_table (partition_key) VALUES ('b'); APPLY BATCH;
+cqlsh> BEGIN UNLOGGED BATCH INSERT INTO batch_test.batch_table (partition_key) VALUES ('a'); INSERT INTO batch_test.batch_table (partition_key) VALUES ('b'); APPLY BATCH;
+cqlsh>
+All queries execute successfully using the DC2 Cassandra instance as a coordinator.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Carl Yeksigian
+Reporter:
+a
+Create date:
+30/Apr/15 18:53
+Update date:
+16/Apr/19 09:31
+Resolved date:
+04/May/15 21:57

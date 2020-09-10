@@ -1,0 +1,74 @@
+Summary:
+SecurityManager is not a singleton in ShiroWebModule
+Description:
+While integrating Shiro to our guice based webapp I've noticed
+something strange. The module setup is pretty much the same as the
+example in the Guice page of Shiro's documentation. Only extra code is
+that I'm exposing the WebSecurityManager like this:
+public class AuthModule extends ShiroWebModule {
+public AuthModule(ServletContext servletContext)
+{ super(servletContext); }
+@Override
+@SuppressWarnings("unchecked")
+protected void configureShiroWeb()
+{ IniRealm iniRealm = new IniRealm(Ini.fromResourcePath("classpath:shiro.ini")); bindRealm().toInstance(iniRealm); expose(WebSecurityManager.class); }
+}
+A guice injected SecurityManager instance is not the same as the
+cached static SecurityManager in SecurityUtils.
+@Path("/Ping")
+@Singleton
+public class PingResource {
+@Inject
+SecurityManager sec;
+@Inject
+WebSecurityManager websec;
+@GET
+public void ping()
+{ SecurityManager man = SecurityUtils.getSecurityManager(); assert(man == websec); assert(man == sec); }
+}
+First assert passes, second fails. Debugger confirms that there are 2
+instances in memory, both of them are of type
+DefaultWebSecurityManager but only the WebSecurityManager instance
+works. Any meaningful operation on "sec" will fail (like an
+authorization check).
+I think the problem might be the double binding of SecurityManager(s).
+One is bound in ShiroModule another is in ShiroWebModule:
+in ShiroModule:
+public void configure() {
+// setup security manager
+bindSecurityManager(bind(SecurityManager.class));
+in ShiroWebModule:
+protected final void configureShiro() {
+....
+bindWebSecurityManager(bind(WebSecurityManager.class));
+Both of these methods are running at init time, hence the duplicated singletons.
+It might be better if ShiroWebModule would overrinde the standard
+configure() method to avoid this double-binding.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.2.1
+Fix_version:
+1.3.0
+Component:
+Integration: Guice
+Label:
+patch patch-with-tes
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jared Bunting
+Reporter:
+Laszlo Ferenczi
+Create date:
+04/May/13 20:44
+Update date:
+29/Jun/16 22:40
+Resolved date:
+29/Jun/16 22:40

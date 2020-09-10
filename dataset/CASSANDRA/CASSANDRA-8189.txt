@@ -1,0 +1,37 @@
+Summary:
+tombstone WARN in log file when creating a table with many columns
+Description:
+I created a table with 500 columns, creating the table resulted in a warning in the log file.
+WARN 10:13:17 Read 2504 live and 1003 tombstoned cells in system.schema_columns (see tombstone_warn_threshold). 2147483647 columns was requested, slices=[table_0-table_0:!], delInfo={deletedAt=-9223372036854775808, localDeletion=2147483647}
+See the attached unit test.
+I analyzed the table to understand what are the tombstone columns and it appears that Cassandra creates deleted columns for "index_type" and "index_name" if they are not present for a column.
+"index_type" get the String value "null" if it is not present.
+A side effect is that these deleted columns are not removed. Since system.schema_columns rarely changes compaction never happens for this table and the sstable will retain the deleted columns.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Oded Peer
+Create date:
+26/Oct/14 12:42
+Update date:
+16/Apr/19 09:31
+Resolved date:
+04/Nov/14 22:54

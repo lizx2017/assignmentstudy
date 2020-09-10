@@ -1,0 +1,52 @@
+Summary:
+Saved CF row cache breaks when upgrading to 1.1
+Description:
+Enabled row and key caching. Used stress to insert some data. ran nodetool flush, then nodetool compact. Then read the data back to populate the cache. Turned row_cache_save_period and key_cache_save_period really low to force saving the cache data. I verified that the row and key cache files existed in /var/lib/cassandra/saved_caches/.
+I then killed cassandra, checked out branch cassandra-1.1, compiled and tried to start the node. The node failed to start, and I got this error:
+ INFO 01:33:30,893 reading saved cache /var/lib/cassandra/saved_caches/Keyspace1-Standard1-RowCache
+ERROR 01:33:31,009 Exception encountered during startup
+java.lang.AssertionError: Row cache is not enabled on column family [Standard1]
+ at org.apache.cassandra.db.ColumnFamilyStore.cacheRow(ColumnFamilyStore.java:1050)
+ at org.apache.cassandra.db.ColumnFamilyStore.initRowCache(ColumnFamilyStore.java:383)
+ at org.apache.cassandra.db.Table.open(Table.java:122)
+ at org.apache.cassandra.db.Table.open(Table.java:100)
+ at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:204)
+ at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:353)
+ at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:107)
+java.lang.AssertionError: Row cache is not enabled on column family [Standard1]
+ at org.apache.cassandra.db.ColumnFamilyStore.cacheRow(ColumnFamilyStore.java:1050)
+ at org.apache.cassandra.db.ColumnFamilyStore.initRowCache(ColumnFamilyStore.java:383)
+ at org.apache.cassandra.db.Table.open(Table.java:122)
+ at org.apache.cassandra.db.Table.open(Table.java:100)
+ at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:204)
+ at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:353)
+ at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:107)
+Exception encountered during startup: Row cache is not enabled on column family [Standard1]
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Tyler Patterson
+Create date:
+04/Feb/12 02:03
+Update date:
+16/Apr/19 09:32
+Resolved date:
+06/Feb/12 14:18

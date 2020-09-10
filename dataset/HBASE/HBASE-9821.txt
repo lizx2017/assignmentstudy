@@ -1,0 +1,50 @@
+Summary:
+Scanner id could collide
+Description:
+We use a random number as our scanner id. In one server, we guarantee that the scanner id is unique. However, it is not guaranteed among different servers. When a region server restarts quickly, we could run into some scanner id collision issue.
+In one of my run:
+2013-10-21 22:43:09,071 INFO  [RpcServer.handler=2,port=36020] regionserver.HRegionServer: Client tried to access missing scanner 4305495321392639779
+2013-10-21 22:43:09,056 INFO  [RpcServer.handler=0,port=36020] regionserver.HRegionServer: Client tried to access missing scanner 4871518173034616791
+2013-10-21 22:43:09,054 INFO  [RpcServer.handler=29,port=36020] regionserver.HRegionServer: Client tried to access missing scanner 2494346173615963501
+2013-10-21 22:43:09,046 INFO  [RpcServer.handler=28,port=36020] regionserver.HRegionServer: Client tried to access missing scanner 8522578499834310167
+2013-10-21 22:43:09,037 INFO  [RpcServer.handler=27,port=36020] regionserver.HRegionServer: Client tried to access missing scanner 6621035169671703961
+2013-10-21 22:43:09,011 ERROR [RpcServer.handler=20,port=36020] regionserver.HRegionServer:
+org.apache.hadoop.hbase.exceptions.OutOfOrderScannerNextException: Expected nextCallSeq: 18 But the nextCallSeq got from client: 4470; request=scanner_id: 848804760654927372 number_of_rows: 100 close_scanner: false next_call_seq: 4470
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.scan(HRegionServer.java:3030)
+        at org.apache.hadoop.hbase.protobuf.generated.ClientProtos$ClientService$2.callBlockingMethod(ClientProtos.java:27022)
+        at org.apache.hadoop.hbase.ipc.RpcServer.call(RpcServer.java:1979)
+        at org.apache.hadoop.hbase.ipc.CallRunner.run(CallRunner.java:90)
+        at org.apache.hadoop.hbase.ipc.SimpleRpcScheduler.consumerLoop(SimpleRpcScheduler.java:160)
+        at org.apache.hadoop.hbase.ipc.SimpleRpcScheduler.access$000(SimpleRpcScheduler.java:38)
+        at org.apache.hadoop.hbase.ipc.SimpleRpcScheduler$1.run(SimpleRpcScheduler.java:110)
+        at java.lang.Thread.run(Thread.java:724)
+2013-10-21 22:43:09,000 INFO  [RpcServer.handler=25,port=36020] regionserver.HRegionServer: Client tried to access missing scanner 4162107982028594792
+Normally, the nextCallSeq can not be that different between the expected (18) and the one sent over from client (4470). It must be because the new server happens to use the same scanner id.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.96.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Jimmy Xiang
+Create date:
+22/Oct/13 21:33
+Update date:
+16/Dec/13 18:46
+Resolved date:
+23/Oct/13 22:25

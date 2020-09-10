@@ -1,0 +1,74 @@
+Summary:
+PhraseQuery inconsistencies
+Description:
+PhraseQuery behaves quite inconsistently when the position of the first term is greater than 0. Here is an example:
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    FieldType customType = new FieldType(TextField.TYPE_NOT_STORED);
+    customType.setOmitNorms(true);
+    Field f = new Field("body", "", customType);
+    Document doc = new Document();
+    doc.add(f);
+    f.setStringValue("one quick fox");
+    iw.addDocument(doc);
+    IndexReader ir = iw.getReader();
+    iw.close();
+    IndexSearcher is = newSearcher(ir);
+    
+    PhraseQuery pq = new PhraseQuery();
+    pq.add(new Term("body", "quick"), 0);
+    pq.add(new Term("body", "fox"), 1);
+    System.out.println(is.search(pq, 1).totalHits); // 1
+
+    pq = new PhraseQuery();
+    pq.add(new Term("body", "quick"), 10);
+    pq.add(new Term("body", "fox"), 11);
+    System.out.println(is.search(pq, 1).totalHits); // 0
+    
+    pq = new PhraseQuery();
+    pq.add(new Term("body", "quick"), 10);
+    System.out.println(is.search(pq, 1).totalHits); // 1
+    
+    pq = new PhraseQuery();
+    pq.add(new Term("body", "quick"), 10);
+    pq.add(new Term("body", "fox"), 11);
+    pq.setSlop(1);
+    System.out.println(is.search(pq, 1).totalHits); // 1
+    
+    ir.close();
+    dir.close();
+The reason is that when you add a term with position P on a PhraseQuery, ExactPhraseScorer ignores all positions for this term which are less than P.
+But this is inconsistent:
+if you have a single term, it does not work anymore since we rewrite to a term query regardless of the position of the term (3rd query)
+if you increase the slop, we will use SloppyPhraseScorer which does not have this behaviour. (4th query)
+So I think we have two options:
+either remove this behaviour and make the positions that are provided to PhraseQuery only relative (ie. fix ExactPhraseScorer)
+or make it work this way across the board (which means not rewriting to a term query when the position is not 0 and fixing SloppyPhraseScorer).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adrien Grand
+Reporter:
+Adrien Grand
+Create date:
+18/Feb/15 18:48
+Update date:
+15/Apr/15 00:30
+Resolved date:
+19/Feb/15 15:39

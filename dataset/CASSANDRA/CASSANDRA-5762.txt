@@ -1,0 +1,67 @@
+Summary:
+Lost row marker after TTL expires
+Description:
+I have the following table
+cqlsh:loginproject> DESCRIBE TABLE gameservers;
+CREATE TABLE gameservers (
+address inet PRIMARY KEY,
+last_update timestamp,
+regions blob,
+server_status boolean
+) WITH
+bloom_filter_fp_chance=0.010000 AND
+caching='KEYS_ONLY' AND
+comment='' AND
+dclocal_read_repair_chance=0.000000 AND
+gc_grace_seconds=864000 AND
+read_repair_chance=0.100000 AND
+replicate_on_write='true' AND
+populate_io_cache_on_flush='false' AND
+compaction=
+{'class': 'SizeTieredCompactionStrategy'}
+AND
+compression=
+{'sstable_compression': 'SnappyCompressor'}
+;
+after inserting a row and executing the following command:
+UPDATE gameservers USING TTL 10 SET server_status = true WHERE address = '192.168.0.100'
+after waiting for the ttl to expire, the row will lose its rowmarker making "select address from gameservers" returning 0 results although there are some.
+in cassandra-cli the table looks like this:
+[default@loginproject] list gameservers;
+Using default limit of 100
+Using default cell limit of 100
+-------------------
+RowKey: 192.168.0.100
+=> (name=last_update, value=0000000000000017, timestamp=1373884433543000)
+=> (name=regions, value=<truncated>, timestamp=1373883701652000)
+1 Row Returned.
+Elapsed time: 345 msec(s).
+[default@loginproject]
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.7
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Taner Catakli
+Create date:
+15/Jul/13 13:18
+Update date:
+16/Apr/19 09:32
+Resolved date:
+22/Jul/13 12:19

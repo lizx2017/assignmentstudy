@@ -1,0 +1,69 @@
+Summary:
+Uppercase/lowercase distinction in GermanStemmer not sustainable
+Description:
+I had a problem with the German stemmer, since it tries to detect nouns by
+looking for an uppercase first letter.
+This information is only used when a word ends with "t" in which case it is
+not stemmed.
+However, it's very naive to think words are nouns if and only if they begin
+with a capital letter. They may also be at the beginning with a sentence or
+within a quote, in which cases they may be set uppercase.
+Much worse, however, is the fact that most people write their queries in
+lower case. That means words can be stemmed differently in the query than in
+the index, leading to different results if someone entered the query in
+upper- or lowercase.
+Example: The word "Fakultäten" is stemmed to "fakultat", while "fakultäten"
+becomes "fakulta".
+I commented the lines out in GermanStemmer (see below, the diff is from CVS
+version 2002-09-05).
+However, I'm not enough a linguist to tell whether it is too much to stem a
+trailing "t" from a noun.
+Regards
+--Clemens
+— GermanStemmer.java~1~ 2002-08-19 07:13:42.000000000 +0000
++++ GermanStemmer.java 2002-09-11 15:59:53.000000000 +0000
+@@ -72,7 +72,7 @@
+/**
+Indicates if a term is handled as a noun.
+*/
+private boolean uppercase = false;
++// private boolean uppercase = false;
+/**
+Amount of characters that are removed with <tt>substitute()</tt> while
+stemming.
+@@ -88,7 +88,9 @@
+protected String stem( String term ) { // Mark a possible noun. - uppercase = Character.isUpperCase( term.charAt( 0 ) ); + /* uppercase = Character.isUpperCase( term.charAt( 0 ) ); + Can't use this - People don't use uppercase words in queries. --Clemens + */ // Use lowercase for medium stemming. term = term.toLowerCase(); if ( !isStemmable( term ) ) @@ -153,7 +155,7 @@ buffer.deleteCharAt( buffer.length() - 1 ); }
+// "t" occurs only as suffix of verbs.
+else if ( buffer.charAt( buffer.length() - 1 ) == 't' && !
+uppercase ) {
++ else if ( buffer.charAt( buffer.length() - 1 ) == 't' /*&& !
+uppercase*/ ) { buffer.deleteCharAt( buffer.length() - 1 ); }
+else {
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Duplicate
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Clemens
+Create date:
+12/Sep/02 17:53
+Update date:
+02/Jun/11 22:03
+Resolved date:
+27/May/06 01:35

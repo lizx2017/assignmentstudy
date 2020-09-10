@@ -1,0 +1,41 @@
+Summary:
+Master does not seem to properly scan ZK for running RS during startup
+Description:
+I was in the situation described by HBASE-3265, where I had a number of RS waiting on ROOT, but the master hadn't seen any RS checkins, so was waiting on checkins. To get past this, I restarted one of the region servers. The restarted server checked in, and the master began its startup.
+At this point the master started scanning /hbase/.logs for things to split. It correctly identified that the RS on haus01 was running (this is the one I restarted):
+2010-11-23 00:21:25,595 INFO org.apache.hadoop.hbase.master.MasterFileSystem: Log folder hdfs://haus01.sf.cloudera.com:11020/hbase-normal/.logs/haus01.sf.cloudera.com,60020,1290500443143 belongs to an existing region server
+but then incorrectly decided that the RS on haus02 was down:
+2010-11-23 00:21:25,595 INFO org.apache.hadoop.hbase.master.MasterFileSystem: Log folder hdfs://haus01.sf.cloudera.com:11020/hbase-normal/.logs/haus02.sf.cloudera.com,60020,1290498411450 doesn't belong to a known region server, splitting
+However ZK shows that this RS is up:
+[zk: haus01.sf.cloudera.com:2222(CONNECTED) 3] ls /hbase/rs
+[haus04.sf.cloudera.com,60020,1290498411533, haus05.sf.cloudera.com,60020,1290498411520, haus03.sf.cloudera.com,60020,1290498411518, haus01.sf.cloudera.com,60020,1290500443143, haus02.sf.cloudera.com,60020,1290498411450]
+splitLogsAfterStartup seems to check ServerManager.onlineServers, which best I can tell is derived from heartbeats and not from ZK (sorry if I got some of this wrong, still new to this new codebase)
+Of course, the master went into an infinite splitting loop at this point since haus02 is up and renewing its DFS lease on its logs.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Not A Problem
+Affects_version:
+0.90.0
+Fix_version:
+0.92.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Todd Lipcon
+Create date:
+23/Nov/10 08:33
+Update date:
+20/Nov/15 12:43
+Resolved date:
+26/Jul/11 20:34

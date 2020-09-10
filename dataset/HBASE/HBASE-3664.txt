@@ -1,0 +1,44 @@
+Summary:
+[replication] Adding a slave when there's none may kill the cluster
+Description:
+RSM logs all the new hlogs in memory but if there's no slave then it won't be added in zookeeper. This is a problem when a slave is finally added because the first time it logs the progress in ZK it will try to clean the old logs and will try to delete a bunch of znodes that don't exist. This throws a NoNodeException which is handled by aborting the region server. It looks like this:
+2011-03-17 17:38:29,832 INFO org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager: Removing 42 logs in the list: [sv2borg172%3A60020.1300351782310, sv2borg172%3A60020.1300352001486, sv2borg172%3A60020.1300352121367, sv2borg172%3A60020.1300352772392, sv2borg172%3A60020.1300354158262, sv2borg172%3A60020.1300355578566, sv2borg172%3A60020.1300356840451, sv2borg172%3A60020.1300358106115, sv2borg172%3A60020.1300359494020, sv2borg172%3A60020.1300360803514, sv2borg172%3A60020.1300362078570, sv2borg172%3A60020.1300363300908, sv2borg172%3A60020.1300364449495, sv2borg172%3A60020.1300365539396, sv2borg172%3A60020.1300366546548, sv2borg172%3A60020.1300367485952, sv2borg172%3A60020.1300368371234, sv2borg172%3A60020.1300369227069, sv2borg172%3A60020.1300370079940, sv2borg172%3A60020.1300370899710, sv2borg172%3A60020.1300371697355, sv2borg172%3A60020.1300372472873, sv2borg172%3A60020.1300373238890, sv2borg172%3A60020.1300374001201, sv2borg172%3A60020.1300374738469, sv2borg172%3A60020.1300375453876, sv2borg172%3A60020.1300376155468, sv2borg172%3A60020.1300376860049, sv2borg172%3A60020.1300377555922, sv2borg172%3A60020.1300378246690, sv2borg172%3A60020.1300378917995, sv2borg172%3A60020.1300379573664, sv2borg172%3A60020.1300380218543, sv2borg172%3A60020.1300380861201, sv2borg172%3A60020.1300381485824, sv2borg172%3A60020.1300381550415, sv2borg172%3A60020.1300381596287, sv2borg172%3A60020.1300381655746, sv2borg172%3A60020.1300381720905, sv2borg172%3A60020.1300382140669, sv2borg172%3A60020.1300382598288, sv2borg172%3A60020.1300383006771]
+2011-03-17 17:38:29,868 FATAL org.apache.hadoop.hbase.regionserver.HRegionServer: ABORTING region server serverName=sv2borg172,60020,1300351781748, load=(requests=3869, regions=526, usedHeap=4475, maxHeap=7973): Failed remove from list
+org.apache.zookeeper.KeeperException$NoNodeException: KeeperErrorCode = NoNode for /hbase/replication/rs/sv2borg172,60020,1300351781748/2/sv2borg172%3A60020.1300351782310
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:102)
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:42)
+at org.apache.zookeeper.ZooKeeper.delete(ZooKeeper.java:728)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.deleteNode(ZKUtil.java:959)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.deleteNode(ZKUtil.java:948)
+at org.apache.hadoop.hbase.replication.ReplicationZookeeper.removeLogFromList(ReplicationZookeeper.java:413)
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager.logPositionAndCleanOldLogs(ReplicationSourceManager.java:141)
+at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.run(ReplicationSource.java:332)
+If there's no slave, only the latest hlog should be kept in memory.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.1
+Fix_version:
+0.90.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+17/Mar/11 18:30
+Update date:
+20/Nov/15 12:41
+Resolved date:
+17/Mar/11 23:46

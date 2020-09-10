@@ -1,0 +1,41 @@
+Summary:
+HBA logs at info level errors that won't show in the shell
+Description:
+There is a weird interaction between the shell and HBA. When you try to close a region that doesn't exist, it doesn't throw any error:
+hbase(main):029:0> close_region 'thisisaninvalidregion'
+0 row(s) in 0.0580 seconds
+Normally one should get UnknownRegionException. Starting the shell with "-d" I see what a non-shell user would see along with a ton of logging from ZK (skipped here):
+INFO client.HBaseAdmin: No server in .META. for thisisaninvalidregion; pair=null
+But again this is not the right message, it should have shown
+INFO client.HBaseAdmin: No server in .META. for thisisaninvalidregion; pair=null
+And this is because that part of the code treats both UnknownRegionException and NoServerForRegionException like if it was the same thing.
+There is also some ugliness in flush, compact, and split but it normally doesn't show since the code treats everything like it's a table and sends a TableNotFoundException.
+This jira is about making sure that the exceptions are correctly coming out.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.90.6, 0.92.1, 0.94.1, 0.95.2
+Fix_version:
+0.94.2
+Component:
+shell
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+02/Oct/12 01:35
+Update date:
+07/Apr/13 05:07
+Resolved date:
+04/Oct/12 21:23

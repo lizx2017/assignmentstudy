@@ -1,0 +1,60 @@
+Summary:
+TIFF-files with FillOrder=2 can't be converted to PDF
+Description:
+I have issues with some TIFF-files that has the tag FillOrder=2 resulting in a corrupt PDF when trying to convert them with PDFBox. There's no warning or anything, but the resulting PDF can't be viewed.
+Example code to reproduce:
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.graphics.image.CCITTFactory;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+
+import java.io.File;
+import java.io.IOException;
+
+public class TiffFillOrder {
+ public static void main(String[] args) throws IOException {
+  PDDocument document = new PDDocument();
+  PDImageXObject tif = CCITTFactory.createFromFile(document, new File(args[0]));
+
+  PDPage page = new PDPage();
+  document.addPage(page);
+
+  PDPageContentStream content = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true);
+  content.drawImage(tif, 0, 0, PDRectangle.A4.getWidth(), PDRectangle.A4.getHeight());
+  content.close();
+
+  document.save(new File(args[1]));
+ }
+}
+I can't attach an example since it contains personal information, but found this in another jira-issue that has the same problem: https://issues.apache.org/jira/secure/attachment/12558110/Wing.tif
+It looks like TiffFaxDecoder has support for this, but the value 1 is always sent to the constructor and the tag for fillorder (266) is never parsed.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.10, 1.8.11, 2.0.0, (2)
+Fix_version:
+1.8.12, 2.0.1, 3.0.0 PDFBox
+Component:
+Rendering
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Christofer
+Create date:
+31/Mar/16 09:45
+Update date:
+03/Feb/19 20:43
+Resolved date:
+31/Mar/16 17:24

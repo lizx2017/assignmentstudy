@@ -1,0 +1,34 @@
+Summary:
+JVM Crashes on Windows x86
+Description:
+Under Windows (32 or 64 bit) with the 32-bit Oracle JDK, the JVM may crash due to EXCEPTION_ACCESS_VIOLATION. This happens inconsistently. The attached test project can recreate the crash - sometimes it works successfully, sometimes there's a Java exception in the log, and sometimes the hotspot JVM crash shows up (regardless of whether the JUnit test results in success - you can ignore that). Run it a bunch of times to see the various outcomes. It also contains a sample hotspot error log.
+Note that both when the Java exception is thrown and when the JVM crashes, the stack trace is almost the same - they both eventually occur when the PERIODIC-COMMIT-LOG-SYNCER thread calls CommitLogSegment.sync and accesses the buffer (MappedByteBuffer): if it happens to be in buffer.force(), then the Java exception is thrown, and if it's in one of the buffer.put() calls before it, then the JVM crashes. This possibly exposes a JVM bug as well in this case. So it basically looks like a race condition which results in the buffer sometimes being used after it is no longer valid.
+I recreated this on a PC with Windows 7 64-bit running the 32-bit Oracle JDK, as well as on a modern.ie virtualbox image of Windows 7 32-bit running the JDK, and it happens both with JDK 7 and JDK 8. Also defining an explicit dependency on cassandra 2.1.2 (as opposed to the cassandra-unit dependency on 2.1.0) doesn't make a difference. At some point in my testing I've also seen a Java-level exception on Linux, but I can't recreate it at the moment with this test project, so I can't guarantee it.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+None
+Label:
+None
+Environment:
+windows 7, java 1.8
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Amichai Rothman
+Create date:
+16/Feb/15 13:17
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/May/15 16:52

@@ -1,0 +1,62 @@
+Summary:
+Add CachingRAMDirectory
+Description:
+The directory is very simple and useful if you have an index that you
+know fully fits into available RAM. You could also use FileSwitchDir if
+you want to leave some files (eg stored fields or term vectors) on disk.
+It wraps any other Directory and delegates all writing (IndexOutput) to
+it, but for reading (IndexInput), it allocates a single byte[] and fully
+reads the file in and then serves requests off that single byte[]. It's
+more GC friendly than RAMDir since it only allocates a single array per
+file.
+It has a few nocommits still, but all tests pass if I wrap the delegate
+inside MockDirectoryWrapper using this.
+I tested with 1M Wikipedia english index (would like to test w/ 10M docs
+but I don't have enough RAM...); it seems to give a nice speedup:
+                Task    QPS base StdDev base  QPS cachedStdDev cached      Pct diff
+             Respell      197.00        7.27      203.19        8.17   -4% -   11%
+            PKLookup      121.12        2.80      125.46        3.20   -1% -    8%
+              Fuzzy2       66.62        2.62       69.91        2.85   -3% -   13%
+              Fuzzy1      206.20        6.47      222.21        6.52    1% -   14%
+       TermGroup100K      160.14        6.62      175.71        3.79    3% -   16%
+              Phrase       34.85        0.40       38.75        0.61    8% -   14%
+      TermBGroup100K      363.75       15.74      406.98       13.23    3% -   20%
+            SpanNear       53.08        1.11       59.53        2.94    4% -   20%
+    TermBGroup100K1P      222.53        9.78      252.86        5.96    6% -   21%
+        SloppyPhrase       70.36        2.05       79.95        4.48    4% -   23%
+            Wildcard      238.10        4.29      272.78        4.97   10% -   18%
+           OrHighMed      123.49        4.85      149.32        4.66   12% -   29%
+             Prefix3      288.46        8.10      350.40        5.38   16% -   26%
+          OrHighHigh       76.46        3.27       93.13        2.96   13% -   31%
+              IntNRQ       92.25        2.12      113.47        5.74   14% -   32%
+                Term      757.12       39.03      958.62       22.68   17% -   36%
+         AndHighHigh      103.03        4.48      133.89        3.76   21% -   39%
+          AndHighMed      376.36       16.58      493.99       10.00   23% -   40%
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/store
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+08/Jun/12 16:46
+Update date:
+06/Sep/12 18:45
+Resolved date:
+

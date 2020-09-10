@@ -1,0 +1,75 @@
+Summary:
+Problem with creating image for pdf created from Word, CutePDF
+Description:
+Our application has a web service that needs to convert the first page of a pdf document to a image resized image. I'm using the snapshot version 2.0.0 of pdfbox to accomplish this. This works for some pdf documents, but when I create a pdf document from Microsoft Word 2013 or CutePDF, it fails to generate the resized image.
+The final image displayed is this symbol: ÿØ
+and this is the information displayed in the logs.
+2014-05-14 17:29:45,662 DEBUG [http-bio-8080-exec-5] (TTFGlyph2D.java:227) - ABCDEE+Calibri: Glyph not found:3
+2014-05-14 17:29:45,663 DEBUG [http-bio-8080-exec-5] (PDFStreamEngine.java:246) - processing substream token: PDFOperator
+{ET}
+2014-05-14 17:29:45,663 DEBUG [http-bio-8080-exec-5] (PDFStreamEngine.java:246) - processing substream token: PDFOperator
+{BT}
+2014-05-14 17:29:45,663 DEBUG [http-bio-8080-exec-5] (PDFStreamEngine.java:246) - processing substream token: COSInt
+{1}
+2014-05-14 17:29:45,663 DEBUG [http-bio-8080-exec-5] (PDFStreamEngine.java:246) - processing substream token: COSInt{0}
+2014-05-14 17:29:45,663 DEBUG [http-bio-8080-exec-5] (PDFStreamEngine.java:246) - processing substream token: COSInt{0}
+2014-05-14 17:29:45,663 DEBUG [http-bio-8080-exec-5] (PDFStreamEngine.java:246) - processing substream token: COSInt{1}
+2014-05-14 17:29:45,663 DEBUG [http-bio-8080-exec-5] (PDFStreamEngine.java:246) - processing substream token: COSFloat
+{72.024}
+2014-05-14 17:29:45,664 DEBUG [http-bio-8080-exec-5] (PDFStreamEngine.java:246) - processing substream token: COSFloat
+{684.1}
+2014-05-14 17:29:45,664 DEBUG [http-bio-8080-exec-5] (PDFStreamEngine.java:246) - processing substream token: PDFOperator
+{Tm}
+2014-05-14 17:29:45,664 DEBUG [http-bio-8080-exec-5] (PDFStreamEngine.java:246) - processing substream token: COSArray{[COSString{ }]}
+2014-05-14 17:29:45,664 DEBUG [http-bio-8080-exec-5] (PDFStreamEngine.java:246) - processing substream token: PDFOperator
+{TJ}
+2014-05-14 17:29:45,664 DEBUG [http-bio-8080-exec-5] (Encoding.java:242) - No character for name space
+2014-05-14 17:29:45,665 DEBUG [http-bio-8080-exec-5] (TTFGlyph2D.java:227) - ABCDEE+Calibri: Glyph not found:3
+I tried changing the fonts in Word and also tried using CutePDF to generate the PDF document, but still see the wrong output. Our application receives pdfs from different sources and we have no control as to how the pdf is generated.
+Here is the snippet of the code I use.
+PDDocument pdf = PDDocument.loadNonSeq(new File(orginalFileName), null);
+PDFRenderer renderer = new PDFRenderer(pdf);
+// create the image
+BufferedImage image = renderer.renderImageWithDPI(0, 96, ImageType.RGB);
+BufferedImage scaledImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+Graphics2D graphics2D = scaledImage.createGraphics();
+graphics2D.setRenderingHint(RenderingHints.KEY_INTERPOLATION,RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+graphics2D.drawImage(image, 0, 0, width, height, null);
+graphics2D.dispose();
+ByteArrayOutputStream baos = new ByteArrayOutputStream();
+ImageIO.write(scaledImage, "jpg", baos);
+baos.flush();
+baos.close();
+pdf.close();
+return baos;
+If I write image to the buffered output stream,I get the original image, but it fails when I use the resized image.
+Please let me know if there is something I'm missing or if I should be using a different method to create the image. The pdf that I use is attached.
+Divya
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Invalid
+Affects_version:
+2.0.0
+Fix_version:
+None
+Component:
+Rendering
+Label:
+None
+Environment:
+windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Divya George
+Create date:
+20/May/14 16:47
+Update date:
+20/May/14 19:39
+Resolved date:
+20/May/14 19:39

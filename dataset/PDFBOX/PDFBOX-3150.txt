@@ -1,0 +1,56 @@
+Summary:
+IllegalArgumentException in getStringWidth/showText
+Description:
+I want to get the string width using a Type0 font. Because I'm using a character not in the font (e.g. '\n') I'm getting the following exception:
+Exception in thread "main" java.lang.IllegalArgumentException: No glyph for U+000A in font OpenSans
+ at org.apache.pdfbox.pdmodel.font.PDCIDFontType2.encode(PDCIDFontType2.java:401)
+ at org.apache.pdfbox.pdmodel.font.PDType0Font.encode(PDType0Font.java:351)
+ at org.apache.pdfbox.pdmodel.font.PDFont.encode(PDFont.java:283)
+ at org.apache.pdfbox.pdmodel.font.PDFont.getStringWidth(PDFont.java:312)
+As this is a quite common scenario, I suggest you provide a possibility to provide a fallback codepoint that can be used for all non-printable characters.
+A similiar exception happens when trying to print the text via the PDPageContentStream:
+Exception in thread "main" java.lang.IllegalArgumentException: No glyph for U+000A in font OpenSans
+ at org.apache.pdfbox.pdmodel.font.PDCIDFontType2.encode(PDCIDFontType2.java:401)
+ at org.apache.pdfbox.pdmodel.font.PDType0Font.encode(PDType0Font.java:351)
+ at org.apache.pdfbox.pdmodel.font.PDFont.encode(PDFont.java:283)
+ at org.apache.pdfbox.pdmodel.PDPageContentStream.showText(PDPageContentStream.java:341)
+I finally ended up creating my own "font.encode" method (with a lot of other hacks) that basically does the following:
+   final byte [] aFallbackBytes = aFont.encode (nFallbackCodepoint);
+       byte [] aCPBytes;
+      try
+      {
+        // This method is package private
+        aCPBytes = aFont.encode (nCP);
+      }
+      catch (final IllegalArgumentException ex) {
+        aCPBytes = aFallbackBytes;
+      }
+-> another issue is, that "PDFont.encode (int)" is not public - it would help to change this as well. Shall I create a separate issue?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+2.0.0
+Fix_version:
+None
+Component:
+PDModel
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+John Hewson
+Reporter:
+Philip Helger
+Create date:
+02/Dec/15 13:48
+Update date:
+11/Dec/15 19:54
+Resolved date:
+02/Dec/15 17:25

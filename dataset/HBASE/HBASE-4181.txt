@@ -1,0 +1,68 @@
+Summary:
+HConnectionManager can't find cached HRegionInterface which makes client very slow
+Description:
+HRegionInterface getHRegionConnection(final String hostname,
+final int port, final InetSocketAddress isa, final boolean master)
+throws IOException
+/////////////////////////
+String rsName = isa != null ? isa.toString() : Addressing
+.createHostAndPortStr(hostname, port);
+////here,if isa is null, the Addressing created a address like "node41:60010"
+////should use "isa.toString():new InetSocketAddress(hostname, port).toString();"
+////instead of "Addressing.createHostAndPortStr(hostname, port);"
+server = this.servers.get(rsName);
+if (server == null) {
+// create a unique lock for this RS (if necessary)
+this.connectionLock.putIfAbsent(rsName, rsName);
+// get the RS lock
+synchronized (this.connectionLock.get(rsName)) {
+// do one more lookup in case we were stalled above
+server = this.servers.get(rsName);
+if (server == null) {
+try {
+if (clusterId.hasId())
+{ conf.set(HConstants.CLUSTER_ID, clusterId.getId()); }
+// Only create isa when we need to.
+InetSocketAddress address = isa != null ? isa
+: new InetSocketAddress(hostname, port);
+// definitely a cache miss. establish an RPC for this RS
+server = (HRegionInterface) HBaseRPC.waitForProxy(
+serverInterfaceClass, HRegionInterface.VERSION, address,
+this.conf, this.maxRPCAttempts, this.rpcTimeout,
+this.rpcTimeout);
+this.servers.put(address.toString(), server);
+////but here address.toString() send an address like "node41/10.61.2l.171:60010
+////so this method can never get cached address and make client request very slow due to it's synchronized.
+} catch (RemoteException e)
+{ LOG.warn("RemoteException connecting to RS", e); // Throw what the RemoteException was carrying. throw RemoteExceptionHandler.decodeRemoteException(e); }
+}
+}
+///////////////////////
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+Client
+Label:
+HConnectionManager
+Environment:
+
+Attachment number:
+0
+Assignee:
+Liu Jia
+Reporter:
+Liu Jia
+Create date:
+09/Aug/11 02:51
+Update date:
+20/Nov/15 11:54
+Resolved date:
+09/Aug/11 16:24

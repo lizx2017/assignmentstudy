@@ -1,0 +1,78 @@
+Summary:
+PDFCheckbox NPE
+Description:
+PDF parsing fails for attached PDF.
+Stack trace of failure:
+Exception in thread "main" org.apache.tika.exception.TikaException: Unexpected RuntimeException from org.apache.tika.parser.pdf.PDFParser@1747c
+ at org.apache.tika.parser.CompositeParser.parse(CompositeParser.java:244)
+ at org.apache.tika.parser.CompositeParser.parse(CompositeParser.java:242)
+ at org.apache.tika.parser.AutoDetectParser.parse(AutoDetectParser.java:120)
+ at com.sabax.extraction.FileExtractionHandler.getFileData(FileExtractionHandler.java:145)
+ at GenerateIndex.main(GenerateIndex.java:59)
+ at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+ at sun.reflect.NativeMethodAccessorImpl.invoke(Unknown Source)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+ at java.lang.reflect.Method.invoke(Unknown Source)
+ at com.intellij.rt.execution.application.AppMain.main(AppMain.java:134)
+Caused by: java.lang.NullPointerException
+ at org.apache.pdfbox.pdmodel.interactive.form.PDCheckbox.getOnValue(PDCheckbox.java:141)
+ at org.apache.pdfbox.pdmodel.interactive.form.PDCheckbox.isChecked(PDCheckbox.java:79)
+ at org.apache.pdfbox.pdmodel.interactive.form.PDRadioCollection.getValue(PDRadioCollection.java:128)
+ at org.apache.tika.parser.pdf.PDF2XHTML.addFieldString(PDF2XHTML.java:507)
+ at org.apache.tika.parser.pdf.PDF2XHTML.processAcroField(PDF2XHTML.java:461)
+ at org.apache.tika.parser.pdf.PDF2XHTML.processAcroField(PDF2XHTML.java:479)
+ at org.apache.tika.parser.pdf.PDF2XHTML.extractAcroForm(PDF2XHTML.java:447)
+ at org.apache.tika.parser.pdf.PDF2XHTML.endDocument(PDF2XHTML.java:195)
+ at org.apache.pdfbox.util.PDFTextStripper.writeText(PDFTextStripper.java:341)
+ at org.apache.tika.parser.pdf.PDF2XHTML.process(PDF2XHTML.java:106)
+ at org.apache.tika.parser.pdf.PDFParser.parse(PDFParser.java:143)
+ at org.apache.tika.parser.CompositeParser.parse(CompositeParser.java:242)
+ ... 9 more
+Sample code use to parse
+TikaInputStream tikaStream = TikaInputStream.get(stream);
+    TikaResultWrapper result;
+    try {
+      long streamSize = tikaStream.getLength();
+      Metadata metadata =
+        constructMetadata(fileName, mimeType, streamSize);
+      if (streamSize < maxFileSize) {
+        SamplingSaxHandler handler =
+          new SamplingSaxHandler(samplingSize, metadata);
+        handler.setBufferLimit(bufferSize);
+        parser.parse(tikaStream, handler, metadata, new ParseContext());
+        result = handler.getResult();
+      } else {
+        result = new TikaResultWrapper(null, metadata);
+      }
+    } finally {
+      tikaStream.close();
+    }
+    return result;
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+1.8.4
+Fix_version:
+1.8.7
+Component:
+Parsing
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Mohmed
+Create date:
+17/Jul/14 21:17
+Update date:
+22/Jul/14 20:39
+Resolved date:
+22/Jul/14 20:30

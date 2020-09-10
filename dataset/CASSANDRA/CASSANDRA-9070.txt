@@ -1,0 +1,40 @@
+Summary:
+Race in cancelling compactions
+Description:
+seems we might have a race situation when cancelling compactions
+currently we do the following to ensure that we don't start any new compactions when we try to do markAllCompacting()
+pause compactions - this makes sure we don't create any new compaction tasks from the compaction strategies
+cancel any ongoing compactions - compactions register themselves with the CompactionMetrics and then, when cancelling we get all compactions here, and tell them to stop
+Problem is that there is a window between when the CompactionTask is created and when it is registered in CompactionMetrics meaning with a bit of bad luck, we could have a situation like this:
+we finish a compaction and create a new CompactionTask from the compaction strategy
+we pause the compaction strategies to not create any new CompactionTasks
+we cancel all ongoing compactions
+The CompactionTask created in #1 above registers itself in CompactionMetrics and misses that it should be cancelled
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Marcus Eriksson
+Create date:
+30/Mar/15 12:01
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Apr/15 12:44

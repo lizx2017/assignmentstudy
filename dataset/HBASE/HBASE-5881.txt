@@ -1,0 +1,59 @@
+Summary:
+BuiltIn Gzip compressor & decompressor not getting pooled, leading to native memory leak
+Description:
+This issue will occur only in hadoop 23.x & above/
+In hadoop 0.20.x
+public static void returnDecompressor(Decompressor decompressor) {
+    if (decompressor == null) {
+      return;
+    }
+    decompressor.reset();
+    payback(decompressorPool, decompressor);
+  }
+In hadoop 0.23.x
+  public static void returnDecompressor(Decompressor decompressor) {
+    if (decompressor == null) {
+      return;
+    }
+    // if the decompressor can't be reused, don't pool it.
+    if (decompressor.getClass().isAnnotationPresent(DoNotPool.class)) {
+      return;
+    }
+    decompressor.reset();
+    payback(decompressorPool, decompressor);
+  }
+Here annotation has been added. By default this library will be loaded if there are no native library.
+@DoNotPool
+public class BuiltInGzipDecompressor
+Due to this each time new compressor/decompressor will be loaded, this leads to native memory leak.
+2012-04-25 22:11:48,093 INFO org.apache.hadoop.io.compress.CodecPool: Got brand-new decompressor [.gz]
+2012-04-25 22:11:48,093 INFO org.apache.hadoop.io.compress.CodecPool: Got brand-new decompressor [.gz]
+2012-04-25 22:11:48,093 INFO org.apache.hadoop.io.compress.CodecPool: Got brand-new decompressor [.gz]
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Not A Problem
+Affects_version:
+0.92.1
+Fix_version:
+0.92.3
+Component:
+io
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Gopinathan A
+Create date:
+26/Apr/12 05:35
+Update date:
+22/Apr/15 00:46
+Resolved date:
+22/Apr/15 00:46

@@ -1,0 +1,36 @@
+Summary:
+TestHLog is dependent on the execution order
+Description:
+Changing the execution order of the tests, TestHLog show up as failing
+<runOrder>alphabetical</runOrder>
+testAppendClose() changes the DFS cluster of the test (set globally) so the tests executed after has the new DFS. Trying to start a new mini cluster for every test @Before seems to solve the problem.
+testSplit(org.apache.hadoop.hbase.regionserver.wal.TestHLog): 3 exceptions [org.apache.hadoop.ipc.RemoteException(org.apache.hadoop.hdfs.server.namenode.LeaseExpiredException): No lease on /user/th30z/hbase/TestHLog/21985ea121a1d65fa82d90d521be7313/recovered.edits/0000000000000000001.temp File is not open for writing. Holder DFSClient_NONMAPREDUCE_1044150136_583 does not have any open files.
+Looking at testSplit() the failure seems to be in logSplitter.splitLog(), OutputSink.finishWritingAndClose() is not able to close the files and rethrow the exception.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.5, 0.95.0
+Fix_version:
+0.98.0, 0.94.6, 0.95.0
+Component:
+test, wal
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Matteo Bertozzi
+Reporter:
+Matteo Bertozzi
+Create date:
+11/Mar/13 20:00
+Update date:
+18/Sep/13 23:52
+Resolved date:
+11/Mar/13 23:49

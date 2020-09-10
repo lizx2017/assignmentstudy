@@ -1,0 +1,35 @@
+Summary:
+Anticompaction hangs on bloom filter bitset serialization
+Description:
+I tried running an incremental repair against a 15-node vnode-cluster with roughly 500GB data running on 2.1.3-SNAPSHOT, without performing the suggested migration steps. I manually chose a small range for the repair (using --start/end-token). The actual repair part took almost no time at all, but the anticompactions took a lot of time (not surprisingly).
+Obviously, this might not be the ideal way to run incremental repairs, but I wanted to look into what made the whole process so slow. The results were rather surprising. The majority of the time was spent serializing bloom filters.
+The reason seemed to be two-fold. First, the bloom-filters generated were huge (probably because the original SSTables were large). With a proper migration to incremental repairs, I'm guessing this would not happen. Secondly, however, the bloom filters were being written to the output one byte at a time (with quite a few type-conversions on the way) to transform the little-endian in-memory representation to the big-endian on-disk representation.
+I have implemented a solution where big-endian is used in-memory as well as on-disk, which obviously makes de-/serialization much, much faster. This introduces some slight overhead when checking the bloom filter, but I can't see how that would be problematic. An obvious alternative would be to still perform the serialization/deserialization using a byte array, but perform the byte-order swap there.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gustav Munkby
+Reporter:
+Gustav Munkby
+Create date:
+27/Mar/15 19:35
+Update date:
+16/Apr/19 09:31
+Resolved date:
+06/May/15 16:31

@@ -1,0 +1,65 @@
+Summary:
+PDVariableText text color changes to be the same as the background color after flattening
+Description:
+PDVariableText text color changes to be the same as the background color after flattening. This effectively makes the text hidden and appear to be lost.
+This includes field types such as ListBox and TextField. I don't believe I have tested a combo box.
+For example:
+        try(PDDocument pdfDocument = PDDocument.load(new File("/Users/travis/Desktop/fdpAttachment2.pdf"))) {
+
+            final PDDocumentCatalog docCatalog = pdfDocument.getDocumentCatalog();
+            final PDAcroForm acroForm = docCatalog.getAcroForm();
+
+            final PDField textField = acroForm.getField("Subaward Number");
+            textField.setValue("12345");
+
+            final PDField listBoxField = acroForm.getField("Contact for carryforward");
+            listBoxField.setValue("Administrative Contact");
+
+
+            //when flattening with refreshAppearances, a NPE will occur if each widget doesn't have a
+            //PDAppearanceDictionary instance with a normal PDAppearanceEntry instance set PDFBOX-3751
+            pdfDocument.getDocumentCatalog().getAcroForm().getFields()
+                    .stream()
+                    .flatMap(f -> f.getWidgets().stream())
+                    .filter(w -> w.getAppearance() == null)
+                    .forEach(w -> {
+                        final PDAppearanceDictionary appearance = new PDAppearanceDictionary(new COSDictionary());
+                        appearance.setNormalAppearance(new PDAppearanceEntry(new COSDictionary()));
+                        w.setAppearance(appearance);
+                    });
+
+pdfDocument.getDocumentCatalog().getAcroForm().flatten(pdfDocument.getDocumentCatalog().getAcroForm().getFields(), true);
+            pdfDocument.save("/Users/travis/Desktop/fdpAttachment2-example-flattened.pdf");
+        }
+Notice in the attached fdpAttachment2-example-flattened.pdf, the fields are correctly set but the text is not visible.
+If I execute the same code but do not flatten, the text is visible for certain field types in certain pdf viewers. See attached fdpAttachment2-example-not-flattened.pdf
+In Adobe Acrobat Reader DC build 15.23.20056.213124 the "Subaward Number" field shows up but only when clicking on the field. When using the Preview app in MacOS Sierra, it is visible. In both apps the "Contact for carryforward" list box shows the text "Administrative Contact"
+As a side note I wonder if the behavior of the "Subaward Number" in relation to different pdf views may be related to a difference problem. I think the real issue here is the text color.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.5
+Fix_version:
+2.0.6, 3.0.0 PDFBox
+Component:
+AcroForm
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Maruan Sahyoun
+Reporter:
+Travis Schneeberger
+Create date:
+12/Apr/17 13:31
+Update date:
+08/Jun/17 16:25
+Resolved date:
+05/May/17 14:17

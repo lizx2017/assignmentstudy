@@ -1,0 +1,43 @@
+Summary:
+HBase rpm packing is broken at multiple places
+Description:
+Here is how I executed rpm build:
+MAVEN_OPTS="-Xmx2g" mvn clean package assembly:single -Prpm -DskipTests
+The issues with the rpm build are:
+There is no clean (%clean) section in the hbase.spec file . Last run can leave stuff in RPM_BUILD_ROOT which in turn will fail build. As a fix I added 'rm -rf $RPM_BUILD_ROOT' to %clean section
+The Buildroot is set to _build_dir . The build fails with this error.
+cp: cannot copy a directory, `/data/9adda425-1f1e-4fe5-8a53-83bd2ce5ad45/app/jenkins/workspace/hbase.92/target/rpm/hbase/BUILD', into itself, `/data/9adda425-1f1e-4fe5-8a53-83bd2ce5ad45/app/jenkins/workspace/hbase.92/target/rpm/hbase/BUILD/BUILD'
+If we set it to ' %{_tmppath}/%
+{name}
+-%
+{version}
+-root' build passes
+The src/packages/update-hbase-env.sh script will leave inconsistent state if 'yum update hbase' is executed. It deletes data from /etc/init.d/hbase* and does not put scripts back during update.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+0.92.1
+Fix_version:
+None
+Component:
+build
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Shrijeet Paliwal
+Create date:
+20/Apr/12 18:16
+Update date:
+11/Apr/15 01:27
+Resolved date:
+11/Apr/15 01:27

@@ -1,0 +1,67 @@
+Summary:
+Cluster is non operative if the RS carrying -ROOT- is expiring after deleting -ROOT- region transition znode and before adding it to online regions.
+Description:
+When we check whether the dead region is carrying root or meta, first we will check any transition znode for the region is there or not. In this case it got deleted. So from zookeeper we cannot find the region location.
+    try {
+      data = ZKAssign.getData(master.getZooKeeper(), hri.getEncodedName());
+    } catch (KeeperException e) {
+      master.abort("Unexpected ZK exception reading unassigned node for region="
+        + hri.getEncodedName(), e);
+    }
+Now we will check from the AssignmentManager whether its in online regions or not
+    ServerName addressFromAM = getRegionServerOfRegion(hri);
+    boolean matchAM = (addressFromAM != null &&
+      addressFromAM.equals(serverName));
+    LOG.debug("based on AM, current region=" + hri.getRegionNameAsString() +
+      " is on server=" + (addressFromAM != null ? addressFromAM : "null") +
+      " server being checked: " + serverName);
+From AM we will get null because while adding region to online regions we will check whether the RS is in onlineservers or not and if not we will not add the region to online regions.
+      if (isServerOnline(sn)) {
+        this.regions.put(regionInfo, sn);
+        addToServers(sn, regionInfo);
+        this.regions.notifyAll();
+      } else {
+        LOG.info("The server is not in online servers, ServerName=" + 
+          sn.getServerName() + ", region=" + regionInfo.getEncodedName());
+      }
+Even though the dead regionserver carrying ROOT region, its returning false. After that ROOT region never assigned.
+Here are the logs
+2013-11-11 18:04:14,730 INFO org.apache.hadoop.hbase.catalog.RootLocationEditor: Unsetting ROOT region location in ZooKeeper
+2013-11-11 18:04:14,775 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan was found (or we are ignoring an existing plan) for -ROOT-,,0.70236052 so generated a random one; hri=-ROOT-,,0.70236052, src=, dest=HOST-10-18-40-69,60020,1384173244404; 1 (online=1, available=1) available servers
+2013-11-11 18:04:14,809 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region -ROOT-,,0.70236052 to HOST-10-18-40-69,60020,1384173244404
+2013-11-11 18:04:18,375 DEBUG org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: Looked up root region location, connection=org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@12133926; serverName=HOST-10-18-40-69,60020,1384173244404
+2013-11-11 18:04:26,213 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=HOST-10-18-40-69,60020,1384173244404, region=70236052/-ROOT-
+2013-11-11 18:04:26,213 INFO org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Handling OPENED event for -ROOT-,,0.70236052 from HOST-10-18-40-69,60020,1384173244404; deleting unassigned node
+2013-11-11 18:04:31,553 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: based on AM, current region=-ROOT-,,0.70236052 is on server=null server being checked: HOST-10-18-40-69,60020,1384173244404
+2013-11-11 18:04:31,561 DEBUG org.apache.hadoop.hbase.master.ServerManager: Added=HOST-10-18-40-69,60020,1384173244404 to dead servers, submitted shutdown handler to be executed, root=false, meta=false
+2013-11-11 18:04:32,323 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: The znode of region -ROOT-,,0.70236052 has been deleted.
+2013-11-11 18:04:32,323 INFO org.apache.hadoop.hbase.master.AssignmentManager: The server is not in online servers, ServerName=HOST-10-18-40-69,60020,1384173244404, region=70236052
+2013-11-11 18:04:32,323 INFO org.apache.hadoop.hbase.master.AssignmentManager: The master has opened the region -ROOT-,,0.70236052 that was online on HOST-10-18-40-69,60020,1384173244404
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.94.11
+Fix_version:
+None
+Component:
+Region Assignment
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+rajeshbabu
+Create date:
+14/Nov/13 05:48
+Update date:
+16/Nov/16 21:48
+Resolved date:
+16/Nov/16 21:48

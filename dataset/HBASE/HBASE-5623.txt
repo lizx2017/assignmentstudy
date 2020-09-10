@@ -1,0 +1,73 @@
+Summary:
+Race condition when rolling the HLog and hlogFlush
+Description:
+When doing a ycsb test with a large number of handlers (regionserver.handler.count=60), I get the following exceptions:
+Caused by: org.apache.hadoop.ipc.RemoteException: java.io.IOException: java.lang.NullPointerException
+ at org.apache.hadoop.io.SequenceFile$Writer.getLength(SequenceFile.java:1099)
+ at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogWriter.getLength(SequenceFileLogWriter.java:314)
+ at org.apache.hadoop.hbase.regionserver.wal.HLog.syncer(HLog.java:1291)
+ at org.apache.hadoop.hbase.regionserver.wal.HLog.sync(HLog.java:1388)
+ at org.apache.hadoop.hbase.regionserver.HRegion.doMiniBatchPut(HRegion.java:2192)
+ at org.apache.hadoop.hbase.regionserver.HRegion.put(HRegion.java:1985)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.multi(HRegionServer.java:3400)
+ at sun.reflect.GeneratedMethodAccessor17.invoke(Unknown Source)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Server.call(WritableRpcEngine.java:366)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1351)
+
+ at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:920)
+ at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Invoker.invoke(WritableRpcEngine.java:152)
+ at $Proxy1.multi(Unknown Source)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation$3$1.call(HConnectionManager.java:1691)
+ at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation$3$1.call(HConnectionManager.java:1689)
+ at org.apache.hadoop.hbase.client.ServerCallable.withoutRetries(ServerCallable.java:214)
+and
+ java.lang.NullPointerException
+  at org.apache.hadoop.io.SequenceFile$Writer.checkAndWriteSync(SequenceFile.java:1026)
+  at org.apache.hadoop.io.SequenceFile$Writer.append(SequenceFile.java:1068)
+  at org.apache.hadoop.io.SequenceFile$Writer.append(SequenceFile.java:1035)
+  at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogWriter.append(SequenceFileLogWriter.java:279)
+  at org.apache.hadoop.hbase.regionserver.wal.HLog$LogSyncer.hlogFlush(HLog.java:1237)
+  at org.apache.hadoop.hbase.regionserver.wal.HLog.syncer(HLog.java:1271)
+  at org.apache.hadoop.hbase.regionserver.wal.HLog.sync(HLog.java:1391)
+  at org.apache.hadoop.hbase.regionserver.HRegion.doMiniBatchPut(HRegion.java:2192)
+  at org.apache.hadoop.hbase.regionserver.HRegion.put(HRegion.java:1985)
+  at org.apache.hadoop.hbase.regionserver.HRegionServer.multi(HRegionServer.java:3400)
+  at sun.reflect.GeneratedMethodAccessor33.invoke(Unknown Source)
+  at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+  at java.lang.reflect.Method.invoke(Method.java:597)
+  at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Server.call(WritableRpcEngine.java:366)
+  at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1351)
+It seems the root cause of the issue is that we open a new log writer and close the old one at HLog#rollWriter() holding the updateLock, but the other threads doing syncer() calls
+ 
+logSyncerThread.hlogFlush(this.writer);
+without holding the updateLock. LogSyncer only synchronizes against concurrent appends and flush(), but not on the passed writer, which can be closed already by rollWriter(). In this case, since SequenceFile#Writer.close() sets it's out field as null, we get the NPE.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.0
+Fix_version:
+0.94.0
+Component:
+wal
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Enis Soztutar
+Reporter:
+Enis Soztutar
+Create date:
+23/Mar/12 01:22
+Update date:
+12/Oct/12 05:35
+Resolved date:
+26/Mar/12 20:43

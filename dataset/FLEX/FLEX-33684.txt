@@ -1,0 +1,69 @@
+Summary:
+Only one 'custom' text entry can be enterred in a spark ComboBox
+Description:
+The spark combobox allows the user to enter a 'custom' text entry, ie an entry which doesn't match any label from the data provider.
+However, the first such 'custom' item entered appears to get stuck in the control, until an item from the list is selected.
+Steps to reproduce:
+Compile and run the following simple application:
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx">
+<s:Group>
+<s:layout><s:HorizontalLayout /></s:layout>
+<s:ComboBox id="myCombo" width="200" >
+<s:dataProvider>
+<mx:ArrayList>
+<fx:String>test1</fx:String>
+<fx:String>test2</fx:String>
+<fx:String>test3</fx:String>
+</mx:ArrayList>
+</s:dataProvider>
+</s:ComboBox>
+<s:TextInput id="myText" width="200" />
+</s:Group>
+</s:WindowedApplication>
+Click in the combo box and type "abc"
+Tab out of the control or click in the text input to change the focus.
+Click in the combo box again, and now type "xyz"
+Tab out of the control again or click in the text input to change the focus.
+Actual: The text input control of the combo box now contains "abc"
+Expected: The text input control of the combo box should contain "xyz"
+I wrote a short patch for this, but it is by no means a proper or long term solution:
+public class PatchedComboBox extends ComboBox
+{
+public function TestComboOverride()
+{ super(); }
+override protected function focusOutHandler(event:FocusEvent):void
+{ applySelection(); super.focusOutHandler(event); }
+}
+The problem doesn't really lie with the handling of the focus out event, but rather, I believe, with a bug fix for a different though related issue (see ComboBox.as @ 895):
+The setSelectedIndex method is overwritten to handle a special series of events which may cause the selection of an item to be ignored. However, this fix ignores the fact that the user may have entered a second text value.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Apache Flex 4.9.0, (
+Fix_version:
+Apache Flex 4.10.0
+Component:
+Spark: ComboBox
+Label:
+None
+Environment:
+Windows 7, Intel i5, 4GB RAM
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+david bel
+Create date:
+27/Aug/13 15:00
+Update date:
+16/Dec/15 14:23
+Resolved date:
+

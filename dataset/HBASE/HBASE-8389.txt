@@ -1,0 +1,49 @@
+Summary:
+HBASE-8354 forces Namenode into loop with lease recovery requests
+Description:
+We ran hbase 0.94.3 patched with 8354 and observed too many outstanding lease recoveries because of the short retry interval of 1 second between lease recoveries.
+The namenode gets into the following loop:
+1) Receives lease recovery request and initiates recovery choosing a primary datanode every second
+2) A lease recovery is successful and the namenode tries to commit the block under recovery as finalized - this takes < 10 seconds in our environment since we run with tight HDFS socket timeouts.
+3) At step 2), there is a more recent recovery enqueued because of the aggressive retries. This causes the committed block to get preempted and we enter a vicious cycle
+So we do, <initiate_recovery> --> <commit_block> --> <commit_preempted_by_another_recovery>
+This loop is paused after 300 seconds which is the "hbase.lease.recovery.timeout". Hence the MTTR we are observing is 5 minutes which is terrible. Our ZK session timeout is 30 seconds and HDFS stale node detection timeout is 20 seconds.
+Note that before the patch, we do not call recoverLease so aggressively - also it seems that the HDFS namenode is pretty dumb in that it keeps initiating new recoveries for every call. Before the patch, we call recoverLease, assume that the block was recovered, try to get the file, it has zero length since its under recovery, we fail the task and retry until we get a non zero length. So things just work.
+Fixes:
+1) Expecting recovery to occur within 1 second is too aggressive. We need to have a more generous timeout. The timeout needs to be configurable since typically, the recovery takes as much time as the DFS timeouts. The primary datanode doing the recovery tries to reconcile the blocks and hits the timeouts when it tries to contact the dead node. So the recovery is as fast as the HDFS timeouts.
+2) We have another issue I report in HDFS 4721. The Namenode chooses the stale datanode to perform the recovery (since its still alive). Hence the first recovery request is bound to fail. So if we want a tight MTTR, we either need something like HDFS 4721 or we need something like this
+recoverLease(...)
+sleep(1000)
+recoverLease(...)
+sleep(configuredTimeout)
+recoverLease(...)
+sleep(configuredTimeout)
+Where configuredTimeout should be large enough to let the recovery happen but the first timeout is short so that we get past the moot recovery in step #1.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.8
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Varun Sharma
+Reporter:
+Varun Sharma
+Create date:
+21/Apr/13 17:35
+Update date:
+09/Mar/14 06:25
+Resolved date:
+15/May/13 06:26

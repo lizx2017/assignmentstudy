@@ -1,0 +1,51 @@
+Summary:
+Hang on DFSOS#flushInternal for minutes after regionserver crash
+Description:
+After an exception that forced an HRegionServer to shut down, I'm seeing it hang in the following method for at least a few minutes:
+"regionserver/0:0:0:0:0:0:0:0:60020" prio=10 tid=0x00002aaaf41a9000 nid=0x10f6 in Object.wait() [0x00000000422dd000..0x00000000422ddb10]
+java.lang.Thread.State: WAITING (on object monitor)
+at java.lang.Object.wait(Native Method)
+at java.lang.Object.wait(Object.java:485)
+at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.flushInternal(DFSClient.java:3025)
+locked <0x00002aaad8fa2410> (a java.util.LinkedList)
+locked <0x00002aaad8fa2078> (a org.apache.hadoop.hdfs.DFSClient$DFSOutputStream)
+at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.closeInternal(DFSClient.java:3105)
+locked <0x00002aaad8fa2078> (a org.apache.hadoop.hdfs.DFSClient$DFSOutputStream)
+at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.close(DFSClient.java:3054)
+at org.apache.hadoop.fs.FSDataOutputStream$PositionCache.close(FSDataOutputStream.java:61)
+at org.apache.hadoop.fs.FSDataOutputStream.close(FSDataOutputStream.java:86)
+at org.apache.hadoop.io.SequenceFile$Writer.close(SequenceFile.java:959)
+locked <0x00002aaad8fa1f10> (a org.apache.hadoop.io.SequenceFile$Writer)
+at org.apache.hadoop.hbase.regionserver.HLog.close(HLog.java:431)
+locked <0x00002aaab378b290> (a java.lang.Integer)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:498)
+at java.lang.Thread.run(Thread.java:619)
+I believe the file system may have been closed and thus there is trouble flushing the HLog. The HLog should be pro actively closed before shutdown begins, to maximize the chances of it surviving the crash.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+0.19.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ben Maurer
+Create date:
+28/Feb/09 17:34
+Update date:
+07/Dec/10 20:56
+Resolved date:
+07/Dec/10 20:56

@@ -1,0 +1,49 @@
+Summary:
+Restore Commitlogs throws exception on startup on trunk
+Description:
+Running Cassandra from trunk, restoring commitlogs generated from trunk throws the following exception:
+ERROR [main] 2014-11-11 13:47:14,738 CassandraDaemon.java:482 - Exception encountered during startup
+java.lang.IllegalStateException: Unsupported commit log version: 5
+        at org.apache.cassandra.db.commitlog.CommitLogArchiver.maybeRestoreArchive(CommitLogArchiver.java:215) ~[main/:na]
+        at org.apache.cassandra.db.commitlog.CommitLog.recover(CommitLog.java:116) ~[main/:na]
+        at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:300) [main/:na]
+        at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:465) [main/:na]
+        at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:557) [main/:na]
+This is reproduced by the dtest snapshot_test.py:TestArchiveCommitlog.test_archive_commitlog. Attached are the system log of the node that threw the exception, and the commitlog files used. I am restoring the commitlog files by editing conf/commitlog_archiving.properties to look like this:
+# Command to execute to make an archived commitlog live again.
+# Parameters: %from is the full path to an archived commitlog segment (from restore_directories)
+#             %to is the live commitlog directory
+# Example: restore_command=cp -f %from %to
+restore_command=cp -f %from %to
+
+# Directory to scan the recovery files in.
+restore_directories=/Users/philipthompson/cstar/archived/
+. If the files are placed into the live commitlog directory manually, and then C* is started, there are no exceptions.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/Local Write-Read Paths, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Joshua McKenzie
+Reporter:
+Philip Thompson
+Create date:
+11/Nov/14 20:30
+Update date:
+16/Apr/19 09:31
+Resolved date:
+30/Jan/15 17:54

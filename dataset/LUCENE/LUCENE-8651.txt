@@ -1,0 +1,36 @@
+Summary:
+Tokenizer implementations can't be reset
+Description:
+The fine print here is that they can't be reset without calling setReader() every time before reset() is called. The reason for this is that Tokenizer violates the contract put forth by TokenStream.reset() which is the following:
+"Resets this stream to a clean state. Stateful implementations must implement this method so that they can be reused, just as if they had been created fresh."
+Tokenizer implementation's reset function can't reset in that manner because their Tokenizer.close() removes the reference to the underlying Reader because of LUCENE-2387. The catch-22 here is that we don't want to unnecessarily keep around a Reader (memory leak) but we would like to be able to reset() if necessary.
+The patches include an integration test that attempts to use a ConcatenatingTokenStream to join an input TokenStream with a KeywordTokenizer TokenStream. This test fails with an IllegalStateException thrown by Tokenizer.ILLEGAL_STATE_READER.
+ 
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+modules/analysis
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Dan Meehl
+Create date:
+3 days ago
+Update date:
+12 hours ago
+Resolved date:
+

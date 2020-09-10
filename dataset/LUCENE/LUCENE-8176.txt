@@ -1,0 +1,108 @@
+Summary:
+HttpReplicatorTest sometimes fails with leaked thread
+Description:
+I can't reproduce it locally when beasting thousands of times but it occurs on the Elastic CI. The logs look like this:
+08:56:28    [junit4] Suite: org.apache.lucene.replicator.http.HttpReplicatorTest
+08:56:28    [junit4]   2> 2018-02-15 18:55:34.282:INFO::TEST-HttpReplicatorTest.testBasic-seed#[74212B823E917AF0]: Logging initialized @4074ms to org.eclipse.jetty.util.log.StdErrLog
+08:56:28    [junit4]   2> 2018-02-15 18:55:34.416:INFO:oejs.Server:TEST-HttpReplicatorTest.testBasic-seed#[74212B823E917AF0]: jetty-9.4.8.v20171121, build timestamp: 2017-11-22T07:27:37+10:00, git hash: 82b8fb23f757335bb3329d540ce37a2a2615f0a8
+08:56:28    [junit4]   2> 2018-02-15 18:55:34.449:INFO:oejs.session:TEST-HttpReplicatorTest.testBasic-seed#[74212B823E917AF0]: DefaultSessionIdManager workerName=node0
+08:56:28    [junit4]   2> 2018-02-15 18:55:34.449:INFO:oejs.session:TEST-HttpReplicatorTest.testBasic-seed#[74212B823E917AF0]: No SessionScavenger set, using defaults
+08:56:28    [junit4]   2> 2018-02-15 18:55:34.454:INFO:oejs.session:TEST-HttpReplicatorTest.testBasic-seed#[74212B823E917AF0]: Scavenging every 600000ms
+08:56:28    [junit4]   2> 2018-02-15 18:55:34.509:INFO:oejs.AbstractConnector:TEST-HttpReplicatorTest.testBasic-seed#[74212B823E917AF0]: Started ServerConnector@7d0c3601{HTTP/1.1,[http/1.1]}{127.0.0.1:40696}
+08:56:28    [junit4]   2> 2018-02-15 18:55:34.510:INFO:oejs.Server:TEST-HttpReplicatorTest.testBasic-seed#[74212B823E917AF0]: Started @4301ms
+08:56:28    [junit4]   2> 2018-02-15 18:55:35.236:INFO:oejs.AbstractConnector:TEST-HttpReplicatorTest.testBasic-seed#[74212B823E917AF0]: Stopped ServerConnector@7d0c3601{HTTP/1.1,[http/1.1]}{127.0.0.1:0}
+08:56:28    [junit4]   2> 2018-02-15 18:55:35.239:INFO:oejs.session:TEST-HttpReplicatorTest.testBasic-seed#[74212B823E917AF0]: Stopped scavenging
+08:56:28    [junit4]   2> 2018-02-15 18:55:35.258:INFO:oejs.Server:TEST-HttpReplicatorTest.testServerErrors-seed#[74212B823E917AF0]: jetty-9.4.8.v20171121, build timestamp: 2017-11-22T07:27:37+10:00, git hash: 82b8fb23f757335bb3329d540ce37a2a2615f0a8
+08:56:28    [junit4]   2> 2018-02-15 18:55:35.260:INFO:oejs.session:TEST-HttpReplicatorTest.testServerErrors-seed#[74212B823E917AF0]: DefaultSessionIdManager workerName=node0
+08:56:28    [junit4]   2> 2018-02-15 18:55:35.260:INFO:oejs.session:TEST-HttpReplicatorTest.testServerErrors-seed#[74212B823E917AF0]: No SessionScavenger set, using defaults
+08:56:28    [junit4]   2> 2018-02-15 18:55:35.260:INFO:oejs.session:TEST-HttpReplicatorTest.testServerErrors-seed#[74212B823E917AF0]: Scavenging every 660000ms
+08:56:28    [junit4]   2> 2018-02-15 18:55:35.262:INFO:oejs.AbstractConnector:TEST-HttpReplicatorTest.testServerErrors-seed#[74212B823E917AF0]: Started ServerConnector@31668a1{HTTP/1.1,[http/1.1]}{127.0.0.1:43769}
+08:56:28    [junit4]   2> 2018-02-15 18:55:35.262:INFO:oejs.Server:TEST-HttpReplicatorTest.testServerErrors-seed#[74212B823E917AF0]: Started @5054ms
+08:56:28    [junit4]   2> 2018-02-15 18:55:35.332:INFO:oejs.AbstractConnector:TEST-HttpReplicatorTest.testServerErrors-seed#[74212B823E917AF0]: Stopped ServerConnector@31668a1{HTTP/1.1,[http/1.1]}{127.0.0.1:0}
+08:56:28    [junit4]   2> 2018-02-15 18:55:35.333:INFO:oejs.session:TEST-HttpReplicatorTest.testServerErrors-seed#[74212B823E917AF0]: Stopped scavenging
+08:56:28    [junit4]   2> 2018-02-15 18:56:05.331:WARN:oejut.QueuedThreadPool:TEST-HttpReplicatorTest.testServerErrors-seed#[74212B823E917AF0]: QueuedThreadPool@qtp1066862162{STOPPING,8<=8<=10000,i=0,q=1} Couldn't stop Thread[qtp1066862162-31,5,TGRP-HttpReplicatorTest]
+08:56:28    [junit4]   2> Feb 15, 2018 8:56:05 AM com.carrotsearch.randomizedtesting.ThreadLeakControl checkThreadLeaks
+08:56:28    [junit4]   2> WARNING: Will linger awaiting termination of 1 leaked thread(s).
+08:56:28    [junit4]   2> Feb 15, 2018 8:56:25 AM com.carrotsearch.randomizedtesting.ThreadLeakControl checkThreadLeaks
+08:56:28    [junit4]   2> SEVERE: 1 thread leaked from SUITE scope at org.apache.lucene.replicator.http.HttpReplicatorTest: 
+08:56:28    [junit4]   2>    1) Thread[id=31, name=qtp1066862162-31, state=TIMED_WAITING, group=TGRP-HttpReplicatorTest]
+08:56:28    [junit4]   2>         at sun.misc.Unsafe.park(Native Method)
+08:56:28    [junit4]   2>         at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:215)
+08:56:28    [junit4]   2>         at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2163)
+08:56:28    [junit4]   2>         at org.eclipse.jetty.util.thread.ReservedThreadExecutor$ReservedThread.reservedWait(ReservedThreadExecutor.java:308)
+08:56:28    [junit4]   2>         at org.eclipse.jetty.util.thread.ReservedThreadExecutor$ReservedThread.run(ReservedThreadExecutor.java:373)
+08:56:28    [junit4]   2>         at org.eclipse.jetty.util.thread.QueuedThreadPool.runJob(QueuedThreadPool.java:708)
+08:56:28    [junit4]   2>         at org.eclipse.jetty.util.thread.QueuedThreadPool$2.run(QueuedThreadPool.java:626)
+08:56:28    [junit4]   2>         at java.lang.Thread.run(Thread.java:748)
+08:56:28    [junit4]   2> Feb 15, 2018 8:56:25 AM com.carrotsearch.randomizedtesting.ThreadLeakControl tryToInterruptAll
+08:56:28    [junit4]   2> INFO: Starting to interrupt leaked threads:
+08:56:28    [junit4]   2>    1) Thread[id=31, name=qtp1066862162-31, state=TIMED_WAITING, group=TGRP-HttpReplicatorTest]
+08:56:28    [junit4]   2> Feb 15, 2018 8:56:28 AM com.carrotsearch.randomizedtesting.ThreadLeakControl tryToInterruptAll
+08:56:28    [junit4]   2> SEVERE: There are still zombie threads that couldn't be terminated:
+08:56:28    [junit4]   2>    1) Thread[id=31, name=qtp1066862162-31, state=TIMED_WAITING, group=TGRP-HttpReplicatorTest]
+08:56:28    [junit4]   2>         at sun.misc.Unsafe.park(Native Method)
+08:56:28    [junit4]   2>         at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:215)
+08:56:28    [junit4]   2>         at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2163)
+08:56:28    [junit4]   2>         at org.eclipse.jetty.util.thread.ReservedThreadExecutor$ReservedThread.reservedWait(ReservedThreadExecutor.java:308)
+08:56:28    [junit4]   2>         at org.eclipse.jetty.util.thread.ReservedThreadExecutor$ReservedThread.run(ReservedThreadExecutor.java:373)
+08:56:28    [junit4]   2>         at org.eclipse.jetty.util.thread.QueuedThreadPool.runJob(QueuedThreadPool.java:708)
+08:56:28    [junit4]   2>         at org.eclipse.jetty.util.thread.QueuedThreadPool$2.run(QueuedThreadPool.java:626)
+08:56:28    [junit4]   2>         at java.lang.Thread.run(Thread.java:748)
+08:56:28    [junit4]   2> NOTE: test params are: codec=Asserting(Lucene70): {}, docValues:{}, maxPointsInLeafNode=1782, maxMBSortInHeap=7.137471976677822, sim=Asserting(org.apache.lucene.search.similarities.AssertingSimilarity@52731bd6), locale=nl-BE, timezone=Antarctica/DumontDUrville
+08:56:28    [junit4]   2> NOTE: Linux 4.4.0-1048-aws amd64/Oracle Corporation 1.8.0_151 (64-bit)/cpus=4,threads=2,free=238028936,total=319291392
+08:56:28    [junit4]   2> NOTE: All tests run in this JVM: [IndexAndTaxonomyRevisionTest, LocalReplicatorTest, HttpReplicatorTest]
+08:56:28    [junit4]   2> NOTE: reproduce with: ant test  -Dtestcase=HttpReplicatorTest -Dtests.seed=74212B823E917AF0 -Dtests.slow=true -Dtests.locale=nl-BE -Dtests.timezone=Antarctica/DumontDUrville -Dtests.asserts=true -Dtests.file.encoding=UTF-8
+08:56:28    [junit4] ERROR   0.00s J1 | HttpReplicatorTest (suite) <<<
+08:56:28    [junit4]    > Throwable #1: com.carrotsearch.randomizedtesting.ThreadLeakError: 1 thread leaked from SUITE scope at org.apache.lucene.replicator.http.HttpReplicatorTest: 
+08:56:28    [junit4]    >    1) Thread[id=31, name=qtp1066862162-31, state=TIMED_WAITING, group=TGRP-HttpReplicatorTest]
+08:56:28    [junit4]    >         at sun.misc.Unsafe.park(Native Method)
+08:56:28    [junit4]    >         at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:215)
+08:56:28    [junit4]    >         at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2163)
+08:56:28    [junit4]    >         at org.eclipse.jetty.util.thread.ReservedThreadExecutor$ReservedThread.reservedWait(ReservedThreadExecutor.java:308)
+08:56:28    [junit4]    >         at org.eclipse.jetty.util.thread.ReservedThreadExecutor$ReservedThread.run(ReservedThreadExecutor.java:373)
+08:56:28    [junit4]    >         at org.eclipse.jetty.util.thread.QueuedThreadPool.runJob(QueuedThreadPool.java:708)
+08:56:28    [junit4]    >         at org.eclipse.jetty.util.thread.QueuedThreadPool$2.run(QueuedThreadPool.java:626)
+08:56:28    [junit4]    >         at java.lang.Thread.run(Thread.java:748)
+08:56:28    [junit4]    >  at __randomizedtesting.SeedInfo.seed([74212B823E917AF0]:0)Throwable #2: com.carrotsearch.randomizedtesting.ThreadLeakError: There are still zombie threads that couldn't be terminated:
+08:56:28    [junit4]    >    1) Thread[id=31, name=qtp1066862162-31, state=TIMED_WAITING, group=TGRP-HttpReplicatorTest]
+08:56:28    [junit4]    >         at sun.misc.Unsafe.park(Native Method)
+08:56:28    [junit4]    >         at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:215)
+08:56:28    [junit4]    >         at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2163)
+08:56:28    [junit4]    >         at org.eclipse.jetty.util.thread.ReservedThreadExecutor$ReservedThread.reservedWait(ReservedThreadExecutor.java:308)
+08:56:28    [junit4]    >         at org.eclipse.jetty.util.thread.ReservedThreadExecutor$ReservedThread.run(ReservedThreadExecutor.java:373)
+08:56:28    [junit4]    >         at org.eclipse.jetty.util.thread.QueuedThreadPool.runJob(QueuedThreadPool.java:708)
+08:56:28    [junit4]    >         at org.eclipse.jetty.util.thread.QueuedThreadPool$2.run(QueuedThreadPool.java:626)
+08:56:28    [junit4]    >         at java.lang.Thread.run(Thread.java:748)
+08:56:28    [junit4]    >  at __randomizedtesting.SeedInfo.seed([74212B823E917AF0]:0)
+08:56:28    [junit4] Completed [9/9 (1!)] on J1 in 54.16s, 2 tests, 2 errors <<< FAILURES!
+This line in particular is interesting:
+08:56:28    [junit4]   2> 2018-02-15 18:56:05.331:WARN:oejut.QueuedThreadPool:TEST-HttpReplicatorTest.testServerErrors-seed#[74212B823E917AF0]: QueuedThreadPool@qtp1066862162{STOPPING,8<=8<=10000,i=0,q=1} Couldn't stop Thread[qtp1066862162-31,5,TGRP-HttpReplicatorTest]}
+. It means that Jetty waited for 500ms for this thread to finish its work, then interrupted it, then waited again for 500ms and the thread was still alive. It is not clear to me whether the bug is yet. I guess it could be either Jetty or how the test handles InterruptedException.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+7.3, 8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adrien Grand
+Create date:
+15/Feb/18 10:44
+Update date:
+04/Apr/18 21:51
+Resolved date:
+11/Mar/18 18:02

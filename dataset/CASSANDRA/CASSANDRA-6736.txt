@@ -1,0 +1,53 @@
+Summary:
+Windows7 AccessDeniedException on commit log
+Description:
+Similar to the data file deletion of CASSANDRA-6283, under heavy load with logged batches, I am seeing a problem where the Commit log cannot be deleted:
+ERROR [COMMIT-LOG-ALLOCATOR] 2014-02-18 22:15:58,252 CassandraDaemon.java (line 192) Exception in thread Thread[COMMIT-LOG-ALLOCATOR,5,main]
+FSWriteError in C:\Program Files\DataStax Community\data\commitlog\CommitLog-3-1392761510706.log
+at org.apache.cassandra.io.util.FileUtils.deleteWithConfirm(FileUtils.java:120)
+at org.apache.cassandra.db.commitlog.CommitLogSegment.discard(CommitLogSegment.java:150)
+at org.apache.cassandra.db.commitlog.CommitLogAllocator$4.run(CommitLogAllocator.java:217)
+at org.apache.cassandra.db.commitlog.CommitLogAllocator$1.runMayThrow(CommitLogAllocator.java:95)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+at java.lang.Thread.run(Unknown Source)
+Caused by: java.nio.file.AccessDeniedException: C:\Program Files\DataStax Community\data\commitlog\CommitLog-3-1392761510706.log
+at sun.nio.fs.WindowsException.translateToIOException(Unknown Source)
+at sun.nio.fs.WindowsException.rethrowAsIOException(Unknown Source)
+at sun.nio.fs.WindowsException.rethrowAsIOException(Unknown Source)
+at sun.nio.fs.WindowsFileSystemProvider.implDelete(Unknown Source)
+at sun.nio.fs.AbstractFileSystemProvider.delete(Unknown Source)
+at java.nio.file.Files.delete(Unknown Source)
+at org.apache.cassandra.io.util.FileUtils.deleteWithConfirm(FileUtils.java:116)
+... 5 more
+(Attached in 2014-02-18-22-16.log is a larger excerpt from the cassandra.log.)
+In this particular case, I was trying to do 100 million inserts into two tables in parallel, one with a single wide row and one with narrow rows, and the error appeared after inserting 43,151,232 rows. So it does take a while to trip over this timing issue.
+It may be aggravated by the size of the batches. This test was writing 10,000 rows to each table in a batch.
+When I try switching the same test from using a logged batch to an unlogged batch, and no such failure appears. So the issue could be related to the use of large, logged batches, or it could be that unlogged batches just change the probability of failure.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/Local Write-Read Paths
+Label:
+Windows
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Joshua McKenzie
+Reporter:
+Bill Mitchell
+Create date:
+19/Feb/14 18:16
+Update date:
+16/Apr/19 09:31
+Resolved date:
+26/Mar/14 19:37

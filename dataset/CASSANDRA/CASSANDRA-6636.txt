@@ -1,0 +1,50 @@
+Summary:
+sstableloader fails when attempting to load data from a single node into a multi-node cluster
+Description:
+I'm running into this exception when trying to use sstableloader to bring in data from another cluster:
+rhatch@whatup:~/.ccm/test_cluster_1391031988/node1$ bin/sstableloader -d 127.0.0.1 ~/tmp/Keyspace1/Standard1
+Established connection to initial hosts
+Opening sstables and calculating sections to stream
+Streaming relevant part of /home/rhatch/tmp/Keyspace1/Standard1/Keyspace1-Standard1-jb-5-Data.db /home/rhatch/tmp/Keyspace1/Standard1/Keyspace1-Standard1-jb-6-Data.db to [/127.0.0.1, /127.0.0.2, /127.0.0.3]
+Exception in thread "STREAM-OUT-/127.0.0.1" java.lang.NullPointerException
+ at org.apache.cassandra.streaming.ConnectionHandler$MessageHandler.signalCloseDone(ConnectionHandler.java:249)
+ at org.apache.cassandra.streaming.ConnectionHandler$OutgoingMessageHandler.run(ConnectionHandler.java:375)
+ at java.lang.Thread.run(Thread.java:744)
+This is what I see in the node system.log:
+==> ./test_cluster_1391031988/node1/logs/system.log <==
+ INFO [STREAM-INIT-/127.0.0.1:60971] 2014-01-29 14:57:25,375 StreamResultFuture.java (line 116) [Stream #564ded70-8930-11e3-84e9-2766c3cc4197] Received streaming plan for Bulk Load
+ INFO [STREAM-IN-/127.0.1.1] 2014-01-29 14:57:25,375 StreamResultFuture.java (line 168) [Stream #564ded70-8930-11e3-84e9-2766c3cc4197] Prepare completed. Receiving 2 files(91047224 bytes), sending 0 files(0 bytes)
+steps to reproduce:
+create a 3 node cluster with ccm
+run stress on one node with 'ccm node1 stress'
+copy the node's data from the data/Keyspace1/Standard1 directory to save it for re-loading (preserve the directory structure for sstableloader)
+remove the cluster, and create a new 3 node cluster
+pick a node and run bin/nodetool -d localhost ~/saved_data_location/Keyspace1/Standard1
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.6
+Component:
+None
+Label:
+None
+Environment:
+java 1.7
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Russ Hatch
+Create date:
+29/Jan/14 22:04
+Update date:
+16/Apr/19 09:31
+Resolved date:
+28/Feb/14 21:35

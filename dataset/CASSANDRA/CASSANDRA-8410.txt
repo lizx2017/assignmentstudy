@@ -1,0 +1,53 @@
+Summary:
+Select with many IN values on clustering columns can result in a StackOverflowError
+Description:
+When executing a SELECT statement with an IN clause on the clustering columns, a StackOverflowError can occur if the memtable doesn't contain any of the requested slices. In 2.0, this happens with the following stack trace:
+ERROR [ReadStage:23] 2014-12-02 14:53:11,077 CassandraDaemon.java (line 199) Exception in thread Thread[ReadStage:23,5,main]
+java.lang.StackOverflowError
+at org.apache.cassandra.db.marshal.Int32Type.compare(Int32Type.java:52)
+at org.apache.cassandra.db.marshal.Int32Type.compare(Int32Type.java:28)
+at org.apache.cassandra.db.marshal.AbstractType.compareCollectionMembers(AbstractType.java:279)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:64)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:36)
+at edu.stanford.ppl.concurrent.SnapTreeMap$1.compareTo(SnapTreeMap.java:538)
+at edu.stanford.ppl.concurrent.SnapTreeMap.boundedMax(SnapTreeMap.java:905)
+at edu.stanford.ppl.concurrent.SnapTreeMap.boundedExtreme(SnapTreeMap.java:833)
+at edu.stanford.ppl.concurrent.SnapTreeMap.access$1000(SnapTreeMap.java:90)
+at edu.stanford.ppl.concurrent.SnapTreeMap$AbstractIter.<init>(SnapTreeMap.java:2028)
+at edu.stanford.ppl.concurrent.SnapTreeMap$EntryIter.<init>(SnapTreeMap.java:1951)
+at edu.stanford.ppl.concurrent.SnapTreeMap$EntryIter.<init>(SnapTreeMap.java:1940)
+at edu.stanford.ppl.concurrent.SnapTreeMap$SubMap$EntrySubSet.iterator(SnapTreeMap.java:2462)
+at java.util.AbstractMap$2$1.<init>(AbstractMap.java:378)
+at java.util.AbstractMap$2.iterator(AbstractMap.java:377)
+at org.apache.cassandra.db.filter.ColumnSlice$NavigableMapIterator.computeNext(ColumnSlice.java:154)
+at org.apache.cassandra.db.filter.ColumnSlice$NavigableMapIterator.computeNext(ColumnSlice.java:162)
+at org.apache.cassandra.db.filter.ColumnSlice$NavigableMapIterator.computeNext(ColumnSlice.java:162)
+In 2.1, there's a similar error, but it occurs in AtomicBTreeColumns.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.12, 2.1.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Tyler Hobbs
+Create date:
+02/Dec/14 23:53
+Update date:
+16/Apr/19 09:31
+Resolved date:
+12/Dec/14 17:45

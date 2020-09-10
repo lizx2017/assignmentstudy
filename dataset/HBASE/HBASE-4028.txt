@@ -1,0 +1,43 @@
+Summary:
+Hmaster crashes caused by splitting log.
+Description:
+In my performance cluster(0.90.3), The Hmaster memory from 100 M up to 4G when one region server crashed.
+I added some print in function doneWriting and found the values of totalBuffered is negative.
+10:29:52,119 WARN org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: gjc:release Used -565832
+hbase-root-master-157-5-111-21.log:2011-06-24 10:29:52,119 WARN org.apache.hadoop.hbase.regionserver.wal.HLogSplitter: gjc:release Used -565832release size25168
+void doneWriting(RegionEntryBuffer buffer) {
+synchronized (this)
+{ LOG.warn("gjc1: relase currentlyWriting +biggestBufferKey " + buffer.encodedRegionName ); boolean removed = currentlyWriting.remove(buffer.encodedRegionName); assert removed; }
+long size = buffer.heapSize();
+synchronized (dataAvailable)
+{ totalBuffered -= size; LOG.warn("gjc:release Used " + totalBuffered ); // We may unblock writers dataAvailable.notifyAll(); }
+LOG.warn("gjc:release Used " + totalBuffered + "release size"+ size);
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.90.4
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+gaojinchao
+Reporter:
+gaojinchao
+Create date:
+24/Jun/11 06:14
+Update date:
+20/Nov/15 11:55
+Resolved date:
+26/Jun/11 00:34

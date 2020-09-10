@@ -1,0 +1,64 @@
+Summary:
+Network streaming is locked while cleanup is running
+Description:
+When I rebalanced my Cassandra cluster moving SSTables from one node to another I saw that sometimes the streaming process stucked without any exceptions in logs on both sides. It was like a pause. I investigated Thread dumps from node that sends the data and found that it waits for a response here:
+"Streaming to /192.168.25.232:2" - Thread t@26058
+   java.lang.Thread.State: RUNNABLE
+   ...
+ at org.apache.cassandra.streaming.FileStreamTask.receiveReply(FileStreamTask.java:193)
+ at org.apache.cassandra.streaming.FileStreamTask.runMayThrow(FileStreamTask.java:101)
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:724)
+Source:
+org.apache.cassandra.streaming.FileStreamTask
+public class FileStreamTask extends WrappedRunnable {
+....
+    protected void receiveReply() throws IOException
+    {
+        MessagingService.validateMagic(input.readInt()); // <-- stucked here
+Ok, it waits for an answer from the opposite endpoint.
+Let's go further. After investigating receiving endpoint thread dump I found the place where it stucks:
+"Thread-104503" - Thread t@268602
+   java.lang.Thread.State: WAITING
+ at org.apache.cassandra.db.index.SecondaryIndexManager.maybeBuildSecondaryIndexes(SecondaryIndexManager.java:144)
+ at org.apache.cassandra.streaming.StreamInSession.closeIfFinished(StreamInSession.java:187)
+ at org.apache.cassandra.streaming.IncomingStreamReader.read(IncomingStreamReader.java:138)
+ at org.apache.cassandra.net.IncomingTcpConnection.stream(IncomingTcpConnection.java:243)
+ at org.apache.cassandra.net.IncomingTcpConnection.handleStream(IncomingTcpConnection.java:183)
+ at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:79)
+It build secondary indexes (my CF has no secondaries). SecondaryIndexManager.maybeBuildSecondaryIndexes creates a Future and wait's for it. Inside the Future it synchronizes using common lock of CompactionManager:
+org.apache.cassandra.db.compaction.CompactionManager
+compactionLock.readLock().lock(); // line #797
+The same lock is used by a cleanup process as the performCleanup() executes performAllSSTableOperation() method which is aquire the lock.
+This ticket is created because on large nodes (1Tb-2Tb) especially hosted on network storages the delay can reach up to few days. Correct me if I wrong: we shouldn't lock in rebuild secondary indexes stage because there is no secondary indexes for this CF. It's not a problem when Cleanup process is paused by the Streaming stage but not vice versa, because streaming process is much more important for cluster.
+Both thread dumps attached.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Alexey Plotnik
+Create date:
+20/Feb/14 02:15
+Update date:
+16/Apr/19 09:31
+Resolved date:
+21/Feb/14 18:08

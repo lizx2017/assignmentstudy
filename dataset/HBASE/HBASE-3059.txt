@@ -1,0 +1,38 @@
+Summary:
+TestReadWriteConsistencyControl occasionally hangs
+Description:
+The test hung when I ran mvn test today. The jstack shows that a Writer thread hung at
+"Thread-1" prio=10 tid=0x00002aaad81d2800 nid=0x6ce9 in Object.wait() [0x0000000040f37000]
+java.lang.Thread.State: WAITING (on object monitor) at java.lang.Object.wait(Native Method)
+at org.apache.hadoop.hbase.regionserver.ReadWriteConsistencyControl.completeMemstoreInsert(ReadWriteConsistencyControl.java:130)
+– locked <0x00002aaac9fa0f50> (a java.lang.Object)
+at org.apache.hadoop.hbase.regionserver.TestReadWriteConsistencyControl$Writer.run(TestReadWriteConsistencyControl.java:56) at java.lang.Thread.run(Thread.java:619)
+It seems to be caused by a race condition in ReadWriteConsistencyControl#completeMemStoreInsert. Accesses/updates of the value of memStoreRead should be done while holding the readWaiters lock.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Hairong Kuang
+Reporter:
+Hairong Kuang
+Create date:
+30/Sep/10 21:32
+Update date:
+20/Nov/15 12:43
+Resolved date:
+06/Oct/10 01:45

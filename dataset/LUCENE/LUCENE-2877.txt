@@ -1,0 +1,55 @@
+Summary:
+BUG in the org.apache.lucene.analysis.br.BrazilianAnalyzer
+Description:
+One weird bug with this field is that instead of "false", you have to search for "falsee" to get the correct results.
+The same behavior happen with other fields that stored in the index and not analyzed.
+Example of create fields to indexing:
+Field field = new Field("situacaoDocumento", "ATIVO", Field.Store.YES, Field.Index.NOT_ANALYZED);
+or
+Field field = new Field("copia", "false", Field.Store.YES, Field.Index.NOT_ANALYZED);
+Example search i need to do, but nothing get correct result:
+IndexSearcher searcher = ...;
+TopScoreDocCollector collector = ....;
+Query query = MultiFieldQueryParser.parse(VERSION, "copia:false", "copia", flags, getAnalyzer());
+searcher.search(query, collector);
+ScoreDoc[] hits = collector.topDocs().scoreDocs;
+if (hits.length > 0)
+{ return searcher.doc(0); }
+return null;
+Example search i do to work:
+IndexSearcher searcher = ...;
+TopScoreDocCollector collector = ....;
+Query query = MultiFieldQueryParser.parse(VERSION, "copia:falsee", "copia", flags, getAnalyzer());
+searcher.search(query, collector);
+ScoreDoc[] hits = collector.topDocs().scoreDocs;
+if (hits.length > 0) { return searcher.doc(0); }
+return null;
+I tested on the Luke (Lucene Index Toolbox) and he prove the bug.
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Invalid
+Affects_version:
+3.0.2
+Fix_version:
+None
+Component:
+modules/analysis
+Label:
+None
+Environment:
+windows 7, eclipse
+Attachment number:
+0
+Assignee:
+Mark Miller
+Reporter:
+Renan Pedro Terra de Oliveira
+Create date:
+20/Jan/11 19:23
+Update date:
+16/May/11 18:16
+Resolved date:
+20/Feb/11 23:52

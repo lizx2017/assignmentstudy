@@ -1,0 +1,58 @@
+Summary:
+Enormous counter
+Description:
+I have two-node cluster with the following keyspace and column family settings.
+Cluster Information:
+Snitch: org.apache.cassandra.locator.SimpleSnitch
+Partitioner: org.apache.cassandra.dht.RandomPartitioner
+Schema versions:
+63fda700-c243-11e0-0000-2d03dcafebdf: [172.17.19.151, 172.17.19.152]
+Keyspace: test:
+Replication Strategy: org.apache.cassandra.locator.NetworkTopologyStrategy
+Durable Writes: true
+Options: [datacenter1:2]
+Column Families:
+ColumnFamily: testCounter (Super)
+"APP status information."
+Key Validation Class: org.apache.cassandra.db.marshal.BytesType
+Default column value validator: org.apache.cassandra.db.marshal.CounterColumnType
+Columns sorted by: org.apache.cassandra.db.marshal.BytesType/org.apache.cassandra.db.marshal.BytesType
+Row cache size / save period in seconds: 0.0/0
+Key cache size / save period in seconds: 200000.0/14400
+Memtable thresholds: 1.1578125/1440/247 (millions of ops/MB/minutes)
+GC grace seconds: 864000
+Compaction min/max thresholds: 4/32
+Read repair chance: 1.0
+Replicate on write: true
+Built indexes: []
+Then, I use a test program based on hector to add a counter column (testCounter[sc][column]) 1000 times. In the middle the adding process, I intentional shut down the node 172.17.19.152. In addition to that, the test program is smart enough to switch the consistency level from Quorum to One, so that the following adding actions would not fail.
+After all the adding actions are done, I start the cassandra on 172.17.19.152, and I use cassandra-cli to check if the counter is correct on both nodes, and I got a result 1001 which should be reasonable because hector will retry once. However, when I shut down 172.17.19.151 and after 172.17.19.152 is aware of 172.17.19.151 is down, I try to start the cassandra on 172.17.19.151 again. Then, I check the counter again, this time I got a result 481387 which is so wrong.
+I use 0.8.3 to reproduce this bug, but I think this also happens on 0.8.2 or before also.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.4
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Boris Yen
+Create date:
+09/Aug/11 09:41
+Update date:
+16/Apr/19 09:32
+Resolved date:
+10/Aug/11 15:31

@@ -1,0 +1,58 @@
+Summary:
+Maven HBase build broken on cygwin with copynativelib.sh call.
+Description:
+This is broken in both 0.92 as well as trunk pom.xml
+Here's a sample maven log snippet from trunk (from Mayuresh on user mailing list)
+[INFO] [antrun:run
+{execution: package}
+]
+[INFO] Executing tasks
+main:
+[mkdir] Created dir: D:\workspace\mkshirsa\hbase-trunk\target\hbase-0.93-SNAPSHOT\hbase-0.93-SNAPSHOT\lib\native\${build.platform}
+[exec] ls: cannot access D:workspacemkshirsahbase-trunktarget/nativelib: No such file or directory
+[exec] tar (child): Cannot connect to D: resolve failed
+[INFO] ------------------------------------------------------------------------
+[ERROR] BUILD ERROR
+[INFO] ------------------------------------------------------------------------
+[INFO] An Ant BuildException has occured: exec returned: 3328
+There are two issues:
+1) The ant run task below doesn't resolve the windows file separator returned by the project.build.directory - this causes the above resolve failed.
+<!-- Using Unix cp to preserve symlinks, using script to handle wildcards -->
+<echo file="${project.build.directory}/copynativelibs.sh">
+if [ `ls ${project.build.directory}/nativelib | wc -l` -ne 0]; then
+2) The tar argument value below also has a similar issue in that the path arg doesn't resolve right.
+<!-- Using Unix tar to preserve symlinks -->
+<exec executable="tar" failonerror="yes" dir="${project.build.directory}/${project.artifactId}-${project.version}">
+<arg value="czf"/>
+<arg value="/cygdrive/c/workspaces/hbase-0.92-svn/target/${project.artifactId}-${project.version}.tar.gz"/>
+<arg value="."/>
+</exec>
+In both cases, the fix would probably be to use a cross-platform way to handle the directory locations.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.3, 0.94.2
+Component:
+build
+Label:
+build maven
+Environment:
+cygwin, windows 7, windows xp
+Attachment number:
+0
+Assignee:
+Suraj Varma
+Reporter:
+Suraj Varma
+Create date:
+10/Oct/11 16:23
+Update date:
+24/Oct/12 05:40
+Resolved date:
+29/Sep/12 21:06

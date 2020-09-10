@@ -1,0 +1,59 @@
+Summary:
+Snapshot repair blocks for ever if something happens to the "I made my snapshot" response
+Description:
+The "snapshotLatch.await();" can be waiting for ever and block all repair operations indefinitely if something happens that another node doesn't respond.
+            public void makeSnapshots(Collection<InetAddress> endpoints)
+            {
+                try
+                {
+                    snapshotLatch = new CountDownLatch(endpoints.size());
+                    IAsyncCallback callback = new IAsyncCallback()
+                    {
+                        public boolean isLatencyForSnitch()
+                        {
+                            return false;
+                        }
+
+                        public void response(MessageIn msg)
+                        {
+                            RepairJob.this.snapshotLatch.countDown();
+                        }
+                    };
+                    for (InetAddress endpoint : endpoints)
+                        MessagingService.instance().sendRR(new SnapshotCommand(tablename, cfname, sessionName, false).createMessage(), endpoint, callback);
+                    snapshotLatch.await();
+                    snapshotLatch = null;
+                }
+                catch (InterruptedException e)
+                {
+                    throw new RuntimeException(e);
+                }
+            }
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.13, 2.0.4
+Component:
+None
+Label:
+repair
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Jeremiah Jordan
+Create date:
+27/Nov/13 17:47
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Dec/13 18:52

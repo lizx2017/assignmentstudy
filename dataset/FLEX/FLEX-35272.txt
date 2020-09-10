@@ -1,0 +1,52 @@
+Summary:
+[FlexJS] RGBA colour support needs fixing
+Description:
+In SimpleCSSVAluesImpl parseStyle method this code:
+if (value.charAt(0) == "#") {
+        obj[pieces[0]] = org.apache.flex.utils.CSSUtils.toColor(value);
+      }
+Should be something like:
+if (value.charAt(0) == "#" || value.indexOf("rgb") == 0) {
+        obj[pieces[0]] = org.apache.flex.utils.CSSUtils.toColor(value);
+      }
+And in CSSUtils the parsing of rgba values is broken - this code;
+} else if ((c = stringValue.indexOf("rgba(")) != -1) {
+  c2 = stringValue.indexOf(")");
+  stringValue = stringValue.substring(c + 4, c2);
+  var /** @type {Array} */ parts4 = stringValue.split(",");(org.apache.flex.utils.Language.uint(parts4[3]) << 24 + org.apache.flex.utils.Language.uint(parts3[0]) << 16 + org.apache.flex.utils.Language.uint(parts3[1]) << 8 + org.apache.flex.utils.Language.uint(parts3[2]));
+Should be:
+} else if ((c = stringValue.indexOf("rgba(")) != -1) {
+  c2 = stringValue.indexOf(")");
+  stringValue = stringValue.substring(c + 5, c2);
+  var /** @type {Array} */ parts4 = stringValue.split(",");(org.apache.flex.utils.Language.uint(parts4[3]*255) << 24 + org.apache.flex.utils.Language.uint(parts4[0]) << 16 + org.apache.flex.utils.Language.uint(parts4[1]) << 8 + org.apache.flex.utils.Language.uint(parts4[2]));
+Note the c+5 rather than c+4, using the parts4 array rather than parts3 array and multiplying the parts4 by 255 as it is the range 0.1 to 1.0.
+Also the value it gets is wrong - adding a few brackets seems to get the right answer and not overflow.
+(org.apache.flex.utils.Language.uint(parts4[3]*255) << 24) + (org.apache.flex.utils.Language.uint(parts4[0]) << 16) + (org.apache.flex.utils.Language.uint(parts4[1]) << 8) + org.apache.flex.utils.Language.uint(parts4[2])
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Apache FlexJS 0.8.0
+Fix_version:
+None
+Component:
+FlexJS
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Justin Mclean
+Create date:
+19/Feb/17 21:59
+Update date:
+19/Feb/17 21:59
+Resolved date:
+

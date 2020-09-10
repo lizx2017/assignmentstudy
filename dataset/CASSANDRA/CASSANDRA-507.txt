@@ -1,0 +1,55 @@
+Summary:
+Tombstone records in Cassandra are not being deleted
+Description:
+I am running into problems with get_key_range.
+My command is client.get_key_range("Keyspace1", "DatastoreDeletionSchedule",
+"", "", 25, ConsistencyLevel.ONE);
+After a lot of deletes on the datastore, I am getting
+ERROR [pool-1-thread-36] 2009-10-19 17:24:28,223 Cassandra.java (line
+770) Internal error processing get_key_range
+java.lang.RuntimeException: java.util.concurrent.TimeoutException:
+Operation timed out.
+at org.apache.cassandra.service.StorageProxy.getKeyRange(StorageProxy.java:560)
+at org.apache.cassandra.service.CassandraServer.get_key_range(CassandraServer.java:595)
+at org.apache.cassandra.service.Cassandra$Processor$get_key_range.process(Cassandra.java:766)
+at org.apache.cassandra.service.Cassandra$Processor.process(Cassandra.java:609)
+at org.apache.thrift.server.TThreadPoolServer$WorkerProcess.run(TThreadPoolServer.java:253)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:885)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:907)
+at java.lang.Thread.run(Thread.java:619)
+Caused by: java.util.concurrent.TimeoutException: Operation timed out.
+at org.apache.cassandra.net.AsyncResult.get(AsyncResult.java:97)
+at org.apache.cassandra.service.StorageProxy.getKeyRange(StorageProxy.java:556)
+... 7 more
+Turns out that the compaction code removes tombstones, and it runs whenever you have
+enough sstable fragments. As an optimization, if there is
+only one version of a row it will just copy it to the new sstable.
+This means it won't clean out tombstones, which is causing this problem.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Ramzi Rabah
+Create date:
+21/Oct/09 19:29
+Update date:
+16/Apr/19 09:33
+Resolved date:
+22/Oct/09 15:41

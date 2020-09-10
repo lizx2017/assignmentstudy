@@ -1,0 +1,81 @@
+Summary:
+Cassandra doesn't respect internode compression settings
+Description:
+I run into strange SSL/snappy errors in my multipledatacenter setup. (More on that in CASSANDRA-5391).
+During debugging the issue I switched the internode communication compression off:
+~ grep internode_compression /etc/cassandra/cassandra.yaml
+# internode_compression controls whether traffic between nodes is
+internode_compression: none
+on all nodes in both datacenters. However I still get the very same exception with snappy in the stacktrace and compression error message:
+2013-03-27 14:06:03.605+0100 [Thread-146] [DEBUG] IncomingTcpConnection.java(91) org.apache.cassandra.net.IncomingTcpConnection: component=c4 IOException reading from socket; closing
+java.io.IOException: FAILED_TO_UNCOMPRESS(5)
+ at org.xerial.snappy.SnappyNative.throw_error(SnappyNative.java:78)
+ at org.xerial.snappy.SnappyNative.rawUncompress(Native Method)
+ at org.xerial.snappy.Snappy.rawUncompress(Snappy.java:391)
+ at org.apache.cassandra.io.compress.SnappyCompressor.uncompress(SnappyCompressor.java:93)
+ at org.apache.cassandra.streaming.compress.CompressedInputStream.decompress(CompressedInputStream.java:101)
+ at org.apache.cassandra.streaming.compress.CompressedInputStream.read(CompressedInputStream.java:79)
+ at java.io.DataInputStream.readUnsignedShort(DataInputStream.java:320)
+ at org.apache.cassandra.utils.BytesReadTracker.readUnsignedShort(BytesReadTracker.java:140)
+ at org.apache.cassandra.utils.ByteBufferUtil.readShortLength(ByteBufferUtil.java:361)
+ at org.apache.cassandra.utils.ByteBufferUtil.readWithShortLength(ByteBufferUtil.java:371)
+ at org.apache.cassandra.streaming.IncomingStreamReader.streamIn(IncomingStreamReader.java:160)
+ at org.apache.cassandra.streaming.IncomingStreamReader.read(IncomingStreamReader.java:122)
+ at org.apache.cassandra.net.IncomingTcpConnection.stream(IncomingTcpConnection.java:238)
+ at org.apache.cassandra.net.IncomingTcpConnection.handleStream(IncomingTcpConnection.java:178)
+ at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:78)
+The exception is raised from this snappy cpp code:
+JNIEXPORT jint JNICALL Java_org_xerial_snappy_SnappyNative_rawUncompress__Ljava_lang_Object_2IILjava_lang_Object_2I
+(JNIEnv * env, jobject self, jobject input, jint inputOffset, jint inputLength, jobject output, jint outputOffset)
+{
+        char* in = (char*) env->GetPrimitiveArrayCritical((jarray) input, 0);
+        char* out = (char*) env->GetPrimitiveArrayCritical((jarray) output, 0);
+        if(in == 0 || out == 0) {
+                // out of memory
+                throw_exception(env, self, 4);
+                return 0;
+        }
+
+        size_t uncompressedLength;
+        snappy::GetUncompressedLength(in + inputOffset, (size_t) inputLength, &uncompressedLength);
+        bool ret = snappy::RawUncompress(in + inputOffset, (size_t) inputLength, out + outputOffset);
+
+        env->ReleasePrimitiveArrayCritical((jarray) input, in, 0);
+        env->ReleasePrimitiveArrayCritical((jarray) output, out, 0);
+
+        if(!ret) {
+                throw_exception(env, self, 5);
+                return 0;
+        }
+
+        return (jint) uncompressedLength;
+}
+Which looks like the communication was still compressed, or at least Cassandra tried to decompress the stream.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Invalid
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Ondřej Černoš
+Create date:
+27/Mar/13 13:24
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Mar/13 13:57

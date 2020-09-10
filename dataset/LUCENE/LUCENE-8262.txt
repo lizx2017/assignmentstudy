@@ -1,0 +1,35 @@
+Summary:
+NativeFSLockFactory loses the channel when a thread is interrupted and the SolrCore becomes unusable after
+Description:
+The condition is rare for us and seems basically a race.  If a thread that is running just happens to have the FileChannel open for NativeFSLockFactory and is interrupted, the channel is closed since it extends AbstractInterruptibleChannel
+Unfortunately this means the Solr Core has to be unloaded and reopened to make the core usable again as the ensureValid check forever throws an exception after.
+org.apache.lucene.store.AlreadyClosedException: FileLock invalidated by an external force: NativeFSLock(path=data/index/write.lock,impl=sun.nio.ch.FileLockImpl[0:9223372036854775807 exclusive invalid],creationTime=2018-04-06T21:45:11Z) at org.apache.lucene.store.NativeFSLockFactory$NativeFSLock.ensureValid(NativeFSLockFactory.java:178) at org.apache.lucene.store.LockValidatingDirectoryWrapper.createOutput(LockValidatingDirectoryWrapper.java:43) at org.apache.lucene.store.TrackingDirectoryWrapper.createOutput(TrackingDirectoryWrapper.java:43) at org.apache.lucene.codecs.compressing.CompressingStoredFieldsWriter.<init>(CompressingStoredFieldsWriter.java:113) at org.apache.lucene.codecs.compressing.CompressingStoredFieldsFormat.fieldsWriter(CompressingStoredFieldsFormat.java:128) at org.apache.lucene.codecs.lucene50.Lucene50StoredFieldsFormat.fieldsWriter(Lucene50StoredFieldsFormat.java:183)
+  Proposed solution is using AsynchronousFileChannel instead, since this is only operating on a lock and .size method
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Won't Fix
+Affects_version:
+7.1.1
+Fix_version:
+None
+Component:
+None
+Label:
+NativeFSLockFactory 
+Environment:
+
+Attachment number:
+0
+Assignee:
+Erick Erickson
+Reporter:
+Jeff Miller
+Create date:
+17/Apr/18 22:15
+Update date:
+3 days ago
+Resolved date:
+17/Aug/18 00:30

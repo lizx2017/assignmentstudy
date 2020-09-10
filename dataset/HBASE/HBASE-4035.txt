@@ -1,0 +1,66 @@
+Summary:
+Fix local-master-backup.sh - parameter order wrong
+Description:
+I think this is a regression from HBASE-3895 (if so, my bad!). The local-master-backup.sh needs the parameters adjusted to work.
+$ bin/local-master-backup.sh start 1          
+starting master, logging to /var/lib/hbase/logs/hbase-larsgeorge-1-master-de1-app-mbp-2.out
+Usage: Master [opts] start|stop
+ start  Start Master. If local mode, start Master and RegionServer in same JVM
+ stop   Start cluster shutdown; Master signals RegionServer shutdown
+ where [opts] are:
+   --minServers=<servers>    Minimum RegionServers needed to host user tables.
+   --backup                  Master should start in backup mode
+The log has
+2011-06-25 10:26:34,864 ERROR org.apache.hadoop.hbase.master.HMasterCommandLine: Could not parse: 
+org.apache.commons.cli.UnrecognizedOptionException: Unrecognized option: -D
+        at org.apache.commons.cli.Parser.processOption(Parser.java:363)
+        at org.apache.commons.cli.Parser.parse(Parser.java:199)
+        at org.apache.commons.cli.Parser.parse(Parser.java:85)
+        at org.apache.hadoop.hbase.master.HMasterCommandLine.run(HMasterCommandLine.java:73)
+        at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:65)
+        at org.apache.hadoop.hbase.util.ServerCommandLine.doMain(ServerCommandLine.java:76)
+        at org.apache.hadoop.hbase.master.HMaster.main(HMaster.java:1346)
+Fix:
+Index: bin/local-master-backup.sh
+===================================================================
+--- bin/local-master-backup.sh  (revision 1139502)
++++ bin/local-master-backup.sh  (working copy)
+@@ -21,9 +21,9 @@
+   DN=$2
+   export HBASE_IDENT_STRING="$USER-$DN"
+   HBASE_MASTER_ARGS="\
+-    --backup \
+     -D hbase.master.port=`expr 60000 + $DN` \
+-    -D hbase.master.info.port=`expr 60010 + $DN`"
++    -D hbase.master.info.port=`expr 60010 + $DN` \
++    --backup"
+   "$bin"/hbase-daemon.sh $1 master $HBASE_MASTER_ARGS
+ }
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+scripts
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars George
+Reporter:
+Lars George
+Create date:
+25/Jun/11 09:24
+Update date:
+20/Nov/15 11:52
+Resolved date:
+27/Jun/11 16:02

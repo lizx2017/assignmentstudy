@@ -1,0 +1,73 @@
+Summary:
+Valid XMP Metadata TimeZone not accepted
+Description:
+I came across this issue when I compiled a PDF file with miktex LaTeX processor, using the pdfx package with options [a-1b,pdf17] and then validating the generated PDF file using the preflight stand-alone jar files "preflight-app-2.0.8.jar" and "preflight-app-2.0.9.jar". Java version is 9.0.4. The error message is:
+7.1 : Error on MetaData, Failed to instanciate DateType property with value 2018-04-17T22:24:06+02:00 in xmp:ModifyDate
+However, according to the XMP specification Section 8.2.1.2 at
+https://wwwimages2.adobe.com/content/dam/acom/en/devnet/xmp/pdfs/XMP%20SDK%20Release%20cc-2016-08/XMPSpecificationPart1.pdf
+this date format should be valid. A given example date is:
+2004-10-23T12:00:00-06:00
+The problematic class should be DateConverter, which seems to not handle time zone information properly:
+https://javalibs.com/artifact/org.apache.pdfbox/xmpbox?className=org.apache.xmpbox.DateConverter&source
+in function
+public static Calendar toCalendar(String date) throws IOException
+I adapted the source code to print a full stack trace:
+7.1 : Error on MetaData, Failed to instanciate DateType property with value 2018-04-18T09:37:03+02:00. Error type: InvocationTargetException. Error message: null. StackTrace: java.lang.reflect.InvocationTargetException
+{{ at java.base/jdk.internal.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)}}
+{{ at java.base/jdk.internal.reflect.NativeConstructorAccessorImpl.newInstance(Unknown Source)}}
+{{ at java.base/jdk.internal.reflect.DelegatingConstructorAccessorImpl.newInstance(Unknown Source)}}
+{{ at java.base/java.lang.reflect.Constructor.newInstance(Unknown Source)}}
+{{ at org.apache.xmpbox.type.TypeMapping.instanciateSimpleProperty(TypeMapping.java:167)}}
+{{ at org.apache.xmpbox.xml.DomXmpParser.manageSimpleType(DomXmpParser.java:420)}}
+{{ at org.apache.xmpbox.xml.DomXmpParser.createProperty(DomXmpParser.java:344)}}
+{{ at org.apache.xmpbox.xml.DomXmpParser.parseChildrenAsProperties(DomXmpParser.java:307)}}
+{{ at org.apache.xmpbox.xml.DomXmpParser.parseDescriptionRoot(DomXmpParser.java:236)}}
+{{ at org.apache.xmpbox.xml.DomXmpParser.parse(DomXmpParser.java:200)}}
+{{ at org.apache.pdfbox.preflight.process.MetadataValidationProcess.validate(MetadataValidationProcess.java:69)}}
+{{ at org.apache.pdfbox.preflight.utils.ContextHelper.callValidation(ContextHelper.java:84)}}
+{{ at org.apache.pdfbox.preflight.utils.ContextHelper.validateElement(ContextHelper.java:122)}}
+{{ at org.apache.pdfbox.preflight.PreflightDocument.validate(PreflightDocument.java:163)}}
+{{ at org.apache.pdfbox.preflight.Validator_A1b.runSimple(Validator_A1b.java:174)}}
+{{ at org.apache.pdfbox.preflight.Validator_A1b.main(Validator_A1b.java:135)}}
+Caused by: java.lang.NoClassDefFoundError: javax/xml/bind/DatatypeConverter
+{{ at org.apache.xmpbox.DateConverter.fromISO8601(DateConverter.java:404)}}
+{{ at org.apache.xmpbox.DateConverter.toCalendar(DateConverter.java:103)}}
+{{ at org.apache.xmpbox.type.DateType.isGoodType(DateType.java:98)}}
+{{ at org.apache.xmpbox.type.DateType.setValue(DateType.java:118)}}
+{{ at org.apache.xmpbox.type.AbstractSimpleProperty.<init>(AbstractSimpleProperty.java:59)}}
+{{ at org.apache.xmpbox.type.DateType.<init>(DateType.java:57)}}
+{{ ... 16 more}}
+Caused by: java.lang.ClassNotFoundException: javax.xml.bind.DatatypeConverter
+{{ at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(Unknown Source)}}
+{{ at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(Unknown Source)}}
+{{ at java.base/java.lang.ClassLoader.loadClass(Unknown Source)}}
+{{ ... 22 more}}
+{{ in xmp:ModifyDate}}
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+2.0.8, 2.0.9
+Fix_version:
+2.0.10, 3.0.0 PDFBox
+Component:
+Preflight, XmpBox
+Label:
+None
+Environment:
+windows, java 1.9, miktex
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Till Kolditz
+Create date:
+18/Apr/18 07:57
+Update date:
+21/Jun/18 20:27
+Resolved date:
+23/Apr/18 06:56

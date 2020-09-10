@@ -1,0 +1,106 @@
+Summary:
+spark DataGrid causes a tooltip (text: "<dataTip>") to appear for its typical item renderer although mouse not over data grid
+Description:
+Run the application below (or import the attached project into FlashBuilder) and click the second tab.
+Actual result: a tooltip appears next to the mouse saying "<dataTip>".
+Desired result: no such tooltip should appear.
+Notes: from what I could tell, it happens because the data grid creates its typical item renderer during a measure() call; the renderer, through the validateNow() function, registers itself with the TooltipManager; in that function ("registerToolTip()"), the latter checks if the mouse is currently over the target. In reality it's not, but because all this happens during measure, the parents of the renderer haven't been measured yet, so its localToGlobal() function returns wrong data. This happens to indicate that the current mouse position is over the renderer. Therefore the tooltip is shown.
+__________________________
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:local="*">
+<fx:Script>
+<![CDATA[
+import mx.collections.ArrayCollection;
+import spark.components.TabBar;
+import spark.events.IndexChangeEvent;
+private static const STATE1_ID:String = "firstTab";
+private static const STATE2_ID:String = "secondTab";
+private static const STATES:ArrayCollection = new ArrayCollection([STATE1_ID, STATE2_ID]);
+protected function onTabChange(event:IndexChangeEvent):void
+{
+var buttonBar:TabBar = event.target as TabBar;
+if (!buttonBar)
+return;
+switch (buttonBar.selectedItem)
+{ case STATE1_ID: this.currentState = "tab1"; break; case STATE2_ID: this.currentState = "tab2"; break; }
+}
+]]>
+</fx:Script>
+<s:states>
+<s:State id="firstTab" name="tab1"/>
+<s:State id="secondTab" name="tab2"/>
+</s:states>
+<s:VGroup width="100%" height="100%" clipAndEnableScrolling="true">
+<s:TabBar id="dataGridNavigation" width="100%" dataProvider="
+{STATES}
+" change="onTabChange(event)"/>
+<s:Label text="Welcome! Please click on the second tab and don't move the mouse." includeIn="tab1"/>
+<local:DataGridShowingOutOfPlaceTooltip width="100%" height="100%" includeIn="tab2"/>
+</s:VGroup>
+</s:WindowedApplication>
+______________________
+and the "DataGridShowingOutOfPlaceTooltip" component:
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx">
+<fx:Script>
+<![CDATA[
+import spark.skins.spark.DefaultGridItemRenderer;
+]]>
+</fx:Script>
+<fx:Declarations>
+<s:ArrayCollection id="someObjects">
+<fx:Object description="obj desc1" note="note1" hours="1"/>
+<fx:Object description="obj desc2" note="note2" hours="2"/>
+<fx:Object description="obj desc3" note="note3" hours="3"/>
+</s:ArrayCollection>
+</fx:Declarations>
+<s:DataGrid dataProvider="
+{someObjects}
+"
+width="100%" height="100%"
+itemRenderer="spark.skins.spark.DefaultGridItemRenderer"
+showDataTips="true">
+<s:columns>
+<s:ArrayList>
+<s:GridColumn headerText="Note"
+dataField="note"/>
+<s:GridColumn headerText="Description"
+dataField="description"/>
+<s:GridColumn headerText="Hours"
+dataField="hours"/>
+</s:ArrayList>
+</s:columns>
+</s:DataGrid>
+</s:VGroup>
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+Apache Flex 4.9.0
+Fix_version:
+Apache Flex 4.10.0
+Component:
+Cell Renderers, (2)
+Label:
+easyfix newbie
+Environment:
+Tested on a Win 8 and a Win 7 system.
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Mihai Chira
+Create date:
+04/Jul/13 09:42
+Update date:
+05/Jul/13 08:47
+Resolved date:
+05/Jul/13 00:13

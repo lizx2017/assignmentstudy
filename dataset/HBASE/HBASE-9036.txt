@@ -1,0 +1,56 @@
+Summary:
+Few small code cleanup
+Description:
+Few code cleanup from HBase trunk.
+1) TestOperation use String.format with 6 %s but give 7 parameters.
+Resolution: Trivial
+2) ClassFinder can throw a NPE.
+If jarFile = new JarInputStream(new FileInputStream(jarFileName)); throw an exception and we want to proceed on exceptions, jarFile will be null, and just few lines after we will do a jarFile.getNextJarEntry() where NPE is not catch and will fail and throw an NPE. So I thinkg we can't proceed on exceptions for this first try since it will fail just the after with an NPE and we will loose the information about the real cause of the exception. Therefor, we should always throw ioEx is the InputStream creation fails.
+3)AccessController declare cfs but never use it.
+4) FavoredNodeAssignmentHelper invokes toString on an array.
+Just changed that to Bytes.toString() to print the server name.
+5) ModifyTableHandler invokes toString on the tableName array.
+Just changed that to Bytes.toString() to print the table name.
+6) HFileWriterV2 invokes toString on the keys arrays.
+Just changed that to Bytes.toStringBinary() to print the keys. And change some toString() calls to toStringBinary()
+7) ServerAndLoad want to be serializable, but ServerName is not.
+Made ServerName serializable since it's only Strings, numbers and bytes.
+8) StorageClusterStatusModel want to be serializable, but its nested class Node is not.
+Made Node serializable since it's only numbers and bytes.
+9) In HRegion outResults can't be null since it's already used for outResults.isEmpty() few lines above.
+Just remove the test.
+10) In RegionScannerHolder region can't be null since it's already used for region.startRegionOperation (and others) few lines above.
+Just remove the test.
+11) CellCounter thisRowFamilyName can't be null since toStringBinary will return the string "null" for a null value.
+Just remove the test.
+12) CellCounter again, thisRowQualifierName can't be null since it's strings concatenations.
+Just remove the test.
+13) HBaseFsck setDisplayFullReport should be static since writing to a static field.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Marc Spaggiari
+Reporter:
+Jean-Marc Spaggiari
+Create date:
+24/Jul/13 15:39
+Update date:
+20/Nov/15 11:55
+Resolved date:
+25/Jul/13 02:54

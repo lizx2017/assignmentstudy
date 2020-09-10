@@ -1,0 +1,64 @@
+Summary:
+Failed split results in closed region and non-registration of daughters; fix the order in which things are run
+Description:
+As part of a split, we go to close the region. The close fails because flush failed – a DN was down and HDFS refuses to move past it – so we jump up out of the close with an IOE. But the region has been closed yet its still in the .META. as online.
+Here is where the hole is:
+1. CompactSplitThread calls split.
+2. This calls HRegion splitRegion.
+3. splitRegion calls close(false).
+4. Down the end of the close, we get as far as the LOG.info("Closed " + this)..... but a DFSClient running thread throws an exception because it can't allocate block for the flush made as part of the close (Ain't sure how... we should add more try/catch in here):
+2009-11-12 00:47:17,865 [regionserver/208.76.44.142:60020.compactor] DEBUG org.apache.hadoop.hbase.regionserver.Store: Added hdfs://aa0-000-12.u.powerset.com:9002/hbase/TestTable/868626151/info/5071349140567656566, entries=46975, sequenceid=2350017, memsize=52.0m, filesize=46.5m to TestTable,,1257986664542
+2009-11-12 00:47:17,866 [regionserver/208.76.44.142:60020.compactor] DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Finished memstore flush of ~52.0m for region TestTable,,1257986664542 in 7985ms, sequence id=2350017, compaction requested=false
+2009-11-12 00:47:17,866 [regionserver/208.76.44.142:60020.compactor] DEBUG org.apache.hadoop.hbase.regionserver.Store: closed info
+2009-11-12 00:47:17,866 [regionserver/208.76.44.142:60020.compactor] INFO org.apache.hadoop.hbase.regionserver.HRegion: Closed TestTable,,1257986664542
+2009-11-12 00:47:17,906 [Thread-315] INFO org.apache.hadoop.hdfs.DFSClient: Exception in createBlockOutputStream java.io.IOException: Bad connect ack with firstBadLink as 208.76.44.140:51010
+2009-11-12 00:47:17,906 [Thread-315] INFO org.apache.hadoop.hdfs.DFSClient: Abandoning block blk_1351692500502810095_1391
+2009-11-12 00:47:23,918 [Thread-315] INFO org.apache.hadoop.hdfs.DFSClient: Exception in createBlockOutputStream java.io.IOException: Bad connect ack with firstBadLink as 208.76.44.140:51010
+2009-11-12 00:47:23,918 [Thread-315] INFO org.apache.hadoop.hdfs.DFSClient: Abandoning block blk_-3310646336307339512_1391
+2009-11-12 00:47:29,982 [Thread-318] INFO org.apache.hadoop.hdfs.DFSClient: Exception in createBlockOutputStream java.io.IOException: Bad connect ack with firstBadLink as 208.76.44.140:51010
+2009-11-12 00:47:29,982 [Thread-318] INFO org.apache.hadoop.hdfs.DFSClient: Abandoning block blk_3070440586900692765_1393
+2009-11-12 00:47:35,997 [Thread-318] INFO org.apache.hadoop.hdfs.DFSClient: Exception in createBlockOutputStream java.io.IOException: Bad connect ack with firstBadLink as 208.76.44.140:51010
+2009-11-12 00:47:35,997 [Thread-318] INFO org.apache.hadoop.hdfs.DFSClient: Abandoning block blk_-5656011219762164043_1393
+2009-11-12 00:47:42,007 [Thread-318] INFO org.apache.hadoop.hdfs.DFSClient: Exception in createBlockOutputStream java.io.IOException: Bad connect ack with firstBadLink as 208.76.44.140:51010
+2009-11-12 00:47:42,007 [Thread-318] INFO org.apache.hadoop.hdfs.DFSClient: Abandoning block blk_-2359634393837722978_1393
+2009-11-12 00:47:48,017 [Thread-318] INFO org.apache.hadoop.hdfs.DFSClient: Exception in createBlockOutputStream java.io.IOException: Bad connect ack with firstBadLink as 208.76.44.140:51010
+2009-11-12 00:47:48,017 [Thread-318] INFO org.apache.hadoop.hdfs.DFSClient: Abandoning block blk_-1626727145091780831_1393
+2009-11-12 00:47:54,022 [Thread-318] WARN org.apache.hadoop.hdfs.DFSClient: DataStreamer Exception: java.io.IOException: Unable to create new block.
+        at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream$DataStreamer.nextBlockOutputStream(DFSClient.java:3100)
+        at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:2681)
+
+2009-11-12 00:47:54,022 [Thread-318] WARN org.apache.hadoop.hdfs.DFSClient: Could not get block locations. Source file "/hbase/TestTable/868626151/splits/1211221550/info/5071349140567656566.868626151" - Aborting...
+2009-11-12 00:47:54,029 [regionserver/208.76.44.142:60020.compactor] ERROR org.apache.hadoop.hbase.regionserver.CompactSplitThread: Compaction/Split failed for region TestTable,,1257986664542
+java.io.IOException: Bad connect ack with firstBadLink as 208.76.44.140:51010
+        at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream$DataStreamer.createBlockOutputStream(DFSClient.java:3160)
+        at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream$DataStreamer.nextBlockOutputStream(DFSClient.java:3080)
+        at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:2681)
+Marking this as blocker.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+12/Nov/09 01:37
+Update date:
+20/Nov/15 13:01
+Resolved date:
+12/Dec/09 20:38

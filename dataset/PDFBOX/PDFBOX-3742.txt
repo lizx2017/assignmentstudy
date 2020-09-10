@@ -1,0 +1,57 @@
+Summary:
+Unknown dir object c='>' cInt=62 peek='>' peekInt=62
+Description:
+This was originally stumbled upon when running a 69-page long PDF through Tika. I could isolate the issue to in-between those two pages. Tika ends up responding with a faulty XML, as the attached screenshot shows - together with a stacktrace on the logs that includes the PDFBox exception, shown below as reproduced from the standalone CLI tool.
+I'm using Tika 1.1.4, although I'm not exactly sure what version of PDFBox it uses. Here's the base Dockerfile.
+$ java -jar pdfbox-app-2.0.5.jar ExtractText buggy.pdf 
+Apr 01, 2017 10:08:44 PM org.apache.pdfbox.pdmodel.font.PDTrueTypeFont <init>
+WARNING: Using fallback font 'LiberationSans-Bold' for 'Arial-BoldMT'
+Apr 01, 2017 10:08:44 PM org.apache.pdfbox.pdmodel.font.PDTrueTypeFont <init>
+WARNING: Using fallback font 'LiberationSans' for 'ArialMT'
+Apr 01, 2017 10:08:44 PM org.apache.pdfbox.pdmodel.font.PDTrueTypeFont <init>
+WARNING: Using fallback font 'LiberationSerif' for 'TimesNewRomanPSMT'
+Apr 01, 2017 10:08:44 PM org.apache.pdfbox.pdfparser.BaseParser parseCOSArray
+WARNING: Corrupt object reference at offset 150196
+Exception in thread "main" java.io.IOException: Unknown dir object c='>' cInt=62 peek='>' peekInt=62 at offset 150196
+ at org.apache.pdfbox.pdfparser.BaseParser.parseDirObject(BaseParser.java:954)
+ at org.apache.pdfbox.pdfparser.BaseParser.parseCOSArray(BaseParser.java:654)
+ at org.apache.pdfbox.pdfparser.PDFStreamParser.parseNextToken(PDFStreamParser.java:175)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processStreamOperators(PDFStreamEngine.java:502)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processStream(PDFStreamEngine.java:469)
+ at org.apache.pdfbox.contentstream.PDFStreamEngine.processPage(PDFStreamEngine.java:150)
+ at org.apache.pdfbox.text.LegacyPDFStreamEngine.processPage(LegacyPDFStreamEngine.java:139)
+ at org.apache.pdfbox.text.PDFTextStripper.processPage(PDFTextStripper.java:391)
+ at org.apache.pdfbox.text.PDFTextStripper.processPages(PDFTextStripper.java:319)
+ at org.apache.pdfbox.text.PDFTextStripper.writeText(PDFTextStripper.java:266)
+ at org.apache.pdfbox.tools.ExtractText.startExtraction(ExtractText.java:237)
+ at org.apache.pdfbox.tools.ExtractText.main(ExtractText.java:82)
+ at org.apache.pdfbox.tools.PDFBox.main(PDFBox.java:60)
+Seems related to PDFBOX-1327.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.13, 2.0.5
+Fix_version:
+1.8.14, 2.0.6, 3.0.0 PDFBox
+Component:
+Parsing
+Label:
+None
+Environment:
+tika
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Igor Santos
+Create date:
+02/Apr/17 02:50
+Update date:
+15/May/17 20:28
+Resolved date:
+02/Apr/17 09:53

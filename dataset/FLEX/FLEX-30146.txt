@@ -1,0 +1,81 @@
+Summary:
+[Automation-QTP] SWFLoaderAutomationImpl/get automationValue returns null for Image Control having embeded source in Repeater Control
+Description:
+This ticket is the explain the exact problem discovered in http://bugs.adobe.com/jira/browse/FLEXENT-1136 and request a correction in the automation.swc library. As explained by Wouter Coekaerts in the related ticket, the "return null;" in SWFLoaderAutomationImpl.get automationValue is to blame.
+More precisely in the SWFLoaderAutomationImpl/get automationValue returns null because source is not String or URLRequest.
+We have code using this pattern:
+[Embed(source="...")]
+public var img:Class;
+...
+<mx:Repeater ...><mx:Image source="{img}"> ...</mx:Repeater> 
+This problem is causing QTP to recognize the flex QTP-enabled application as a MacromediaFlashPlayerActiveX object. It is therefore unable to record or replay any automated test.
+Wouter Coekaerts proposed a trivial fix: replace that one line in SWFLoaderAutomationImpl by "return super.automationValue;".
+This fix has been tested and it is working.
+Here under is the error stack:
+Main Thread (Suspended)
+mx.automation.delegates.controls::SWFLoaderAutomationImpl/get automationValue --> returns null because source is not String or URLRequest
+mx.core::UIComponent/get automationValue
+mx.automation.delegates.core::RepeaterAutomationImpl/getItemAutomationNameOrValueHelper --> does item.automationValue.join(" | ") -> Null reference exception
+mx.automation.delegates.core::RepeaterAutomationImpl/getItemAutomationValue
+mx.automation::AutomationManager/helpCreateIDPart
+mx.automation.delegates.core::RepeaterAutomationImpl/createAutomationIDPart
+mx.core::UIComponent/createAutomationIDPart
+mx.automation::AutomationManager/createIDPart
+mx.automation::AutomationManager/getMemberFromObject
+mx.automation::AutomationManager/getPropertyValue
+mx.automation::AutomationManager/getProperties
+mx.automation::AutomationManager/scoreChild
+mx.automation::AutomationManager/helpResolveIDPart
+mx.automation.delegates.core::ContainerAutomationImpl/resolveAutomationIDPart
+mx.core::UIComponent/resolveAutomationIDPart
+mx.automation::AutomationManager/resolveID
+mx.automation::AutomationManager/resolveIDToSingleObject
+mx.automation.qtp::QTPAdapter/getActiveOrLearnXMLTree
+<anonymous>
+mx.automation.qtp::QTPAdapter/useErrorHandler
+mx.automation.qtp::QTPAdapter/getActiveScreen
+Function/http://adobe.com/AS3/2006/builtin::apply [no source]
+flash.external::ExternalInterface$/_callIn [no source]
+<anonymous> [no source]
+flash.external::ExternalInterface$/_evalJS [no source]
+flash.external::ExternalInterface$/call [no source]
+mx.automation.qtp::QTPAdapter/recordHandler
+flash.events::EventDispatcher/dispatchEventFunction [no source]
+flash.events::EventDispatcher/dispatchEvent [no source]
+mx.automation::AutomationManager/dispatchRecordEvent
+mx.automation::AutomationManager/recordHandler
+flash.events::EventDispatcher/dispatchEventFunction [no source]
+flash.events::EventDispatcher/dispatchEvent [no source]
+mx.core::UIComponent/dispatchEvent
+mx.automation::AutomationManager/recordAutomatableEvent
+mx.automation.delegates::TextFieldAutomationHelper/recordAutomatableEvent
+mx.automation.delegates::TextFieldAutomationHelper/flushSelection
+mx.automation.delegates::TextFieldAutomationHelper/textInputHandler
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Incomplete
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+AgentAPI
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+26/Nov/09 05:21
+Update date:
+12/Aug/11 03:41
+Resolved date:
+29/Jan/12 09:29

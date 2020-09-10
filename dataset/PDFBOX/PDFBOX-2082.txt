@@ -1,0 +1,71 @@
+Summary:
+signing corrupts PDF when signature exactly fits allocated space
+Description:
+The current check does not take "<>" into account, so if you are (un)lucky, the signature overwrites ">" and corrupts the PDF.
+Fix for 1.8:
+diff --git a/pdfbox/src/main/java/org/apache/pdfbox/pdfwriter/COSWriter.java b/pdfbox/src/main/java/org/apache/pdfbox/pdfwriter/COSWriter.java
+index 3165589..80fbad2 100644
+--- a/pdfbox/src/main/java/org/apache/pdfbox/pdfwriter/COSWriter.java
++++ b/pdfbox/src/main/java/org/apache/pdfbox/pdfwriter/COSWriter.java
+@@ -778,13 +778,15 @@ public class COSWriter implements ICOSVisitor, Closeable
+         
+             SignatureInterface signatureInterface = doc.getSignatureInterface();
+             byte[] sign = signatureInterface.sign(new ByteArrayInputStream(pdfContent));
++            // this assumes that the dummy signature has been writen as "<0000...>"
+             String signature = new COSString(sign).getHexString();
+-            int leftSignaturerange = signaturePosition[1]-signaturePosition[0]-signature.length();
+-            if(leftSignaturerange<0)
++            int startPos = signaturePosition[0] + 1; // move past "<"
++            int endPos = signaturePosition[1] - 1; // move in front of ">"
++            if (startPos + signature.length() > endPos)
+             {
+                 throw new IOException("Can't write signature, not enough space");
+             }
+-            getStandardOutput().setPos(signaturePosition[0]+1);
++            getStandardOutput().setPos(startPos);
+             getStandardOutput().write(signature.getBytes());
+         }
+     }
+Another thing is that pdfbox now allocates (2 * preferedSize + 2) for a signature. It quite confused me to see 16k+4 bytes allocated when I called setPreferedSignatureSize(4k) - it should have allocated 8k (each signature byte takes 2 bytes in the pdf).
+Fix for 1.8:
+diff --git a/pdfbox/src/main/java/org/apache/pdfbox/pdmodel/PDDocument.java b/pdfbox/src/main/java/org/apache/pdfbox/pdmodel/PDDocument.java
+index 358364a..23dd3ab 100644
+--- a/pdfbox/src/main/java/org/apache/pdfbox/pdmodel/PDDocument.java
++++ b/pdfbox/src/main/java/org/apache/pdfbox/pdmodel/PDDocument.java
+@@ -309,7 +309,7 @@ public class PDDocument implements Pageable, Closeable
+         int preferedSignatureSize = options.getPreferedSignatureSize();
+         if (preferedSignatureSize > 0)
+         {
+-            sigObject.setContents(new byte[preferedSignatureSize * 2 + 2]);
++            sigObject.setContents(new byte[preferedSignatureSize]);
+         }
+         else
+         {
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+1.8.5, 2.0.0
+Fix_version:
+1.8.6, 2.0.0
+Component:
+Writing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Štěpán Schejbal
+Create date:
+16/May/14 15:48
+Update date:
+22/Jun/14 14:34
+Resolved date:
+18/Jun/14 18:37

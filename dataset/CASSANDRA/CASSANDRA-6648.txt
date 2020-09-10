@@ -1,0 +1,44 @@
+Summary:
+Race condition during node bootstrapping
+Description:
+When bootstrapping a new node, data is "missing" as if the new node didn't actually bootstrap, which I tracked down to the following scenario:
+1) New node joins token ring and waits for schema to be settled before actually bootstrapping.
+2) The schema scheck somewhat passes and it starts bootstrapping.
+3) Bootstrapping doesn't find the ks/cf that should have received from the other node.
+4) Queries at this point cause NPEs, until when later they "recover" but data is missed.
+The problem seems to be caused by a race condition between the migration manager and the bootstrapper, with the former running after the latter.
+I think this is supposed to protect against such scenarios:
+            while (!MigrationManager.isReadyForBootstrap())
+            {
+                setMode(Mode.JOINING, "waiting for schema information to complete", true);
+                Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
+            }
+But MigrationManager.isReadyForBootstrap() implementation is quite fragile and doesn't take into account "slow" schema propagation.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.15, 2.0.5
+Component:
+None
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergio Bossa
+Reporter:
+Sergio Bossa
+Create date:
+04/Feb/14 12:37
+Update date:
+16/Apr/19 09:31
+Resolved date:
+05/Feb/14 00:37

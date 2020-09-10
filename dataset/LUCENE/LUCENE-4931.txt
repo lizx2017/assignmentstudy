@@ -1,0 +1,35 @@
+Summary:
+Make oal.document.Field reuse its internal StringTokenStream
+Description:
+Followup from LUCENE-4930:
+Field.java has a private StringTokenStream which is used as TokenStream implementation for StringField (single value String tokens). Unfortunately this TokenStream is created on every new document/field while indexing, making the cost of creating the TS a significant time. With very old Java versions this also involves a lock in ReferenceQueue.poll() when called from addAttribute().
+In Lucene 3.x, DocInverterPerThread has a private thread-local AttributeSource for reusing, but because this was factored out to Field.java, we can no longer use CloseableThreadLocal (because Field are not Closeable). We should maybe move the special One-Token TokenStream back to DocInverterPerThread and just let Field.java delegate there. I know this would let us move back to 3.x where we had special handling of single token Fields in the indexer....
+Another approach would be to make Field.java use a static KeywordAnalyzer (it needs then be moved to core) or we add a ThreadLocal to Field.java (which may be expensive). Unfortunately this makes it hard to maintain, as the thread-localness is also needed to be bound to the IndexWriter instance. Because you could have 2 IndexWriters open at same time and add documents to both of them from one thread... This brings us back to my previous solution.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+4.0, 4.1, (2)
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Uwe Schindler
+Reporter:
+Uwe Schindler
+Create date:
+12/Apr/13 16:28
+Update date:
+12/Apr/13 19:13
+Resolved date:
+12/Apr/13 19:13

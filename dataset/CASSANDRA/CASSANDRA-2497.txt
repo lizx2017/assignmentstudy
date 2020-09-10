@@ -1,0 +1,59 @@
+Summary:
+CLI: issue with keys being interpreted as hex and causing SET statement to fail
+Description:
+Original Summary: Issues with Update Column Family and adding a key_validation_class
+Changed summary because the issue repros on drop/create. see comment.
+Reproduction Steps
+create column family users with comparator = UTF8Type 
+and column_metadata = [{column_name: password, validation_class: UTF8Type}];
+
+update column family users with key_validation_class=UTF8Type;
+
+set users['jsmith']['password']='ch@ngem3';          
+EXPECTED RESULT: After the UPDATE statement, the SET statement should go through successfully.
+ACTUAL RESULT: The SET statement gives the same error message, regardless of the UPDATE statement:
+org.apache.cassandra.db.marshal.MarshalException: cannot parse 'jsmith' as hex bytes
+Output from describe keyspace
+    ColumnFamily: users
+      Key Validation Class: org.apache.cassandra.db.marshal.UTF8Type
+      Default column value validator: org.apache.cassandra.db.marshal.BytesType
+      Columns sorted by: org.apache.cassandra.db.marshal.UTF8Type
+      Row cache size / save period in seconds: 0.0/0
+      Key cache size / save period in seconds: 200000.0/14400
+      Memtable thresholds: 0.29062499999999997/62/1440 (millions of ops/MB/minutes)
+      GC grace seconds: 864000
+      Compaction min/max thresholds: 4/32
+      Read repair chance: 1.0
+      Replicate on write: false
+      Built indexes: []
+      Column Metadata:
+        Column Name: password
+          Validation Class: org.apache.cassandra.db.marshal.UTF8Type
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.0 beta 2
+Component:
+None
+Label:
+None
+Environment:
+mac os x
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Cathy Daw
+Create date:
+18/Apr/11 19:40
+Update date:
+16/Apr/19 09:33
+Resolved date:
+20/Apr/11 16:01

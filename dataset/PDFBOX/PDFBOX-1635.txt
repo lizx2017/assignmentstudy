@@ -1,0 +1,98 @@
+Summary:
+Exception on saving document
+Description:
+I am performing some operations on pdf documents such as merging, spliting, reordering (pages). I am currently encountering some issues when attempting to save the newly modified pdf file.
+A simplified test case (extract the first 5 pages from a pdf into a new pdf) is:
+@Test
+public void testPdfBox2() throws Exception {
+PDDocument returnDocument = new PDDocument();
+String outputFilename = "/tmp/testpdfreorder.pdf";
+List<Integer> pages = Arrays.asList(1, 2, 3, 4, 5);
+try {
+// get/load current document
+PDDocument currentPdf = PDDocument.load(new File("/tmp/hibernate_reference.pdf"));
+// get the current pages of the document
+@SuppressWarnings("unchecked")
+List<PDPage> currentDocumentPages = currentPdf.getDocumentCatalog().getAllPages();
+for (Integer currentPage : pages)
+{ returnDocument.importPage(currentDocumentPages.get(currentPage - 1)); }
+currentPdf.close();
+} finally
+{ returnDocument.save(outputFilename); returnDocument.close(); }
+}
+The problem is caused in the above code by calling currentPdf.close() before the returnDocument.save has been called. This looks very similar to this issue PDFBOX-1586 which is marked as "fixed" in 1.8.2, but in my opinion it is not.
+The stacktrace I am currently getting is:
+org.apache.pdfbox.exceptions.COSVisitorException: java.lang.IndexOutOfBoundsException: Index: 72, Size: 0
+at org.apache.pdfbox.pdfwriter.COSWriter.visitFromStream(COSWriter.java:1354)
+at org.apache.pdfbox.cos.COSStream.accept(COSStream.java:217)
+at org.apache.pdfbox.cos.COSObject.accept(COSObject.java:206)
+at org.apache.pdfbox.pdfwriter.COSWriter.doWriteObject(COSWriter.java:525)
+at org.apache.pdfbox.pdfwriter.COSWriter.doWriteBody(COSWriter.java:435)
+at org.apache.pdfbox.pdfwriter.COSWriter.visitFromDocument(COSWriter.java:1122)
+at org.apache.pdfbox.cos.COSDocument.accept(COSDocument.java:552)
+at org.apache.pdfbox.pdfwriter.COSWriter.write(COSWriter.java:1501)
+at org.apache.pdfbox.pdmodel.PDDocument.save(PDDocument.java:1324)
+at org.apache.pdfbox.pdmodel.PDDocument.save(PDDocument.java:1305)
+at org.apache.pdfbox.pdmodel.PDDocument.save(PDDocument.java:1292)
+at com.test.PdfBoxTest.testPdfBox2(PdfBoxTest.java:72)
+at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:47)
+at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:44)
+at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:271)
+at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:70)
+at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:50)
+at org.junit.runners.ParentRunner$3.run(ParentRunner.java:238)
+at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:63)
+at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:236)
+at org.junit.runners.ParentRunner.access$000(ParentRunner.java:53)
+at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:229)
+at org.junit.runners.ParentRunner.run(ParentRunner.java:309)
+at org.eclipse.jdt.internal.junit4.runner.JUnit4TestReference.run(JUnit4TestReference.java:50)
+at org.eclipse.jdt.internal.junit.runner.TestExecution.run(TestExecution.java:38)
+at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:467)
+at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:683)
+at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.run(RemoteTestRunner.java:390)
+at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.main(RemoteTestRunner.java:197)
+Caused by: java.lang.IndexOutOfBoundsException: Index: 72, Size: 0
+at java.util.ArrayList.RangeCheck(ArrayList.java:547)
+at java.util.ArrayList.get(ArrayList.java:322)
+at org.apache.pdfbox.io.RandomAccessBuffer.seek(RandomAccessBuffer.java:84)
+at org.apache.pdfbox.io.RandomAccessFileInputStream.read(RandomAccessFileInputStream.java:96)
+at java.io.BufferedInputStream.fill(BufferedInputStream.java:218)
+at java.io.BufferedInputStream.read1(BufferedInputStream.java:258)
+at java.io.BufferedInputStream.read(BufferedInputStream.java:317)
+at org.apache.pdfbox.pdfwriter.COSWriter.visitFromStream(COSWriter.java:1337)
+... 34 more
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Duplicate
+Affects_version:
+1.8.2
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Guillaume Bailleul
+Reporter:
+Andrew Dale
+Create date:
+11/Jun/13 07:09
+Update date:
+01/Aug/13 11:56
+Resolved date:
+01/Aug/13 11:56

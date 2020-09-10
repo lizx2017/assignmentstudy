@@ -1,0 +1,143 @@
+Summary:
+Wrong class type: class org.apache.cassandra.db.Column in CounterColumn.reconcile
+Description:
+When migrating a cluster of 6 nodes from 1.2.11 to 2.0.7, we started to see on the first migrated node this error:
+ERROR [ReplicateOnWriteStage:1] 2014-05-07 11:26:59,779 CassandraDaemon.java (line 198) Exception in thread Thread[ReplicateOnWriteStage:1,5,main]
+java.lang.AssertionError: Wrong class type: class org.apache.cassandra.db.Column
+        at org.apache.cassandra.db.CounterColumn.reconcile(CounterColumn.java:159)
+        at org.apache.cassandra.db.filter.QueryFilter$1.reduce(QueryFilter.java:109)
+        at org.apache.cassandra.db.filter.QueryFilter$1.reduce(QueryFilter.java:103)
+        at org.apache.cassandra.utils.MergeIterator$ManyToOne.consume(MergeIterator.java:112)
+        at org.apache.cassandra.utils.MergeIterator$ManyToOne.computeNext(MergeIterator.java:98)
+        at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:143)
+        at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:138)
+        at org.apache.cassandra.db.filter.NamesQueryFilter.collectReducedColumns(NamesQueryFilter.java:98)
+        at org.apache.cassandra.db.filter.QueryFilter.collateColumns(QueryFilter.java:122)
+        at org.apache.cassandra.db.filter.QueryFilter.collateOnDiskAtom(QueryFilter.java:80)
+        at org.apache.cassandra.db.filter.QueryFilter.collateOnDiskAtom(QueryFilter.java:72)
+        at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:297)
+        at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:53)
+        at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1540)
+        at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1369)
+        at org.apache.cassandra.db.Keyspace.getRow(Keyspace.java:327)
+        at org.apache.cassandra.db.SliceByNamesReadCommand.getRow(SliceByNamesReadCommand.java:55)
+        at org.apache.cassandra.db.CounterMutation.makeReplicationMutation(CounterMutation.java:100)
+        at org.apache.cassandra.service.StorageProxy$8$1.runMayThrow(StorageProxy.java:1085)
+        at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1916)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:744)
+We then saw on the other 5 nodes, still on 1.2.x, this error:
+ERROR [MutationStage:2793] 2014-05-07 11:46:12,301 CassandraDaemon.java (line 191) Exception in thread Thread[MutationStage:2793,5,main]
+java.lang.AssertionError: Wrong class type: class org.apache.cassandra.db.Column
+        at org.apache.cassandra.db.CounterColumn.reconcile(CounterColumn.java:165)
+        at org.apache.cassandra.db.AtomicSortedColumns$Holder.addColumn(AtomicSortedColumns.java:378)
+        at org.apache.cassandra.db.AtomicSortedColumns.addColumn(AtomicSortedColumns.java:166)
+        at org.apache.cassandra.db.AbstractColumnContainer.addColumn(AbstractColumnContainer.java:119)
+        at org.apache.cassandra.db.SuperColumn.addColumn(SuperColumn.java:218)
+        at org.apache.cassandra.db.SuperColumn.putColumn(SuperColumn.java:229)
+        at org.apache.cassandra.db.ThreadSafeSortedColumns.addColumnInternal(ThreadSafeSortedColumns.java:108)
+        at org.apache.cassandra.db.ThreadSafeSortedColumns.addAllWithSizeDelta(ThreadSafeSortedColumns.java:138)
+        at org.apache.cassandra.db.AbstractColumnContainer.addAllWithSizeDelta(AbstractColumnContainer.java:99)
+        at org.apache.cassandra.db.Memtable.resolve(Memtable.java:205)
+        at org.apache.cassandra.db.Memtable.put(Memtable.java:168)
+        at org.apache.cassandra.db.ColumnFamilyStore.apply(ColumnFamilyStore.java:742)
+        at org.apache.cassandra.db.Table.apply(Table.java:388)
+        at org.apache.cassandra.db.Table.apply(Table.java:353)
+        at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:280)
+        at org.apache.cassandra.db.CounterMutation.apply(CounterMutation.java:137)
+        at org.apache.cassandra.service.StorageProxy$7.runMayThrow(StorageProxy.java:773)
+        at org.apache.cassandra.service.StorageProxy$LocalMutationRunnable.run(StorageProxy.java:1651)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1146)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:679)
+Here some other stack we also on the 5 unmigrated nodes:
+ERROR [ReadStage:4242] 2014-05-07 11:46:12,259 CassandraDaemon.java (line 191) Exception in thread Thread[ReadStage:4242,5,main]
+java.lang.AssertionError: Wrong class type: class org.apache.cassandra.db.Column
+        at org.apache.cassandra.db.CounterColumn.reconcile(CounterColumn.java:165)
+        at org.apache.cassandra.db.AtomicSortedColumns$Holder.addColumn(AtomicSortedColumns.java:378)
+        at org.apache.cassandra.db.AtomicSortedColumns.addColumn(AtomicSortedColumns.java:166)
+        at org.apache.cassandra.db.AbstractColumnContainer.addColumn(AbstractColumnContainer.java:119)
+        at org.apache.cassandra.db.SuperColumn.addColumn(SuperColumn.java:218)
+        at org.apache.cassandra.db.SuperColumn.putColumn(SuperColumn.java:229)
+        at org.apache.cassandra.db.ArrayBackedSortedColumns.resolveAgainst(ArrayBackedSortedColumns.java:164)
+        at org.apache.cassandra.db.ArrayBackedSortedColumns.addColumn(ArrayBackedSortedColumns.java:141)
+        at org.apache.cassandra.db.AbstractColumnContainer.addColumn(AbstractColumnContainer.java:119)
+        at org.apache.cassandra.db.AbstractColumnContainer.addColumn(AbstractColumnContainer.java:114)
+        at org.apache.cassandra.db.filter.QueryFilter$1.reduce(QueryFilter.java:112)
+        at org.apache.cassandra.db.filter.QueryFilter$1.reduce(QueryFilter.java:96)
+        at org.apache.cassandra.utils.MergeIterator$ManyToOne.consume(MergeIterator.java:111)
+        at org.apache.cassandra.utils.MergeIterator$ManyToOne.computeNext(MergeIterator.java:97)
+        at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:143)
+        at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:138)
+        at org.apache.cassandra.db.filter.NamesQueryFilter.collectReducedColumns(NamesQueryFilter.java:103)
+        at org.apache.cassandra.db.filter.QueryFilter.collateColumns(QueryFilter.java:136)
+        at org.apache.cassandra.db.filter.QueryFilter.collateOnDiskAtom(QueryFilter.java:84)
+        at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:291)
+        at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:65)
+        at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1391)
+        at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1207)
+        at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1123)
+        at org.apache.cassandra.db.Table.getRow(Table.java:347)
+        at org.apache.cassandra.db.SliceFromReadCommand.getRow(SliceFromReadCommand.java:70)
+        at org.apache.cassandra.db.ReadVerbHandler.doVerb(ReadVerbHandler.java:44)
+        at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:56)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1146)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:679)
+And the client side, it is failing with:
+Caused by: org.apache.cassandra.thrift.UnavailableException: null
+        at org.apache.cassandra.thrift.Cassandra$get_slice_result.read(Cassandra.java:7866)
+        at org.apache.thrift.TServiceClient.receiveBase(TServiceClient.java:78)
+        at org.apache.cassandra.thrift.Cassandra$Client.recv_get_slice(Cassandra.java:594)
+        at org.apache.cassandra.thrift.Cassandra$Client.get_slice(Cassandra.java:578)
+        at me.prettyprint.cassandra.service.KeyspaceServiceImpl$7.execute(KeyspaceServiceImpl.java:274)
+After seeing such errors, we just shut down the first migrated node, hoping it would avoid all these client errors. But errors continue to be logged, even if there were only the 5 1.2.x nodes in the ring.
+As the usual wild guess, let's reboot a node to fix it. At our damned surprise, it would restart and would fail with:
+ INFO 11:33:40,190 Initializing system.LocationInfo
+java.lang.AssertionError
+        at org.apache.cassandra.cql3.CFDefinition.<init>(CFDefinition.java:162)
+        at org.apache.cassandra.config.CFMetaData.updateCfDef(CFMetaData.java:1541)
+        at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1456)
+        at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:306)
+        at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:287)
+        at org.apache.cassandra.db.DefsTable.loadFromTable(DefsTable.java:154)
+        at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:574)
+        at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:253)
+        at org.apache.cassandra.service.CassandraDaemon.init(CassandraDaemon.java:381)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.lang.reflect.Method.invoke(Method.java:616)
+        at org.apache.commons.daemon.support.DaemonLoader.load(DaemonLoader.java:212)
+Cannot load daemon
+Service exit with a return value of 3
+From there we only had 4 running nodes, with errors spreading around. So we halted everything, put the first node back to 1.2.11 and restored the data which has been snapshot just before the first node was migrated.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.11
+Component:
+None
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Nicolas Lalevée
+Create date:
+07/May/14 16:26
+Update date:
+16/Apr/19 09:31
+Resolved date:
+10/Oct/14 14:03

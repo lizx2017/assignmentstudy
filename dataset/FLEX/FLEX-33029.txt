@@ -1,0 +1,105 @@
+Summary:
+AdvancedDataGrid fails if editing treeColumn and there are some hidden columns
+Description:
+Steps to reproduce:
+-------------------
+1. Run code
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application
+xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:mx="library://ns.adobe.com/flex/mx"
+xmlns:s="library://ns.adobe.com/flex/spark"
+>
+<fx:Script>
+<![CDATA[
+import mx.collections.ArrayCollection;
+import mx.collections.HierarchicalData;
+[Bindable]
+public var hd:HierarchicalData =
+new HierarchicalData(new ArrayCollection([
+{ a: 'a', b: 'b' }
+]));
+]]
+>
+</fx:Script>
+<mx:AdvancedDataGrid
+width="500"
+dataProvider="
+{hd}
+"
+editable="all"
+treeColumn="
+{bColumn}
+"
+>
+<mx:columns>
+<mx:AdvancedDataGridColumn
+dataField="a"
+visible="false"
+/>
+<mx:AdvancedDataGridColumn
+id="bColumn"
+dataField="b"
+/>
+</mx:columns>
+</mx:AdvancedDataGrid>
+</s:Application>
+2. Attempt to edit a row.
+Actual Results:
+-------------------
+TypeError: Error #1009: Cannot access a property or method of a null object reference.
+at mx.controls::AdvancedDataGrid/createItemEditor()[E:\dev\4.x\frameworks\projects\datavisualization\src\mx\controls\AdvancedDataGrid.as:3470]
+at mx.controls::AdvancedDataGridBaseEx/itemEditorItemEditBeginHandler()[E:\dev\4.x\frameworks\projects\datavisualization\src\mx\controls\AdvancedDataGridBaseEx.as:7789]
+at flash.events::EventDispatcher/dispatchEventFunction()
+at flash.events::EventDispatcher/dispatchEvent()
+at mx.core::UIComponent/dispatchEvent()[E:\dev\4.x\frameworks\projects\framework\src\mx\core\UIComponent.as:12528]
+at mx.controls::AdvancedDataGridBaseEx/commitEditedItemPosition()[E:\dev\4.x\frameworks\projects\datavisualization\src\mx\controls\AdvancedDataGridBaseEx.as:4957]
+at mx.controls::AdvancedDataGridBaseEx/updateDisplayList()[E:\dev\4.x\frameworks\projects\datavisualization\src\mx\controls\AdvancedDataGridBaseEx.as:2065]
+at mx.controls::AdvancedDataGrid/updateDisplayList()[E:\dev\4.x\frameworks\projects\datavisualization\src\mx\controls\AdvancedDataGrid.as:2899]
+at mx.controls.listClasses::AdvancedListBase/validateDisplayList()[E:\dev\4.x\frameworks\projects\datavisualization\src\mx\controls\listClasses\AdvancedListBase.as:3472]
+at mx.managers::LayoutManager/validateDisplayList()[E:\dev\4.x\frameworks\projects\framework\src\mx\managers\LayoutManager.as:663]
+at mx.managers::LayoutManager/doPhasedInstantiation()[E:\dev\4.x\frameworks\projects\framework\src\mx\managers\LayoutManager.as:736]
+at mx.managers::LayoutManager/doPhasedInstantiationCallback()[E:\dev\4.x\frameworks\projects\framework\src\mx\managers\LayoutManager.as:1072]
+at flash.utils::Timer/_timerDispatch()
+at flash.utils::Timer/tick()
+Expected Results:
+-------------------
+Can edit row without exception.
+Workaround (if any):
+-------------------
+AdvancedDataGrid.createItemEditor attempts to access edited column using colIndex and displayableColumns property. However, if you navigate up the stack trace (AdvancedDataGridBaseEx.commitEditedItemPosition:4954), you can see that column index is set to be:
+displayableColumns[colIndex].colNum;
+Which, despite of what as-doc on colNum claims, is not an index of the column as it is displayed in the grid. It is set in AdvancedDataGridBaseEx.set columns:1356 to be index in _columns list.
+displayableColumns and _columns diverge as soon as you start hiding columns. There is some code to handle that in AdvancedDataGriBaseEx:createItemEditor (first block in the method) but failing override in ADG is called earlier.
+Our solution is to simply change AdvancedDataGrid.createItemEditor:3469 from:
+var col:AdvancedDataGridColumn = displayableColumns[colIndex];
+to be:
+var col:AdvancedDataGridColumn = _columns[colIndex];
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.5 (
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+06/Oct/11 03:45
+Update date:
+10/Oct/11 01:50
+Resolved date:
+

@@ -1,0 +1,40 @@
+Summary:
+Spark Datagrid inconsistency: hovered column header index erroneously shown as -1
+Description:
+(To clearly see the inconsistency, run the attached project or see the screenshots.)
+The last column of a DataGrid can be sized to end before the grid ends. Let's say that the only column's width is sized to 100px, and the grid's to 600px.
+In this situation, all the renderers will be sized to 100px, and the header renderer to 592px. All this is as expected.
+Although the space between the last column header separator and the end of the grid (in the above example, between 101px and 592px) looks just like the last column header (which in fact it is), GridColumnHeaderGroup.getHeaderIndexAt() returns -1, falsely indicating that there's no column under the mouse pointer. This is because it uses the width of the column (100px), rather than the width of the column header (592px).
+Moreover, the GridColumnHeaderGroup does not dispatch the GridEvent.GRID_ROLL_OVER and GridEvent.GRID_ROLL_OUT events for that part of the last header.
+This has generated a subtle fatal in our application, where we implemented a column drag and drop mechanism for our grids: we assumed that since the GridColumnHeaderGroup dispatched a DragEvent.DRAG_OVER event for that part of the last header, then GridColumnHeaderGroup.getHeaderIndexAt() could not return -1. Due to this bug, it does indeed return -1 (erroneously) for this huge swath of the column header.
+Debugging
+GridHeaderViewLayout.getHeaderIndexAt() calls GridDimensionsView.getColumnIndexAt() - so from searching for the header index it subtly switches to searching for the column index, thus seeming to assume they should be the same (but they're not, as explained above).
+FLEX-33328 commented out some code in GridHeaderViewLayout.getHeaderIndexAt() which dealt specifically with this scenario. To the extent it was correct, it need to be restored.
+Status:
+IN PROGRESS
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Apache Flex 4.14.1
+Fix_version:
+None
+Component:
+Spark: DataGrid
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mihai Chira
+Reporter:
+Mihai Chira
+Create date:
+09/Feb/17 16:33
+Update date:
+29/Mar/17 11:49
+Resolved date:
+

@@ -1,0 +1,91 @@
+Summary:
+Problem with NGramAnalyzer, PhraseQuery and Highlighter
+Description:
+Using the Highlighter with N-GramAnalyzer and PhraseQuery and searching for a substring with length = N yields the following exception:
+java.lang.IllegalArgumentException: Less than 2 subSpans.size():1
+at org.apache.lucene.search.spans.ConjunctionSpans.<init>(ConjunctionSpans.java:40)
+at org.apache.lucene.search.spans.NearSpansOrdered.<init>(NearSpansOrdered.java:56)
+at org.apache.lucene.search.spans.SpanNearQuery$SpanNearWeight.getSpans(SpanNearQuery.java:232)
+at org.apache.lucene.search.highlight.WeightedSpanTermExtractor.extractWeightedSpanTerms(WeightedSpanTermExtractor.java:292)
+at org.apache.lucene.search.highlight.WeightedSpanTermExtractor.extract(WeightedSpanTermExtractor.java:137)
+at org.apache.lucene.search.highlight.WeightedSpanTermExtractor.getWeightedSpanTerms(WeightedSpanTermExtractor.java:506)
+at org.apache.lucene.search.highlight.QueryScorer.initExtractor(QueryScorer.java:219)
+at org.apache.lucene.search.highlight.QueryScorer.init(QueryScorer.java:187)
+at org.apache.lucene.search.highlight.Highlighter.getBestTextFragments(Highlighter.java:196)
+Below is a JUnit-Test reproducing this behavior. In case of searching for a string with more than N characters or using NGramPhraseQuery this problem doesn't occur.
+Why is it that more than 1 subSpans are required?
+public class HighlighterTest {
+
+   @Rule
+   public final ExpectedException exception = ExpectedException.none();
+
+   @Test
+   public void testHighlighterWithPhraseQueryThrowsException() throws IOException, InvalidTokenOffsetsException {
+
+       final Analyzer analyzer = new NGramAnalyzer(4);
+       final String fieldName = "substring";
+
+       final List<BytesRef> list = new ArrayList<>();
+       list.add(new BytesRef("uchu"));
+       final PhraseQuery query = new PhraseQuery(fieldName, list.toArray(new BytesRef[list.size()]));
+
+       final QueryScorer fragmentScorer = new QueryScorer(query, fieldName);
+       final SimpleHTMLFormatter formatter = new SimpleHTMLFormatter("<b>", "</b>");
+
+       exception.expect(IllegalArgumentException.class);
+       exception.expectMessage("Less than 2 subSpans.size():1");
+
+       final Highlighter highlighter = new Highlighter(formatter,TextEncoder.NONE.getEncoder(), fragmentScorer);
+       highlighter.setTextFragmenter(new SimpleFragmenter(100));
+       final String fragment = highlighter.getBestFragment(analyzer, fieldName, "Buchung");
+
+       assertEquals("B<b>uchu</b>ng",fragment);
+
+   }
+
+public final class NGramAnalyzer extends Analyzer {
+
+   private final int minNGram;
+
+   public NGramAnalyzer(final int minNGram) {
+       super();
+       this.minNGram = minNGram;
+   }
+
+   @Override
+   protected TokenStreamComponents createComponents(final String fieldName) {
+       final Tokenizer source = new NGramTokenizer(minNGram, minNGram);
+       return new TokenStreamComponents(source);
+   }
+
+}
+
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+5.4.1
+Fix_version:
+5.5.2, 5.6, (2)
+Component:
+modules/highlighter
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alan Woodward
+Reporter:
+Eva Popenda
+Create date:
+19/Apr/16 07:41
+Update date:
+18/Aug/16 15:30
+Resolved date:
+15/Jun/16 22:04

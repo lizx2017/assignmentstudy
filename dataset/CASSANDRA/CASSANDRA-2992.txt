@@ -1,0 +1,48 @@
+Summary:
+Cassandra doesn't start on Red Hat Linux due to hardcoded JAVA_HOME
+Description:
+On CentOS /etc/init.d/cassandra has
+export JAVA_HOME=/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.0/
+While there is no such a directory on our server it was ok for 0.8.2, because /usr/sbin/cassandra checked the executable
+if [ -x $JAVA_HOME/bin/java ]; then
+JAVA=$JAVA_HOME/bin/java
+else
+JAVA=`which java`
+fi
+But 0.8.3 builds replaced the above code with one that doesn't check if JAVA_HOME is set correctly.
+if [ -n "$JAVA_HOME" ]; then
+JAVA="$JAVA_HOME/bin/java"
+else
+JAVA=java
+fi
+That's why cassandra doesn't start anymore.
+The correct fix would be to remove "export JAVA_HOME" from /etc/init.d/cassandra or set it only to correct path and only if it hasn't already been set.
+It would also be nice to revert to "[ -x $JAVA_HOME/bin/java ]" in /usr/sbin/cassandra
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.4
+Component:
+Packaging
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+paul cannon
+Reporter:
+Taras Puchko
+Create date:
+04/Aug/11 14:26
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Aug/11 13:11

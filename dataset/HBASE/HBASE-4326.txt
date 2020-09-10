@@ -1,0 +1,56 @@
+Summary:
+Tests that use HBaseTestingUtility.startMiniCluster(n) should shutdown with HBaseTestingUtility.shutdownMiniCluster.
+Description:
+Most tests that use mini clusters use this pattern
+ private final static HBaseTestingUtility UTIL = new HBaseTestingUtility();
+
+  @BeforeClass
+  public static void beforeClass() throws Exception {
+    UTIL.startMiniCluster(1);
+  }
+
+  @AfterClass
+  public static void afterClass() throws IOException {
+    UTIL.shutdownMiniCluster();
+  }
+Some tests (like hbase-4269)
+  @BeforeClass
+  public static void beforeClass() throws Exception {
+    UTIL.startMiniCluster(1);
+  }
+
+  @AfterClass
+  public static void afterClass() throws IOException {
+    UTIL.getMiniCluster().shutdown();
+    // or UTIL.shutdownMiniHBaseCluster();
+    // and likely others.
+  }
+There is a difference between the two shutdown – the former deletes files created during the tests while the latter does not. This funny state persisting (zk or hbase/mr data) may be the cause of strange inter-testcase problems when full suites are run.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Jonathan Hsieh
+Create date:
+02/Sep/11 02:19
+Update date:
+12/Oct/12 05:34
+Resolved date:
+15/Nov/11 14:31

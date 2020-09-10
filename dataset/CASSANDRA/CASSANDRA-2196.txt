@@ -1,0 +1,58 @@
+Summary:
+Hyphenated index names cause problems
+Description:
+When inserting a large number of entries with batch_insert (100000) using thrift compiled into C# there's a NumberFormatException that occurs.
+The first logged entry that tipped me off was this:
+INFO 10:53:52,171 Writing Memtable-TransactionLogs.client-hostname@350930888(1171371 bytes, 32787 o
+perations)
+ERROR 10:53:52,171 Error in ThreadPoolExecutor
+java.lang.RuntimeException: java.lang.NumberFormatException: For input string: "tmp"
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Caused by: java.lang.NumberFormatException: For input string: "tmp"
+at java.lang.NumberFormatException.forInputString(NumberFormatException.java:48)
+at java.lang.Integer.parseInt(Integer.java:449)
+at java.lang.Integer.parseInt(Integer.java:499)
+at org.apache.cassandra.io.sstable.Descriptor.fromFilename(Descriptor.java:154)
+at org.apache.cassandra.io.sstable.Descriptor.fromFilename(Descriptor.java:119)
+at org.apache.cassandra.io.sstable.SSTableWriter.<init>(SSTableWriter.java:67)
+at org.apache.cassandra.db.Memtable.writeSortedContents(Memtable.java:156)
+at org.apache.cassandra.db.Memtable.access$000(Memtable.java:49)
+at org.apache.cassandra.db.Memtable$1.runMayThrow(Memtable.java:174)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+... 3 more
+Which points to the suspect piece of code in Descriptor.java:154 (browse at https://github.com/apache/cassandra/blob/trunk/src/java/org/apache/cassandra/io/sstable/Descriptor.java)
+The file I believe it's trying to parse is mentioned in my logs as:
+INFO 10:51:31,231 Compacted to C:\cassandra\apache-cassandra-0.7.2\bin\..\Storage\data\system\Index
+Info-tmp-f-6-Data.db. 384 to 225 (~58% of original) bytes for 1 keys. Time: 281ms.
+I'm new here, so I'm not sure what needs fixing here (the filename, or the parsing of it).
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Stephen Pope
+Create date:
+18/Feb/11 16:16
+Update date:
+16/Apr/19 09:33
+Resolved date:
+26/Feb/11 01:19

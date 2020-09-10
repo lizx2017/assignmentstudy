@@ -1,0 +1,48 @@
+Summary:
+MasterFS doesn't set configuration for internal FileSystem
+Description:
+The call stack ends on HFileArchiver.archveRegion, which uses fs.getConf() to get the configuration object. This returns a different conf object (not the one used in MasterFileSystem), which may have the root file system as file (depending on the test environment).
+from META
+2012-12-20 13:46:09,540 DEBUG [MASTER_TABLE_OPERATIONS-p0122.mtv.cloudera.com,53027,1356039958141-0] backup.HFileArchiver(91): ARCHIVING region file:/tmp/hbase-jenkins/hbase/tableB/1c0ce809562dcefde6086d4f8549ed8f
+2012-12-20 13:46:09,540 DEBUG [MASTER_TABLE_OPERATIONS-p0122.mtv.cloudera.com,53027,1356039958141-0] backup.HFileArchiver(109): Have an archive directory, preparing to move files
+2012-12-20 13:46:09,543 ERROR [MASTER_TABLE_OPERATIONS-p0122.mtv.cloudera.com,53027,1356039958141-0] executor.EventHandler(174): Caught throwable while processing event C_M_DELETE_TABLE
+java.lang.IllegalArgumentException: Wrong FS: file:/tmp/hbase-jenkins/hbase/tableB/1c0ce809562dcefde6086d4f8549ed8f, expected: hdfs://localhost:39594
+ at org.apache.hadoop.fs.FileSystem.checkPath(FileSystem.java:550)
+ at org.apache.hadoop.hdfs.DistributedFileSystem.getPathName(DistributedFileSystem.java:170)
+ at org.apache.hadoop.hdfs.DistributedFileSystem.listStatus(DistributedFileSystem.java:401)
+ at org.apache.hadoop.fs.FileSystem.listStatus(FileSystem.java:1376)
+ at org.apache.hadoop.fs.FileSystem.listStatus(FileSystem.java:1416)
+ at org.apache.hadoop.hbase.util.FSUtils.listStatus(FSUtils.java:1164)
+ at org.apache.hadoop.hbase.backup.HFileArchiver.archiveRegion(HFileArchiver.java:122)
+ at org.apache.hadoop.hbase.backup.HFileArchiver.archiveRegion(HFileArchiver.java:72)
+ at org.apache.hadoop.hbase.master.MasterFileSystem.deleteRegion(MasterFileSystem.java:444)
+ at org.apache.hadoop.hbase.master.handler.DeleteTableHandler.handleTableOperation(DeleteTableHandler.java:71)
+ at org.apache.hadoop.hbase.master.handler.TableEventHandler.process(TableEventHandler.java:96)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.3
+Fix_version:
+0.94.4
+Component:
+master, test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Himanshu Vashishtha
+Reporter:
+Himanshu Vashishtha
+Create date:
+21/Dec/12 18:27
+Update date:
+13/Jan/13 06:28
+Resolved date:
+21/Dec/12 21:34

@@ -1,0 +1,49 @@
+Summary:
+unreading of trailing content after 'endobj' is missing new line byte (fix included)
+Description:
+I have several journal PDFs where the last xref section starts like
+endobj xref
+0 92
+0000000000 65535 f
+0000000044 00000 n
+in this cases the PDF parser reads the endobj line completely and unreads " xref".
+However the newline (in this case ^D) is lost. This is already documented in the
+method readline() within PDFParser:
+"Note: if you later unread the results of this function, you'll
+need to add a newline character to the end of the string."
+Currently I get an error like: "expected='obj' actual='655'" because the 'xref' is read as 'xref0'.
+The fix:
+in PDFParser insert before line 579 (the unreading of trailing characters after 'endobj') the lines:
+// add a space first in place of the newline consumed by readline()
+pdfSource.unread( SPACE_BYTE );
+thus we get:
+if (endObjectKey.startsWith( "endobj" ) )
+{ /* * Some PDF files don't contain a new line after endobj so we * need to make sure that the next object number is getting read separately * and not part of the endobj keyword. Ex. Some files would have "endobj28" * instead of "endobj" */ // add a space first in place of the newline consumed by readline() pdfSource.unread( SPACE_BYTE ); pdfSource.unread( endObjectKey.substring( 6 ).getBytes("ISO-8859-1") ); }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.6.0
+Fix_version:
+1.6.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adam Nichols
+Reporter:
+Timo Boehme
+Create date:
+15/Mar/11 08:31
+Update date:
+27/Feb/14 07:28
+Resolved date:
+16/Mar/11 16:46

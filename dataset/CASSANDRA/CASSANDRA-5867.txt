@@ -1,0 +1,43 @@
+Summary:
+The Pig CqlStorage/AbstractCassandraStorage classes don't handle collection types
+Description:
+The CqlStorage class gets the Pig data type for values from the AbstractCassandraStorage class, in the getPigType method. If it isn't a known data type, it makes the value into a ByteArray. Currently there aren't any cases there for lists, maps, and sets.
+https://github.com/apache/cassandra/blob/cassandra-1.2.8/src/java/org/apache/cassandra/hadoop/pig/AbstractCassandraStorage.java#L336
+See this describe output from the grunt shell:
+grunt> describe listdata ;                                        
+listdata: {id: (name: chararray,value: int),alist: (name: chararray,value: bytearray),amap: (name: chararray,value: bytearray),aset: (name: chararray,value: bytearray)}
+where the cql data structures had this schema:
+CREATE TABLE alltypes (
+  id int PRIMARY KEY,
+  alist list<text>,
+  amap map<text, text>,
+  aset set<text>
+It turns out that if you cast the map in grunt to a pig map, then it sort of works, but I don't think we should probably use a pig map. Lists don't appear to work at all, as there is no Pig analogue. I think you could probably just do a UDF to cast these things, but we already have all of the type information, so we just need to change them to tuples or bags or whatever.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.10, 2.0.1
+Component:
+None
+Label:
+pig
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Liu
+Reporter:
+Jeremy Hanna
+Create date:
+09/Aug/13 14:04
+Update date:
+16/Apr/19 09:32
+Resolved date:
+10/Sep/13 18:47

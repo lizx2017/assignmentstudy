@@ -1,0 +1,52 @@
+Summary:
+[PATCH] Allowing '-'/'+' in terms
+Description:
+I suggest to change the definition of term character in QueryParser.jj
+from
+<#_TERM_CHAR: ( <_TERM_START_CHAR> <_ESCAPED_CHAR> ) >
+to
+<#_TERM_CHAR: ( <_TERM_START_CHAR> <_ESCAPED_CHAR> "-" "+" ) >
+As a result query parser will read '-' and '+' within words (such as tft-monitor
+or Sysh1-1) as one term, which will be tokenized by the used analyzer
+and end up in a term query or phrase query depending if it create one ore
+more tokens.
+So with StandardAnalyzer a query tft-monitor would get a phrase query "tft
+monitor" and Sysh1-1 a term query for "Sysh1-1".
+Searching tft-monitor as a phrase "tft monitor" is not exact but the best
+aproximation possible once you indexed tft-monitor as tokens tft and monitor.
+Currently query parser interpret every '-' or '+' as operators, which means
+that 'tft-monitor' gets parsed as tft AND NOT monitor, which probably isn't what
+the user wanted.
+The effect of '-'/'+' not occuring within a word is not changed, so
+tft -monitor will still search for 'tft AND NOT monitor'.
+All regression tests pass with the change.
+I didn't add a patch-file, because I think it's easy to change queryParser.jj by
+hand.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Morus Walter
+Create date:
+06/Mar/04 16:36
+Update date:
+02/Jun/11 22:04
+Resolved date:
+27/May/06 01:37

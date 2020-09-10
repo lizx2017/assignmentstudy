@@ -1,0 +1,65 @@
+Summary:
+Improve error message when Master fail-over happens and ZK unassigned node contains stale znode(s)
+Description:
+When master fail-over happens, if we have number of RITs under /hbase/unassigned and if we have stale znode(s) (encoded region names) under /hbase/unassigned, we are getting
+2011-12-30 10:27:35,623 INFO org.apache.hadoop.hbase.master.HMaster: Master startup proceeding: master failover 
+2011-12-30 10:27:36,002 INFO org.apache.hadoop.hbase.master.AssignmentManager: Failed-over master needs to process 1717 regions in transition 
+2011-12-30 10:27:36,004 FATAL org.apache.hadoop.hbase.master.HMaster: Unhandled exception. Starting shutdown. 
+java.lang.ArrayIndexOutOfBoundsException: -256 
+at org.apache.hadoop.hbase.executor.RegionTransitionData.readFields(RegionTransitionData.java:148) 
+at org.apache.hadoop.hbase.util.Writables.getWritable(Writables.java:105) 
+at org.apache.hadoop.hbase.util.Writables.getWritable(Writables.java:75) 
+at org.apache.hadoop.hbase.executor.RegionTransitionData.fromBytes(RegionTransitionData.java:198) 
+at org.apache.hadoop.hbase.zookeeper.ZKAssign.getData(ZKAssign.java:743) 
+at org.apache.hadoop.hbase.master.AssignmentManager.processRegionInTransition(AssignmentManager.java:262) 
+at org.apache.hadoop.hbase.master.AssignmentManager.processFailover(AssignmentManager.java:223) 
+at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:401) 
+at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:283)
+and there is no clue on how to clean-up the stale znode(s) from unassigned using zkCli.sh (del /hbase/unassigned/<bad region name>). It would be good if we include the bad region name in IOException from RegionTransitionData.readFields().
+@Override
+  public void readFields(DataInput in) throws IOException {
+    // the event type byte
+    eventType = EventType.values()[in.readShort()];
+    // the timestamp
+    stamp = in.readLong();
+    // the encoded name of the region being transitioned
+    regionName = Bytes.readByteArray(in);
+    // remaining fields are optional so prefixed with boolean
+    // the name of the regionserver sending the data
+    if (in.readBoolean()) {
+      byte [] versionedBytes = Bytes.readByteArray(in);
+      this.origin = ServerName.parseVersionedServerName(versionedBytes);
+    }
+    if (in.readBoolean()) {
+      this.payload = Bytes.readByteArray(in);
+    }
+  }
+If the code execution has survived until regionName then we can include the regionName in IOException with error message to clean-up the stale znode(s) under /hbase/unassigned.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+0.90.5, 0.92.0
+Fix_version:
+None
+Component:
+master
+Label:
+beginner
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mubarak Seyed
+Reporter:
+Mubarak Seyed
+Create date:
+11/Jan/12 22:12
+Update date:
+05/Aug/14 20:05
+Resolved date:
+

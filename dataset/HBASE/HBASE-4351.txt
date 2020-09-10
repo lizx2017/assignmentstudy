@@ -1,0 +1,60 @@
+Summary:
+If from Admin we try to unassign a region forcefully, though a valid region name is given the master is not able to identify the region to unassign.
+Description:
+The following is the problem
+Get the exact region name from UI and call
+HBaseAdmin.unassign(regionname, true).
+Here true is forceful option.
+As part of unassign api
+  public void unassign(final byte [] regionName, final boolean force)
+  throws IOException {
+    Pair<HRegionInfo, HServerAddress> pair =
+      MetaReader.getRegion(this.catalogTracker, regionName);
+    if (pair == null) throw new UnknownRegionException(Bytes.toStringBinary(regionName));
+    HRegionInfo hri = pair.getFirst();
+    if (force) this.assignmentManager.clearRegionFromTransition(hri);
+    this.assignmentManager.unassign(hri, force);
+  }
+As part of clearRegionFromTransition()
+    synchronized (this.regions) {
+      this.regions.remove(hri);
+      for (Set<HRegionInfo> regions : this.servers.values()) {
+        regions.remove(hri);
+      }
+    }
+the region is also removed. Hence when the master tries to identify the region
+      if (!regions.containsKey(region)) {
+        debugLog(region, "Attempted to unassign region " +
+          region.getRegionNameAsString() + " but it is not " +
+          "currently assigned anywhere");
+        return;
+      }
+It is not able to identify the region. It exists in trunk and 0.90.x also.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.5
+Component:
+None
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+08/Sep/11 07:22
+Update date:
+20/Nov/15 11:53
+Resolved date:
+15/Sep/11 03:21

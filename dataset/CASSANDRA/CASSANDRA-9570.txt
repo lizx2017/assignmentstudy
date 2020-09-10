@@ -1,0 +1,44 @@
+Summary:
+Deprecated forceRepairAsync methods in StorageService do not work
+Description:
+The deprecated forceRepairAsync methods in StorageService don't work because they are creating RepairOption as follows:
+        RepairOption options = new RepairOption(parallelism, primaryRange, !fullRepair, false, 1, Collections.<Range<Token>>emptyList());
+This creates a RepairOption with an empty token range. The methods call down to:
+    public int forceRepairAsync(String keyspace, RepairOption options)
+    {
+        if (options.getRanges().isEmpty() || Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor() < 2)
+            return 0;
+
+        int cmd = nextRepairCommand.incrementAndGet();
+        new Thread(createRepairTask(cmd, keyspace, options)).start();
+        return cmd;
+    }
+to run the repair and this returns 0 because option ranges are empty.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 rc2
+Component:
+Legacy/Observability
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Mike Adamson
+Create date:
+09/Jun/15 14:28
+Update date:
+16/Apr/19 09:31
+Resolved date:
+11/Jun/15 14:55

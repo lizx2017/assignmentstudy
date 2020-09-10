@@ -1,0 +1,41 @@
+Summary:
+Bug in org.apache.pdfbox.io.Ascii85InputStream
+Description:
+Method 'org.apache.pdfbox.io.Ascii85InputStream.read()' has bug when reading final set of char that are not modulo-4.
+Test file="www.mzweb.com.br/grupobimbo/web/arquivos/Bimbo_Historia_20070409_Esp.pdf".
+On page#0 there is a dictionary "323 0 obj << /Length 1492 /Filter [/Ascii85Decode /FlateDecode]>>"
+Last set of bytes to decode is "%f" or 0x25, 0x66
+Ascii85InputStream pads this to "%f~!!" and correctly generates the final byte 0x0f.
+Including the '~' end-of-data char in the padding is a major bug.
+If the final padding were "%f!!!", the final byte decoded would be 0x0e (which is wrong).
+The correct padding is the 'u' char, or "%fuuu" (See http://en.wikipedia.org/wiki/Ascii85)
+This is a quick fix.
+The PDF files for corporate website "Grupo Bimbo" include lots of examples using Ascii85Decode/
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.7.1
+Fix_version:
+1.8.3, 2.0.0
+Component:
+None
+Label:
+Ascii85Decode
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Peter Costello
+Create date:
+14/Aug/13 00:22
+Update date:
+30/Nov/13 17:02
+Resolved date:
+25/Aug/13 12:54

@@ -1,0 +1,69 @@
+Summary:
+OutOfMemoryError in PDExtendedGraphicsState#getLineDashPattern
+Description:
+I'm getting an OutOfMemoryError from PDFBox when parsing a certain PDF using the Apache Tika App v 1.17 - which uses PDFBox 2.0.8 internally. This is reproducible even with 8GB heap.
+The OutOfMemoryError happens in org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState#getLineDashPattern, which contains this piece of suspicious code:
+COSArray dp = (COSArray) dict.getDictionaryObject( COSName.D );
+if( dp != null )
+{
+    COSArray array = new COSArray();
+    dp.addAll(dp);
+The last line is wrong. It appends all elements from 'dp' to 'dp' again, effectively duplicating the elements in the list. Maybe the intention was to add it to the created array instead.
+Stacktrace:
+[Full GC (Allocation Failure)  4225609K->4224664K(5989888K), 32,9544686 secs]
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+    at java.util.Arrays.copyOf(Arrays.java:3210)
+    at java.util.Arrays.copyOf(Arrays.java:3181)
+    at java.util.ArrayList.grow(ArrayList.java:261)
+    at java.util.ArrayList.ensureExplicitCapacity(ArrayList.java:235)
+    at java.util.ArrayList.ensureCapacityInternal(ArrayList.java:227)
+    at java.util.ArrayList.addAll(ArrayList.java:579)
+    at org.apache.pdfbox.cos.COSArray.addAll(COSArray.java:124)
+    at org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState.getLineDashPattern(PDExtendedGraphicsState.java:280)
+    at org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState.copyIntoGraphicsState(PDExtendedGraphicsState.java:89)
+    at org.apache.pdfbox.contentstream.operator.state.SetGraphicsStateParameters.process(SetGraphicsStateParameters.java:61)
+    at org.apache.pdfbox.contentstream.PDFStreamEngine.processOperator(PDFStreamEngine.java:838)
+    at org.apache.pdfbox.contentstream.PDFStreamEngine.processStreamOperators(PDFStreamEngine.java:495)
+    at org.apache.pdfbox.contentstream.PDFStreamEngine.processStream(PDFStreamEngine.java:469)
+    at org.apache.pdfbox.contentstream.PDFStreamEngine.processPage(PDFStreamEngine.java:150)
+    at org.apache.pdfbox.text.LegacyPDFStreamEngine.processPage(LegacyPDFStreamEngine.java:139)
+    at org.apache.pdfbox.text.PDFTextStripper.processPage(PDFTextStripper.java:391)
+    at org.apache.tika.parser.pdf.PDF2XHTML.processPage(PDF2XHTML.java:147)
+    at org.apache.pdfbox.text.PDFTextStripper.processPages(PDFTextStripper.java:319)
+    at org.apache.pdfbox.text.PDFTextStripper.writeText(PDFTextStripper.java:266)
+    at org.apache.tika.parser.pdf.PDF2XHTML.process(PDF2XHTML.java:117)
+    at org.apache.tika.parser.pdf.PDFParser.parse(PDFParser.java:168)
+    at org.apache.tika.parser.CompositeParser.parse(CompositeParser.java:280)
+    at org.apache.tika.parser.CompositeParser.parse(CompositeParser.java:280)
+    at org.apache.tika.parser.AutoDetectParser.parse(AutoDetectParser.java:143)
+    at org.apache.tika.cli.TikaCLI$OutputType.process(TikaCLI.java:205)
+    at org.apache.tika.cli.TikaCLI.process(TikaCLI.java:486)
+    at org.apache.tika.cli.TikaCLI.main(TikaCLI.java:145)
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+2.0.8
+Fix_version:
+2.0.10, 3.0.0 PDFBox
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Andreas Hubold
+Create date:
+20/Mar/18 21:51
+Update date:
+21/Jun/18 20:27
+Resolved date:
+21/Mar/18 14:29

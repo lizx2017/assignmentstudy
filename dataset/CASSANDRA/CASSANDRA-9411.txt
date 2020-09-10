@@ -1,0 +1,50 @@
+Summary:
+Bound statement executions fail after adding a collection-type column
+Description:
+After adding a collection-type column to an existing table, executions of statements that are already prepared result in server error (error code 0), with the error message java.lang.ArrayIndexOutOfBoundsException.
+To reproduce it.
+session.execute("CREATE TABLE tbl1 (a text, b text, c text, PRIMARY KEY (a, b))");
+//prepare initially
+PreparedStatement ps = session.prepare("SELECT a, b, c FROM tbl1");
+//insert some data
+session.execute("INSERT INTO tbl1 (a, b, c) VALUES ('a1', 'b1', 'c1')");
+//Executes successfully as expected
+session.execute(ps.bind());
+//Add a column of a collection type
+session.execute("ALTER TABLE tbl1 ADD d set<text>");
+//All following executions fail
+session.execute(ps.bind());
+Some notes:
+This only occurs for SELECT with fields (not with SELECT *)
+This only occurs with C* 2.0. Probably because CASSANDRA-7910 was applied for 2.1+
+This only occurs if the column added is a collection type (list / set / map)
+This occurs with all SELECT statements using that column family, that were already prepared.
+Repreparing it on all hosts fixes the issue, but for that, the user should normally restart existing application (even if the existing apps/apps versions don't handle this new field).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.16
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Jorge Bay
+Create date:
+18/May/15 09:36
+Update date:
+16/Apr/19 09:31
+Resolved date:
+27/May/15 14:19

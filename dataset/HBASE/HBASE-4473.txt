@@ -1,0 +1,57 @@
+Summary:
+NPE when executors are down but events are still coming in
+Description:
+Minor annoyance when shutting down a cluster and the master is still receiving events from Zookeeper:
+2011-09-22 23:53:01,552 DEBUG org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher: master:60000-0x3292d87deb004f Received InterruptedException, doing nothing here
+java.lang.InterruptedException
+at java.lang.Object.wait(Native Method)
+at java.lang.Object.wait(Object.java:485)
+at org.apache.zookeeper.ClientCnxn.submitRequest(ClientCnxn.java:1317)
+at org.apache.zookeeper.ZooKeeper.delete(ZooKeeper.java:726)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.deleteNode(ZKUtil.java:938)
+at org.apache.hadoop.hbase.zookeeper.ZKAssign.deleteNode(ZKAssign.java:407)
+at org.apache.hadoop.hbase.zookeeper.ZKAssign.deleteOpenedNode(ZKAssign.java:284)
+at org.apache.hadoop.hbase.master.handler.OpenedRegionHandler.process(OpenedRegionHandler.java:88)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:156)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+...
+2011-09-22 23:53:01,558 DEBUG org.apache.hadoop.hbase.executor.ExecutorService: Executor service [MASTER_OPEN_REGION-sv2borg170:60000] not found in {}
+2011-09-22 23:53:01,558 ERROR org.apache.zookeeper.ClientCnxn: Error while calling watcher
+java.lang.NullPointerException
+at org.apache.hadoop.hbase.executor.ExecutorService.submit(ExecutorService.java:220)
+at org.apache.hadoop.hbase.master.AssignmentManager.handleRegion(AssignmentManager.java:447)
+at org.apache.hadoop.hbase.master.AssignmentManager.nodeDataChanged(AssignmentManager.java:546)
+at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.process(ZooKeeperWatcher.java:281)
+at org.apache.zookeeper.ClientCnxn$EventThread.processEvent(ClientCnxn.java:530)
+at org.apache.zookeeper.ClientCnxn$EventThread.run(ClientCnxn.java:506)
+It's annoying because it then spams you with a bunch of NPEs that have nothing to do with the reason the Master is shutting down. Googling I saw someone also had that issue in June: http://pastebin.com/5Tqrj0nq
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+23/Sep/11 22:09
+Update date:
+20/Nov/15 11:53
+Resolved date:
+03/Oct/11 19:10

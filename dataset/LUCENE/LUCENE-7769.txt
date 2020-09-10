@@ -1,0 +1,52 @@
+Summary:
+UnifiedHighlighter doesn't highlight MTQs wrapped in BoostQuery
+Description:
+UnifiedHighlighter doesn't highlight MTQ wrapped in BoostQuery.
+For example, suppose we have a doc with a field 'f' contains data 'lucene'.
+UnifiedHighlighter highlights query (f:lucene*), but query (f:lucene*)^1 doesn't. Test code:
+String field = "f";
+String content = "lucene";
+Term term = new Term(field, content);
+UnifiedHighlighter highlighter = new UnifiedHighlighter(null, new StandardAnalyzer());
+Query[] queries = {new PrefixQuery(term), new BoostQuery(new PrefixQuery(term), 1.0f)};
+Object fragObj;  
+for (Query query : queries)
+{
+ fragObj = highlighter.highlightWithoutSearcher(field, query, content, 1);
+ System.out.printf("content=[%s]  Query=%s  frag=[%s]\n", content, query, fragObj);
+}
+My opinion it's because MultiTermHighlighting.extractAutomata() returns an empty automaton for BoostQuery. I think, should add some thing like:
+if (query instanceof BoostQuery) 
+{
+      list.addAll(Arrays.asList(extractAutomata(((BoostQuery) query).getQuery(), fieldMatcher, lookInSpan, preRewriteFunc))) ; 
+} 
+to MultiTermHighlighting.extractAutomata()
+Thanks.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+6.4.2, 6.5
+Fix_version:
+6.5.1, 7.0
+Component:
+modules/highlighter
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+David Smiley
+Reporter:
+Dmitry Malinin
+Create date:
+07/Apr/17 08:27
+Update date:
+27/Apr/17 11:57
+Resolved date:
+18/Apr/17 18:43

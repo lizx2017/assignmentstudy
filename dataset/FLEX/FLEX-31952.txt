@@ -1,0 +1,69 @@
+Summary:
+NumericAxis (& possibly others) FilterCache Function can cause items on the screen edges to be cut-off
+Description:
+Found in version: Flex Builder 2
+Steps to reproduce:
+#1 - Create a line series that has several data points.
+#2 - Change the min/max values of the X-Axis to cut off a few data points on the left/right side of the screen
+Actual Results:
+The FilterData function will put NaN into the xFilter value of any off-screen coordinates. This would technically be okay because they are off-screen, however certain renderers need the information of the previous/next item in order to render correctly (example: LineRenderer). This can causes white-space on the left/right side of the chart where the lineSegment is cut off because it doesn't have the value of the previous/next item (which are offscreen)
+Expected Results:
+The lineSegment should still be drawn to the off-screen coordinate, but be clipped by the chart bounds, so that we have no whitespace. This helps for things like panning so that it gives visually it looks like the lines flow/connect rather than having whitespace appear/disappear.
+Workaround (if any):
+(Numberic-Axis / — I'm using DateTimeAxis)
+public override function filterCache(cache : Array, field : String, filteredField : String) : void
+{//changed to not filter-out the 1st off-screen point on the left/right sides (so that lines/etc don't get cut-off)
+update();
+//ADOBE: Avoid roundoff errors.
+var max:Number = computedMaximum + 0.00001;
+var min:Number = computedMinimum - 0.00001;
+var n:int = cache.length;
+var leftOutOfBoundsIndex : int = 0;
+var leftOffset : Number = Number.MAX_VALUE;
+var rightOutOfBoundsIndex : int = n - 1;
+var rightOffset : Number = Number.MAX_VALUE;
+for (var i:int = 0; i < n; i++)
+{
+var v:Number = cache[i][field];
+if (v >= min && v <= max)
+{ cache[i][filteredField] = v; }
+else
+{
+cache[i][filteredField] = NaN;
+if ((min > v) && (min - v) < leftOffset)
+{ leftOffset = min - cache[leftOutOfBoundsIndex][field]; leftOutOfBoundsIndex = i; }
+if ((max < v) && (v - max) < rightOffset)
+{ rightOffset = cache[rightOutOfBoundsIndex][field] - max; rightOutOfBoundsIndex = i; }
+}
+}
+cache[leftOutOfBoundsIndex][filteredField] = cache[leftOutOfBoundsIndex][field];
+cache[rightOutOfBoundsIndex][filteredField] = cache[rightOutOfBoundsIndex][field];
+}
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+24/Dec/07 11:48
+Update date:
+24/Jan/08 01:49
+Resolved date:
+04/Jan/08 02:41

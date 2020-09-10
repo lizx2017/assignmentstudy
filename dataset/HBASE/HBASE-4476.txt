@@ -1,0 +1,40 @@
+Summary:
+Compactions must fail if column tracker gets columns out of order
+Description:
+We found this in ScanWildcardColumnTracker:
+// new col < oldcol
+// if (cmp < 0) {
+// WARNING: This means that very likely an edit for some other family
+// was incorrectly stored into the store for this one. Continue, but
+// complain.
+LOG.error("ScanWildcardColumnTracker.checkColumn ran " +
+"into a column actually smaller than the previous column: " +
+This went under the radar in our dark launch cluster when a column family name was misspelled first, but then was "renamed" by renaming directories in the HBase storage directory tree. We ended up with inconsistent data, but compactions still succeeded most of the time, likely discarding part of input data.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mikhail Bautin
+Reporter:
+Mikhail Bautin
+Create date:
+24/Sep/11 00:39
+Update date:
+12/Oct/12 05:35
+Resolved date:
+30/Sep/11 21:22

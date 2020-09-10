@@ -1,0 +1,57 @@
+Summary:
+Newly created table ends up disabled instead of assigned
+Description:
+Something that was seen by someone on the channel yesterday and by me this morning, it's possible to create a table that ends up disabled and the 'create' calls times out. The master log looks like:
+2010-12-01 19:32:52,350 INFO org.apache.hadoop.hbase.regionserver.wal.HLog: HLog configuration: blocksize=64 MB, rollsize=60.8 MB, enabled=true, flushlogentries=1, optionallogflushinternal=1000ms
+2010-12-01 19:32:52,450 INFO org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogWriter: Using syncFs -- HDFS-200
+2010-12-01 19:32:52,451 INFO org.apache.hadoop.hbase.regionserver.wal.HLog: New hlog /hbase/TestTable/2e2099cd5fce907e670ce8596d9b2368/.logs/hlog.1291231972350
+2010-12-01 19:32:52,451 INFO org.apache.hadoop.hbase.regionserver.wal.HLog: Using getNumCurrentReplicas--HDFS-826
+2010-12-01 19:32:52,452 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Instantiated TestTable,,1291231972140.2e2099cd5fce907e670ce8596d9b2368.
+2010-12-01 19:32:52,645 INFO org.apache.hadoop.hbase.regionserver.HRegion: Onlined TestTable,,1291231972140.2e2099cd5fce907e670ce8596d9b2368.; next sequenceid=1
+2010-12-01 19:32:52,784 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Added region TestTable,,1291231972140.2e2099cd5fce907e670ce8596d9b2368. to META
+2010-12-01 19:32:52,784 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Closing TestTable,,1291231972140.2e2099cd5fce907e670ce8596d9b2368.: disabling compactions & flushes
+2010-12-01 19:32:52,784 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Updates disabled for region TestTable,,1291231972140.2e2099cd5fce907e670ce8596d9b2368.
+2010-12-01 19:32:52,784 DEBUG org.apache.hadoop.hbase.regionserver.Store: closed info
+2010-12-01 19:32:52,784 INFO org.apache.hadoop.hbase.regionserver.HRegion: Closed TestTable,,1291231972140.2e2099cd5fce907e670ce8596d9b2368.
+2010-12-01 19:32:52,784 DEBUG org.apache.hadoop.hbase.regionserver.wal.HLog: IPC Server handler 4 on 61000.logSyncer interrupted while waiting for sync requests
+2010-12-01 19:32:52,784 INFO org.apache.hadoop.hbase.regionserver.wal.HLog: IPC Server handler 4 on 61000.logSyncer exiting
+2010-12-01 19:32:52,784 DEBUG org.apache.hadoop.hbase.regionserver.wal.HLog: closing hlog writer in hdfs://sv2borg180:9100/hbase/TestTable/2e2099cd5fce907e670ce8596d9b2368/.logs
+2010-12-01 19:32:52,908 DEBUG org.apache.hadoop.hbase.regionserver.wal.HLog: Moved 1 log files to /hbase/TestTable/2e2099cd5fce907e670ce8596d9b2368/.oldlogs
+2010-12-01 19:32:52,966 INFO org.apache.hadoop.hbase.master.AssignmentManager: Table TestTable disabled; skipping assign of TestTable,,1291231972140.2e2099cd5fce907e670ce8596d9b2368.
+2010-12-01 19:32:52,967 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Table being disabled so deleting ZK node
+ and removing from regions in transition, skipping assignment of region TestTable,,1291231972140.2e2099cd5fce907e670ce8596d9b2368.
+2010-12-01 19:32:52,967 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:61000-0x12c84725b4b00b6
+ Deleting existing unassigned node for 2e2099cd5fce907e670ce8596d9b2368 that is in expected state RS_ZK_REGION_CLOSED
+2010-12-01 19:32:52,968 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Tried to delete closed node for REGION =>
+ {NAME => 'TestTable,,1291231972140.2e2099cd5fce907e670ce8596d9b2368.', STARTKEY => '', ENDKEY => '', ENCODED =>
+ 2e2099cd5fce907e670ce8596d9b2368, TABLE => {{NAME => 'TestTable', FAMILIES => [{NAME => 'info', BLOOMFILTER
+ => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE =>
+ '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}} but it does not exist so just offlining
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+01/Dec/10 19:46
+Update date:
+20/Nov/15 12:42
+Resolved date:
+02/Dec/10 20:21

@@ -1,0 +1,59 @@
+Summary:
+NPE in HRegion.bulkLoadHFiles(...)
+Description:
+Was playing with "completebulkload", and ran into an NPE.
+The problem is here (HRegion.bulkLoadHFiles(...)).
+Store store = getStore(familyName);
+if (store == null) {
+  IOException ioe = new DoNotRetryIOException(
+      "No such column family " + Bytes.toStringBinary(familyName));
+  ioes.add(ioe);
+  failures.add(p);
+}
+
+try {
+  store.assertBulkLoadHFileOk(new Path(path));
+} catch (WrongRegionException wre) {
+  // recoverable (file doesn't fit in region)
+  failures.add(p);
+} catch (IOException ioe) {
+  // unrecoverable (hdfs problem)
+  ioes.add(ioe);
+}
+This should be
+Store store = getStore(familyName);
+if (store == null) {
+...
+} else {
+  try {
+    store.assertBulkLoadHFileOk(new Path(path));
+...
+}
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.92.0, 0.94.0
+Fix_version:
+0.92.0
+Component:
+mapreduce
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Lars Hofhansl
+Create date:
+04/Dec/11 03:52
+Update date:
+20/Nov/15 11:53
+Resolved date:
+04/Dec/11 20:55

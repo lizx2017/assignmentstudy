@@ -1,0 +1,45 @@
+Summary:
+RepairTask doesn't send a correct message in a JMX notifcation in case of IllegalArgumentException
+Description:
+From CASSANDRA-7317:
+The behavior when manually trying to repair the full range of 127.0.0.01 definitely needs improvement though.
+Repair command:
+[Nicks-MacBook-Pro:21:50:44 cassandra-2.0] cassandra$ bin/nodetool -p 7100 repair -st -10 -et -9223372036854775808 system_traces
+[2014-05-28 21:50:55,803] Starting repair command #17, repairing 1 ranges for keyspace system_traces
+[2014-05-28 21:50:55,804] Starting repair command #17, repairing 1 ranges for keyspace system_traces
+[2014-05-28 21:50:55,804] Repair command #17 finished
+[Nicks-MacBook-Pro:21:50:56 cassandra-2.0] cassandra$ echo $?
+1
+system.log:
+ERROR [Thread-96] 2014-05-28 21:40:05,921 StorageService.java (line 2621) Repair session failed:
+java.lang.IllegalArgumentException: Requested range intersects a local range but is not fully contained in one; this would lead to imprecise repair
+The actual output of the repair command doesn't really indicate that there was an issue. Although the command does return with a non zero exit status.
+The error here is invisible if you are using the synchronous jmx repair api. It will appear as though the repair completed successfully.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.17, 2.0.9
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mikhail Stepura
+Reporter:
+Mikhail Stepura
+Create date:
+02/Jun/14 04:52
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Jun/14 21:18

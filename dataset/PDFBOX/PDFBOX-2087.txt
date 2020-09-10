@@ -1,0 +1,82 @@
+Summary:
+Using the LayerUtil on Documents which contains empty pages, results in an NullPointer exception.
+Description:
+First: Thanks a lot for maintaining PDFBox, it’s really great and helped us a lot in our project!
+Business-Context:
+I have to apply stationery paper to a document while considering an exclusion list. I.e. on some pages the stationery paper
+is not to be applied.
+Code-Sniplet (Which Leads to the NPE):
+// preparing a new document containing the stationery paper and pages without it
+
+            _targetDocument = new PDDocument();
+
+            var emptyPage = new PDPage();
+            emptyPage.setMediaBox(PDPage.PAGE_SIZE_A4);
+
+…..
+            for (int i = 1; i <= destinationPageCount; i++)
+            {
+                if (_exclusionPages.Contains(i))
+                {
+                    _targetDocument.importPage(emptyPage);
+                }
+                else 
+                {
+                    _targetDocument.importPagestationeryPage);
+                }
+            }          
+
+// now adding the original documents text via layer Util like this
+        /// <summary>
+        /// Create a document with the stationery paper in the background 
+        /// and the text as a layer in the foreground.
+        /// </summary>
+        private void AddDocumentPagesAsLayerToTargetDocument()
+        {
+            LayerUtility layerUtil = new LayerUtility(_targetDocument);
+            var transform = new AffineTransform();
+            var backgroundPages = _targetDocument.getDocumentCatalog().getAllPages();
+
+            for (int pageIndex = 0; pageIndex < backgroundPages.size(); pageIndex++)
+            {
+                PDXObjectForm textPdfPageAsForm = layerUtil.importPageAsForm(_pdfDocument, pageIndex);
+
+                PDPage targetPage = (PDPage)backgroundPages.get(pageIndex);
+
+                layerUtil.appendFormAsLayer(targetPage, textPdfPageAsForm, transform, String.Format("ContentPage_{0:000}", pageIndex));    
+
+            }
+        }
+Current-Workaround:
+Creating a content stream on the empty page and printing something invisible on it.
+Once again thanks a lot for maintaining PDFBox.
+Best greetings from Cologne/Germany
+Stefan Schubert
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+1.8.2
+Fix_version:
+None
+Component:
+Utilities
+Label:
+None
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Stefan Schubert
+Create date:
+21/May/14 19:25
+Update date:
+21/May/14 19:25
+Resolved date:
+

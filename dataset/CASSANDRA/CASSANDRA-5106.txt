@@ -1,0 +1,76 @@
+Summary:
+Stock example for using pig throws InvalidRequestException(why:Start token sorts after end token)
+Description:
+The setup:
+This is from printenv
+HADOOP_HOME=/home/Downloads/hadoop-1.1.1
+PIG_HOME=/home/Downloads/pig-0.10.0
+PIG_INITIAL_ADDRESS=localhost
+PIG_RPC_PORT=9160
+PIG_PARTITIONER=org.apache.cassandra.dht.Murmur3Partitioner
+This is from cassandra-cli
+[default@PigTest] describe cluster;
+Cluster Information:
+Snitch: org.apache.cassandra.locator.SimpleSnitch
+Partitioner: org.apache.cassandra.dht.Murmur3Partitioner
+Schema versions:
+b5fc9a82-fbdd-3cf5-af16-9c498c9f9a5c: [127.0.0.1]
+Running test_storage.pig as
+bin/pig_cassandra -x local test/test_storage.pig
+after populating the cf as
+cassandra-cli --host localhost --port 9160 < populate-cli.txt
+throws
+2013-01-03 02:20:47,626 [Thread-4] INFO org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigRecordReader - Current spli
+t being processed ColumnFamilySplit((-1, '-1728690256123413808] @[localhost.localdomain])
+2013-01-03 02:20:47,758 [Thread-4] WARN org.apache.hadoop.mapred.FileOutputCommitter - Output path is null in cleanup
+2013-01-03 02:20:47,760 [Thread-4] WARN org.apache.hadoop.mapred.LocalJobRunner - job_local_0001
+java.lang.RuntimeException: InvalidRequestException(why:Start token sorts after end token)
+at org.apache.cassandra.hadoop.ColumnFamilyRecordReader$StaticRowIterator.maybeInit(ColumnFamilyRecordReader.java:384)
+at org.apache.cassandra.hadoop.ColumnFamilyRecordReader$StaticRowIterator.computeNext(ColumnFamilyRecordReader.java:390)
+at org.apache.cassandra.hadoop.ColumnFamilyRecordReader$StaticRowIterator.computeNext(ColumnFamilyRecordReader.java:313)
+at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:143)
+at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:138)
+at org.apache.cassandra.hadoop.ColumnFamilyRecordReader.nextKeyValue(ColumnFamilyRecordReader.java:184)
+at org.apache.cassandra.hadoop.pig.CassandraStorage.getNext(CassandraStorage.java:226)
+at org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigRecordReader.nextKeyValue(PigRecordReader.java:194)
+at org.apache.hadoop.mapred.MapTask$NewTrackingRecordReader.nextKeyValue(MapTask.java:532)
+at org.apache.hadoop.mapreduce.MapContext.nextKeyValue(MapContext.java:67)
+at org.apache.hadoop.mapreduce.Mapper.run(Mapper.java:143)
+at org.apache.hadoop.mapred.MapTask.runNewMapper(MapTask.java:764)
+at org.apache.hadoop.mapred.MapTask.run(MapTask.java:370)
+at org.apache.hadoop.mapred.LocalJobRunner$Job.run(LocalJobRunner.java:212)
+Caused by: InvalidRequestException(why:Start token sorts after end token)
+at org.apache.cassandra.thrift.Cassandra$get_range_slices_result.read(Cassandra.java:12916)
+at org.apache.thrift.TServiceClient.receiveBase(TServiceClient.java:78)
+at org.apache.cassandra.thrift.Cassandra$Client.recv_get_range_slices(Cassandra.java:734)
+at org.apache.cassandra.thrift.Cassandra$Client.get_range_slices(Cassandra.java:718)
+at org.apache.cassandra.hadoop.ColumnFamilyRecordReader$StaticRowIterator.maybeInit(ColumnFamilyRecordReader.java:346)
+... 13 more
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.9, 1.2.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+janwar dinata
+Create date:
+03/Jan/13 21:43
+Update date:
+16/Apr/19 09:32
+Resolved date:
+10/Jan/13 18:52

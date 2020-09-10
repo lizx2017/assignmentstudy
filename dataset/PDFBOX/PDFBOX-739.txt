@@ -1,0 +1,115 @@
+Summary:
+Problem converting pdf page w/ fully embedded TTF font, Identity-H (CID)
+Description:
+I'm running into an issue when trying to convert a pdf page to an image. Conditions:
+Pdf file with TrueType font fully embedded
+Encoding: Identity-H (CID)
+Although the FontFile2 stream is present, I get (I added extra info logging):
+Jun 1, 2010 12:44:38 PM org.apache.pdfbox.pdmodel.font.PDFontFactory createFont
+INFO: subType: COSName
+{Type0}
+Jun 1, 2010 12:44:38 PM org.apache.pdfbox.pdmodel.font.PDFontFactory createFont
+INFO: subType: COSName
+{CIDFontType2}
+Jun 1, 2010 12:44:39 PM org.apache.pdfbox.pdmodel.font.PDType1Font getawtFont
+INFO: Can't find the specified basefont DroidSansFallback
+java.lang.Throwable
+at org.apache.pdfbox.pdmodel.font.PDType1Font.getawtFont(PDType1Font.java:234)
+at org.apache.pdfbox.pdmodel.font.PDSimpleFont.drawString(PDSimpleFont.java:97)
+at org.apache.pdfbox.pdmodel.font.PDType0Font.drawString(PDType0Font.java:68)
+at org.apache.pdfbox.pdfviewer.PageDrawer.processTextPosition(PageDrawer.java:190)
+at org.apache.pdfbox.util.PDFStreamEngine.processEncodedText(PDFStreamEngine.java:498)
+at org.apache.pdfbox.util.operator.ShowText.process(ShowText.java:45)
+at org.apache.pdfbox.util.PDFStreamEngine.processOperator(PDFStreamEngine.java:556)
+at org.apache.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:250)
+at org.apache.pdfbox.util.PDFStreamEngine.processStream(PDFStreamEngine.java:208)
+at org.apache.pdfbox.pdfviewer.PageDrawer.drawPage(PageDrawer.java:111)
+at org.apache.pdfbox.pdmodel.PDPage.convertToImage(PDPage.java:718)
+at org.apache.pdfbox.util.PDFImageWriter.writeImage(PDFImageWriter.java:137)
+at org.apache.pdfbox.PDFToImage.main(PDFToImage.java:204)
+INFO: Using font ArialMT instead
+test with:
+java -jar pdfbox-app-1.2.0-SNAPSHOT.jar PDFToImage -imageType png -startPage 1 -endPage 1 -color rgba -resolution 108 hello-DroidSans-Identity-H.pdf
+Attached is a sample pdf with one of the droid fonts fully embedded in the above manner (free, Apache 2 license):
+http://android.git.kernel.org/?p=platform/frameworks/base.git;a=tree;f=data/fonts;hb=HEAD
+(The attached file has DroidSans instead of DroidSansFallback as in the log to keep the file size down, but it has the same result)
+(I was able to hack fix by changing PDType0 to extends PDTrueTypeFont, but that seems like a terrible hack).
+Below are the relevant parts of the pdf that cause the getawtFont issue:
+1 0 obj
+<</DescendantFonts[7 0 R]
+/BaseFont/DroidSans/Type/Font/Encoding/Identity-H/Subtype/Type0/ToUnicode 8 0 R>>
+endobj
+4 0 obj
+<</Parent 3 0 R/Contents 2 0 R/Type/Page/Resources<</ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font<</F1 1 0 R>>
+/MediaBox[0 0 328.5 449.28]>>
+endobj
+5 0 obj
+<</Length1 190044/Length 190044>>stream
+-snip TTF stream-
+endstream
+6 0 obj
+<</FontBBox[-558 -270 1168 1047]/CapHeight 713/Type/FontDescriptor/FontFile2 5 0 R/StemV 80/Descent -240/Flags 32/FontName/DroidSans/Ascent 765/ItalicAngle 0>>
+endobj
+7 0 obj
+<</BaseFont/DroidSans/CIDSystemInfo<</Ordering(Identity)/Registry(Adobe)/Supplement 0>>/W [3[259 269]43[701]58[883]71[585 535]79[258]82[577]85[398]]/Type/Font/Subtype/CIDFontType2/FontDescriptor 6 0 R/DW 1000/CIDToGIDMap/Identity>>
+endobj
+8 0 obj
+<</Length 485>>stream
+/CIDInit /ProcSet findresource begin
+12 dict begin
+begincmap
+/CIDSystemInfo
+<< /Registry (TTX+0)
+/Ordering (T42UV)
+/Supplement 0
+def
+/CMapName /TTX+0 def
+/CMapType 2 def
+1 begincodespacerange
+<0000><FFFF>
+endcodespacerange
+9 beginbfrange
+<0003><0003><0020>
+<0004><0004><0021>
+<002b><002b><0048>
+<003a><003a><0057>
+<0047><0047><0064>
+<0048><0048><0065>
+<004f><004f><006c>
+<0052><0052><006f>
+<0055><0055><0072>
+endbfrange
+endcmap
+CMapName currentdict /CMap defineresource pop
+end end
+endstream
+endobj
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.2.0
+Fix_version:
+1.2.0
+Component:
+PDModel
+Label:
+image pdf
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Armando Singer
+Create date:
+02/Jun/10 07:53
+Update date:
+01/Jul/10 07:27
+Resolved date:
+10/Jun/10 19:52

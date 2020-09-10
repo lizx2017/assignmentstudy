@@ -1,0 +1,70 @@
+Summary:
+The output of the describe command does not necessarily give you the right DDL to re-create the CF
+Description:
+If compression is not set for a CF, cqlsh omits the compression attribute. When you replay that very same DDL, you get a CF with Snappy compression. This may occur with other parameters. Perhaps describe should always show every parameter in full. The absence of a setting is a setting. (Think of the arrow in the FedEx logo).
+Create a CF with cassandra-stress. cassandra-stress defaults to NO compression.
+~/dse/resources/cassandra/tools/bin/cassandra-stress -S 100 -c 1 --num-keys 1
+describe it
+CREATE TABLE "Standard1" (
+key blob PRIMARY KEY,
+"C0" blob
+) WITH COMPACT STORAGE AND
+bloom_filter_fp_chance=0.010000 AND
+caching='KEYS_ONLY' AND
+comment='' AND
+dclocal_read_repair_chance=0.000000 AND
+gc_grace_seconds=864000 AND
+read_repair_chance=0.100000 AND
+replicate_on_write='true' AND
+populate_io_cache_on_flush='false' AND
+compaction=
+{'class': 'SizeTieredCompactionStrategy'}
+;
+replay it - I changed the cf name to standard2
+describe the new CF:
+CREATE TABLE standard2 (
+key blob PRIMARY KEY,
+"C0" blob
+) WITH COMPACT STORAGE AND
+bloom_filter_fp_chance=0.010000 AND
+caching='KEYS_ONLY' AND
+comment='' AND
+dclocal_read_repair_chance=0.000000 AND
+gc_grace_seconds=864000 AND
+read_repair_chance=0.100000 AND
+replicate_on_write='true' AND
+populate_io_cache_on_flush='false' AND
+compaction=
+{'class': 'SizeTieredCompactionStrategy'}
+AND
+compression=
+{'sstable_compression': 'SnappyCompressor'}
+;
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.7
+Component:
+Legacy/Tools
+Label:
+cqlsh describe
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Steven Lowenthal
+Create date:
+16/Jul/13 22:08
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/Jul/13 20:44

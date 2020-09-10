@@ -1,0 +1,74 @@
+Summary:
+Files written to an android device using applicationStorageDirectory DO NOT GET PERSISTED.
+Description:
+One of our existing apps has ceased to function properly since the last AIR update for Android.
+We've traced this to some behaviour associated with applicationStorageDirectory/resolvePath. The given file is simply never created, although it can be re-opened and read so long as the application is not closed (probably the reason why your tests passed)?
+Permissions to write to external media are ENABLED in the manifest before you ask.
+Below is a simple test case which demonstrates the problem.
+Steps to reproduce:
+1. Paste this into a Flex Mobile Project
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark" creationComplete="testWrite()">
+<fx:Declarations>
+<!-- Place non-visual elements (e.g., services, value objects) here -->
+</fx:Declarations>
+<fx:Script>
+<![CDATA[
+function testWrite() : void{
+var prefsFile:File = File.applicationStorageDirectory; //DOES NOT WORK
+prefsFile = prefsFile.resolvePath("preferences.xml"); //DOES NOT WORK
+prefsFile.createDirectory();
+//var prefsFile : File = new File('/mnt/sdcard/zzzzzz.out'); //WORKS
+if (!prefsFile.exists) {
+var stream : FileStream = new FileStream();
+try
+{ stream.open(prefsFile, FileMode.WRITE); stream.writeUTFBytes("A test string"); stream.close(); successful.text = "OK WRITTEN : " + prefsFile.nativePath; }
+catch (e : Error)
+{ successful.text = "FAIL during write : "+prefsFile.nativePath; }
+} else {
+successful.text = "FILE already existed : "prefsFile.nativePath " DIR LISTING : ";
+var contents = prefsFile.getDirectoryListing();
+var i : int = 0;
+for (i = 0; i < contents.length; i++)
+{ successful.text += contents[i].name+" : "; }
+}
+}
+]]
+>
+</fx:Script>
+<s:Label id="successful"/>
+</s:Application>
+Actual Results:
+The file is not written out.
+Expected Results:
+Workaround (if any):
+Comment in the hard coded path to the sdcard to see it working.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+Adobe Flex SDK 4.5.1
+Fix_version:
+None
+Component:
+.Unspecified - Mobile
+Label:
+None
+Environment:
+Affected OS(s): Google Android
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+19/Sep/11 09:47
+Update date:
+27/Sep/11 16:43
+Resolved date:
+22/Sep/11 11:02

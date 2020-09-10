@@ -1,0 +1,37 @@
+Summary:
+Tragic events during merges can lead to deadlock
+Description:
+When an IndexWriter#commit() is stalled due to too many pending merges, you can get a deadlock if the currently active merge thread hits a tragic event.
+The thread performing the commit synchronizes on the the commitLock in commitInternal.
+The thread goes on to to call ConcurrentMergeScheduler#doStall() which waits() on the ConcurrentMergeScheduler object. This release the merge scheduler's monitor lock, but not the commitLock in IndexWriter.
+Sometime after this wait begins, the merge thread gets a tragic exception can calls IndexWriter#tragicEvent() which in turn calls IndexWriter#rollbackInternal().
+The IndexWriter#rollbackInternal() synchronizes on the commitLock which is still held by the committing thread from (1) above which is waiting on the merge(s) to complete. Hence, deadlock.
+We hit this bug with Lucene 5.5, but I looked at the code in the master branch and it looks like the deadlock still exists there as well.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+5.5, 7.0
+Fix_version:
+5.5.4, 6.4, 7.0
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Joey Echeverria
+Create date:
+22/Nov/16 21:25
+Update date:
+08/Feb/17 10:39
+Resolved date:
+08/Feb/17 10:39

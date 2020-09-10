@@ -1,0 +1,44 @@
+Summary:
+DateTieredCompactionStrategy fails to combine SSTables correctly when TTL is used.
+Description:
+DateTieredCompaction works correctly when data is dumped for a certain time period in short SSTables in time manner and then compacted together. However, if TTL is applied to the data columns the DTCS fails to compact files correctly in timely manner. In our opinion the problem is caused by two issues:
+A) During the DateTieredCompaction process the getFullyExpiredSStables is called twice. First from the DateTieredCompactionStrategy class and second time from the CompactionTask class. On the first time the target is to find out fully expired SStables that are not overlapping with any non-fully expired SSTables. That works correctly. When the getFullyExpiredSSTables is called second time from CompactionTask class the selection of fully expired SSTables is modified compared to the first selection.
+B) The minimum timestamp of the new SSTables created by combining together fully expired SSTable and files from the most interesting bucket is not correct.
+These two issues together cause problems for the DTCS process when it combines together SSTables having overlap in time and TTL for the column. This is demonstrated by generating test data first without compactions and showing the timely distribution of files. When the compaction is enabled the DCTS combines files together, but the end result is not something to be expected. This is demonstrated in the file motivation_jira.txt
+Attachments contain following material:
+Motivation_jira.txt: Practical examples how the DTCS behaves with TTL
+Explanation_jira.txt: gives more details, explains test cases and demonstrates the problems in the compaction process
+Logfile file for the compactions in the first test case (compaction_stage_test01_jira.log)
+Logfile file for the compactions in the seconnd test case (compaction_stage_test02_jira.log)
+source code zip file for version 2.1.5 with additional comment statements (src_2.1.5_with_debug.zip)
+Python script to generate test data (datagen.py)
+Python script to read metadata from SStables (cassandra_sstable_metadata_reader.py)
+Python script to generate timeline representation of SSTables (cassandra_sstable_timespan_graph.py)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.16, 2.1.7, 2.2.0 rc2,
+Component:
+Local/Compaction
+Label:
+dtcs
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Antti Nissinen
+Create date:
+10/Jun/15 12:01
+Update date:
+16/Apr/19 09:31
+Resolved date:
+12/Jun/15 16:53

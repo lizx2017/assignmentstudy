@@ -1,0 +1,69 @@
+Summary:
+Exception swallowing in ..net.MessagingService
+Description:
+While I was trying to setup internode encryption, I spent too much time finding out that the name of my keystore was wrong.
+Main reason was the org/apache/cassandra/net/MessagingService.java swallowing the exception and just spitting out:
+ERROR [main] 2013-06-15 12:49:43,758 CassandraDaemon.java (line 358) Fatal configuration error
+org.apache.cassandra.exceptions.ConfigurationException: Unable to create ssl socket
+ at org.apache.cassandra.net.MessagingService.getServerSocket(MessagingService.java:432)
+ at org.apache.cassandra.net.MessagingService.listen(MessagingService.java:412)
+ at org.apache.cassandra.service.StorageService.joinTokenRing(StorageService.java:564)
+ at org.apache.cassandra.service.StorageService.initServer(StorageService.java:529)
+ at org.apache.cassandra.service.StorageService.initServer(StorageService.java:428)
+ at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:354)
+ at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:453)
+ at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:496)
+Unable to create ssl socket
+I will attach a minor patch, that shows just a bit more:
+ERROR [main] 2013-06-15 12:58:44,979 CassandraDaemon.java (line 358) Fatal configuration error
+org.apache.cassandra.exceptions.ConfigurationException: Unable to create ssl socket
+ at org.apache.cassandra.net.MessagingService.getServerSocket(MessagingService.java:432)
+ at org.apache.cassandra.net.MessagingService.listen(MessagingService.java:412)
+ at org.apache.cassandra.service.StorageService.joinTokenRing(StorageService.java:564)
+ at org.apache.cassandra.service.StorageService.initServer(StorageService.java:529)
+ at org.apache.cassandra.service.StorageService.initServer(StorageService.java:428)
+ at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:354)
+ at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:453)
+ at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:496)
+Caused by: java.io.IOException: Error creating the initializing the SSL Context
+ at org.apache.cassandra.security.SSLFactory.createSSLContext(SSLFactory.java:124)
+ at org.apache.cassandra.security.SSLFactory.getServerSocket(SSLFactory.java:53)
+ at org.apache.cassandra.net.MessagingService.getServerSocket(MessagingService.java:428)
+ ... 7 more
+Caused by: java.io.FileNotFoundException: conf/oeps-wrong-truststore.jks (No such file or directory)
+ at java.io.FileInputStream.open(Native Method)
+ at java.io.FileInputStream.<init>(FileInputStream.java:138)
+ at java.io.FileInputStream.<init>(FileInputStream.java:97)
+ at org.apache.cassandra.security.SSLFactory.createSSLContext(SSLFactory.java:105)
+ ... 9 more
+Unable to create ssl socket
+kind regards,
+Harry
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.6
+Component:
+Local/Config
+Label:
+None
+Environment:
+redhat, java 1.7
+Attachment number:
+0
+Assignee:
+Harry Metske
+Reporter:
+Harry Metske
+Create date:
+15/Jun/13 13:29
+Update date:
+16/Apr/19 09:32
+Resolved date:
+15/Jun/13 15:44

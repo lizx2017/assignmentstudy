@@ -1,0 +1,68 @@
+Summary:
+HBASE-1626 does not work as advertised due to lack of "instanceof" check in MR framework
+Description:
+The issue that HBASE-1626 tried to fix is that we can hand in Put or Delete instances to the TableOutputFormat. So the explicit Put reference was changed to Writable in the process. But that does not work as expected:
+09/11/04 13:35:56 INFO mapred.JobClient: Task Id : attempt_200911031030_0004_m_000013_2, Status : FAILED
+java.io.IOException: Type mismatch in value from map: expected org.apache.hadoop.io.Writable, recieved org.apache.hadoop.hbase.client.Put
+        at org.apache.hadoop.mapred.MapTask$MapOutputBuffer.collect(MapTask.java:812)
+        at org.apache.hadoop.mapred.MapTask$NewOutputCollector.write(MapTask.java:504)
+        at org.apache.hadoop.mapreduce.TaskInputOutputContext.write(TaskInputOutputContext.java:80)
+        at com.worldlingo.hadoop.mapred.RestoreTable$RestoreMapper.map(RestoreTable.java:140)
+        at com.worldlingo.hadoop.mapred.RestoreTable$RestoreMapper.map(RestoreTable.java:69)
+        at org.apache.hadoop.mapreduce.Mapper.run(Mapper.java:144)
+        at org.apache.hadoop.mapred.MapTask.runNewMapper(MapTask.java:583)
+        at org.apache.hadoop.mapred.MapTask.run(MapTask.java:305)
+The issue is that the MapReduce framework checks not polymorphic for the type using "instanceof" but with a direct class comparison. In MapTask.java you find this code
+    public synchronized void collect(K key, V value, int partition
+                                     ) throws IOException {
+      reporter.progress();
+      if (key.getClass() != keyClass) {
+        throw new IOException("Type mismatch in key from map: expected "
+                              + keyClass.getName() + ", recieved "
+                              + key.getClass().getName());
+      }
+      if (value.getClass() != valClass) {
+        throw new IOException("Type mismatch in value from map: expected "
+                              + valClass.getName() + ", recieved "
+                              + value.getClass().getName());
+      }
+      ... 
+So it does not work using a Writable as the MapOutputValueClass for the job and then hand in a Put or Delete! The test case TestMapReduce did not pick this up as it has this line in it
+      TableMapReduceUtil.initTableMapperJob(
+        Bytes.toString(table.getTableName()), scan,
+        ProcessContentsMapper.class, ImmutableBytesWritable.class, 
+        Put.class, job);
+which sets the value class to Put
+if (outputValueClass != null) job.setMapOutputValueClass(outputValueClass);
+To fix this (for now) one can set the class to Put the same way or explicitly in their code
+job.setMapOutputValueClass(Put.class);
+But the whole idea only seems feasable if a) the Hadoop class is amended to use "instanceof" instead (lodge Hadoop MapRed JIRA issue?) or b) we have a combined class that represent a Put and a Delete - which seems somewhat wrong, but doable. It would only really find use in that context and would require the user to make use of it when calling context.write(). This is making things not easier to learn.
+Suggestions?
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+0.20.1
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Lars George
+Create date:
+10/Nov/09 11:20
+Update date:
+16/Jul/14 22:07
+Resolved date:
+16/Jul/14 22:07

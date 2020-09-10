@@ -1,0 +1,49 @@
+Summary:
+stop-hbase.sh clean up: backup master
+Description:
+In stop-hbase.sh:
+  # TODO: store backup masters in ZooKeeper and have the primary send them a shutdown message
+  # stop any backup masters
+  "$bin"/hbase-daemons.sh --config "${HBASE_CONF_DIR}" \
+    --hosts "${HBASE_BACKUP_MASTERS}" stop master-backup
+After HBASE-5213, stop-hbase.sh -> hbase master stop will bring down the backup master too via the cluster status znode.
+We should not need the above code anymore.
+Another issue happens when the current master died and the backup master became the active master.
+nohup nice -n ${HBASE_NICENESS:-0} "$HBASE_HOME"/bin/hbase \
+   --config "${HBASE_CONF_DIR}" \
+   master stop "$@" > "$logout" 2>&1 < /dev/null &
+
+waitForProcessEnd `cat $pid` 'stop-master-command'
+We can still issue 'hbase-stop.sh' from the old master.
+stop-hbase.sh -> hbase master stop -> look for active master -> request shutdown
+This process still works.
+But the waitForProcessEnd statement will not work since the local master pid is not relevant anymore.
+What is the best way in the this case?
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.7, 0.95.0
+Fix_version:
+0.98.0, 0.96.0
+Component:
+master, scripts
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jerry He
+Reporter:
+Jerry He
+Create date:
+16/May/13 22:09
+Update date:
+20/Nov/15 11:52
+Resolved date:
+23/Aug/13 06:14

@@ -1,0 +1,120 @@
+Summary:
+Standalone session timeout issue
+Description:
+Hi,
+I have some questions regarding sessions and the API behaviour.
+If I execute the following code:
+Factory<org.apache.shiro.mgt.SecurityManager> factory =
+new IniSecurityManagerFactory("vkb.ini");
+org.apache.shiro.mgt.SecurityManager securityManager = factory.getInstance();
+SecurityUtils.setSecurityManager(securityManager);
+Subject user = SecurityUtils.getSubject();
+UsernamePasswordToken token = new UsernamePasswordToken("user", "battle1");
+user.login(token);
+Session session = user.getSession();
+session.setTimeout(0);
+user.logout();
+The logout method causes the following exception to occur:
+Exception in thread "main" org.apache.shiro.session.ExpiredSessionException: Session with id [7c3d80f2-ae4c-49b5-9a2d-a2c0f39cd904] has expired. Last access time: 28/09/11 09:35. Current time: 28/09/11 09:35. Session timeout is set to 0 seconds (0 minutes)
+at org.apache.shiro.session.mgt.SimpleSession.validate(SimpleSession.java:276)
+at org.apache.shiro.session.mgt.AbstractValidatingSessionManager.doValidate(AbstractValidatingSessionManager.java:180)
+at org.apache.shiro.session.mgt.AbstractValidatingSessionManager.validate(AbstractValidatingSessionManager.java:143)
+at org.apache.shiro.session.mgt.AbstractValidatingSessionManager.doGetSession(AbstractValidatingSessionManager.java:120)
+at org.apache.shiro.session.mgt.AbstractNativeSessionManager.lookupSession(AbstractNativeSessionManager.java:105)
+at org.apache.shiro.session.mgt.AbstractNativeSessionManager.lookupRequiredSession(AbstractNativeSessionManager.java:109)
+at org.apache.shiro.session.mgt.AbstractNativeSessionManager.removeAttribute(AbstractNativeSessionManager.java:220)
+at org.apache.shiro.session.mgt.DelegatingSession.removeAttribute(DelegatingSession.java:159)
+at org.apache.shiro.session.ProxiedSession.removeAttribute(ProxiedSession.java:135)
+at org.apache.shiro.session.ProxiedSession.removeAttribute(ProxiedSession.java:135)
+at org.apache.shiro.subject.support.DelegatingSubject.clearRunAsIdentities(DelegatingSubject.java:424)
+at org.apache.shiro.subject.support.DelegatingSubject.logout(DelegatingSubject.java:322)
+at com.thalesgroup.battlelab.vkb.test.SecurityTest.main(SecurityTest.java:45)
+The only reason I'm calling setTimeout(0) is to simulate the session expiring due to a timeout that occurs in the system. Why would the logout fail just because the session has expired? How can I get around this issue?
+If I execute the following code:
+Factory<org.apache.shiro.mgt.SecurityManager> factory =
+new IniSecurityManagerFactory("vkb.ini");
+org.apache.shiro.mgt.SecurityManager securityManager = factory.getInstance();
+SecurityUtils.setSecurityManager(securityManager);
+Subject user = SecurityUtils.getSubject();
+UsernamePasswordToken token = new UsernamePasswordToken("user", "battle1");
+user.login(token);
+user.login(token);
+user.login(token);
+user.login(token);
+user.login(token);
+Session session = user.getSession();
+session.setTimeout(0);
+user.login(token);
+The last login command throws an exception with the following stack trace:
+Exception in thread "main" org.apache.shiro.session.ExpiredSessionException: Session with id [96aa8e29-4a55-4c79-be48-8ed90f49da85] has expired. Last access time: 28/09/11 09:41. Current time: 28/09/11 09:41. Session timeout is set to 0 seconds (0 minutes)
+at org.apache.shiro.session.mgt.SimpleSession.validate(SimpleSession.java:276)
+at org.apache.shiro.session.mgt.AbstractValidatingSessionManager.doValidate(AbstractValidatingSessionManager.java:180)
+at org.apache.shiro.session.mgt.AbstractValidatingSessionManager.validate(AbstractValidatingSessionManager.java:143)
+at org.apache.shiro.session.mgt.AbstractValidatingSessionManager.doGetSession(AbstractValidatingSessionManager.java:120)
+at org.apache.shiro.session.mgt.AbstractNativeSessionManager.lookupSession(AbstractNativeSessionManager.java:105)
+at org.apache.shiro.session.mgt.AbstractNativeSessionManager.lookupRequiredSession(AbstractNativeSessionManager.java:109)
+at org.apache.shiro.session.mgt.AbstractNativeSessionManager.removeAttribute(AbstractNativeSessionManager.java:220)
+at org.apache.shiro.session.mgt.DelegatingSession.removeAttribute(DelegatingSession.java:159)
+at org.apache.shiro.session.ProxiedSession.removeAttribute(ProxiedSession.java:135)
+at org.apache.shiro.session.ProxiedSession.removeAttribute(ProxiedSession.java:135)
+at org.apache.shiro.session.ProxiedSession.removeAttribute(ProxiedSession.java:135)
+at org.apache.shiro.session.ProxiedSession.removeAttribute(ProxiedSession.java:135)
+at org.apache.shiro.session.ProxiedSession.removeAttribute(ProxiedSession.java:135)
+at org.apache.shiro.session.ProxiedSession.removeAttribute(ProxiedSession.java:135)
+at org.apache.shiro.session.ProxiedSession.removeAttribute(ProxiedSession.java:135)
+at org.apache.shiro.session.ProxiedSession.removeAttribute(ProxiedSession.java:135)
+at org.apache.shiro.session.ProxiedSession.removeAttribute(ProxiedSession.java:135)
+at org.apache.shiro.session.ProxiedSession.removeAttribute(ProxiedSession.java:135)
+at org.apache.shiro.subject.support.DelegatingSubject.clearRunAsIdentities(DelegatingSubject.java:424)
+at org.apache.shiro.subject.support.DelegatingSubject.login(DelegatingSubject.java:246)
+at com.thalesgroup.battlelab.vkb.test.SecurityTest.main(SecurityTest.java:49)
+Is this the same problem. Why can't I login after the a session has expired? How can I login after a session has expired?
+It is probably me misunderstanding the API but any help would be greatly appreciated.
+Best regards
+Matt
+Classic List star Reply More Close
+Sep 28, 2011; 6:20pm Les Hazlewood-2 Les Hazlewood-2
+Hi Matt,
+I'd consider this a bug - please open a Jira issue.
+This probably hasn't been seen before because, for example in a web or
+other 'server' style app, Shiro will validate a session on an inbound
+request before allowing it to continue - this behavior wouldn't be
+seen further down the call stack.
+In a standalone environment, such as a test case or daemon program,
+this would cause a problem if the timeout is very low. Could you
+please open an issue?
+Thanks,
+–
+Les Hazlewood
+CTO, Katasoft | http://www.katasoft.com | 888.391.5282
+twitter: @lhazlewood | http://twitter.com/lhazlewood
+katasoft blog: http://www.katasoft.com/blogs/lhazlewood
+personal blog: http://leshazlewood.com
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.1.0
+Fix_version:
+1.2.0
+Component:
+Session Management
+Label:
+None
+Environment:
+windows xp, java 1.6
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Matt Shaw
+Create date:
+29/Sep/11 06:17
+Update date:
+16/Mar/13 22:03
+Resolved date:
+16/Mar/13 22:03

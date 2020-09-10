@@ -1,0 +1,47 @@
+Summary:
+HLogSplitter should handle missing HLogs
+Description:
+In build #48 (https://hudson.apache.org/hudson/job/hbase-0.90/48/), TestReplication failed because of missing rows on the slave cluster. The reason is that a region server that was killed was able to archive a log at the same time the master was trying to recover it:
+[MASTER_META_SERVER_OPERATIONS-vesta.apache.org:47907-0] util.FSUtils(625):
+ Recovering file hdfs://localhost:50121/user/hudson/.logs/vesta.apache.org,58598,1294117333857/vesta.apache.org%3A58598.1294117406909
+...
+[RegionServer:0;vesta.apache.org,58598,1294117333857.logRoller] wal.HLog(740):
+ moving old hlog file /user/hudson/.logs/vesta.apache.org,58598,1294117333857/vesta.apache.org%3A58598.1294117406909
+ whose highest sequenceid is 422 to /user/hudson/.oldlogs/vesta.apache.org%3A58598.1294117406909
+...
+[MASTER_META_SERVER_OPERATIONS-vesta.apache.org:47907-0] master.MasterFileSystem(204):
+ Failed splitting hdfs://localhost:50121/user/hudson/.logs/vesta.apache.org,58598,1294117333857
+ java.io.IOException: Failed to open hdfs://localhost:50121/user/hudson/.logs/vesta.apache.org,58598,1294117333857/vesta.apache.org%3A58598.1294117406909 for append
+Caused by: org.apache.hadoop.hdfs.server.namenode.LeaseExpiredException:
+ org.apache.hadoop.hdfs.server.namenode.LeaseExpiredException:
+ No lease on /user/hudson/.logs/vesta.apache.org,58598,1294117333857/vesta.apache.org%3A58598.1294117406909
+ File does not exist. [Lease.  Holder: DFSClient_-986975908, pendingcreates: 1]
+We should probably just handle the fact that a file could have been archived (maybe even check in .oldlogs to be sure) and move on to the next log.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+04/Jan/11 20:11
+Update date:
+20/Nov/15 12:42
+Resolved date:
+05/Jan/11 18:07

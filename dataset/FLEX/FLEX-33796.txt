@@ -1,0 +1,65 @@
+Summary:
+combobox filters dataprovider on user input
+Description:
+I have a ComboBox and the data provider is an Array Collection of 3 values: CA - California, NY - New York, TX - Texas. With the default behavior when I start typing in the ComboBox it will try to match the value from the beginning of the string, so if I start Typing TX it will bring up TX - Texas.
+I want to be able to search at any part of the string and not just from the beginning, so if I type "xas" it will filter out the selection and only show TX - Texas. There is a very helpful post in the Adobe forums here on how to do this by changing the filter function on the Array Collection which provides data for the ComboBox and I have adapted it but I am having a slight issue with it.
+If a user selects a value and then tries to enter in new text the first letter typed in the ComboBox does not show up.
+1) Select the value CA - California in the ComboBox 2) Highlight the text and hit "n" on your keyboard 3) You would expect to see the text box populated with "n" but the text box remains empty
+What could be causing this issue? It only happens if you already have a value selected. If you start with a blank ComboBox it works as expected.
+<?xml version="1.0" encoding="utf-8"?>
+<s:ComboBox xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx">
+<fx:Script>
+<![CDATA[
+import mx.collections.ArrayCollection;
+import mx.collections.IList;
+import spark.events.TextOperationEvent;
+private var unfilteredDataProvider : IList;
+override public function set dataProvider(value:IList):void
+{ super.dataProvider = value; unfilteredDataProvider = value; }
+override protected function textInput_changeHandler(event:TextOperationEvent):void
+{
+super.textInput_changeHandler(event);
+if (unfilteredDataProvider is ArrayCollection)
+{ ArrayCollection(unfilteredDataProvider).filterFunction = filterMatches; ArrayCollection(unfilteredDataProvider).refresh(); super.dataProvider = new ArrayCollection(unfilteredDataProvider.toArray()); }
+}
+protected function filterMatches(item:Object):Boolean
+{
+if (item is String)
+{ if(String(item).toLowerCase().indexOf( textInput.text.slice(0, textInput.selectionAnchorPosition).toLowerCase())>-1) return true; }
+else if (labelField && labelField != "")
+{ if(item.hasOwnProperty(labelField) && String(item[labelField]).toLowerCase().indexOf( textInput.text.slice(0, textInput.selectionAnchorPosition).toLowerCase())>-1) return true; }
+return false;
+}
+]]>
+</fx:Script>
+</s:ComboBox>
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+Spark: ComboBox
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Kiran Kumar Potnuru
+Create date:
+04/Oct/13 10:32
+Update date:
+25/Apr/15 18:07
+Resolved date:
+

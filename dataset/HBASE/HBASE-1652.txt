@@ -1,0 +1,35 @@
+Summary:
+Scanners for sparse column not stopped by StopRowFilter
+Description:
+Scanning a sparse column over a narrow range of rows can take far longer than expected because the check for the end of the range is not performed on new rows unless there is a column match, so it may end up scanning an entire region or table.
+Background:
+I have a table with 1 billion+ rows, and one cell in each row, generally small (10-1000 bytes). The columns are all in a single family and fairly sparse. For one query, I run scans on it to scan usually a narrow range of the table for the first 30 cells ina certain column. I know that all the rows that contain that column lie within a certain range. I use HTable.getScanner(byte[][] columns, byte[] startRow, RowFilterInterface filter) passing it the particular column I'm looking for, a startRow, and a filter set containing a StopRowFilter wrapped in a WhileMatchRowFilter to enforce the end of the range. Sometimes the query is very fast (< 1 sec), but if the table doesn't contain 30 rows with that column, it can be very slow, a minute or two. I expected that since the range was small, for example, just 120 rows, the query wouldn't take long to scan the rows.
+After some pondering and perusing of the source code, I think I understand what is going on. It looks like the Scanner is scanning the rest of the table to find rows containing the column without allowing the StopRowFilter to stop the scan at the end of the range. I think I can work around this by not specifying the column I want in the getScanner() method and instead putting an additional filter in the filter set to filter out other columns.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.19.3
+Fix_version:
+None
+Component:
+Filters, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Dave Latham
+Create date:
+14/Jul/09 15:57
+Update date:
+22/Jun/10 22:17
+Resolved date:
+22/Jun/10 22:17

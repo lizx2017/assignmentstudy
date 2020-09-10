@@ -1,0 +1,69 @@
+Summary:
+Inconsistency between the "regions" map and the "servers" map in AssignmentManager
+Description:
+There are occurrences in AM where this.servers is not kept consistent with this.regions. This might cause balancer to offline a region from the RS that already returned NotServingRegionException at a previous offline attempt.
+In AssignmentManager.unassign(HRegionInfo, boolean)
+try {
+// TODO: We should consider making this look more like it does for the
+// region open where we catch all throwables and never abort
+if (serverManager.sendRegionClose(server, state.getRegion(),
+versionOfClosingNode))
+{ LOG.debug("Sent CLOSE to " + server + " for region " + region.getRegionNameAsString()); return; }
+// This never happens. Currently regionserver close always return true.
+LOG.warn("Server " + server + " region CLOSE RPC returned false for " +
+region.getRegionNameAsString());
+} catch (NotServingRegionException nsre)
+{ LOG.info("Server " + server + " returned " + nsre + " for " + region.getRegionNameAsString()); // Presume that master has stale data. Presume remote side just split. // Presume that the split message when it comes in will fix up the master's // in memory cluster state. }
+catch (Throwable t) {
+if (t instanceof RemoteException) {
+t = ((RemoteException)t).unwrapRemoteException();
+if (t instanceof NotServingRegionException) {
+if (checkIfRegionBelongsToDisabling(region)) {
+// Remove from the regionsinTransition map
+LOG.info("While trying to recover the table "
++ region.getTableNameAsString()
++ " to DISABLED state the region " + region
++ " was offlined but the table was in DISABLING state");
+synchronized (this.regionsInTransition)
+{ this.regionsInTransition.remove(region.getEncodedName()); }
+// Remove from the regionsMap
+synchronized (this.regions)
+{ this.regions.remove(region); }
+deleteClosingOrClosedNode(region);
+}
+}
+// RS is already processing this region, only need to update the timestamp
+if (t instanceof RegionAlreadyInTransitionException)
+{ LOG.debug("update " + state + " the timestamp."); state.update(state.getState()); }
+}
+In AssignmentManager.assign(HRegionInfo, RegionState, boolean, boolean, boolean)
+synchronized (this.regions)
+{ this.regions.put(plan.getRegionInfo(), plan.getDestination()); }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.6, 0.92.1
+Fix_version:
+0.95.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Maryann Xue
+Reporter:
+Maryann Xue
+Create date:
+19/Apr/12 08:34
+Update date:
+23/Sep/13 18:31
+Resolved date:
+26/Apr/12 17:55

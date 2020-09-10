@@ -1,0 +1,59 @@
+Summary:
+error reading key until first use of the HTTP interface
+Description:
+After startup, but before the first access to the HTTP interface, thrift command get_slice returns the following error:
+./Cassandra-remote -h tst04o:9160 get_slice Messages 305 base 0 1
+Traceback (most recent call last):
+File "./Cassandra-remote", line 96, in ?
+pp.pprint(client.get_slice(args[0],args[1],args[2],eval(args[3]),eval(args[4]),))
+File "/opt/mailcontrol/gen-py/org/apache/cassandra/Cassandra.py", line 213, in get_slice
+return self.recv_get_slice()
+File "/opt/mailcontrol/gen-py/org/apache/cassandra/Cassandra.py", line 233, in recv_get_slice
+raise x
+thrift.Thrift.TApplicationException: Internal error processing get_slice
+Error message on the log file:
+ERROR [pool-1-thread-1] 2009-05-08 14:49:36,977 Cassandra.java (line 823) Internal error processing get_slice
+java.lang.RuntimeException: error reading key 305
+at org.apache.cassandra.service.StorageProxy.weakReadRemote(StorageProxy.java:256)
+at org.apache.cassandra.service.StorageProxy.readProtocol(StorageProxy.java:363)
+at org.apache.cassandra.service.CassandraServer.readColumnFamily(CassandraServer.java:112)
+at org.apache.cassandra.service.CassandraServer.get_slice(CassandraServer.java:191)
+at org.apache.cassandra.service.Cassandra$Processor$get_slice.process(Cassandra.java:817)
+at org.apache.cassandra.service.Cassandra$Processor.process(Cassandra.java:805)
+at org.apache.thrift.server.TThreadPoolServer$WorkerProcess.run(TThreadPoolServer.java:252)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+Caused by: java.util.concurrent.TimeoutException: Operation timed out.
+at org.apache.cassandra.net.AsyncResult.get(AsyncResult.java:95)
+at org.apache.cassandra.service.StorageProxy.weakReadRemote(StorageProxy.java:252)
+... 9 more
+After first access to the HTTP interface, the get_slice method now succeeds.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.3
+Component:
+None
+Label:
+None
+Environment:
+java 1.6, linux
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Mark Robson
+Create date:
+08/May/09 12:55
+Update date:
+16/Apr/19 09:33
+Resolved date:
+12/May/09 20:47

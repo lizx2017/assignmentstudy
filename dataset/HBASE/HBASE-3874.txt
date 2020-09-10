@@ -1,0 +1,52 @@
+Summary:
+ServerShutdownHandler fails on NPE if a plan has a random region assignment
+Description:
+By chance, we were able to revert the ulimit on one of our clusters to 1024 and it started dying non-stop on "Too many open files". Now the bad thing is that some region servers weren't completely ServerShutdownHandler'd because they failed on:
+2011-05-07 00:04:46,203 ERROR org.apache.hadoop.hbase.executor.EventHandler: Caught throwable while processing event M_SERVER_SHUTDOWN
+java.lang.NullPointerException
+at org.apache.hadoop.hbase.master.AssignmentManager.processServerShutdown(AssignmentManager.java:1804)
+at org.apache.hadoop.hbase.master.handler.ServerShutdownHandler.process(ServerShutdownHandler.java:101)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:156)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Reading the code, it seems the NPE is in the if statement:
+Map.Entry<String, RegionPlan> e = i.next();
+if (e.getValue().getDestination().equals(hsi)) {
+  // Use iterator's remove else we'll get CME
+  i.remove();
+}
+Which means that the destination (HSI) is null. Looking through the code, it seems we instantiate a RegionPlan with a null HSI when it's a random assignment.
+It means that if there's a random assignment going on while a node dies then this issue might happen.
+Initially I thought that this could mean data loss, but the logs are already split so it's just the reassignment that doesn't happen (still bad).
+Also it left the master with dead server being processed, so for two days the balancer didn't run failing on:
+org.apache.hadoop.hbase.master.HMaster: Not running balancer because processing dead regionserver(s): []
+And the reason why the array is empty is because we are running 0.90.3 which removes the RS from the dead list if it comes back.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.2
+Fix_version:
+0.90.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+11/May/11 00:12
+Update date:
+20/Nov/15 12:43
+Resolved date:
+19/May/11 00:24

@@ -1,0 +1,52 @@
+Summary:
+MarshalException is thrown when cassandra-cli creates the example Keyspace specified by conf/schema-sample.txt
+Description:
+Use the following steps to recreate the bug:
+1. Checkout the source code from trunk. For my case, revision is 1085753.
+2. Run "ant" to build cassandra.
+3. Run "bin/cassandra -f" to start cassandra.
+4. Run "bin/cassandra-cli -host localhost --file conf/schema-sample.txt".
+Then there is the following message:
+... schemas agree across the cluster
+Line 9 => org.apache.cassandra.db.marshal.MarshalException: cannot parse 'birthdate' as hex bytes
+The root cause is BytesType's fromString method. FBUtilities's hexToBytes method is invoked with "birthdate". NumberFormatException is thrown since "birthdate" is not a hex string.
+BytesType.java
+    public ByteBuffer fromString(String source)
+    {
+        try
+        {
+            return ByteBuffer.wrap(FBUtilities.hexToBytes(source));
+        }
+        catch (NumberFormatException e)
+        {
+            throw new MarshalException(String.format("cannot parse '%s' as hex bytes", source), e);
+        }
+    }
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jingguo Yao
+Create date:
+26/Mar/11 16:31
+Update date:
+16/Apr/19 09:33
+Resolved date:
+27/Mar/11 05:28

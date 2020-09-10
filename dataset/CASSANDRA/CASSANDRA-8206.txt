@@ -1,0 +1,79 @@
+Summary:
+Deleting columns breaks secondary index on clustering column
+Description:
+Removing items from a set breaks index for field id:
+cqlsh:cs> CREATE TABLE buckets (
+      ...   tenant int,
+      ...   id int,
+      ...   items set<text>,
+      ...   PRIMARY KEY (tenant, id)
+      ... );
+cqlsh:cs> CREATE INDEX buckets_ids ON buckets(id);
+cqlsh:cs> INSERT INTO buckets (tenant, id, items) VALUES (1, 1, {'foo', 'bar'});
+cqlsh:cs> SELECT * FROM buckets;
+
+ tenant | id | items
+--------+----+----------------
+      1 |  1 | {'bar', 'foo'}
+
+(1 rows)
+
+cqlsh:cs> SELECT * FROM buckets WHERE id = 1;
+
+ tenant | id | items
+--------+----+----------------
+      1 |  1 | {'bar', 'foo'}
+
+(1 rows)
+
+cqlsh:cs> UPDATE buckets SET items=items-{'foo'} WHERE tenant=1 AND id=1;
+cqlsh:cs> SELECT * FROM buckets;
+
+ tenant | id | items
+--------+----+---------
+      1 |  1 | {'bar'}
+
+(1 rows)
+
+cqlsh:cs> SELECT * FROM buckets WHERE id = 1;
+
+(0 rows)
+Re-building the index fixes the issue:
+cqlsh:cs> DROP INDEX buckets_ids;
+cqlsh:cs> CREATE INDEX buckets_ids ON buckets(id);
+cqlsh:cs> SELECT * FROM buckets WHERE id = 1;
+
+ tenant | id | items
+--------+----+---------
+      1 |  1 | {'bar'}
+
+(1 rows)
+Adding items does not cause similar failure, only delete. Also didn't test if other collections are also affected
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.12, 2.1.2
+Component:
+Feature/2i Index
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Tuukka Mustonen
+Create date:
+29/Oct/14 08:35
+Update date:
+16/Apr/19 09:31
+Resolved date:
+04/Nov/14 17:44

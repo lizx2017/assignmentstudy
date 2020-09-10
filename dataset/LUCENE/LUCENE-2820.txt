@@ -1,0 +1,35 @@
+Summary:
+CMS fails to cleanly stop threads
+Description:
+When you close IW, it waits for (or aborts and then waits for) all running merges.
+However, it's wait criteria is wrong – it waits for the threads to be done w/ their merges, not for the threads to actually die.
+CMS already has a sync() method, to wait for running threads, which we can call from CMS.close. However it has a thread hazard because a MergeThread removes itself from mergeThreads before it actually exits. So sync() is able to return even while a merge thread is still running.
+This was uncovered by LUCENE-2819 on the test case TestCustomScoreQuery.testCustomExternalQuery, though I expect other test cases would show it.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+3.1, 4.0-ALPHA
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+18/Dec/10 21:14
+Update date:
+30/Mar/11 15:49
+Resolved date:
+20/Dec/10 10:41

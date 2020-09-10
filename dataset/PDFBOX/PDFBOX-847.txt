@@ -1,0 +1,47 @@
+Summary:
+FlateFilter.java swallows Exceptions (should rethrow)
+Description:
+I just re-discovered an issue in FlateFilter.java, which i mentioned quite a while ago on the mailinglist; and which was agreed to be an misfeature
+In FlateFilter.java, at lines 115ff, we find this piece of code:
+try
+{
+// decoding not needed
+while ((amountRead = decompressor.read(buffer, 0, Math.min(mayRead,BUFFER_SIZE))) != -1)
+{ result.write(buffer, 0, amountRead); }
+}
+catch (OutOfMemoryError exception)
+{ // if the stream is corrupt an OutOfMemoryError may occur log.error("Stop reading corrupt stream"); }
+catch (ZipException exception)
+{ // if the stream is corrupt an OutOfMemoryError may occur log.error("Stop reading corrupt stream"); }
+catch (EOFException exception)
+{ // if the stream is corrupt an OutOfMemoryError may occur log.error("Stop reading corrupt stream"); }
+which means these Exceptions are discarded and not reported upstream to the caller. This is very infortunate, as the caller has no means to discover that text extraction is incomplete. I discovered this on troubleshooting Alfresco DMS, which uses PDFBox for indexing PDF documents - except an innocent log message, Alfresco does not know that conversion has failed.
+Proposed solution is to re-throw all 3 Exceptions and let the caller handle the exceptions
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.2.1
+Fix_version:
+1.7.0
+Component:
+Text extraction
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Andreas Wollschlaege
+Create date:
+01/Oct/10 09:29
+Update date:
+29/May/12 16:21
+Resolved date:
+06/Jan/12 07:14

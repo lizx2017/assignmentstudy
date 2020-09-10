@@ -1,0 +1,51 @@
+Summary:
+Testing in place does not work if not building with default profile
+Description:
+If I build with the Hadoop 2 profile, for example:
+mvn -Dhadoop.profile=2.0 -Dhadoop.version=2.0.3-SNAPSHOT
+and then try to run daemons like so:
+./bin/hbase master start
+this will fail, because the launch script will invoke Maven to build the cached classpath selecting whatever is the default profile, currently Hadoop 1. Startup will actually get pretty far, until:
+12/12/04 11:42:13 WARN regionserver.HRegionServer: error telling master we are up
+com.google.protobuf.ServiceException: java.lang.NoClassDefFoundError: org/apache/hadoop/net/SocketInputWrapper
+ at org.apache.hadoop.hbase.ipc.ProtobufRpcEngine$Invoker.invoke(ProtobufRpcEngine.java:189)
+ at $Proxy10.regionServerStartup(Unknown Source)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.reportForDuty(HRegionServer.java:1844)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:843)
+ at java.lang.Thread.run(Thread.java:679)
+Caused by: java.lang.NoClassDefFoundError: org/apache/hadoop/net/SocketInputWrapper
+ at org.apache.hadoop.hbase.ipc.HBaseClient.createConnection(HBaseClient.java:317)
+ at org.apache.hadoop.hbase.ipc.HBaseClient.getConnection(HBaseClient.java:1415)
+ at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:1278)
+ at org.apache.hadoop.hbase.ipc.ProtobufRpcEngine$Invoker.invoke(ProtobufRpcEngine.java:177)
+ ... 4 more
+Caused by: java.lang.ClassNotFoundException: org.apache.hadoop.net.SocketInputWrapper
+There doesn't appear to be a way to supply additional arguments to the launch script for directing Maven which profile(s) to activate.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Andrew Purtell
+Create date:
+04/Dec/12 03:52
+Update date:
+23/Sep/13 18:30
+Resolved date:
+07/Dec/12 14:39

@@ -1,0 +1,61 @@
+Summary:
+Lucene 1.3dev1-2002-10-27 : NumberFormat Exception while parsing Date by DateField.stringToTime(String s) method
+Description:
+This bug appears on my system with the lataest nightly build 2002-10-27.
+I've got NumberFormat
+Exception when trying to parse back string representetion of date to Java long
+type:
+java.lang.NumberFormatException: d8ae40fe
+at
+java.lang.Long.parseLong(Unknown Source)
+at
+org.apache.lucene.document.DateField.stringToTime(Unknown Source)
+I guess the
+reason is the following portion of code in the timeToString method of
+org.apache.lucene.document.DateField class (lines 111-112):
+...
+while (sb.length() <
+DATE_LEN)
+sb.insert(0, ' '); // inserts leading spaces
+s = sb.toString();
+}
+return
+s;
+}
+So, it appears, that the value, returned by the method, may contain leading spaces, and
+thus, back conversion by Long.parseLong method brings NimberFormatException.
+I changed
+the code of the stringToTime method to trim the string before the parsing and it fixes the
+problem:
+public static long stringToTime(String s) {
+return Long.parseLong(s.trim(),
+Character.MAX_RADIX);
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/other
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Maxim Patramanskij
+Create date:
+13/Nov/02 03:05
+Update date:
+02/Jun/11 22:03
+Resolved date:
+27/May/06 01:36

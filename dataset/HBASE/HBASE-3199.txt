@@ -1,0 +1,63 @@
+Summary:
+large response handling: some fixups and cleanups
+Description:
+This may not be common for many use cases, but it might be good to put a couple of safety nets as well as logging to protect against large responses.
+Aravind and I were trying to track down why JVM memory usage was oscillating so much when dealing with very large buffers rather than OOM'ing or hitting some Index out of bound type exception, and this is what we found.
+java.io.ByteArrayOutputStream graduates its internal buffers by doubling them. Also, it is supposed to be able to handle "int" sized buffers (2G). The code which handles "write" (in jdk 1.6) is along the lines of:
+   public synchronized void write(byte b[], int off, int len) {
+ if ((off < 0) || (off > b.length) || (len < 0) ||
+            ((off + len) > b.length) || ((off + len) < 0)) {
+     throw new IndexOutOfBoundsException();
+ } else if (len == 0) {
+     return;
+ }
+        int newcount = count + len;
+        if (newcount > buf.length) {
+            buf = Arrays.copyOf(buf, Math.max(buf.length << 1, newcount));
+        }
+        System.arraycopy(b, off, buf, count, len);
+        count = newcount;
+    }
+The "buf.length << 1" will start producing -ve values when buf.length reaches 1G, and "newcount" will instead dictate the size of the buffer allocated. At this point, all attempts to write to the buffer will grow linearly, and the buffer will be resized by only the required amount on each write. Effectively, each write will allocate a new 1G buffer + reqd size buffer, copy the contents, and so on. This will put the process in heavy GC mode (with jvm heap oscillating by several GBs rapidly), and render it practically unusable.
+(ii) When serializing a Result, the writeArray method doesn't assert that the resultant size does not overflow an "int".
+    int bufLen = 0;
+    for(Result result : results) {
+      bufLen += Bytes.SIZEOF_INT;
+      if(result == null || result.isEmpty()) {
+        continue;
+      }
+      for(KeyValue key : result.raw()) {
+        bufLen += key.getLength() + Bytes.SIZEOF_INT;
+      }
+    }
+We should do the math in "long" and assert on bufLen values > Integer.MAX_VALUE.
+(iii) In HBaseServer.java on RPC responses, we could add some logging on responses above a certain thresholds.
+(iv) Increase buffer size threshold for buffers that are reused by RPC handlers. And make this configurable. Currently, any response buffer about 16k is not reused on next response. (HBaseServer.java).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ryan rawson
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+05/Nov/10 18:35
+Update date:
+20/Nov/15 12:43
+Resolved date:
+09/Nov/10 22:58

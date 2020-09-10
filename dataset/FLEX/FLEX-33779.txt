@@ -1,0 +1,51 @@
+Summary:
+RTE in Label.as when it's 8px wide and uses the Myriad Web Pro font face
+Description:
+Build and run the attached project. Hit Apply. You will get this error:
+RangeError: Error #1125: The index 2 is out of range 0.
+at spark.components::Label/getNextTruncationPosition()[C:\Users\Developer1\workspace\_LabelTruncationError\src\spark\components\Label.as:1587]
+at spark.components::Label/truncateText()[C:\Users\Developer1\workspace\_LabelTruncationError\src\spark\components\Label.as:1386]
+at spark.components::Label/http://www.adobe.com/2006/flex/mx/internal::composeTextLines()[C:\Users\Developer1\workspace&#95;LabelTruncationError\src\spark\components\Label.as:496]
+at spark.components.supportClasses::TextBase/updateDisplayList()[C:\Users\Developer1\workspace\_LabelTruncationError\src\spark\components\supportClasses\TextBase.as:705]
+at mx.core::UIComponent/validateDisplayList()[F:\hudson\hudson-slave\workspace\flex-sdk_release\frameworks\projects\framework\src\mx\core\UIComponent.as:9261]
+at mx.managers::LayoutManager/validateDisplayList()[F:\hudson\hudson-slave\workspace\flex-sdk_release\frameworks\projects\framework\src\mx\managers\LayoutManager.as:744]
+at mx.managers::LayoutManager/doPhasedInstantiation()[F:\hudson\hudson-slave\workspace\flex-sdk_release\frameworks\projects\framework\src\mx\managers\LayoutManager.as:827]
+at mx.managers::LayoutManager/doPhasedInstantiationCallback()[F:\hudson\hudson-slave\workspace\flex-sdk_release\frameworks\projects\framework\src\mx\managers\LayoutManager.as:1188]
+The same thing happens eventually if you hit "Auto increment". This was created so that I could find the width at which other fonts would throw the same error.*
+I didn't find any other. Myriad Web Pro seems to be unique somehow.
+Notes:
+1. I couldn't find another value for the label's text property that could throw this error. "User Status" and some of its anagrams seem to be special (though not all! "Status User" won't throw the RTE).
+2. I couldn't find another font with Kerning information (as Myriad Web Pro is) that could throw the error, despite incrementing the label's size once every three frames by .001 to make sure it wasn't about the size of the increment. I've included AppleGaramond.ttf as an example.
+3. To expand on the above, if you go into the Type light font editing application, open MyriadWebPro.ttf, go to Font->Font Options..., deselect Kerning and save it (that's what I did for "MyriadWebProNoKerning.ttf" in the assets/fonts folder), you cannot get the same RTE even if you try to Auto increment. Kerning seems to be key. However, AppleGaramong.ttf, which already has kerning information, does not throw the RTE.
+4. If maxDisplayedLines is not 2, there's no RTE for any increment.
+5. If you set two breakpoints in TextBase.measure() and TextBase.updateDisplayList() (both of which call composeTextLines), you will see that composeTextLines() is first called from measure() (via LayoutManager.validateSize) and works just fine. It's the second call, the one through TextBase.updateDisplayList(), that ends up throwing the RTE.
+6. If I use AppleGaramond and hit Apply for a width of 5px, on the second call to Label.composeTextLines() no textLines are created on this call var allLinesComposed:Boolean = createTextLines(elementFormat); From there on things proceed smoothly. I therefore conclude that textLines being created in this call for MyriadWebPro is buggy behaviour.
+7. Continuing from the above, the problem seems to be in TextBlock.recreateTextLine, which in the happy path (see point 6 above) returns null, while in the buggy path it returns a valid TextLine object (see Label.createTextLinesFromTextBlock).
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Apache Flex 4.10.0
+Fix_version:
+None
+Component:
+Embedded Fonts, (1)
+Label:
+mandelbug
+Environment:
+Windows 8
+Attachment number:
+0
+Assignee:
+Alex Harui
+Reporter:
+Mihai Chira
+Create date:
+25/Sep/13 16:39
+Update date:
+18/Oct/13 19:47
+Resolved date:
+18/Oct/13 19:47

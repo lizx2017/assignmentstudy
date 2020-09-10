@@ -1,0 +1,64 @@
+Summary:
+NullPointerException in resetZooKeeperTrackers in HConnectionManager / HConnectionImplementation
+Description:
+This might happen on heavy load in case of lagging HBase when sharing one HConnection by multiple threads:
+2012-01-26 13:59:38,396 ERROR [http://*:8080-251-EventThread] zookeeper.ClientCnxn$EventThread(532): Error while calling watcher
+java.lang.NullPointerException
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.resetZooKeeperTrackers(HConnectionManager.java:533)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.abort(HConnectionManager.java:1536)
+        at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.connectionEvent(ZooKeeperWatcher.java:344)
+        at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.process(ZooKeeperWatcher.java:262)
+        at org.apache.zookeeper.ClientCnxn$EventThread.processEvent(ClientCnxn.java:530)
+        at org.apache.zookeeper.ClientCnxn$EventThread.run(ClientCnxn.java:506)
+The following code is not protected against NPE:
+    private synchronized void resetZooKeeperTrackers()
+        throws ZooKeeperConnectionException {
+      LOG.info("Trying to reconnect to zookeeper");
+      masterAddressTracker.stop();
+      masterAddressTracker = null;
+      rootRegionTracker.stop();
+      rootRegionTracker = null;
+      clusterId = null;
+      this.zooKeeper = null;
+      setupZookeeperTrackers();
+    }
+In some cases as proven by the log snippet above it might happen that either masterAddressTracker or rootRegionTracker might be null.
+Because of the NPE the code can't reach setupZookeeperTrackers() call.
+This should be fixed at least the way as shown in one of the patches in HBASE-5153
+      LOG.info("Trying to reconnect to zookeeper.");
+      if (this.masterAddressTracker != null) {
+        this.masterAddressTracker.stop();
+        this.masterAddressTracker = null;
+      }
+      if (this.rootRegionTracker != null) {
+        this.rootRegionTracker.stop();
+        this.rootRegionTracker = null;
+      }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.90.5
+Fix_version:
+0.92.3
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Krystian Nowak
+Create date:
+26/Jan/12 20:56
+Update date:
+11/Mar/15 23:20
+Resolved date:
+11/Mar/15 23:20

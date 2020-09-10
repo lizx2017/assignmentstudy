@@ -1,0 +1,60 @@
+Summary:
+AND (USING FilterList) of two ColumnPrefixFilters broken
+Description:
+[Notice this in 89 branch. Possibly an issue in trunk also.]
+A test which does a columnPrefixFilter("tag0") AND columnPrefixFilter("tag1") should return 0 kvs; instead it returns kvs with prefix "tag0".
+table = HTable.new(conf, tableName)
+
+put = Put.new(Bytes.toBytes("row"))
+put.add(cf1name, Bytes.toBytes("tag0"), Bytes.toBytes("value0"))
+put.add(cf1name, Bytes.toBytes("tag1"), Bytes.toBytes("value1"))
+put.add(cf1name, Bytes.toBytes("tag2"), Bytes.toBytes("value2"))
+
+table.put(put)
+
+# Test for AND Two Column Prefix Filters                                                                                                                                                   
+filter1 = ColumnPrefixFilter.new(Bytes.toBytes("tag0"));
+filter2 = ColumnPrefixFilter.new(Bytes.toBytes("tag2"));
+
+filters = FilterList.new(FilterList::Operator::MUST_PASS_ALL);
+filters.addFilter(filter1);
+filters.addFilter(filter2);
+
+get = Get.new(Bytes.toBytes("row"))
+get.setFilter(filters)
+get.setMaxVersions();
+keyValues = table.get(get).raw()
+
+keyValues.each do |keyValue|
+  puts "Key=#{Bytes.toStringBinary(keyValue.getQualifier())}; Value=#{Bytes.toStringBinary(keyValue.getValue())}; Timestamp=#{keyValue.getTimestamp()}" 
+end
+outputs:
+Key=tag0; Value=value0; Timestamp=1325719223523
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Madhuwanti Vaidya
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+04/Jan/12 23:24
+Update date:
+18/Jan/12 03:09
+Resolved date:
+18/Jan/12 03:09

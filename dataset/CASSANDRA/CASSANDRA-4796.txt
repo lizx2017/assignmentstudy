@@ -1,0 +1,44 @@
+Summary:
+composite indexes don't always return results they should
+Description:
+composite_index_with_pk_test in the dtests is failing and it reproduces manually.
+cqlsh:foo>            CREATE TABLE blogs (                 blog_id int,                 time1 int,                 time2 int,                 author text,                 content text,                 PRIMARY KEY (blog_id, time1, time2)             ) ;
+cqlsh:foo> create index on blogs(author);
+cqlsh:foo> INSERT INTO blogs (blog_id, time1, time2, author, content) VALUES (1, 0, 0, 'foo', 'bar1');
+cqlsh:foo> INSERT INTO blogs (blog_id, time1, time2, author, content) VALUES (1, 0, 1, 'foo', 'bar2');
+cqlsh:foo> INSERT INTO blogs (blog_id, time1, time2, author, content) VALUES (2, 1, 0, 'foo', 'baz');
+cqlsh:foo> INSERT INTO blogs (blog_id, time1, time2, author, content) VALUES (3, 0, 1, 'gux', 'qux');
+cqlsh:foo> SELECT blog_id, content FROM blogs WHERE time1 = 1 AND author='foo';
+cqlsh:foo>
+The expected result is:
+ blog_id | time1 | time2 | author | content
+---------+-------+-------+--------+---------
+       2 |     1 |     0 |    foo |     baz
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Brandon Williams
+Create date:
+11/Oct/12 21:37
+Update date:
+16/Apr/19 09:32
+Resolved date:
+16/Oct/12 06:41

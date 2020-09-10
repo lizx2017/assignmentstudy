@@ -1,0 +1,59 @@
+Summary:
+Sporadic TestZKProcedureControllers failures on trunk
+Description:
+See https://builds.apache.org/job/PreCommit-HBASE-Build/4865//artifact/trunk/hbase-server/target/surefire-reports/org.apache.hadoop.hbase.procedure.TestZKProcedureControllers.txt and
+https://builds.apache.org/job/PreCommit-HBASE-Build/4865//artifact/trunk/hbase-server/target/surefire-reports/org.apache.hadoop.hbase.procedure.TestZKProcedureControllers-output.txt
+I see this in the output:
+2013-03-18 17:30:46,672 DEBUG [Thread-2-EventThread] zookeeper.ZKUtil(1682): testing utility-0x13d7e8da7590000 Retrieved 0 byte(s) of data from znode /hbase/testSimple/acquired/instanceTest; data=empty
+2013-03-18 17:30:46,672 DEBUG [Thread-2-EventThread] procedure.ZKProcedureMemberRpcs(206): start proc data length is 0
+2013-03-18 17:30:46,672 ERROR [Thread-2-EventThread] procedure.ZKProcedureMemberRpcs(210): Data in for starting procuedure instanceTest is illegally formatted. Killing the procedure.
+2013-03-18 17:30:46,673 ERROR [Thread-2-EventThread] procedure.ZKProcedureMemberRpcs(218): Illegal argument exception
+java.lang.IllegalArgumentException: Data in for starting procuedure instanceTest is illegally formatted. Killing the procedure.
+ at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs.startNewSubprocedure(ZKProcedureMemberRpcs.java:211)
+ at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs.waitForNewProcedures(ZKProcedureMemberRpcs.java:175)
+ at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs.access$100(ZKProcedureMemberRpcs.java:56)
+ at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs$1.nodeChildrenChanged(ZKProcedureMemberRpcs.java:109)
+ at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.process(ZooKeeperWatcher.java:312)
+ at org.apache.zookeeper.ClientCnxn$EventThread.processEvent(ClientCnxn.java:519)
+ at org.apache.zookeeper.ClientCnxn$EventThread.run(ClientCnxn.java:495)
+2013-03-18 17:30:46,675 ERROR [Thread-2-EventThread] procedure.ZKProcedureMemberRpcs(281): Failed due to null subprocedure
+java.lang.IllegalArgumentException via expected:java.lang.IllegalArgumentException: Data in for starting procuedure instanceTest is illegally formatted. Killing the procedure.
+ at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs.startNewSubprocedure(ZKProcedureMemberRpcs.java:219)
+ at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs.waitForNewProcedures(ZKProcedureMemberRpcs.java:175)
+ at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs.access$100(ZKProcedureMemberRpcs.java:56)
+ at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs$1.nodeChildrenChanged(ZKProcedureMemberRpcs.java:109)
+ at org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher.process(ZooKeeperWatcher.java:312)
+ at org.apache.zookeeper.ClientCnxn$EventThread.processEvent(ClientCnxn.java:519)
+ at org.apache.zookeeper.ClientCnxn$EventThread.run(ClientCnxn.java:495)
+Caused by: java.lang.IllegalArgumentException: Data in for starting procuedure instanceTest is illegally formatted. Killing the procedure.
+ at org.apache.hadoop.hbase.procedure.ZKProcedureMemberRpcs.startNewSubprocedure(ZKProcedureMemberRpcs.java:211)
+ ... 6 more
+The znode has zero data (Usually it has 7 bytes when test runs fine). Is the latch being triggered on node create before data is written? Pointers appreciated.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.94.7, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeffrey Zhong
+Reporter:
+stack
+Create date:
+18/Mar/13 23:31
+Update date:
+27/Apr/13 15:55
+Resolved date:
+19/Mar/13 03:13

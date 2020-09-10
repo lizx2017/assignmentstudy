@@ -1,0 +1,54 @@
+Summary:
+Wrong assumption for KeyRange about range.end_token in get_range_slices().
+Description:
+In get_range_slices() there is parameter KeyRange range.
+There you can pass start_key - end_key, start_token - end_token, or start_key - end_token.
+This is described in the documentation.
+in thrift/ThriftValidation.java there is validation function validateKeyRange() (line:489) that validates correctly the KeyRange, including the case start_key - end_token.
+However in thrift/CassandraServer.java in function get_range_slices() on line: 686 wrong assumption is made:
+if (range.start_key == null)
+{ ... // populate tokens }
+
+else
+
+{ bounds = new Bounds<RowPosition>(RowPosition.forKey(range.start_key, p), RowPosition.forKey(range.end_key, p)); }
+
+This means if there is start key, no end token is checked.
+The opposite - null is "inserted" as end_key.
+
+Solution:
+same file - thrift/CassandraServer.java on next function - get_paged_slice(), on line:741 same code is written correctly
+
+if (range.start_key == null)
+
+{ ... // populate tokens }
+else
+{ RowPosition end = range.end_key == null ? p.getTokenFactory().fromString(range.end_token).maxKeyBound(p) : RowPosition.forKey(range.end_key, p); bounds = new Bounds<RowPosition>(RowPosition.forKey(range.start_key, p), end); }
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.7, 1.2.0 beta 2
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nikolay
+Reporter:
+Nikolay
+Create date:
+14/Oct/12 15:45
+Update date:
+16/Apr/19 09:32
+Resolved date:
+17/Oct/12 04:01

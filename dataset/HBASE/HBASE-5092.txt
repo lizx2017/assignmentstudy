@@ -1,0 +1,96 @@
+Summary:
+Two adjacent assignments lead region is in PENDING_OPEN state and block table disable and enable actions.
+Description:
+Region is in PENDING_OPEN state and disable and enable are blocked.
+We occasionally find if two assignments which have a short interval time will lead to a PENDING_OPEN state staying in the regionInTransition map and blocking the disable and enable table actions.
+We found that the second assignment will set the zknode of this region to M_ZK_REGION_OFFLINE then set the state in assignmentMananger's regionInTransition map to PENDING_OPEN and abort its further operation because of finding the the region is already in the regionserver by a RegionAlreadyInTransitionException.
+At the same time the first assignment is tickleOpening and find the version of the zknode is messed up by the second assignment, so the OpenRegionHandler print out the following two lines:
+ 
+2011-12-23 22:12:15,197 WARN  [RS_OPEN_REGION-data16,59892,1324649528415-0] zookeeper.ZKAssign(788): regionserver:59892-0x1346b43b91e0002 Attempt to transition the unassigned node for 15237599c632752b8cfd3d5a86349768 from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING failed, the node existed but was version 2 not the expected version 1
+2011-12-23 22:12:15,197 WARN  [RS_OPEN_REGION-data16,59892,1324649528415-0] handler.OpenRegionHandler(403): Failed refreshing OPENING; region=15237599c632752b8cfd3d5a86349768, context=post_region_open
+After that it tries to turn the state to FAILED_OPEN, but also failed due to wrong version,
+this is the output:
+ 
+2011-12-23 22:12:15,199 WARN  [RS_OPEN_REGION-data16,59892,1324649528415-0] zookeeper.ZKAssign(812): regionserver:59892-0x1346b43b91e0002 Attempt to transition the unassigned node for 15237599c632752b8cfd3d5a86349768 from RS_ZK_REGION_OPENING to RS_ZK_REGION_FAILED_OPEN failed, the node existed but was in the state M_ZK_REGION_OFFLINE set by the server data16,59892,1324649528415
+2011-12-23 22:12:15,199 WARN  [RS_OPEN_REGION-data16,59892,1324649528415-0] handler.OpenRegionHandler(307): Unable to mark region {NAME => 'table1,,1324649533045.15237599c632752b8cfd3d5a86349768.', STARTKEY => '', ENDKEY => '', ENCODED => 15237599c632752b8cfd3d5a86349768,} as FAILED_OPEN. It's likely that the master already timed out this open attempt, and thus another RS already has the region.
+So after all that, the PENDING_OPEN state is left in the assignmentMananger's regionInTransition map and none will deal with it further,
+This kind of situation will wait until the master find the state out of time.
+The following is the test code:
+test.java
+@Test
+  public void testDisableTables() throws IOException {
+    for (int i = 0; i < 20; i++) {
+      HTableDescriptor des = admin.getTableDescriptor(Bytes.toBytes(table1));
+      List<HRegionInfo> hris = TEST_UTIL.getHBaseCluster().getMaster()
+          .getAssignmentManager().getRegionsOfTable(Bytes.toBytes(table1));
+      TEST_UTIL.getHBaseCluster().getMaster()
+          .assign(hris.get(0).getRegionName());
+  
+      TEST_UTIL.getHBaseCluster().getMaster()
+          .assign(hris.get(0).getRegionName());
+  
+      admin.disableTable(Bytes.toBytes(table1));
+      admin.modifyTable(Bytes.toBytes(table1), des);
+      admin.enableTable(Bytes.toBytes(table1));
+    }
+  }
+To fix this,we add a line to
+public static int ZKAssign.transitionNode() to make endState.RS_ZK_REGION_FAILED_OPEN transition pass.
+ZKAssign.java
+   if((!existingData.getEventType().equals(beginState))
+      //add the following line to make endState.RS_ZK_REGION_FAILED_OPEN transition pass.
+      &&(!endState.equals(endState.RS_ZK_REGION_FAILED_OPEN))) {
+      LOG.warn(zkw.prefix("Attempt to transition the " +
+        "unassigned node for " + encoded +
+        " from " + beginState + " to " + endState + " failed, " +
+        "the node existed but was in the state " + existingData.getEventType() +
+        " set by the server " + serverName));
+      return -1;
+    }
+Run the test case again we found that before the first assignment trans the state from offline to opening, the second assignment could set the state to offline again and messed up the version of zknode.
+In OpenRegionHandler.process() the following part failed and make the process() return.
+OpenRegionHandler.java
+ if (!transitionZookeeperOfflineToOpening(encodedName,
+          versionOfOfflineNode)) {
+        LOG.warn("Region was hijacked? It no longer exists, encodedName=" +
+          encodedName);
+        return;
+}
+//So we add the following code to the part to make this open region process to FAILED_OPEN.
+OpenRegionHandler.java
+ if (!transitionZookeeperOfflineToOpening(encodedName,
+          versionOfOfflineNode)) {
+        LOG.warn("Region was hijacked? It no longer exists, encodedName=" +
+          encodedName);
+        tryTransitionToFailedOpen(regionInfo);
+        return;
+      }
+After the two amendments, two adjacent assignments will not lead to an unhandled PENDING_OPEN state.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.92.0
+Fix_version:
+None
+Component:
+master, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Liu Jia
+Create date:
+23/Dec/11 08:02
+Update date:
+11/Apr/15 01:02
+Resolved date:
+11/Apr/15 01:02

@@ -1,0 +1,72 @@
+Summary:
+DelegatingSubject class cannot be serialized.
+Description:
+I am attempting to send a instance of DelegatingSubject over a JMS topic via serialization, however when I send the object through JMS I get this Exception
+java.lang.RuntimeException: org.apache.shiro.subject.support.DelegatingSubject$StoppingAwareProxiedSession
+at org.apache.activemq.command.ActiveMQObjectMessage.storeContent(ActiveMQObjectMessage.java:111) ~[activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.command.ActiveMQObjectMessage.setObject(ActiveMQObjectMessage.java:162) ~[activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at com.xmlnamespace.panel.server.core.communication.event.EventManager.doSendMessage(EventManager.java:233) ~[com.xmlnamespace.panel.server.core/:na]
+at com.xmlnamespace.panel.server.core.communication.event.EventManager.sendMessage(EventManager.java:208) ~[com.xmlnamespace.panel.server.core/:na]
+at com.xmlnamespace.panel.server.core.communication.mtl.ModelDispatcher.add(ModelDispatcher.java:122) ~[com.xmlnamespace.panel.server.core/:na]
+at com.xmlnamespace.panel.server.core.communication.mtl.ModelDispatcher.collectionChange(ModelDispatcher.java:181) ~[com.xmlnamespace.panel.server.core/:na]
+at com.xmlnamespace.panel.core.shared.communication.mtl.api.CollectionChangeSupport.doFireCollectionChange(CollectionChangeSupport.java:182) ~[shared-objects.jar:na]
+at com.xmlnamespace.panel.core.shared.communication.mtl.api.CollectionChangeSupport.fireCollectionChange(CollectionChangeSupport.java:47) ~[shared-objects.jar:na]
+at com.xmlnamespace.panel.core.shared.user.model.internal.UserModelImpl.addUserLogin(UserModelImpl.java:96) ~[shared-objects.jar:na]
+at com.xmlnamespace.panel.server.core.login.LoginManager.authenticateConnection(LoginManager.java:1013) ~[com.xmlnamespace.panel.server.core/:na]
+at com.xmlnamespace.panel.server.core.communication.broker.BrokerAuthenticationFilter.addConnection(BrokerAuthenticationFilter.java:69) ~[com.xmlnamespace.panel.server.core/:na]
+at org.apache.activemq.broker.MutableBrokerFilter.addConnection(MutableBrokerFilter.java:91) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.broker.TransportConnection.processAddConnection(TransportConnection.java:705) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.broker.jmx.ManagedTransportConnection.processAddConnection(ManagedTransportConnection.java:83) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.command.ConnectionInfo.visit(ConnectionInfo.java:139) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.broker.TransportConnection.service(TransportConnection.java:316) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.broker.TransportConnection$1.onCommand(TransportConnection.java:180) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.transport.TransportFilter.onCommand(TransportFilter.java:69) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.transport.WireFormatNegotiator.onCommand(WireFormatNegotiator.java:113) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.transport.InactivityMonitor.onCommand(InactivityMonitor.java:227) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.transport.TransportSupport.doConsume(TransportSupport.java:83) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.transport.tcp.SslTransport.doConsume(SslTransport.java:91) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.transport.tcp.TcpTransport.doRun(TcpTransport.java:217) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at org.apache.activemq.transport.tcp.TcpTransport.run(TcpTransport.java:199) [activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+at java.lang.Thread.run(Thread.java:662) [na:1.6.0_26]
+Caused by: java.io.NotSerializableException: org.apache.shiro.subject.support.DelegatingSubject$StoppingAwareProxiedSession
+at java.io.ObjectOutputStream.writeObject0(ObjectOutputStream.java:1164) ~[na:1.6.0_26]
+at java.io.ObjectOutputStream.defaultWriteFields(ObjectOutputStream.java:1518) ~[na:1.6.0_26]
+at java.io.ObjectOutputStream.writeSerialData(ObjectOutputStream.java:1483) ~[na:1.6.0_26]
+at java.io.ObjectOutputStream.writeOrdinaryObject(ObjectOutputStream.java:1400) ~[na:1.6.0_26]
+at java.io.ObjectOutputStream.writeObject0(ObjectOutputStream.java:1158) ~[na:1.6.0_26]
+at java.io.ObjectOutputStream.defaultWriteFields(ObjectOutputStream.java:1518) ~[na:1.6.0_26]
+at java.io.ObjectOutputStream.writeSerialData(ObjectOutputStream.java:1483) ~[na:1.6.0_26]
+at java.io.ObjectOutputStream.writeOrdinaryObject(ObjectOutputStream.java:1400) ~[na:1.6.0_26]
+at java.io.ObjectOutputStream.writeObject0(ObjectOutputStream.java:1158) ~[na:1.6.0_26]
+at java.io.ObjectOutputStream.writeObject(ObjectOutputStream.java:330) ~[na:1.6.0_26]
+at org.apache.activemq.command.ActiveMQObjectMessage.storeContent(ActiveMQObjectMessage.java:105) ~[activemq-all-5.6-SNAPSHOT.jar:5.6-SNAPSHOT]
+... 24 common frames omitted
+I assume that DelegatingSubject is meant to be serialized since it does implement serializable. I noticed that the class inner class StoppingAwareProxiedSession is the culprit. Would the issue be resolved by simply making the Session interface, ProxiedSession class, and StoppingAwareProxiedSession serializable?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.1.0
+Fix_version:
+1.2.0
+Component:
+Subject
+Label:
+serialization
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Les Hazlewood
+Reporter:
+Michael Yara
+Create date:
+16/Sep/11 20:42
+Update date:
+30/Oct/15 03:10
+Resolved date:
+07/Jan/12 03:59

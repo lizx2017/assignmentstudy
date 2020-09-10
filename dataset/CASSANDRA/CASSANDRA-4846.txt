@@ -1,0 +1,47 @@
+Summary:
+BulkLoader throws NPE at start up
+Description:
+BulkLoader in trunk throws below exception at start up and exit abnormally.
+Exception in thread "main" java.lang.ExceptionInInitializerError
+ at org.apache.cassandra.io.sstable.SSTableReader.<init>(SSTableReader.java:87)
+ at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:180)
+ at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:148)
+ at org.apache.cassandra.io.sstable.SSTableLoader$1.accept(SSTableLoader.java:96)
+ at java.io.File.list(File.java:1010)
+ at org.apache.cassandra.io.sstable.SSTableLoader.openSSTables(SSTableLoader.java:67)
+ at org.apache.cassandra.io.sstable.SSTableLoader.stream(SSTableLoader.java:117)
+ at org.apache.cassandra.tools.BulkLoader.main(BulkLoader.java:63)
+Caused by: java.lang.NullPointerException
+ at org.apache.cassandra.service.CacheService.initRowCache(CacheService.java:154)
+ at org.apache.cassandra.service.CacheService.<init>(CacheService.java:102)
+ at org.apache.cassandra.service.CacheService.<clinit>(CacheService.java:83)
+ ... 8 more
+This comes from CASSANDRA-4732, which moved keyCache in SSTableReader initialization at instance creation. This causes access to CacheService that did not happen for v1.1 and ends up NPE because BulkLoader does not load cassandra.yaml.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 2
+Component:
+None
+Label:
+bulkloader
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Yuki Morishita
+Create date:
+22/Oct/12 17:10
+Update date:
+16/Apr/19 09:32
+Resolved date:
+23/Oct/12 20:27

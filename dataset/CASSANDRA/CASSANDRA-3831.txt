@@ -1,0 +1,117 @@
+Summary:
+scaling to large clusters in GossipStage impossible due to calculatePendingRanges
+Description:
+(most observations below are from 0.8, but I just now tested on
+trunk and I can trigger this problem just by bootstrapping a ~180
+nod cluster concurrently, presumably due to the number of nodes that
+are simultaneously in bootstrap state)
+It turns out that:
+(1) calculatePendingRanges is not just expensive, it's computationally complex - cubic or worse
+(2) it gets called NOT just once per node being bootstrapped/leaving etc, but is called repeatedly while nodes are in these states
+As a result, clusters start exploding when you start reading 100-300
+nodes. The GossipStage will get backed up because a single
+calculdatePenginRanges takes seconds, and depending on what the
+average heartbeat interval is in relation to this, this can lead to
+massive cluster-wide flapping.
+This all started because we hit this in production; several nodes
+would start flapping several other nodes as down, with many nodes
+seeing the entire cluster, or a large portion of it, as down. Logging
+in to some of these nodes you would see that they would be constantly
+flapping up/down for minutes at a time until one became lucky and it
+stabilized.
+In the end we had to perform an emergency full-cluster restart with
+gossip patched to force-forget certain nodes in bootstrapping state.
+I can't go into all details here from the post-mortem (just the
+write-up would take a day), but in short:
+We graphed the number of hosts in the cluster that had more than 5
+Down (in a cluster that should have 0 down) on a minutely timeline.
+We also graphed the number of hosts in the cluster that had GossipStage backed up.
+The two graphs correlated extremely well
+jstack sampling showed it being CPU bound doing mostly sorting under calculatePendingRanges
+We were never able to exactly reproduce it with normal RING_DELAY and gossip intervals, even on a 184 node cluster (the production cluster is around 180).
+Dropping RING_DELAY and in particular dropping gossip interval to 10 ms instead of 1000 ms, we were able to observe all of the behavior we saw in production.
+So our steps to reproduce are:
+Launch 184 node cluster w/ gossip interval at 10ms and RING_DELAY at 1 second.
+Do something like: while [ 1 ] ; do date ; echo decom ; nodetool decommission ; date ; echo done leaving decommed for a while ; sleep 3 ; date ; echo done restarting; sudo rm -rf /data/disk1/commitlog/* ; sudo rm -rf /data/diskarray/tables/* ; sudo monit restart cassandra ;date ; echo restarted waiting for a while ; sleep 40; done (or just do a manual decom/bootstrap once, it triggers every time)
+Watch all nodes flap massively and not recover at all, or maybe after a long time.
+I observed the flapping using a python script that every 5 second
+(randomly spread out) asked for unreachable nodes from all nodes in
+the cluster, and printed any nodes and their counts when they had
+unreachables > 5. The cluster can be observed instantly going into
+massive flapping when leaving/bootstrap is initiated. Script needs
+Cassandra running with Jolokia enabled for http/json access to
+JMX. Can provide scrit if needed after cleanup.
+The phi conviction, based on logging I added, was legitimate. Using
+the 10 ms interval the average heartbeat interval ends up being like 25
+ms or something like that. As a result, a single ~ 2 second delay in
+gossip stage is huge in comparison to those 25 ms, and so we go past
+the phi conviction threshold. This is much more sensitive than in
+production, but it's the same effect, even if it triggers less
+easily for real.
+The best work around currently internally is to memoize
+calculatePendingRanges so that we don't re-calculate if token meta
+data, list of moving, list of bootstrapping and list of leaving are
+all the same as on prior calculation. It's not entirely clear at this
+point whether there is a clean fix to avoid executing
+calculatePendingRanges more than once per unique node in this state.
+It should be noted though that even if that is fixed, it is not
+acceptable to spend several seconds doing these calculations on a ~
+200 node cluster and it needs to be made fundamentally more efficient.
+Here is a dump of thoughts by me in an internal JIRA ticket (not
+exhaustive, I just went as far as to show that there is an issue;
+there might be worse things I missed, but worse than cubic is bad
+enough that I stopped):
+(Comment uses 0.8 source.)
+Okay, so let's break down the computational complexity here.
+Suppose ring size is n and number of bootstrapping/leaving tokens is m. One of two places that take time (by measurement) is this part of calculatePendingRanges():
+       // At this stage pendingRanges has been updated according to leave operations. We can
+        // now continue the calculation by checking bootstrapping nodes.
+
+        // For each of the bootstrapping nodes, simply add and remove them one by one to
+        // allLeftMetadata and check in between what their ranges would be.
+        for (Map.Entry<Token, InetAddress> entry : bootstrapTokens.entrySet())
+        {
+            InetAddress endpoint = entry.getValue();
+
+            allLeftMetadata.updateNormalToken(entry.getKey(), endpoint);
+            for (Range range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))
+                pendingRanges.put(range, endpoint);
+            allLeftMetadata.removeEndpoint(endpoint);
+        }
+I'll ignore stuff that's log or better.
+The outer loops is O(m). The inner loop is O, making aggregate so far O(nm).
+We have a call in there to updateNormalTokens() which implies a sorting, which his O(n log). So now we're at O(n log m).
+Next up we call getAddressRanges() which immediately does another O(n log sort. we're still at O(n log m. It then iterates (linear) and:
+calls getPrimaryRangeFor() for each.
+calls calculateNaturalEndpoints for each.
+The former ends up sorting again, so now we're at O(n log n log m (worse than quadratic).
+NTS.calculateNaturalEndpoints starts by collecting token meta data for nodes in the DC, by using updateNormalToken, which implies sorting. Woha woha. Now we're at O(n log n log n log m).
+I might have missed things that are even worse, but this is bad enough to warrant this ticket. To put into perspective, 168 ^ 3 is 4.7 million.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Peter Schuller
+Reporter:
+Peter Schuller
+Create date:
+01/Feb/12 23:44
+Update date:
+16/Apr/19 09:32
+Resolved date:
+09/Feb/12 10:31

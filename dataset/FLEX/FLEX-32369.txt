@@ -1,0 +1,40 @@
+Summary:
+Chart Data tips give memory leak
+Description:
+A graph is never freed from memory (garbage collected), when DataTIps have been displayed.
+I had a CartesianChart displayed which contains data and for that data some DataTipFunction has been defined and the showDataTips is set to true..
+When I display the graph and make sure that I did not hover over any data (and so no data tips have been displayed) and then remove the graph (by e.g. removeChild on the parent), I see (using the flex profiler) that the graph (and all children) are nicely garbage collected.
+However if I do the same, but do hover over some of the data and so some data tips have been displayed, the chart and all its children including the (potential huge) dataProvider are NOT garbage collected.
+My investigations have come to the following : the chart (actually the ChartBase) caches tool tips in the member _tipCache. This is a InstanceCache that is created when data tips need to be displayed. It is created the following way (ChartBase line 3028 - 3030) :
+_tipCache = new InstanceCache(tipClass, systemManager.toolTipChildren);
+This means that the DataTips will be added to the systemManager.toolTipChildren as children. However it seems that they are never removed.
+I guess that either the "discard" and "remove" property of the tipCache must be set to "true" or that the systemManager.toolTipChildren should not be the parent of the DataTIps (so by creating the tipCache without a parent object)
+(Btw. i'm using Flex 3.1.0 - don't know the version of the DVC)
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+Adobe Flex SDK Previ
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+08/Jan/09 01:36
+Update date:
+04/Sep/09 05:33
+Resolved date:
+19/Feb/09 04:18

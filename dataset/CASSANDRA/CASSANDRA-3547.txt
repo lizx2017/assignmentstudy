@@ -1,0 +1,41 @@
+Summary:
+Race between cf flush and its secondary indexes flush
+Description:
+When a CF with indexes is flushed, it's indexes are flushed too. In particular their memtable is switched, but without making the old memtable frozen. This can conflict with a concurrent flush of the index itself, as reported on the user list by Michael Vaknine:
+TST-Cass2 ERROR [Thread-58] 2011-11-30 20:40:17,449 AbstractCassandraDaemon.java (line 133) Fatal exception in thread Thread
+TST-Cass2 ERROR [Thread-58] 2011-11-30 20:40:17,449 java.lang.AssertionError
+TST-Cass2 ERROR [Thread-58] 2011-11-30 20:40:17,449 at org.apache.cassandra.db.ColumnFamilyStore.maybeSwitchMemtable(ColumnFamilyStore.java:671)
+TST-Cass2 ERROR [Thread-58] 2011-11-30 20:40:17,449 at org.apache.cassandra.db.ColumnFamilyStore.forceFlush(ColumnFamilyStore.java:745)
+TST-Cass2 ERROR [Thread-58] 2011-11-30 20:40:17,449 at org.apache.cassandra.db.ColumnFamilyStore.forceBlockingFlush(ColumnFamilyStore.java:750)
+TST-Cass2 ERROR [Thread-58] 2011-11-30 20:40:17,449 at org.apache.cassandra.db.index.keys.KeysIndex.forceBlockingFlush(KeysIndex.java:119)
+TST-Cass2 ERROR [Thread-58] 2011-11-30 20:40:17,449 at org.apache.cassandra.db.index.SecondaryIndexManager.flushIndexesBlocking(SecondaryIndexManager.java:258)
+TST-Cass2 ERROR [Thread-58] 2011-11-30 20:40:17,449 at org.apache.cassandra.db.index.SecondaryIndexManager.maybeBuildSecondaryIndexes(SecondaryIndexManager.java:123)
+TST-Cass2 ERROR [Thread-58] 2011-11-30 20:40:17,449 at org.apache.cassandra.streaming.StreamInSession.closeIfFinished(StreamInSession.java:151)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.6
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+01/Dec/11 11:19
+Update date:
+16/Apr/19 09:32
+Resolved date:
+02/Dec/11 10:50

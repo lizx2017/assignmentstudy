@@ -1,0 +1,38 @@
+Summary:
+Fix timestamp-based tomstone removal logic
+Description:
+Quoting the description of CASSANDRA-4671:
+In other words, we should force CompactionController.shouldPurge() to return true if min_timestamp(non-compacted-overlapping-sstables) > max_timestamp(compacted-sstables)
+but somehow this was translating in the code to:
+if (sstable.getBloomFilter().isPresent(key.key) && sstable.getMinTimestamp() >= maxDeletionTimestamp)
+    return false;
+which, well, is reversed.
+Attaching the trivial patch to fix. I note that we already had a test that catched this (CompactionsTest.testDontPurgeAccidentaly), but that test was racy in that most of the time the compaction was done in the same second than the removal done prior to that and thus the compaction wasn't considering the tombstone gcable even though gcgrace was 0. I've already pushed the addition of a 1 second delay to make sure the patch reliably catch this bug.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+13/Feb/13 11:03
+Update date:
+16/Apr/19 09:32
+Resolved date:
+15/Feb/13 18:31

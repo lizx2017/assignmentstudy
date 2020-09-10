@@ -1,0 +1,40 @@
+Summary:
+Randomize default remember me cipher
+Description:
+The way shiro is set up by default exposes a web application to deserialization attacks. This is dangerous anyway, but particularly in light of the recent exploits using commons-collections (see http://foxglovesecurity.com/2015/11/06/what-do-weblogic-websphere-jboss-jenkins-opennms-and-your-application-have-in-common-this-vulnerability/ for more info).
+By default, shiro uses the CookieRememberMeManager. This serializes, encrypts and encodes the users identity for later retrieval. Therefore, when it receives a request from an unauthenticated user, it looks for their remembered identity by doing the following:
+Retrieve the value of the rememberMe cookie
+Base 64 decode
+Decrypt using AES
+Deserialize using java serialization (ObjectInputStream).
+However, the default encryption key is hardcoded, meaning anyone with access to the source code knows what the default encryption key is. So, an attacker can create a malicious object, serialize it, encode it, then send it as a cookie. Shiro will then decode and deserialize, meaning that your malicious object is now live on the server. With careful construction of the objects, they can be made to run some malicious code (see link above for more detail).
+Note this is not theoretical; I have a working exploit using the ysoserial commons-collections4 exploit and http client. I can provide my test code if required.
+I understand that this requires your shiro to be set up using the default remember me settings, but in my case my application doesn't even make use of the remember me functionality (there’s no way for the user to ask to be remembered), so I didn't even consider that I needed to secure this part. Yet, my application still has this vulnerability.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.2.4
+Fix_version:
+1.2.5
+Component:
+RememberMe
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Tim Stibbs
+Create date:
+19/Nov/15 10:15
+Update date:
+08/Nov/16 16:42
+Resolved date:
+12/May/16 01:14

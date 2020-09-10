@@ -1,0 +1,38 @@
+Summary:
+SimpleSession serialization failing
+Description:
+We cache SimpleSession in EhCache which is configured with Overflow to Disk and an LRU eviction policy.
+When the cache is full, EhCache will attempt to evict a session from the Disk Storage to reclaim space.
+To evict the `SimpleSession`, EhCache will attempt to deserialize the eveicted session first. From time to time, the deserialization of the `SimpleSession` fails. When that happens the system is locked, since no additional session can be created.
+`SimpleSession` has a custom serialization mechanism that calculates a bit mask which indicates which fields of the `SimpleSession` contain values. This bitMask is serialized first (as a Short) then the fields containing values.
+When deserialization is failing, the bitMask indicates that the `attributes` Map contains data, however no `attributes` have actually been serialized and the deserialization fails with a `java.io.OptionalDataException`.
+The discrepancy is very likely due to `attributes` being a non synchronized Map: the SimpleSession is created on a Servlet thread, however the serialization to Disk is performed by EhCache on one of its cache management threads.
+SimpleSession fields should likely be marked as volatile and the Map should be a Synchronized Map or SimpleSession should be made immutable.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+1.2.1
+Fix_version:
+None
+Component:
+Caching , (1)
+Label:
+None
+Environment:
+java 1.6, ehcache
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Bruno GRIEDER
+Create date:
+12/Jul/13 13:32
+Update date:
+06/Jul/15 17:01
+Resolved date:
+

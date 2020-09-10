@@ -1,0 +1,42 @@
+Summary:
+Column can expire while lazy compacting it...
+Description:
+Using TTL + range tombstones can lead to failure while lazy compacting rows.
+Scenario to reproduce :
+create an SSTable with one row and some columns and a TTL of 8 seconds
+wait one second
+create a second SSTable with the same rowkey as above, and add a range tombstone
+start the first pass of the lazy compaction before the columns with TTL are expired
+wait 10 seconds (enough for columns with TTL to expire)
+continue lazy expiration
+the following assertion will fail :
+[junit] junit.framework.AssertionFailedError: originally calculated column size of 1379 but now it is 1082
+[junit] at org.apache.cassandra.db.compaction.LazilyCompactedRow.write(LazilyCompactedRow.java:150)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Fabien Rousseau
+Create date:
+24/Jul/13 13:37
+Update date:
+16/Apr/19 09:32
+Resolved date:
+26/Jul/13 18:15

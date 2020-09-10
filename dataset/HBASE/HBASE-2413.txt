@@ -1,0 +1,48 @@
+Summary:
+Master does not respect generation stamps, may result in meta getting permanently offlined
+Description:
+This happens if the RS is restarted before the zk node expires. The sequence is as follows:
+1. RS1 dies - lets say its server string was HOST1:PORT1:TS1
+2. In a few seconds RS1 is restarted, it comes up as HOST1:PORT1:TS2 (TS2 is more recent than TS1)
+3. Master gets a start up message from RS1 with the server name as HOST1:PORT1:TS2
+4. Master adds this as a new RS, tries to red
+---- The master does not use the generation stamps to detect that RS1 has already restarted.
+---- Also, if RS1 contained meta, master would try to go to HOST1:PORT1:TS1. It would end up talking to HOST1:PORT1:TS2, which spews a bunch of not serving region exceptions.
+5. zk node expires for HOST1:PORT1:TS1
+6. Master tries to process shutdown for HOST1:PORT1:TS1 - this probably interferes with HOST1:PORT1:TS2 and ends up somehow removing the reassign meta in the master's queue.
+---- Meta never comes online and master continues logging the following exception indefinitely:
+2010-04-06 11:02:23,988 DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: ProcessRegionClose of test1,7094000000,1270220428234, false, reassign: true
+2010-04-06 11:02:23,988 DEBUG org.apache.hadoop.hbase.master.ProcessRegionClose$1: Exception in RetryableMetaOperation:
+java.lang.NullPointerException
+at org.apache.hadoop.hbase.master.RetryableMetaOperation.doWithRetries(RetryableMetaOperation.java:64)
+at org.apache.hadoop.hbase.master.ProcessRegionClose.process(ProcessRegionClose.java:63)
+at org.apache.hadoop.hbase.master.HMaster.processToDoQueue(HMaster.java:494)
+at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:429)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.3
+Fix_version:
+0.90.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Karthik Ranganathan
+Create date:
+06/Apr/10 22:20
+Update date:
+20/Nov/15 12:41
+Resolved date:
+08/May/10 06:28

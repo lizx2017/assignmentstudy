@@ -1,0 +1,49 @@
+Summary:
+remove LatLonGrid
+Description:
+This crutch doesn't speed up most polygons anymore, only some very complex ones with many components/holes.
+Instead as a simple step, we can use a tree of components (organized by bounding box x-intervals just like edges). This makes things less trappy for crazy polygons like the russia one.
+Synthetic polygons from luceneUtil
+vertices old QPS new QPS
+5 40.5 43.8
+50 33.1 32.8
+500 31.9 31.9
+5000 29.4 29.6
+50000 20.4 22.8
+500000 4.0 6.9
+Real polygons (33 london districts: http://data.london.gov.uk/2011-boundary-files)
+vertices old QPS new QPS
+avg 5.6k 113.8 105.4
+Russia geonames polygon (> 1000 components, crosses dateline, hugs poles, you name it)
+vertices old QPS new QPS
+11598 1.17 5.35
+The grid hurts russia (keeping it around -> 4 QPS), and you can see it also hurts all the synthetic ones. Those london boundaries hit a sweet spot where it helps just a tad but, I think we should remove it and its startup cost along with it.
+We can probably organize the tree better to be more efficient with many components: for contains() we could just pack them all into one poly. But i'm worried what this will do for relations (there would be fake edges between components i think?), and it would be complicated.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.1, 7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+24/Apr/16 16:35
+Update date:
+17/Jun/16 13:11
+Resolved date:
+25/Apr/16 19:51

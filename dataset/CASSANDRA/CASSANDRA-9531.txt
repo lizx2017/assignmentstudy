@@ -1,0 +1,68 @@
+Summary:
+NullPointerException logged when running MessagePayloadTest
+Description:
+When I run the MessagePayloadTest I have the following error in my log output:
+juin 02, 2015 3:27:31 PM com.google.common.cache.LocalCache processPendingNotifications
+AVERTISSEMENT: Exception thrown by removal listener
+java.lang.NullPointerException
+ at org.apache.cassandra.io.compress.CompressedRandomAccessReader.getTotalBufferSize(CompressedRandomAccessReader.java:260)
+ at org.apache.cassandra.service.FileCacheService$2.onRemoval(FileCacheService.java:105)
+ at com.google.common.cache.LocalCache.processPendingNotifications(LocalCache.java:1954)
+ at com.google.common.cache.LocalCache$Segment.runUnlockedCleanup(LocalCache.java:3457)
+ at com.google.common.cache.LocalCache$Segment.postWriteCleanup(LocalCache.java:3433)
+ at com.google.common.cache.LocalCache$Segment.remove(LocalCache.java:3104)
+ at com.google.common.cache.LocalCache.remove(LocalCache.java:4170)
+ at com.google.common.cache.LocalCache$LocalManualCache.invalidate(LocalCache.java:4762)
+ at org.apache.cassandra.service.FileCacheService.invalidate(FileCacheService.java:182)
+ at org.apache.cassandra.io.util.PoolingSegmentedFile$Cleanup.tidy(PoolingSegmentedFile.java:53)
+ at org.apache.cassandra.io.util.CompressedPoolingSegmentedFile$Cleanup.tidy(CompressedPoolingSegmentedFile.java:77)
+ at org.apache.cassandra.utils.concurrent.Ref$GlobalState.release(Ref.java:285)
+ at org.apache.cassandra.utils.concurrent.Ref$State.ensureReleased(Ref.java:164)
+ at org.apache.cassandra.utils.concurrent.Ref.ensureReleased(Ref.java:89)
+ at org.apache.cassandra.utils.concurrent.SharedCloseableImpl.close(SharedCloseableImpl.java:45)
+ at org.apache.cassandra.io.sstable.format.SSTableReader$InstanceTidier$1.run(SSTableReader.java:1937)
+ at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+ at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$201(ScheduledThreadPoolExecutor.java:178)
+ at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:292)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:745)
+The problem is due to the fact that when getTotalBufferSize is called the segment has already been desallocated. The reason being that the segment has been put twice in the queue of the CacheBucket.
+I tracked down the problem to CompactionTask.runMayThrow which trigger 2 calls to the close method of BigTableScanner.
+One here:
+ at org.apache.cassandra.io.sstable.format.big.BigTableScanner.close(BigTableScanner.java:197)
+ at org.apache.cassandra.db.compaction.AbstractCompactionStrategy$ScannerList.close(AbstractCompactionStrategy.java:333)
+ at org.apache.cassandra.db.compaction.CompactionTask.runMayThrow(CompactionTask.java:207)
+and the other here:
+ at org.apache.cassandra.io.sstable.format.big.BigTableScanner.close(BigTableScanner.java:197)
+ at org.apache.cassandra.utils.MergeIterator.close(MergeIterator.java:62)
+ at org.apache.cassandra.db.compaction.CompactionTask.runMayThrow(CompactionTask.java:206)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 rc1
+Component:
+Legacy/Local Write-Read Paths
+Label:
+test
+Environment:
+
+Attachment number:
+0
+Assignee:
+T Jake Luciani
+Reporter:
+Benjamin Lerer
+Create date:
+02/Jun/15 13:52
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Jun/15 14:29

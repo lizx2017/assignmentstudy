@@ -1,0 +1,45 @@
+Summary:
+add cassandra.unsafesystem property (Truncate flushes to disk again in 1.2, even with durable_writes=false)
+Description:
+I just upgraded my dev-environment to C* 1.2. Unfortunetaly 1.2 makes my JUnit tests slow again, due to a blocking-flush in saveTruncationRecord().
+With Cassandra 1.1 truncate was very fast due to: CASSANDRA-4153
+My proposal is to make saveTruncationRecord() only flush when durableWrites are enabled.
+My assumption is that if somebody turn off durable writes then he does not mind if truncate is not guaranteed to be durable either.
+I successfully tested the following patch with my testsuite. Its as fast as it was with 1.1 (maybe even faster!):
+@@ -186,5 +186,8 @@ public class SystemTable
+         String req = "UPDATE system.%s SET truncated_at = truncated_at + %s WHERE key = '%s'";
+         processInternal(String.format(req, LOCAL_CF, truncationAsMapEntry(cfs, truncatedAt, position), LOCAL_KEY));
+-        forceBlockingFlush(LOCAL_CF);
++        
++        KSMetaData ksm = Schema.instance.getKSMetaData(cfs.table.name);
++        if (ksm.durableWrites) // flush only when durable_writes are enabled
++            forceBlockingFlush(LOCAL_CF);
+     }
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.7, 2.0 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Christian Spriegel
+Create date:
+26/Jun/13 13:39
+Update date:
+16/Apr/19 09:32
+Resolved date:
+17/Jul/13 19:05

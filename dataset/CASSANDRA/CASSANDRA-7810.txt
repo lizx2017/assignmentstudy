@@ -1,0 +1,52 @@
+Summary:
+tombstones gc'd before being locally applied
+Description:
+single node environment
+CREATE KEYSPACE test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1 }
+;
+use test;
+create table foo (a int, b int, primary key(a,b));
+alter table foo with gc_grace_seconds = 0;
+insert into foo (a,b) values (1,2);
+select * from foo;
+one row returned. so far, so good.
+delete from foo where a=1 and b=2;
+select * from foo;
+0 rows. still rainbows and kittens.
+bin/nodetool flush;
+bin/nodetool compact;
+select * from foo;
+a | b
+--+--
+1 | 2
+(1 rows)
+gahhh.
+looks like the tombstones were considered obsolete and thrown away before being applied to the compaction? gc_grace just means the interval after which they won't be available to remote nodes repair - they should still apply locally regardless (and do correctly in 2.0.9)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.19, 2.0.11, 2.1.0
+Component:
+Local/Compaction
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Jonathan Halliday
+Create date:
+21/Aug/14 14:16
+Update date:
+16/Apr/19 09:31
+Resolved date:
+27/Aug/14 11:13

@@ -1,0 +1,54 @@
+Summary:
+javax.crypto.BadPaddingException: Given final block not properly padded
+Description:
+Using the attached pdf, When running the pdf through org.apache.pdfbox.pdmodel.encryption.SecurityHandler I get
+BadPaddingException.
+The exception occurs when it is processing
+nextObj = COSObject
+{3304,0}
+I see: nextCOSBase = COSDictionary{(COSName
+{Length}
+:COSInt
+{3504}
+) (COSName
+{Subtype}
+:COSName
+{XML}
+) (COSName
+{Type}
+:COSName
+{Metadata}
+) }
+The problem is that SecurityHandler.proceedDecryption() runs decryptObject(nextObj);
+and then decrypt(base, objNum, genNum) and then decryptStream()
+However for this object decryptStream doesn't actually decrypt anything because the type is xml.
+So when decryptStream calls encryptData() encryptData() throws the bad packet exception.
+output.write(decryptCipher.doFinal()); throws the exception because the data buffer is all zeros. It has nothing in it. I recommend that encryption be skipped if the data buffer has all zeros.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.13
+Fix_version:
+1.8.14
+Component:
+Crypto, Documentation
+Label:
+security
+Environment:
+java 1.8, windows, linux
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Lucille Wilson
+Create date:
+08/Aug/17 18:16
+Update date:
+19/Apr/18 19:31
+Resolved date:
+11/Aug/17 19:38

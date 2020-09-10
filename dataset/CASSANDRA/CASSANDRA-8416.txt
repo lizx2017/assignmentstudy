@@ -1,0 +1,41 @@
+Summary:
+AssertionError 'Incoherent new size -1' during hints compaction
+Description:
+I've seen the error on 2.0.9:
+java.lang.AssertionError: Incoherent new size -1 replacing [SSTableReader(path='/cassandra/d1/data/system/hints/system-hints-jb-24386-Data.db')] by [] in View(pending_count=0, sstables=[], compacting=[SSTableReader(path='/cassandra/d1/data/system/hints/system-hints-jb-24386-Data.db')])
+in logs during hints compaction. It looks like there are 2 concurrent compactions of the same file - just before this error the logs say:
+INFO [CompactionExecutor:220316] 2014-11-19 22:53:54,650 CompactionTask.java (line 115) Compacting [SSTableReader(path='/cassandra/d1/data/system/hints/system-hints-jb-24386-Data.db')]
+INFO [CompactionExecutor:220315] 2014-11-19 22:53:54,651 CompactionTask.java (line 115) Compacting [SSTableReader(path='/cassandra/d1/data/system/hints/system-hints-jb-24386-Data.db')]
+The assertion is:
+int newSSTablesSize = sstables.size() - oldSSTables.size() + Iterables.size(replacements);
+assert newSSTablesSize >= Iterables.size(replacements) : String.format("Incoherent new size %d replacing %s by %s in %s", newSSTablesSize, oldSSTables, replacements, this);
+So if the first compaction completes, the second one has sstables=[] (as seen in the assertion failure print), so newSSTablesSize = 0 - 1 + 0 = -1 and we get the error.
+It is possible the root cause is the same as CASSANDRA-7145. Does anyone know how to tell? The error happens very rarely so hard to know from testing.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.12
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Richard Low
+Create date:
+03/Dec/14 17:57
+Update date:
+16/Apr/19 09:31
+Resolved date:
+08/Dec/14 08:06

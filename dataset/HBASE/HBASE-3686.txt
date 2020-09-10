@@ -1,0 +1,41 @@
+Summary:
+ClientScanner skips too many rows on recovery if using scanner caching
+Description:
+This can cause rows to be lost from a scan.
+See this thread where the issue was brought up: http://search-hadoop.com/m/xITBQ136xGJ1
+If hbase.regionserver.lease.period is higher on the client than the server we can get this series of events:
+1. Client is scanning along happily, and does something slow.
+2. Scanner times out on region server
+3. Client calls HTable.ClientScanner.next()
+4. The region server throws an UnknownScannerException
+5. Client catches exception and sees that it's not longer then it's hbase.regionserver.lease.period config, so it doesn't throw a ScannerTimeoutException. Instead, it treats it like a NSRE.
+Right now the workaround is to make sure the configs are consistent.
+A possible fix would be to use whatever the region server's scanner timeout is, rather than the local one.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.89.20100924, (1)
+Fix_version:
+None
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sean Sechrist
+Reporter:
+Sean Sechrist
+Create date:
+22/Mar/11 18:58
+Update date:
+25/Mar/11 23:10
+Resolved date:
+25/Mar/11 19:56

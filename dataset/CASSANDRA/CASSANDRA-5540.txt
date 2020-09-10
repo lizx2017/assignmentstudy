@@ -1,0 +1,88 @@
+Summary:
+Concurrent secondary index updates remove rows from the index
+Description:
+Existing rows disappear from secondary index when doing simultaneous updates of a row with the same secondary index value.
+Here is a little pycassa script that reproduces a bug. The script inserts 4 rows with same secondary index value, reads those rows back and check that there are 4 of them.
+Please run two instances of the script simultaneously in two separate terminals in order to simulate concurrent updates:
+-----scrpit.py START-----
+import pycassa
+from pycassa.index import *
+
+pool = pycassa.ConnectionPool('ks123')
+cf = pycassa.ColumnFamily(pool, 'cf1')
+
+while True:
+    for rowKey in xrange(4):
+        cf.insert(str(rowKey), {'indexedColumn': 'indexedValue'})
+
+    index_expression = create_index_expression('indexedColumn', 'indexedValue')
+    index_clause = create_index_clause([index_expression])
+    rows = cf.get_indexed_slices(index_clause)
+    length = len(list(rows))
+    if length == 4:
+        pass
+    else:
+        print 'found just %d rows out of 4' % length
+
+pool.dispose()
+
+---script.py FINISH---
+
+---schema cli start---
+create keyspace ks123
+  with placement_strategy = 'NetworkTopologyStrategy'
+  and strategy_options = {datacenter1 : 1}
+  and durable_writes = true;
+
+use ks123;
+
+create column family cf1
+  with column_type = 'Standard'
+  and comparator = 'AsciiType'
+  and default_validation_class = 'AsciiType'
+  and key_validation_class = 'AsciiType'
+  and read_repair_chance = 0.1
+  and dclocal_read_repair_chance = 0.0
+  and populate_io_cache_on_flush = false
+  and gc_grace = 864000
+  and min_compaction_threshold = 4
+  and max_compaction_threshold = 32
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'
+  and caching = 'KEYS_ONLY'
+  and column_metadata = [
+    {column_name : 'indexedColumn',
+    validation_class : AsciiType,
+    index_name : 'INDEX1',
+    index_type : 0}]
+  and compression_options = {'sstable_compression' : 'org.apache.cassandra.io.compress.SnappyCompressor'};
+---schema cli finish---
+Test cluster created with 'ccm create --cassandra-version 1.2.4 --nodes 1 --start testUpdate'
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.5
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Alexei Bakanov
+Create date:
+06/May/13 11:04
+Update date:
+16/Apr/19 09:32
+Resolved date:
+09/May/13 22:42

@@ -1,0 +1,83 @@
+Summary:
+WordDelimiterFilter bug
+Description:
+I was preparing analyzer which contains WordDelimiterFilter and I realized it sometimes gives results different then expected.
+I prepared a short test which shows the problem. I haven't used Lucene tests for this but this doesn't matter for showing the bug.
+    String urlIndexed = "144.214.37.14 - - [05/Jun/2013:08:39:27 +0000] \"GET /products/key-phrase-extractor/ HTTP/1.1\"" +
+            " 200 3437 http://www.google.com/url?sa=t&rct=j&q=&esrc=s&" +
+            "source=web&cd=15&cad=rja&ved=0CEgQFjAEOAo&url=http%3A%2F%2Fwww.sematext.com%2Fproducts%2Fkey-" +
+            "phrase-extractor%2F&ei=TPOuUbaWM-OKiQfGxIGYDw&usg=AFQjCNGwYAFYg_M3EZnp2eEWJzdvRrVPrg&sig2" +
+            "=oYitONI2EIZ0CQar7Ej8HA&bvm=bv.47380653,d.aGc\" \"Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:20.0) " +
+            "Gecko/20100101 Firefox/20.0\"";
+
+    List<String> tokens1 = new ArrayList<String>();
+    List<String> tokens2 = new ArrayList<String>();
+    WhitespaceAnalyzer analyzer = new WhitespaceAnalyzer();
+    TokenStream tokenStream = analyzer.tokenStream("test", urlIndexed);
+    tokenStream = new WordDelimiterFilter(tokenStream,
+            WordDelimiterFilter.GENERATE_WORD_PARTS |
+            WordDelimiterFilter.CATENATE_WORDS |
+            WordDelimiterFilter.SPLIT_ON_CASE_CHANGE,
+        null);
+    CharTermAttribute charAttrib = tokenStream.addAttribute(CharTermAttribute.class);
+    tokenStream.reset();
+    while(tokenStream.incrementToken()) {
+      tokens1.add(charAttrib.toString());
+      System.out.println(charAttrib.toString());
+    }
+    tokenStream.end();
+    tokenStream.close();
+
+    urlIndexed = "144.214.37.14 - - [05/Jun/2013:08:39:27 +0000] \"GET /products/key-phrase-extractor/ HTTP/1.1\"" +
+        " 200 3437 \"http://www.google.com/url?sa=t&rct=j&q=&esrc=s&" +
+        "source=web&cd=15&cad=rja&ved=0CEgQFjAEOAo&url=http%3A%2F%2Fwww.sematext.com%2Fproducts%2Fkey-" +
+        "phrase-extractor%2F&ei=TPOuUbaWM-OKiQfGxIGYDw&usg=AFQjCNGwYAFYg_M3EZnp2eEWJzdvRrVPrg&sig2" +
+        "=oYitONI2EIZ0CQar7Ej8HA&bvm=bv.47380653,d.aGc\" \"Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:20.0) " +
+        "Gecko/20100101 Firefox/20.0\"";
+
+
+    System.out.println("\n\n====\n\n");
+    tokenStream = analyzer.tokenStream("test", urlIndexed);
+    tokenStream = new WordDelimiterFilter(tokenStream,
+            WordDelimiterFilter.GENERATE_WORD_PARTS |
+            WordDelimiterFilter.CATENATE_WORDS |
+            WordDelimiterFilter.SPLIT_ON_CASE_CHANGE,
+        null);
+    charAttrib = tokenStream.addAttribute(CharTermAttribute.class);
+    tokenStream.reset();
+    while(tokenStream.incrementToken()) {
+      tokens2.add(charAttrib.toString());
+      System.out.println(charAttrib.toString());
+    }
+    tokenStream.end();
+    tokenStream.close();
+
+    assertEquals(Joiner.on(",").join(tokens1), Joiner.on(",").join(tokens2));
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+4.10.4, 5.3.1
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Pawel Rog
+Create date:
+25/Jan/16 10:41
+Update date:
+25/Jan/16 15:41
+Resolved date:
+

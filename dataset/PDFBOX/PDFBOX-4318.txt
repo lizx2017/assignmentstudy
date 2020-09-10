@@ -1,0 +1,66 @@
+Summary:
+PDFont.encode results change on identical input
+Description:
+As reported Daniel Wildschut in the user mailing list:
+Hello, we use PDFBox to fill in PDF Forms and stumbled on a potential bug while sanitizing the input.
+We call PDFont.encode to check beforehand if a given character can be inserted using the given font.
+However we noticed that the results of the method call can change depending on what other strings have been checked before.
+Apparently PDType1Font stores previous results in a codeToBytesMap, which then causes the unexpected behavior.
+I'd say that the key used in "codeToBytesMap.put(code, bytes);" is wrong; you probably want to use the method parameter "unicode" instead.
+I tested 2.0.11, the current 2.0.x branch and the 3.0.x branch and was able to reproduce the problem with all of them.
+Code to reproduce:
+public class PDFBoxEncodeTest
+{
+    public static void main( final String[] args )
+    {
+        final PDType1Font font = PDType1Font.HELVETICA_BOLD;
+        tryEncode(font, "\u0080");
+        tryEncode(font, "€");
+        tryEncode(font, "\u0080");
+    }
+
+    private static void tryEncode(final PDFont font, final String str) {
+        try {
+            font.encode(str);
+            System.out.println("Character " + str.codePointAt(0) + " can be encoded in Font " + font);
+        } catch (final IOException | IllegalArgumentException e) {
+            System.out.println("Character " + str.codePointAt(0) + " cannot be encoded in Font " + font + ": " + e.getMessage());
+        }
+    }
+}
+Expected output:
+Character 128 cannot be encoded in Font PDType1Font Helvetica-Bold: U+0080 ('.notdef') is not available in this font Helvetica-Bold encoding: WinAnsiEncoding
+Character 8364 can be encoded in Font PDType1Font Helvetica-Bold
+Character 128 cannot be encoded in Font PDType1Font Helvetica-Bold: U+0080 ('.notdef') is not available in this font Helvetica-Bold encoding: WinAnsiEncoding
+Actual output:
+Character 128 cannot be encoded in Font PDType1Font Helvetica-Bold: U+0080 ('.notdef') is not available in this font Helvetica-Bold encoding: WinAnsiEncoding
+Character 8364 can be encoded in Font PDType1Font Helvetica-Bold
+Character 128 can be encoded in Font PDType1Font Helvetica-Bold
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.11, 3.0.0 PDFBox
+Fix_version:
+2.0.12, 3.0.0 PDFBox
+Component:
+PDModel
+Label:
+cache caching type1f
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+16/Sep/18 11:30
+Update date:
+05/Oct/18 04:53
+Resolved date:
+17/Sep/18 16:25

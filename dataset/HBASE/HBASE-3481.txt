@@ -1,0 +1,56 @@
+Summary:
+max seq id in flushed file can be larger than its correct value causing data loss during recovery
+Description:
+[While doing some cluster kill tests, I noticed some missing data after log recovery. Upon investigating further, and pretty printing contents of HFiles and recovered logs, this is my analysis of the situation/bug. Please confirm the theory and pitch in with suggestions.]
+When memstores are flushed, the max sequence id recorded in the HFile should be the max sequence id of all KVs in the memstore. However, we seem to simply obtain the current sequence id from the HRegion, and stamp the HFile's MAX_SEQ_ID with it.
+From HRegion.java:
+    sequenceId = (wal == null)? myseqid: wal.startCacheFlush();
+where, startCacheFlush() is:
+public long startCacheFlush() {
+    this.cacheFlushLock.lock();
+    return obtainSeqNum();
+ }
+where, obtainSeqNum() is simply:
+private long obtainSeqNum() {
+    return this.logSeqNum.incrementAndGet();
+  }
+So let's say a memstore contains edits with sequence number 1..10.
+Meanwhile, say more Puts come along, and are going through this flow (in pseudo-code)
+1. HLog.append();
+       1.1  obtainSeqNum()
+       1.2 writeToWAL()
+
+2 updateMemStore()
+So it is possible that the sequence number has already been incremented to say 15 if there are 5 more outstanding puts. Say the writeToWAL() is still in progress for these puts. In this case, none of these edits (11..15) would have been written to memstore yet.
+At this point if a cache flush of the memstore happens, then we'll record its MAX_SEQ_ID as 16 in the store file instead of 10 (because that's what obtainSeqNum() would return as the next sequence number to use, right?).
+Assume that the edits 11..15 eventually complete. And so HLogs do contain the data for edits 11..15.
+Now, at this point if the region server were to crash, and we run log recovery, the splits all go through correctly, and a correct recovered.edits file is generated with the edits 11..15.
+Next, when the region is opened, the HRegion notes that one of the store file says MAX_SEQ_ID is 16. So, when it replays the recovered.edits file, it skips replaying edits 11..15. Or in other words, data loss.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.1, 0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ryan rawson
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+26/Jan/11 08:46
+Update date:
+20/Nov/15 12:40
+Resolved date:
+27/Jan/11 09:27

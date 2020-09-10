@@ -1,0 +1,56 @@
+Summary:
+Clash between region unassign and splitting kills the master
+Description:
+I was running an online alter while regions were splitting, and suddenly the master died and left my table half-altered (haven't restarted the master yet).
+What killed the master:
+2011-11-02 17:06:44,428 FATAL org.apache.hadoop.hbase.master.HMaster: Unexpected ZK exception creating node CLOSING
+org.apache.zookeeper.KeeperException$NodeExistsException: KeeperErrorCode = NodeExists for /hbase/unassigned/f7e1783e65ea8d621a4bc96ad310f101
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:110)
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:42)
+at org.apache.zookeeper.ZooKeeper.create(ZooKeeper.java:637)
+at org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper.createNonSequential(RecoverableZooKeeper.java:459)
+at org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper.create(RecoverableZooKeeper.java:441)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.createAndWatch(ZKUtil.java:769)
+at org.apache.hadoop.hbase.zookeeper.ZKAssign.createNodeClosing(ZKAssign.java:568)
+at org.apache.hadoop.hbase.master.AssignmentManager.unassign(AssignmentManager.java:1722)
+at org.apache.hadoop.hbase.master.AssignmentManager.unassign(AssignmentManager.java:1661)
+at org.apache.hadoop.hbase.master.BulkReOpen$1.run(BulkReOpen.java:69)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+A znode was created because the region server was splitting the region 4 seconds before:
+2011-11-02 17:06:40,704 INFO org.apache.hadoop.hbase.regionserver.SplitTransaction: Starting split of region TestTable,0012469153,1320253135043.f7e1783e65ea8d621a4bc96ad310f101.
+2011-11-02 17:06:40,704 DEBUG org.apache.hadoop.hbase.regionserver.SplitTransaction: regionserver:62023-0x132f043bbde0710 Creating ephemeral node for f7e1783e65ea8d621a4bc96ad310f101 in SPLITTING state
+2011-11-02 17:06:40,751 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:62023-0x132f043bbde0710 Attempting to transition node f7e1783e65ea8d621a4bc96ad310f101 from RS_ZK_REGION_SPLITTING to RS_ZK_REGION_SPLITTING
+...
+2011-11-02 17:06:44,061 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:62023-0x132f043bbde0710 Successfully transitioned node f7e1783e65ea8d621a4bc96ad310f101 from RS_ZK_REGION_SPLITTING to RS_ZK_REGION_SPLIT
+2011-11-02 17:06:44,061 INFO org.apache.hadoop.hbase.regionserver.SplitTransaction: Still waiting on the master to process the split for f7e1783e65ea8d621a4bc96ad310f101
+Now that the master is dead the region server is spewing those last two lines like mad.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Jean-Daniel Cryans
+Create date:
+02/Nov/11 17:35
+Update date:
+12/Oct/12 05:35
+Resolved date:
+29/Nov/11 18:54

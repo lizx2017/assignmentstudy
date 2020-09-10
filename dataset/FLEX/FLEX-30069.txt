@@ -1,0 +1,70 @@
+Summary:
+Automation of DataGrid controls fails if showHeaders property is set to false
+Description:
+Steps to reproduce:
+1. Create an MXML application
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" width="100%" height="100%" >
+<mx:DataGrid id="dgInclude"
+showHeaders="false"
+width="100%"
+height="100%"
+dataProvider="
+{someDataProvider()}
+"
+/ >
+</mx:Application>
+2. Compile the application with test automation libraries, as described here: http::/livedocs.adobe.com/flex/3/html/functest_components2_04.html
+3. Record some clicks or other events on the datagrid.
+Actual Results:
+The Flex automation API only records the 'select' event for the whole row in the DataGrid. ItemRenderers inside the DataGrid are not 'seen' by the AutomationManager.
+Expected Results:
+Actual events are recorded, depending on the type of itemRenderer used for each particular column. I.e. clicks are recorded for checkboxes, labels, and other controls that might be implemented in an itemRenderer.
+Workaround (if any):
+!!!NOT A WORKAROUND: If the `showHeaders` property for the DataGrid is set to true, then recording works as expected, i.e. clicks are recorded for checkboxes, labels and other control types, and the id's/automationName's of the correct item renderers are recognized and inserted into the generated test script.
+The problem seems to be in the DataGridAutomationImpl.as class in the method numAutomationChildren(), line 607 (in Flex SDK 3.0.2), probably in the line marked below:
+override public function get numAutomationChildren():int
+{
+var listItems:Array = getCompleteRenderersArray();
+if (listItems.length == 0)
+return 0;
+var result:int = listItems.length * listItems[0].length; ///<<<<<< probable cause of problem, no checking for `showHeaders` value
+var row:uint = listItems.length - 1;
+var col:uint = listItems[0].length - 1;
+while (!listItems[row][col] && result > 0)
+{
+result--;
+if (col != 0)
+col--;
+else if (row != 0)
+{ row--; col = listItems[0].length - 1; }
+}
+return result;
+}
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Component Dispatch
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+06/Feb/09 08:40
+Update date:
+03/Mar/10 01:08
+Resolved date:
+

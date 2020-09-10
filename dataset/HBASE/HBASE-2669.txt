@@ -1,0 +1,35 @@
+Summary:
+HCM.shutdownHook causes data loss with hbase.client.write.buffer != 0
+Description:
+In my application I set hbase.client.write.buffer to a reasonably small value (roughly 64 edits) in order to try to batch a few Put together before talking to HBase. When my application does a graceful shutdown, I call HTable#flushCommits in order to flush any pending change to HBase. I want to do the same thing when I get a SIGTERM by using Runtime#addShutdownHook but this is impossible since HConnectionManager already registers a shutdown hook that invokes HConnectionManager#deleteAllConnections. This static method closes all the connections to HBase and then all connections to ZooKeeper. Because all shutdown hooks run in parallel, my hook will attempt to flush edits while connections are getting closed.
+There is no way to guarantee the order in which the hooks will execute, so I propose that we remove the hook in the HCM altogether and provide some user-visible API they call in their own hook after they're done flushing their stuff, if they really want to do a graceful shutdown. I expect that a lot of users won't use a hook though, otherwise this issue would have cropped up already. For those users, connections won't get "gracefully" terminated, but I don't think that would be a problem since the underlying TCP socket will get closed by the OS anyway, so things like ZooKeeper and such should realize that the connection has been terminated and assume the client is gone, and do the necessary clean-up on their side.
+An alternate fix would be to leave the hook in place by default but keep a reference to it and add a user-visible API to be able to un-register the hook. I find this ugly.
+Thoughts?
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Benoit Sigoure
+Create date:
+05/Jun/10 02:21
+Update date:
+20/Nov/15 12:44
+Resolved date:
+18/Oct/10 23:58

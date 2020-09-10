@@ -1,0 +1,87 @@
+Summary:
+LCS with Composite Columns NPE
+Description:
+Creating the CF in cqlsh -3
+cqlsh> CREATE KEYSPACE tt WITH strategy_class=SimpleStrategy AND strategy_options:replication_factor=1;
+cqlsh> USE tt;
+cqlsh:tt> CREATE TABLE breakable (
+... dt timestamp,
+... id timeuuid,
+... metadata text,
+... PRIMARY KEY (dt, id)
+... );
+cqlsh:tt>
+Then changing to LCS using the CLI
+[default@unknown] use tt;
+Authenticated to keyspace: tt
+[default@tt] update column family breakable with compaction_strategy=LeveledCompactionStrategy;
+org.apache.thrift.transport.TTransportException
+And then trying to view the table schema
+cqlsh:tt> describe table breakable;
+'NoneType' object has no attribute 'startswith'
+cqlsh:tt>
+Restarting cassandra causes an NPE
+ERROR 17:10:53,487 Exception encountered during startup
+java.lang.NullPointerException
+at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:167)
+at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:124)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.getString(JdbcUTF8.java:77)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.compose(JdbcUTF8.java:97)
+at org.apache.cassandra.db.marshal.UTF8Type.compose(UTF8Type.java:35)
+at org.apache.cassandra.cql3.UntypedResultSet$Row.getString(UntypedResultSet.java:87)
+at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:256)
+at org.apache.cassandra.config.CFMetaData.addColumnDefinitionSchema(CFMetaData.java:1293)
+at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1225)
+at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:294)
+at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:275)
+at org.apache.cassandra.db.DefsTable.loadFromTable(DefsTable.java:158)
+at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:535)
+at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:182)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:353)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:106)
+java.lang.NullPointerException
+at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:167)
+at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:124)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.getString(JdbcUTF8.java:77)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.compose(JdbcUTF8.java:97)
+at org.apache.cassandra.db.marshal.UTF8Type.compose(UTF8Type.java:35)
+at org.apache.cassandra.cql3.UntypedResultSet$Row.getString(UntypedResultSet.java:87)
+at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:256)
+at org.apache.cassandra.config.CFMetaData.addColumnDefinitionSchema(CFMetaData.java:1293)
+at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1225)
+at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:294)
+at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:275)
+at org.apache.cassandra.db.DefsTable.loadFromTable(DefsTable.java:158)
+at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:535)
+at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:182)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:353)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:106)
+Exception encountered during startup: null
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+mac os x
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Wing Lian
+Create date:
+04/Aug/12 00:14
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Sep/12 19:35

@@ -1,0 +1,79 @@
+Summary:
+Can't update int column to blob type.
+Description:
+Patch for dtests:
+diff --git a/cql_tests.py b/cql_tests.py
+index 11461e4..405c998 100644
+--- a/cql_tests.py
++++ b/cql_tests.py
+@@ -1547,35 +1547,35 @@ class TestCQL(Tester):
+             CREATE TABLE test (
+                 k text,
+                 c text,
+-                v text,
++                v int,
+                 PRIMARY KEY (k, c)
+             )
+         """)
+
+-        req = "INSERT INTO test (k, c, v) VALUES ('%s', '%s', '%s')"
++        req = "INSERT INTO test (k, c, v) VALUES ('%s', '%s', %d)"
+         # using utf8 character so that we can see the transition to BytesType
+-        cursor.execute(req % ('ɸ', 'ɸ', 'ɸ'))
++        cursor.execute(req % ('ɸ', 'ɸ', 1))
+
+         cursor.execute("SELECT * FROM test")
+         cursor.execute("SELECT * FROM test")
+         res = cursor.fetchall()
+-        assert res == [[u'ɸ', u'ɸ', u'ɸ']], res
++        assert res == [[u'ɸ', u'ɸ', 1]], res
+
+         cursor.execute("ALTER TABLE test ALTER v TYPE blob")
+         cursor.execute("SELECT * FROM test")
+         res = cursor.fetchall()
+         # the last should not be utf8 but a raw string
+-        assert res == [[u'ɸ', u'ɸ', 'ɸ']], res
++        assert res == [[u'ɸ', u'ɸ', '\x00\x00\x00\x01']], res
+
+         cursor.execute("ALTER TABLE test ALTER k TYPE blob")
+         cursor.execute("SELECT * FROM test")
+         res = cursor.fetchall()
+-        assert res == [['ɸ', u'ɸ', 'ɸ']], res
++        assert res == [['ɸ', u'ɸ', '\x00\x00\x00\x01']], res
+
+         cursor.execute("ALTER TABLE test ALTER c TYPE blob")
+         cursor.execute("SELECT * FROM test")
+         res = cursor.fetchall()
+-        assert res == [['ɸ', 'ɸ', 'ɸ']], res
++        assert res == [['ɸ', 'ɸ', '\x00\x00\x00\x01']], res
+
+     @since('1.2')
+     def composite_row_key_test(self):
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.12, 2.0.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Nick Bailey
+Create date:
+11/Oct/13 20:45
+Update date:
+16/Apr/19 09:32
+Resolved date:
+21/Oct/13 08:16

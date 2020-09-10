@@ -1,0 +1,229 @@
+Summary:
+SDK 4.10.0 spark datagrid header and horizontal scrollbar behavior effected by app state change
+Description:
+Changes in an application's state effects spark datagrid header (makes text disappear), and horizontal scrollbar (in some cases the scroll bar is disabled when it should not be, in other cases the scroll bar is larger than it should be). This appears to be a systematic effect (e.g. happens all the time; not intermittent).
+Present in SDK 4.10.0, SDK 4.11 rc1. Not present in SDK 4.5.1.
+I'm providing examples of 3 issues observed, which I assume are all related to the same bug/fix associated with stage change effecting datagrid display.
+STEPS TO REPRODUCE
+Problem #1 (execute Problem #1 code below):
+1. Click button to change to state 2.
+2. Once in state 2, click button again to return to state 1.
+3. Observe horizontal scroll bar does not permit to view all of datagrid.
+Problem #2 (execute Problem #2 code below):
+1. Click and drag horizontal scroll bar to right and notice it goes to end of column 4.
+2. Click button to change to state 2.
+3. Once in state 2, click button again to return to state 1.
+4. Click and drag horizontal scroll bar to right and notice it goes BEYOND end of column 4.
+Problem #3 (execute Problem #3 code below):
+1. Click button to change to state 2.
+2. Once in state 2, click button again to return to state 1.
+3. Notice the header text disappears.
+EXPECTED BEHAVIOR
+Problem #1: The state 1 datagrid horizontal scrollbar should be enabled.
+Problem #2: The state 1 datagrid horizontal scrollbar should stop at the end of the last column.
+Problem #3: The state 1 datagrid header text should display.
+ACTUAL BEHAVIOR
+Problem #1: The state 1 datagrid horizontal scrollbar is disabled.
+Problem #2: The state 1 datagrid horizontal scrollbar allows the user to scroll beyond the end of the last datagrid column.
+Problem #3: The state 1 datagrid header text is not displayed.
+---------PROBLEM #1 CODE-------------
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx"
+width="600" maxWidth="600" height="300">
+<fx:Declarations>
+<fx:String id="sampleText">Lorem Ipsum is the standard dummy text of the typesetting industry.</fx:String>
+<s:ArrayCollection id="ac">
+<s:DataItem value="
+{sampleText}"/>
+<s:DataItem value="{sampleText}
+"/>
+<s:DataItem value="
+{sampleText}"/>
+</s:ArrayCollection>
+</fx:Declarations>
+
+<fx:Script>
+<![CDATA[
+
+private function stateHandler():void {
+currentState=(currentState=="state2")?"state1":"state2";
+}
+
+]]>
+</fx:Script>
+
+<s:states>
+<s:State name="state1"/>
+<s:State name="state2"/>
+</s:states>
+
+<s:VGroup horizontalAlign="left" paddingLeft="30" paddingTop="30" includeIn="state1">
+
+<s:Label text="STATE 1" color="0xFF0000"/>
+<s:Label text="1. Click button to change to state 2."/>
+<s:Label text="2. Once in state 2, click button again to return to state 1."/>
+<s:Label text="3. Observe horizontal scroll bar does not permit to view all of datagrid."/>
+
+<s:DataGrid id="dg1" width="500" dataProvider="{ac}">
+
+<s:columns>
+<s:ArrayList>
+<s:GridColumn dataField="value" headerText="Column 1" width="200"/>
+<s:GridColumn dataField="value" headerText="Column 2" width="200"/>
+<s:GridColumn dataField="value" headerText="Column 3" width="200"/>
+</s:ArrayList>
+</s:columns>
+
+</s:DataGrid>
+
+<s:Button label="Change State" click="stateHandler()"/>
+
+</s:VGroup>
+
+<s:VGroup horizontalAlign="left" paddingLeft="30" paddingTop="30" includeIn="state2">
+
+<s:Label text="STATE 2" color="0xFF0000"/>
+<s:Label text="1. Click button to change to state 2."/>
+<s:Label text="2. Once in state 2, click button again to return to state 1."/>
+<s:Label text="3. Observe horizontal scroll bar does not permit to view all of datagrid."/>
+
+<s:DataGrid id="dg2" width="500" dataProvider="{ac}">
+
+<s:columns>
+<s:ArrayList>
+<s:GridColumn dataField="value" headerText="Column 1" width="200"/>
+<s:GridColumn dataField="value" headerText="Column 2" width="200"/>
+<s:GridColumn dataField="value" headerText="Column 3" width="200"/>
+</s:ArrayList>
+</s:columns>
+
+</s:DataGrid>
+
+<s:Button label="Change State" click="stateHandler()"/>
+
+</s:VGroup>
+</s:Application>
+
+---------PROBLEM #2 CODE-------------
+
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx"
+width="600" maxWidth="600" height="450">
+
+<fx:Declarations>
+<fx:String id="sampleText">Lorem Ipsum is the standard dummy text of the typesetting industry.</fx:String>
+
+<s:ArrayCollection id="ac">
+<s:DataItem value="{sampleText}
+"/>
+<s:DataItem value="
+{sampleText}"/>
+<s:DataItem value="{sampleText}
+"/>
+<s:DataItem value="
+{sampleText}"/>
+<s:DataItem value="{sampleText}
+"/>
+<s:DataItem value="
+{sampleText}
+"/>
+</s:ArrayCollection>
+</fx:Declarations>
+<fx:Script>
+<![CDATA[
+private function stateHandler():void {
+currentState=(currentState=="state2")?"state1":"state2";
+}
+]]>
+</fx:Script>
+<s:states>
+<s:State name="state1"/>
+<s:State name="state2"/>
+</s:states>
+<s:VGroup paddingLeft="30" paddingTop="30">
+<s:Label text="1. Click and drag horizontal scroll bar to right and notice it goes to end of column 4."/>
+<s:Label text="2. Click button to change to state 2."/>
+<s:Label text="3. Once in state 2, click button again to return to state 1."/>
+<s:Label text="4. Click and drag horizontal scroll bar to right and notice it goes BEYOND end of column 4"/>
+<s:VGroup horizontalAlign="left" includeIn="state1">
+<s:Label text="STATE 1" color="0xFF0000"/>
+<s:DataGrid id="dg1" width="500" dataProvider="
+{ac}"
+alternatingRowColors="[0xFFFFFF,0xBBBBBB]">
+
+<s:columns>
+<s:ArrayList>
+<s:GridColumn headerText="Col 1" dataField="value" width="75"/>
+<s:GridColumn headerText="Col 2" dataField="value" width="75"/>
+<s:GridColumn headerText="Col 3" dataField="value" width="200"/>
+<s:GridColumn headerText="Col 4" dataField="value" width="200"/>
+</s:ArrayList>
+</s:columns>
+
+</s:DataGrid>
+
+<s:Button label="Change State" click="stateHandler()"/>
+
+</s:VGroup>
+
+<s:VGroup horizontalAlign="left" includeIn="state2">
+
+<s:Label text="STATE 2" color="0xFF0000"/>
+
+<s:DataGrid id="dg2" width="500" dataProvider="{ac}
+"
+alternatingRowColors="[0xFFFFFF,0xBBBBBB]">
+<s:columns>
+<s:ArrayList>
+<s:GridColumn headerText="Col 1" dataField="value" width="75"/>
+<s:GridColumn headerText="Col 2" dataField="value" width="75"/>
+<s:GridColumn headerText="Col 3" dataField="value" width="200"/>
+<s:GridColumn headerText="Col 4" dataField="value" width="200"/>
+</s:ArrayList>
+</s:columns>
+</s:DataGrid>
+<s:Button label="Change State" click="stateHandler()"/>
+</s:VGroup>
+</s:VGroup>
+</s:Application>
+---------PROBLEM #3 CODE-------------
+Use Problem #2 code, but change the stateHandler() function to:
+private function stateHandler():void {
+currentState=(currentState=="state2")?"state1":"state2";
+if (currentState=="state2") {
+dg1.dataProvider=null;
+dg1.dataProvider=ac;
+}
+}
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Apache Flex 4.10.0
+Fix_version:
+None
+Component:
+Spark: DataGrid
+Label:
+datagrid
+Environment:
+FlashBuilder 4.6, FlashBuilder 4.7, MAC OSX
+Attachment number:
+0
+Assignee:
+Alex Harui
+Reporter:
+gkk
+Create date:
+17/Oct/13 15:02
+Update date:
+25/Oct/13 00:28
+Resolved date:
+18/Oct/13 19:45

@@ -1,0 +1,42 @@
+Summary:
+HBase can get stuck if updates to META are blocked
+Description:
+(We noticed this on a import-style test in a small test cluster.)
+If compactions are running slow, and we are doing a lot of region splits, then, since META has a much smaller hard-coded memstore flush size (16KB), it quickly accumulates lots of store files. Once this exceeds "hbase.hstore.blockingStoreFiles", flushes to META become no-ops. This causes METAs memstore footprint to grow. Once this exceeds "hbase.hregion.memstore.block.multiplier * 16KB", we block further updates to META.
+In my test setup:
+hbase.hregion.memstore.block.multiplier = 4.
+and,
+hbase.hstore.blockingStoreFiles = 15.
+And we saw messages of the form:
+2010-04-09 18:37:39,539 INFO org.apache.hadoop.hbase.regionserver.HRegion: Blocking updates for 'IPC Server handler 23 on 60020' on region .META.,,1: memstore size 64.2k is >= than blocking 64.0k size
+Now, if around the same time the CompactSplitThread does a compaction and determines it is going split the region. As part of finishing the split, it wants to update META about the daughter regions.
+It'll end up waiting for the META to become unblocked. The single CompactSplitThread is now held up, and no further compactions can proceed. META's compaction request is itself blocked because the compaction queue will never get cleared.
+This essentially creates a deadlock and the region server is able to not progress any further. Eventually, each region server's CompactSplitThread ends up in the same state.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Kannan Muthukkaruppa
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+13/Apr/10 21:55
+Update date:
+20/Nov/15 12:40
+Resolved date:
+14/Apr/10 22:42

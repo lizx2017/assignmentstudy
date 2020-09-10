@@ -1,0 +1,70 @@
+Summary:
+TrueTypeParser : Error on CMapEntry with the subtype0 ?
+Description:
+Hi,
+I'm encountering a problem using the TrueType Font parser.
+I think the glyphIToCharacterCode isn't correctly initialized with a TrueType character mapping table Format 0.
+According to the TrueType specification, the glyphMapping array should be "An array that maps character codes to glyph index values".
+However, the current implementation sees the glyphMapping as an array that maps glyph index values to character codes.
+Here is the current implementation :
+public void initSubtable( TrueTypeFont ttf, TTFDataStream data ) throws IOException
+{
+data.seek( ttf.getCMAP().getOffset() + subTableOffset );
+int subtableFormat = data.readUnsignedShort();
+int length = data.readUnsignedShort();
+int version = data.readUnsignedShort();
+int numGlyphs = ttf.getMaximumProfile().getNumGlyphs();
+if( subtableFormat == 0 )
+{
+byte[] glyphMapping = data.read( 256 );
+glyphIdToCharacterCode = new int[256];
+for( int i=0;i < glyphMapping.length; i++ )
+{ glyphIdToCharacterCode[i]=(glyphMapping[i]+256)%256; }
+}
+...
+I think it should be :
+public void initSubtable( TrueTypeFont ttf, TTFDataStream data ) throws IOException
+{
+data.seek( ttf.getCMAP().getOffset() + subTableOffset );
+int subtableFormat = data.readUnsignedShort();
+int length = data.readUnsignedShort();
+int version = data.readUnsignedShort();
+int numGlyphs = ttf.getMaximumProfile().getNumGlyphs();
+if( subtableFormat == 0 )
+{
+byte[] glyphMapping = data.read( 256 );
+glyphIdToCharacterCode = new int[256];
+for( int i=0;i < glyphMapping.length; i++ )
+{ int glyphIndex = (glyphMapping[i]+256)%256; glyphIdToCharacterCode[glyphIndex]=i; }
+}
+In attachment, you can find a PDF which uses a TrueType font with a character mapping table Format 0 and the Font Program. (it is a subset)
+Regards,
+Eric
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Duplicate
+Affects_version:
+1.0.0, 1.1.0
+Fix_version:
+None
+Component:
+FontBox
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Eric Leleu
+Create date:
+15/Apr/10 13:43
+Update date:
+11/Jul/10 14:46
+Resolved date:
+09/May/10 15:28

@@ -1,0 +1,86 @@
+Summary:
+AES-Decryption with Bouncycastle throws NullPointerException
+Description:
+Using AES-Encryption with PdfBox and Bouncycastle yields a null pointer. When JCE is used everything works nicely: com.sun.crypt.provider.AESCipher returns an empty byte array for the last 16 bytes of the metadata dictionary. Bouncycastle returns a null reference.
+Demo.java
+public class Demo {
+
+    public static void main(String[] args) throws IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+        String password = "pw";
+        String cipherString = "AES/CBC/PKCS5Padding";
+        String testFilename = "test.pdf";
+
+        PDDocument document = new PDDocument();
+        AccessPermission ap = new AccessPermission();
+        ap.setReadOnly();
+
+        StandardProtectionPolicy policy = new StandardProtectionPolicy(password, password, ap);
+        policy.setEncryptionKeyLength(128);
+        policy.setPreferAES(true);
+        document.protect(policy);
+        document.getDocumentInformation().setAuthor("author");
+        document.save(testFilename);
+        document.close();
+
+        // Decryption with SunJCE works
+        Cipher cipher = Cipher.getInstance(cipherString);
+        System.out.printf("Provider to use for %s decryption: %s\n", cipherString, cipher.getProvider());
+        document = PDDocument.load(new File(testFilename), password);
+
+        Security.removeProvider("SunJCE");
+
+        // Decryption with BouncyCastle fails with NPE
+        cipher = Cipher.getInstance(cipherString);
+        System.out.printf("Provider to use for %s decryption: %s\n", cipherString, cipher.getProvider());
+        document = PDDocument.load(new File(testFilename), password);
+    }
+
+}
+Output with stacktrace
+Provider to use for AES/CBC/PKCS5Padding decryption: SunJCE version 1.8
+Provider to use for AES/CBC/PKCS5Padding decryption: BC version 1.54
+Exception in thread "main" java.lang.NullPointerException
+ at java.io.OutputStream.write(OutputStream.java:75)
+ at org.apache.pdfbox.pdmodel.encryption.SecurityHandler.encryptDataAESother(SecurityHandler.java:269)
+ at org.apache.pdfbox.pdmodel.encryption.SecurityHandler.encryptData(SecurityHandler.java:152)
+ at org.apache.pdfbox.pdmodel.encryption.SecurityHandler.decryptString(SecurityHandler.java:532)
+ at org.apache.pdfbox.pdmodel.encryption.SecurityHandler.decrypt(SecurityHandler.java:391)
+ at org.apache.pdfbox.pdmodel.encryption.SecurityHandler.decryptDictionary(SecurityHandler.java:512)
+ at org.apache.pdfbox.pdmodel.encryption.SecurityHandler.decrypt(SecurityHandler.java:399)
+ at org.apache.pdfbox.pdfparser.COSParser.parseFileObject(COSParser.java:798)
+ at org.apache.pdfbox.pdfparser.COSParser.parseObjectDynamically(COSParser.java:726)
+ at org.apache.pdfbox.pdfparser.COSParser.parseObjectDynamically(COSParser.java:657)
+ at org.apache.pdfbox.pdfparser.COSParser.parseTrailerValuesDynamically(COSParser.java:2092)
+ at org.apache.pdfbox.pdfparser.PDFParser.initialParse(PDFParser.java:201)
+ at org.apache.pdfbox.pdfparser.PDFParser.parse(PDFParser.java:249)
+ at org.apache.pdfbox.pdmodel.PDDocument.load(PDDocument.java:891)
+ at org.apache.pdfbox.pdmodel.PDDocument.load(PDDocument.java:831)
+This could possibly be fixed with a null check in the SecurityHandler before writing to the OutputStream.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0, 2.0.1, 2.0.2, 2.0.3
+Fix_version:
+2.0.4, 3.0.0 PDFBox
+Component:
+Crypto
+Label:
+bouncycastle decrypt
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Markus Fensterer
+Create date:
+15/Nov/16 16:06
+Update date:
+25/Mar/17 18:12
+Resolved date:
+16/Nov/16 08:39

@@ -1,0 +1,43 @@
+Summary:
+Preflight validation call PDType0Font.clear at the wrong time
+Description:
+I used the algorythm here to test PDF / A compliance :
+https://pdfbox.apache.org/1.8/cookbook/pdfavalidation.html
+With one pdf document (which i cant give you due to confidentiality), an NullPointerException occur here :
+java.lang.NullPointerException
+ at org.apache.pdfbox.pdmodel.font.PDType0Font.getFontWidth(PDType0Font.java:188)
+ at org.apache.pdfbox.preflight.font.container.FontContainer.checkGlyphWith(FontContainer.java:114)
+ at org.apache.pdfbox.preflight.content.ContentStreamWrapper.validText(ContentStreamWrapper.java:372)...
+As i dug deeper, i found that preflight loads a font context where it puts all pdf fonts. The PDType0Font is also created and put in this context.
+(CSObject : COSDictionary{(COSName{BaseFont}:COSName{INWHIX+TimesNewRomanPSMT})       (COSName{DescendantFonts}:COSArray{[COSObject{349, 0}]}) (COSName{Encoding}:COSName{Identity-H})       (COSName{Subtype}:COSName{Type0}) (COSName{ToUnicode}:COSDictionary{(COSName{Filter}:COSName{FlateDecode})      (COSName{Length}:COSInt{260}) }) (COSName{Type}:COSName{Font}) })
+The problem is that at the end of one step of the analysis, the clear method is called on the PDType0Font (see eclipse-1.jpg), but the font is still present in the context. On a second step, the same font is retrieved from the context, with no data in it, and the NullPointerException occurs (see eclipse-2.jpg).
+I tried the validation after removing the clear method from PDType0Font and it works just fine.
+I think the problem comes from this context, and a clear on a font should also trigger a deletion in this map.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.10
+Fix_version:
+1.8.12
+Component:
+Preflight
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Guillaume Monteils
+Create date:
+14/Oct/15 15:24
+Update date:
+25/Apr/16 17:24
+Resolved date:
+15/Feb/16 07:18

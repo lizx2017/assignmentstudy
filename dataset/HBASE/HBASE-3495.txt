@@ -1,0 +1,159 @@
+Summary:
+Shell is failing on subsequent split calls
+Description:
+While working on HBASE-3492 I came across another oddity with manual splits:
+hbase(main):003:0> split 'testtable'                                                                                                                 
+0 row(s) in 3.0590 seconds
+
+hbase(main):004:0> scan '.META.', { COLUMNS => ['info:regioninfo'] }                                                                                 
+ROW                                       COLUMN+CELL                                                                                                            
+ testtable,,1296545855212.5e4ef9631cacb6b column=info:regioninfo, timestamp=1296545855770, value=REGION => {NAME => 'testtable,,1296545855212.5e4ef9631cacb6b2c6c
+ 2c6c338140c53cad4.                       338140c53cad4.', STARTKEY => '', ENDKEY => 'row-mdc', ENCODED => 5e4ef9631cacb6b2c6c338140c53cad4, TABLE => {{NAME => '
+                                          testtable', FAMILIES => [{NAME => 'cf1', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION 
+                                          => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}, {NAME => 'cf2', BLOO
+                                          MFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => 
+                                          '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}                                                                
+ testtable,row-mdc,1296545855212.46e57f0c column=info:regioninfo, timestamp=1296545855774, value=REGION => {NAME => 'testtable,row-mdc,1296545855212.46e57f0ca4eb
+ a4eba8d3e5bef6365159a660.                a8d3e5bef6365159a660.', STARTKEY => 'row-mdc', ENDKEY => '', ENCODED => 46e57f0ca4eba8d3e5bef6365159a660, TABLE => {{NA
+                                          ME => 'testtable', FAMILIES => [{NAME => 'cf1', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPR
+                                          ESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}, {NAME => 'cf2
+                                          ', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647', BLOCKS
+                                          IZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}                                                         
+2 row(s) in 0.6690 seconds
+
+hbase(main):005:0> split 'testtable'                                
+0 row(s) in 0.4030 seconds
+
+hbase(main):006:0> split 'testtable'
+
+ERROR: org.apache.hadoop.ipc.RemoteException: org.apache.hadoop.hbase.NotServingRegionException: Region is not online: testtable,,1296545855212.5e4ef9631cacb6b2c6c338140c53cad4.
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:2376)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.splitRegion(HRegionServer.java:2196)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Server.call(WritableRpcEngine.java:309)
+        at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1057)
+
+Here is some help for this command:
+Split entire table or pass a region to split individual region.  With the 
+second parameter, you can specify an explicit split key for the region.  
+Examples:
+    split 'tableName'
+    split 'regionName' # format: 'tableName,startKey,id'
+    split 'tableName', 'splitKey'
+    split 'regionName', 'splitKey'
+It takes minutes for this to clear out eventually. Why is this not retried or flushed out right away?
+A few minutes later I see this in the logs:
+2011-02-01 08:42:42,062 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted daughter reference testtable,,1296545879295.dfcc24e02e27e60160612dd5398cbd1e., qualifier=splitA, from parent testtable,,1296545855212.5e4ef9631cacb6b2c6c338140c53cad4.
+2011-02-01 08:42:42,064 DEBUG org.apache.hadoop.hbase.ipc.HBaseRPC: Call: getRegionInfo 1
+2011-02-01 08:42:42,064 DEBUG org.apache.hadoop.hbase.ipc.HBaseRPC: Call: delete 0
+2011-02-01 08:42:42,064 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted daughter reference testtable,row-dau,1296545879295.4073eb6c82755aab57778af2dba39e22., qualifier=splitB, from parent testtable,,1296545855212.5e4ef9631cacb6b2c6c338140c53cad4.
+2011-02-01 08:42:42,064 DEBUG org.apache.hadoop.hbase.master.CatalogJanitor: Deleting region testtable,,1296545855212.5e4ef9631cacb6b2c6c338140c53cad4. because daughter splits no longer hold references
+2011-02-01 08:42:42,065 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: DELETING region file:/tmp/hbase-larsgeorge/hbase/testtable/5e4ef9631cacb6b2c6c338140c53cad4
+2011-02-01 08:42:42,067 DEBUG org.apache.hadoop.hbase.ipc.HBaseRPC: Call: getRegionInfo 1
+2011-02-01 08:42:42,067 DEBUG org.apache.hadoop.hbase.ipc.HBaseRPC: Call: delete 0
+2011-02-01 08:42:42,067 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted region testtable,,1296545855212.5e4ef9631cacb6b2c6c338140c53cad4. from META
+2011-02-01 08:42:42,069 DEBUG org.apache.hadoop.hbase.ipc.HBaseRPC: Call: getRegionInfo 0
+2011-02-01 08:42:42,070 DEBUG org.apache.hadoop.hbase.ipc.HBaseRPC: Call: delete 1
+2011-02-01 08:42:42,071 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted daughter reference testtable,row-mdc,1296545879558.94cb351e5dd36c269247dd8a1a79373c., qualifier=splitA, from parent testtable,row-mdc,1296545855212.46e57f0ca4eba8d3e5bef6365159a660.
+2011-02-01 08:42:42,073 DEBUG org.apache.hadoop.hbase.ipc.HBaseRPC: Call: getRegionInfo 1
+2011-02-01 08:42:42,074 DEBUG org.apache.hadoop.hbase.ipc.HBaseRPC: Call: delete 1
+2011-02-01 08:42:42,074 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Deleted daughter reference testtable,row-seq,1296545879558.43c5ffe1ca7dd6d1374b7b7430a7d261., qualifier=splitB, from parent testtable,row-mdc,1296545855212.46e57f0ca4eba8d3e5bef6365159a660.
+2011-02-01 08:42:42,074 DEBUG org.apache.hadoop.hbase.master.CatalogJanitor: Deleting region testtable,row-mdc,1296545855212.46e57f0ca4eba8d3e5bef6365159a660. because daughter splits no longer hold references
+2011-02-01 08:42:42,074 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: DELETING region file:/tmp/hbase-larsgeorge/hbase/testtable/46e57f0ca4eba8d3e5bef6365159a660
+The the next split call works while the subsequent ones fail again. In other words the split is dropped somewhere and picked up by the catalog classes later while the shell does not see the new daughter regions?
+Even .META. is off
+hbase(main):011:0> scan '.META.', { COLUMNS => ['info:regioninfo'] }
+ROW                                       COLUMN+CELL                                                                                                            
+ testtable,,1296545879295.dfcc24e02e27e60 column=info:regioninfo, timestamp=1296546225693, value=REGION => {NAME => 'testtable,,1296545879295.dfcc24e02e27e601606
+ 160612dd5398cbd1e.                       12dd5398cbd1e.', STARTKEY => '', ENDKEY => 'row-dau', ENCODED => dfcc24e02e27e60160612dd5398cbd1e, OFFLINE => true, SPL
+                                          IT => true, TABLE => {{NAME => 'testtable', FAMILIES => [{NAME => 'cf1', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0
+                                          ', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE 
+                                          => 'true'}, {NAME => 'cf2', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NONE', TT
+                                          L => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}                                
+ testtable,,1296546225506.f3a53bfa1bfd5ae column=info:regioninfo, timestamp=1296546225763, value=REGION => {NAME => 'testtable,,1296546225506.f3a53bfa1bfd5ae6cbb
+ 6cbb0641d43f8a242.                       0641d43f8a242.', STARTKEY => '', ENDKEY => 'row-aaa', ENCODED => f3a53bfa1bfd5ae6cbb0641d43f8a242, TABLE => {{NAME => '
+                                          testtable', FAMILIES => [{NAME => 'cf1', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION 
+                                          => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}, {NAME => 'cf2', BLOO
+                                          MFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => 
+                                          '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}                                                                
+ testtable,row-aaa,1296546225506.4253ecd9 column=info:regioninfo, timestamp=1296546225761, value=REGION => {NAME => 'testtable,row-aaa,1296546225506.4253ecd9c94c
+ c94c38b66bdf8cd17b07efcb.                38b66bdf8cd17b07efcb.', STARTKEY => 'row-aaa', ENDKEY => 'row-dau', ENCODED => 4253ecd9c94c38b66bdf8cd17b07efcb, TABLE 
+                                          => {{NAME => 'testtable', FAMILIES => [{NAME => 'cf1', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3'
+                                          , COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}, {NAME 
+                                          => 'cf2', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647',
+                                           BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}                                                  
+ testtable,row-dau,1296545879295.4073eb6c column=info:regioninfo, timestamp=1296546225913, value=REGION => {NAME => 'testtable,row-dau,1296545879295.4073eb6c8275
+ 82755aab57778af2dba39e22.                5aab57778af2dba39e22.', STARTKEY => 'row-dau', ENDKEY => 'row-mdc', ENCODED => 4073eb6c82755aab57778af2dba39e22, OFFLIN
+                                          E => true, SPLIT => true, TABLE => {{NAME => 'testtable', FAMILIES => [{NAME => 'cf1', BLOOMFILTER => 'NONE', REPLICATI
+                                          ON_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false
+                                          ', BLOCKCACHE => 'true'}, {NAME => 'cf2', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION
+                                           => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}                  
+ testtable,row-dau,1296546225769.529fdb6b column=info:regioninfo, timestamp=1296546225971, value=REGION => {NAME => 'testtable,row-dau,1296546225769.529fdb6bcca8
+ cca8459349c81b518a24436b.                459349c81b518a24436b.', STARTKEY => 'row-dau', ENDKEY => 'row-gbo', ENCODED => 529fdb6bcca8459349c81b518a24436b, TABLE 
+                                          => {{NAME => 'testtable', FAMILIES => [{NAME => 'cf1', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3'
+                                          , COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}, {NAME 
+                                          => 'cf2', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647',
+                                           BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}                                                  
+ testtable,row-gbo,1296546225769.374d4364 column=info:regioninfo, timestamp=1296546225968, value=REGION => {NAME => 'testtable,row-gbo,1296546225769.374d4364574a
+ 574ad1c5f522aa55b3d81586.                d1c5f522aa55b3d81586.', STARTKEY => 'row-gbo', ENDKEY => 'row-mdc', ENCODED => 374d4364574ad1c5f522aa55b3d81586, TABLE 
+                                          => {{NAME => 'testtable', FAMILIES => [{NAME => 'cf1', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3'
+                                          , COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}, {NAME 
+                                          => 'cf2', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647',
+                                           BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}                                                  
+ testtable,row-mdc,1296545879558.94cb351e column=info:regioninfo, timestamp=1296545879815, value=REGION => {NAME => 'testtable,row-mdc,1296545879558.94cb351e5dd3
+ 5dd36c269247dd8a1a79373c.                6c269247dd8a1a79373c.', STARTKEY => 'row-mdc', ENDKEY => 'row-seq', ENCODED => 94cb351e5dd36c269247dd8a1a79373c, TABLE 
+                                          => {{NAME => 'testtable', FAMILIES => [{NAME => 'cf1', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3'
+                                          , COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}, {NAME 
+                                          => 'cf2', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647',
+                                           BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}                                                  
+ testtable,row-seq,1296545879558.43c5ffe1 column=info:regioninfo, timestamp=1296546226107, value=REGION => {NAME => 'testtable,row-seq,1296545879558.43c5ffe1ca7d
+ ca7dd6d1374b7b7430a7d261.                d6d1374b7b7430a7d261.', STARTKEY => 'row-seq', ENDKEY => '', ENCODED => 43c5ffe1ca7dd6d1374b7b7430a7d261, OFFLINE => tr
+                                          ue, SPLIT => true, TABLE => {{NAME => 'testtable', FAMILIES => [{NAME => 'cf1', BLOOMFILTER => 'NONE', REPLICATION_SCOP
+                                          E => '0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOC
+                                          KCACHE => 'true'}, {NAME => 'cf2', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NO
+                                          NE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}                         
+ testtable,row-seq,1296546225975.c9188f86 column=info:regioninfo, timestamp=1296546226161, value=REGION => {NAME => 'testtable,row-seq,1296546225975.c9188f869822
+ 9822da3ff21215a98a99ff5a.                da3ff21215a98a99ff5a.', STARTKEY => 'row-seq', ENDKEY => 'row-vfk', ENCODED => c9188f869822da3ff21215a98a99ff5a, TABLE 
+                                          => {{NAME => 'testtable', FAMILIES => [{NAME => 'cf1', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3'
+                                          , COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}, {NAME 
+                                          => 'cf2', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647',
+                                           BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}                                                  
+ testtable,row-vfk,1296546225975.682a4dbf column=info:regioninfo, timestamp=1296546226156, value=REGION => {NAME => 'testtable,row-vfk,1296546225975.682a4dbf9800
+ 980035dc379c6ccd7418cb08.                35dc379c6ccd7418cb08.', STARTKEY => 'row-vfk', ENDKEY => '', ENCODED => 682a4dbf980035dc379c6ccd7418cb08, TABLE => {{NA
+                                          ME => 'testtable', FAMILIES => [{NAME => 'cf1', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPR
+                                          ESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}, {NAME => 'cf2
+                                          ', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647', BLOCKS
+                                          IZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}                                                         
+10 row(s) in 0.2610 seconds
+Look at the ENKDEYs.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.1, 0.92.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars George
+Reporter:
+Lars George
+Create date:
+01/Feb/11 07:46
+Update date:
+20/Nov/15 12:41
+Resolved date:
+03/Feb/11 11:49

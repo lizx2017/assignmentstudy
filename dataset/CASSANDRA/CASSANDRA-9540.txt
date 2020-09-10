@@ -1,0 +1,110 @@
+Summary:
+Cql IN query wrong on rows with values bigger than 64kb
+Description:
+We are investigating a weird issue where one of our clients doesn't get data on his dashboard. It seems Cassandra is not returning data for a particular key ("brokenkey" from now on).
+Some background:
+We have a row where we store a "metadata" column and data in columns "bucket/0", "bucket/1", "bucket/2", etc. Depending on the date selection of the UI, we know that we only need to retrieve bucket/0, bucket/0 and bucket/1 etc. (we always need to retrieve "metadata").
+A typical query may look like this (using SELECT column1 to just show what is returned, normally we would of course do SELECT value):
+cqlsh:AppBrain> select blobAsText(column1) from "GroupedSeries" where key=textAsBlob('install/workingkey');
+
+ blobAsText(column1)
+---------------------
+            bucket/0
+            metadata
+
+(2 rows)
+cqlsh:AppBrain> select blobAsText(column1) from "GroupedSeries" where key=textAsBlob('install/brokenkey');
+
+ blobAsText(column1)
+---------------------
+            bucket/0
+            metadata
+
+(2 rows)
+These two queries work as expected, and return the information that we actually stored.
+However, when we "filter" for certain columns, the brokenkey starts behaving very weird:
+cqlsh:AppBrain> select blobAsText(column1) from "GroupedSeries" where key=textAsBlob('install/workingkey') and column1 IN (textAsBlob('metadata'),textAsBlob('bucket/0'),textAsBlob('bucket/1'),textAsBlob('bucket/2'));
+
+ blobAsText(column1)
+---------------------
+            bucket/0
+            metadata
+
+(2 rows)
+cqlsh:AppBrain> select blobAsText(column1) from "GroupedSeries" where key=textAsBlob('install/workingkey') and column1 IN (textAsBlob('metadata'),textAsBlob('bucket/0'),textAsBlob('bucket/1'),textAsBlob('bucket/2'),textAsBlob('asdfasdfasdf'));
+
+ blobAsText(column1)
+---------------------
+            bucket/0
+            metadata
+
+(2 rows)
+***  As expected, querying for more information doesn't really matter for the working key ***
+
+cqlsh:AppBrain> select blobAsText(column1) from "GroupedSeries" where key=textAsBlob('install/brokenkey') and column1 IN (textAsBlob('metadata'),textAsBlob('bucket/0'),textAsBlob('bucket/1'),textAsBlob('bucket/2'));
+
+ blobAsText(column1)
+---------------------
+            bucket/0
+
+(1 rows)
+*** Cassandra stops giving us the metadata column when asking for a few more columns! ***
+cqlsh:AppBrain> select blobAsText(column1) from "GroupedSeries" where key=textAsBlob('install/brokenkey') and column1 IN (textAsBlob('metadata'),textAsBlob('bucket/0'),textAsBlob('bucket/1'),textAsBlob('bucket/2'),textAsBlob('asdfasdfasdf'));
+
+ key | column1 | value
+-----+---------+-------
+
+(0 rows)
+*** Adding the bogus column name even makes it return nothing from this row anymore! ***
+There are at least two rows that malfunction like this in our table (which is quite old already and has gone through a bunch of Cassandra upgrades). I've upgraded our whole cluster to 2.1.5 (we were on 2.1.2 when I discovered this problem) and compacted, repaired and scrubbed this column family, which hasn't helped.
+Our table structure is:
+cqlsh:AppBrain> describe table "GroupedSeries";
+
+CREATE TABLE "AppBrain"."GroupedSeries" (
+    key blob,
+    column1 blob,
+    value blob,
+    PRIMARY KEY (key, column1)
+) WITH COMPACT STORAGE
+    AND CLUSTERING ORDER BY (column1 ASC)
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'min_threshold': '4', 'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 1.0
+    AND speculative_retry = 'NONE';
+Let me know if I can give more information that may be helpful.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.8, 2.2.0 rc2
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Carl Yeksigian
+Reporter:
+Mathijs Vogelzang
+Create date:
+03/Jun/15 15:15
+Update date:
+16/Apr/19 09:31
+Resolved date:
+25/Jun/15 09:10

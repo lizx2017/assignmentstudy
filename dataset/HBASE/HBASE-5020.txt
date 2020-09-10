@@ -1,0 +1,64 @@
+Summary:
+MetaReader#fullScan doesn't stop scanning when vistor returns false in 0.90 version
+Description:
+In current 0.90 code,
+ public static void fullScan(CatalogTracker catalogTracker,
+      final Visitor visitor, final byte [] startrow)
+  throws IOException {
+    HRegionInterface metaServer =
+      catalogTracker.waitForMetaServerConnectionDefault();
+    Scan scan = new Scan();
+    if (startrow != null) scan.setStartRow(startrow);
+    scan.addFamily(HConstants.CATALOG_FAMILY);
+    long scannerid = metaServer.openScanner(
+        HRegionInfo.FIRST_META_REGIONINFO.getRegionName(), scan);
+    try {
+      Result data;
+      while((data = metaServer.next(scannerid)) != null) {
+        if (!data.isEmpty()) visitor.visit(data);
+      }
+    } finally {
+      metaServer.close(scannerid);
+    }
+    return;
+  }
+If visitor.visit(data) return false, the scan will not stop;
+However, it is not the same as the description of Visitor
+public interface Visitor {
+    /**
+     * Visit the catalog table row.
+     * @param r A row from catalog table
+     * @return True if we are to proceed scanning the table, else false if
+     * we are to stop now.
+     */
+    public boolean visit(final Result r) throws IOException;
+  }
+I think it is a miss, and trunk doesn't exist this hole.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+14/Dec/11 03:26
+Update date:
+20/Nov/15 11:53
+Resolved date:
+14/Dec/11 05:02

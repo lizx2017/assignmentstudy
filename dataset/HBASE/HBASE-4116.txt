@@ -1,0 +1,103 @@
+Summary:
+[stargate] StringIndexOutOfBoundsException in row spec parse
+Description:
+From user@hbase, Allan Yan writes:
+There might be a bug for REST web service to get rows with given startRow and endRow.
+For example, to get a list of rows with startRow=testrow1, endRow=testrow2, I send GET request:
+curl http://localhost:8123/TestRowResource/testrow1,testrow2/a:1
+And got StringIndexOutOfBoundsException.
+This was because in the RowSpec.java, parseRowKeys method, startRow value was changed:
+       startRow = sb.toString();
+       int idx = startRow.indexOf(',');
+       if (idx != -1) {
+         startRow = URLDecoder.decode(startRow.substring(0, idx),
+           HConstants.UTF8_ENCODING);
+         endRow = URLDecoder.decode(startRow.substring(idx + 1),
+           HConstants.UTF8_ENCODING);
+       } else {
+         startRow = URLDecoder.decode(startRow, HConstants.UTF8_ENCODING);
+       }
+After change to this, it works:
+       String row = sb.toString();
+       int idx = row.indexOf(',');
+       if (idx != -1) {
+         startRow = URLDecoder.decode(row.substring(0, idx),
+           HConstants.UTF8_ENCODING);
+         endRow = URLDecoder.decode(row.substring(idx + 1),
+           HConstants.UTF8_ENCODING);
+       } else {
+         startRow = URLDecoder.decode(row, HConstants.UTF8_ENCODING);
+       }
+I've also created a unit test method in TestRowResource.java,
+   @Test
+   public void testStartEndRowGetPutXML() throws IOException, JAXBException {
+     String[] rows = {ROW_1,ROW_2,ROW_3};
+     String[] values = {VALUE_1,VALUE_2,VALUE_3}; 
+     Response response = null;
+     for(int i=0; i<rows.length; i++){
+         response = putValueXML(TABLE, rows[i], COLUMN_1, values[i]);
+         assertEquals(200, response.getCode());
+         checkValueXML(TABLE, rows[i], COLUMN_1, values[i]);
+     }
+
+     response = getValueXML(TABLE, rows[0], rows[2], COLUMN_1);
+     assertEquals(200, response.getCode());
+     CellSetModel cellSet = (CellSetModel)
+       unmarshaller.unmarshal(new ByteArrayInputStream(response.getBody()));
+     assertEquals(2, cellSet.getRows().size());
+     for(int i=0; i<cellSet.getRows().size()-1; i++){
+         RowModel rowModel = cellSet.getRows().get(i);
+         for(CellModel cell : rowModel.getCells()){
+             assertEquals(COLUMN_1, Bytes.toString(cell.getColumn()));
+             assertEquals(values[i], Bytes.toString(cell.getValue()));
+         }   
+     }
+    
+     for(String row : rows){
+         response = deleteRow(TABLE, row);
+         assertEquals(200, response.getCode());
+     }
+   }
+
+   private static Response getValueXML(String table, String startRow, String
+ endRow, String column)
+           throws IOException {
+         StringBuilder path = new StringBuilder();
+         path.append('/');
+         path.append(table);
+         path.append('/');
+         path.append(startRow);
+         path.append(",");
+         path.append(endRow);
+         path.append('/');
+         path.append(column);
+         return getValueXML(path.toString());
+   }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.4, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Andrew Purtell
+Create date:
+18/Jul/11 23:31
+Update date:
+12/Oct/12 05:35
+Resolved date:
+23/Jul/11 19:51

@@ -1,0 +1,73 @@
+Summary:
+nodetool repair on Cassandra 2.1.0 indexed tables returns java exception about creating snapshots
+Description:
+Running a nodetool repair on Cassandra 2.1.0 indexed tables returns java exception about creating snapshots:
+Command line:
+[2014-09-29 11:25:24,945] Repair session 73c0d390-47e4-11e4-ba0f-c7788dc924ec for range (-7298689860784559350,-7297558156602685286] failed with error java.io.IOException: Failed during snapshot creation.
+[2014-09-29 11:25:24,945] Repair command #5 finished
+Cassandra log:
+ERROR [Thread-49681] 2014-09-29 11:25:24,945 StorageService.java:2689 - Repair session 73c0d390-47e4-11e4-ba0f-c7788dc924ec for range (-7298689860784559350,-7297558156602685286] failed with error java.io.IOException: Failed during snapshot creation.
+java.util.concurrent.ExecutionException: java.lang.RuntimeException: java.io.IOException: Failed during snapshot creation.
+        at java.util.concurrent.FutureTask.report(FutureTask.java:122) [na:1.7.0_67]
+        at java.util.concurrent.FutureTask.get(FutureTask.java:188) [na:1.7.0_67]
+        at org.apache.cassandra.service.StorageService$4.runMayThrow(StorageService.java:2680) ~[apache-cassandra-2.1.0.jar:2.1.0]
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28) [apache-cassandra-2.1.0.jar:2.1.0]
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471) [na:1.7.0_67]
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262) [na:1.7.0_67]
+        at java.lang.Thread.run(Thread.java:745) [na:1.7.0_67]
+Caused by: java.lang.RuntimeException: java.io.IOException: Failed during snapshot creation.
+        at com.google.common.base.Throwables.propagate(Throwables.java:160) ~[guava-16.0.jar:na]
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:32) [apache-cassandra-2.1.0.jar:2.1.0]
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471) [na:1.7.0_67]
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262) [na:1.7.0_67]
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145) ~[na:1.7.0_67]
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615) ~[na:1.7.0_67]
+        ... 1 common frames omitted
+Caused by: java.io.IOException: Failed during snapshot creation.
+        at org.apache.cassandra.repair.RepairSession.failedSnapshot(RepairSession.java:344) ~[apache-cassandra-2.1.0.jar:2.1.0]
+        at org.apache.cassandra.repair.RepairJob$2.onFailure(RepairJob.java:128) ~[apache-cassandra-2.1.0.jar:2.1.0]
+        at com.google.common.util.concurrent.Futures$4.run(Futures.java:1172) ~[guava-16.0.jar:na]
+        ... 3 common frames omitted
+If the index is dropped, the repair returns no error:
+cqlsh:test> drop INDEX user_pass_idx ;
+
+root@test:~# nodetool repair test user
+[2014-09-29 11:27:29,668] Starting repair command #6, repairing 743 ranges for keyspace test (seq=true, full=true)
+.
+.
+[2014-09-29 11:28:38,030] Repair session e6d40e10-47e4-11e4-ba0f-c7788dc924ec for range (-7298689860784559350,-7297558156602685286] finished
+[2014-09-29 11:28:38,030] Repair command #6 finished
+The test table:
+CREATE TABLE test.user (
+    login text PRIMARY KEY,
+    password text
+)
+create INDEX user_pass_idx on test.user (password) ;
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.1
+Component:
+Tool/nodetool
+Label:
+newbie
+Environment:
+slackware, linux, java 1.7
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Jeronimo A Barros
+Create date:
+29/Sep/14 19:30
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Oct/14 17:19

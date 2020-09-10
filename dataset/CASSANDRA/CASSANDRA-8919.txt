@@ -1,0 +1,60 @@
+Summary:
+cqlsh return error in querying of CompositeType data
+Description:
+cqlsh return below error when querying CompositeType data. Seems like deserialize_safe is undefined for this CompositeType. Is it a issue need to fix?
+cassandra@cqlsh:up_data> select * from test_stand;
+Traceback (most recent call last):
+  File "/home/mql/bin/cqlsh", line 986, in perform_simple_statement
+    rows = self.session.execute(statement, trace=self.tracing_enabled)
+  File "/home/mql/bin/../lib/cassandra-driver-internal-only-2.1.2.zip/cassandra-driver-2.1.2/cassandra/cluster.py", line 1294, in execute
+    result = future.result(timeout)
+  File "/home/mql/bin/../lib/cassandra-driver-internal-only-2.1.2.zip/cassandra-driver-2.1.2/cassandra/cluster.py", line 2788, in result
+    raise self._final_exception
+AttributeError: type object 'CompositeType(UTF8Type, Int32Type)' has no attribute 'deserialize_safe'
+Pre-condition (in cassandra-cli)
+create keyspace up_data with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy' and strategy_options = {replication_factor:1};
+use up_data;
+create column family test_stand
+with column_type = 'Standard'
+and comparator = 'UTF8Type'
+and default_validation_class = 'BytesType'
+and key_validation_class = 'UTF8Type'
+and column_metadata = [
+{column_name : 'UTF8Typefield',
+validation_class : 'UTF8Type'},
+{column_name : 'IntegerTypefield',
+validation_class : 'IntegerType'},
+{column_name : 'CompositeTypefield',
+validation_class : 'CompositeType(org.apache.cassandra.db.marshal.UTF8Type,org.apache.cassandra.db.marshal.Int32Type)'}
+] and compression_options = null;
+
+set test_stand ['test_stand1']['UTF8Typefield']='utf8Type';
+set test_stand ['test_stand1']['CompositeTypefield']='utf8Type,12';
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.5
+Component:
+Legacy/Tools
+Label:
+cqlsh
+Environment:
+suse, c*
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Mark
+Create date:
+05/Mar/15 13:20
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Apr/15 18:05

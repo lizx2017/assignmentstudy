@@ -1,0 +1,69 @@
+Summary:
+java.lang.IllegalArgumentException when performing query from CQL
+Description:
+Using python driver 2.0.2 with Cassandra 2.0.7.
+Created schema listed below. Inserted data into multiple partitions. Performed several queries and everything works great. After more data was inserted, queries without WHERE clauses stopped working and returns error. Restarting Cassandra does not fix the problem.
+Query:
+session.execute("SELECT * FROM timeseries.data_points;")
+Error:
+cassandra.protocol.ServerError: <ErrorMessage code=0000 [Server error] message="java.lang.IllegalArgumentException">
+Error in Cassandra log file:
+ERROR 15:14:53,442 Unexpected exception during request
+java.lang.IllegalArgumentException
+at java.nio.Buffer.limit(Buffer.java:267)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.getBytes(AbstractCompositeType.java:63)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.getWithShortLength(AbstractCompositeType.java:72)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.split(AbstractCompositeType.java:138)
+at org.apache.cassandra.cql3.statements.SelectStatement.processColumnFamily(SelectStatement.java:973)
+at org.apache.cassandra.cql3.statements.SelectStatement.process(SelectStatement.java:953)
+at org.apache.cassandra.cql3.statements.SelectStatement.processResults(SelectStatement.java:274)
+at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:232)
+at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:62)
+at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:158)
+at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:175)
+at org.apache.cassandra.transport.messages.QueryMessage.execute(QueryMessage.java:119)
+at org.apache.cassandra.transport.Message$Dispatcher.messageReceived(Message.java:304)
+at org.jboss.netty.channel.SimpleChannelUpstreamHandler.handleUpstream(SimpleChannelUpstreamHandler.java:70)
+at org.jboss.netty.channel.DefaultChannelPipeline.sendUpstream(DefaultChannelPipeline.java:564)
+at org.jboss.netty.channel.DefaultChannelPipeline$DefaultChannelHandlerContext.sendUpstream(DefaultChannelPipeline.java:791)
+at org.jboss.netty.handler.execution.ChannelUpstreamEventRunnable.doRun(ChannelUpstreamEventRunnable.java:43)
+at org.jboss.netty.handler.execution.ChannelEventRunnable.run(ChannelEventRunnable.java:67)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+at java.lang.Thread.run(Thread.java:745)
+Schema:
+session.execute("""CREATE TABLE timeseries.data_points (
+metric_name text,
+value int,
+time timestamp,
+tags text,
+PRIMARY KEY ((metric_name, tags), time)
+) WITH COMPACT STORAGE;""")
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+cql
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Jeff Sabin
+Create date:
+26/Jun/14 21:32
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Oct/14 19:35

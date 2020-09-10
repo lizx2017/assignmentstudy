@@ -1,0 +1,93 @@
+Summary:
+java.lang.ExceptionInInitializerError in PDFBox
+Description:
+The code below only works in the first time when .pdfbox.cache file does not exist. After the file is created the error below happens. If I delete the .pdfbox.cache file it start working again. So there is an issue with this file probably
+import java.io.IOException;
+
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+
+public class TestPDF {
+
+    private void createPDF() throws IOException {
+
+        // Create a document and add a page to it
+        PDDocument document = new PDDocument();
+        PDPage page = new PDPage();
+        document.addPage(page);
+
+        // Create a new font object selecting one of the PDF base fonts
+        PDFont font = PDType1Font.HELVETICA_BOLD;
+
+        // Start a new content stream which will "hold" the to be created content
+        PDPageContentStream contentStream = new PDPageContentStream(document, page);
+
+        // Define a text content stream using the selected font, moving the cursor and drawing the text "Hello World"
+        contentStream.beginText();
+        contentStream.setFont(font, 12);
+        contentStream.moveTextPositionByAmount(100, 700);
+        contentStream.drawString("Hello World");
+        contentStream.endText();
+
+        // Make sure that the content stream is closed:
+        contentStream.close();
+
+        // Save the results and ensure that the document is properly closed:
+        document.save("Hello World.pdf");
+        document.close();
+
+    }
+
+    public static void main(String[] args) throws Exception {
+
+        TestPDF t = new TestPDF();
+        t.createPDF();
+    }
+
+}
+And I don't know I'm getting:
+Exception in thread "main" java.lang.ExceptionInInitializerError
+    at org.apache.pdfbox.pdmodel.font.FontMapperImpl.getProvider(FontMapperImpl.java:151)
+    at org.apache.pdfbox.pdmodel.font.FontMapperImpl.findFont(FontMapperImpl.java:415)
+    at org.apache.pdfbox.pdmodel.font.FontMapperImpl.findFontBoxFont(FontMapperImpl.java:378)
+    at org.apache.pdfbox.pdmodel.font.FontMapperImpl.getFontBoxFont(FontMapperImpl.java:352)
+    at org.apache.pdfbox.pdmodel.font.PDType1Font.<init>(PDType1Font.java:114)
+    at org.apache.pdfbox.pdmodel.font.PDType1Font.<clinit>(PDType1Font.java:76)
+    at br.jus.trt4.TestPDF.createPDF(TestPDF.java:21)
+    at br.jus.trt4.TestPDF.main(TestPDF.java:45)
+Caused by: java.lang.ArrayIndexOutOfBoundsException: 1
+    at org.apache.pdfbox.pdmodel.font.FileSystemFontProvider.loadDiskCache(FileSystemFontProvider.java:387)
+    at org.apache.pdfbox.pdmodel.font.FileSystemFontProvider.<init>(FileSystemFontProvider.java:218)
+    at org.apache.pdfbox.pdmodel.font.FontMapperImpl$DefaultFontProvider.<clinit>(FontMapperImpl.java:132)
+    ... 8 more
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+None
+Label:
+None
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Luiz F Estivalet
+Create date:
+26/Feb/16 15:32
+Update date:
+17/Mar/16 19:06
+Resolved date:
+29/Feb/16 19:21

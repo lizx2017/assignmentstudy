@@ -1,0 +1,62 @@
+Summary:
+ConcurrentModificationException in commit-log-writer after local schema reset
+Description:
+ INFO [RMI TCP Connection(38)-192.168.36.171] 2014-03-12 11:37:54,013 MigrationManager.java (line 329) Starting local schema reset...
+ INFO [RMI TCP Connection(38)-192.168.36.171] 2014-03-12 11:37:54,016 ColumnFamilyStore.java (line 785) Enqueuing flush of Memtable-local@394448776(114/1140 serialized/live bytes, 3 ops)
+ INFO [FlushWriter:6] 2014-03-12 11:37:54,016 Memtable.java (line 331) Writing Memtable-local@394448776(114/1140 serialized/live bytes, 3 ops)
+ INFO [FlushWriter:6] 2014-03-12 11:37:54,182 Memtable.java (line 371) Completed flushing /var/lib/cassandra/data/system/local/system-local-jb-398-Data.db (145 bytes) for commitlog position ReplayPosition(segmentId=1394620057452, position=33159822)
+ INFO [RMI TCP Connection(38)-192.168.36.171] 2014-03-12 11:37:54,185 ColumnFamilyStore.java (line 785) Enqueuing flush of Memtable-local@1087210140(62/620 serialized/live bytes, 1 ops)
+ INFO [FlushWriter:6] 2014-03-12 11:37:54,185 Memtable.java (line 331) Writing Memtable-local@1087210140(62/620 serialized/live bytes, 1 ops)
+ INFO [FlushWriter:6] 2014-03-12 11:37:54,357 Memtable.java (line 371) Completed flushing /var/lib/cassandra/data/system/local/system-local-jb-399-Data.db (96 bytes) for commitlog position ReplayPosition(segmentId=1394620057452, position=33159959)
+ INFO [RMI TCP Connection(38)-192.168.36.171] 2014-03-12 11:37:54,361 ColumnFamilyStore.java (line 785) Enqueuing flush of Memtable-local@768887091(62/620 serialized/live bytes, 1 ops)
+ INFO [FlushWriter:6] 2014-03-12 11:37:54,361 Memtable.java (line 331) Writing Memtable-local@768887091(62/620 serialized/live bytes, 1 ops)
+ INFO [FlushWriter:6] 2014-03-12 11:37:54,516 Memtable.java (line 371) Completed flushing /var/lib/cassandra/data/system/local/system-local-jb-400-Data.db (96 bytes) for commitlog position ReplayPosition(segmentId=1394620057452, position=33160096)
+ INFO [CompactionExecutor:38] 2014-03-12 11:37:54,517 CompactionTask.java (line 115) Compacting [SSTableReader(path='/var/lib/cassandra/data/system/local/system-local-jb-398-Data.db'), SSTableReader(path='/var/lib/cassandra/data/system/local/system-local-jb-400-Data.db'), SSTableReader(path='/var/lib/cassandra/data/system/local/system-local-jb-399-Data.db'), SSTableReader(path='/var/lib/cassandra/data/system/local/system-local-jb-397-Data.db')]
+ INFO [RMI TCP Connection(38)-192.168.36.171] 2014-03-12 11:37:54,519 ColumnFamilyStore.java (line 785) Enqueuing flush of Memtable-local@271993477(62/620 serialized/live bytes, 1 ops)
+ INFO [FlushWriter:6] 2014-03-12 11:37:54,519 Memtable.java (line 331) Writing Memtable-local@271993477(62/620 serialized/live bytes, 1 ops)
+ INFO [FlushWriter:6] 2014-03-12 11:37:54,794 Memtable.java (line 371) Completed flushing /var/lib/cassandra/data/system/local/system-local-jb-401-Data.db (96 bytes) for commitlog position ReplayPosition(segmentId=1394620057452, position=33160233)
+ INFO [RMI TCP Connection(38)-192.168.36.171] 2014-03-12 11:37:54,799 MigrationManager.java (line 357) Local schema reset is complete.
+ INFO [CompactionExecutor:38] 2014-03-12 11:37:54,848 CompactionTask.java (line 275) Compacted 4 sstables to [/var/lib/cassandra/data/system/local/system-local-jb-402,].  6,099 bytes to 5,821 (~95% of original) in 330ms = 0.016822MB/s.  4 total partitions merged to 1.  Partition merge counts were {4:1, }
+ INFO [OptionalTasks:1] 2014-03-12 11:37:55,110 ColumnFamilyStore.java (line 785) Enqueuing flush of Memtable-schema_columnfamilies@106276050(181506/509164 serialized/live bytes, 3276 ops)
+ INFO [FlushWriter:6] 2014-03-12 11:37:55,110 Memtable.java (line 331) Writing Memtable-schema_columnfamilies@106276050(181506/509164 serialized/live bytes, 3276 ops)
+ INFO [OptionalTasks:1] 2014-03-12 11:37:55,110 ColumnFamilyStore.java (line 785) Enqueuing flush of Memtable-schema_columns@252242773(185191/630698 serialized/live bytes, 3614 ops)
+ERROR [COMMIT-LOG-WRITER] 2014-03-12 11:37:55,111 CassandraDaemon.java (line 196) Exception in thread Thread[COMMIT-LOG-WRITER,5,main]
+java.util.ConcurrentModificationException
+        at java.util.HashMap$HashIterator.nextEntry(HashMap.java:926)
+        at java.util.HashMap$KeyIterator.next(HashMap.java:960)
+        at org.apache.cassandra.db.commitlog.CommitLogAllocator.flushOldestKeyspaces(CommitLogAllocator.java:309)
+        at org.apache.cassandra.db.commitlog.CommitLogAllocator.fetchSegment(CommitLogAllocator.java:147)
+        at org.apache.cassandra.db.commitlog.CommitLog.activateNextSegment(CommitLog.java:299)
+        at org.apache.cassandra.db.commitlog.CommitLog.access$100(CommitLog.java:49)
+        at org.apache.cassandra.db.commitlog.CommitLog$LogRecordAdder.run(CommitLog.java:350)
+        at org.apache.cassandra.db.commitlog.PeriodicCommitLogExecutorService$1.runMayThrow(PeriodicCommitLogExecutorService.java:51)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+        at java.lang.Thread.run(Thread.java:744)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.17, 2.0.7, 2.1 beta2
+Component:
+None
+Label:
+None
+Environment:
+debian, jvm
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Pas
+Create date:
+12/Mar/14 10:50
+Update date:
+16/Apr/19 09:31
+Resolved date:
+22/Apr/14 14:18

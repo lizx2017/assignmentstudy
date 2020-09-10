@@ -1,0 +1,61 @@
+Summary:
+CQL 3.3 ordering in where clause produces different results when using "IN...ORDER BY"
+Description:
+This is an issue I found with
+[cqlsh 5.0.1 | Cassandra 2.2.0 | CQL spec 3.3.0 | Native protocol v4]
+Given this table and data:
+cqlsh> CREATE TABLE myschema.in_test (
+   ...     col_1 int,
+   ...     col_2 int,
+   ...     col_3 int,
+   ...     PRIMARY KEY ((col_1, col_2), col_3)
+   ... );
+cqlsh> INSERT INTO myschema.in_test (col_1, col_2, col_3) VALUES(1, 1, 1);
+cqlsh> INSERT INTO myschema.in_test (col_1, col_2, col_3) VALUES(1, 1, 2);
+cqlsh> INSERT INTO myschema.in_test (col_1, col_2, col_3) VALUES(1, 1, 13);
+cqlsh> INSERT INTO myschema.in_test (col_1, col_2, col_3) VALUES(1, 2, 10);
+cqlsh> INSERT INTO myschema.in_test (col_1, col_2, col_3) VALUES(1, 2, 11);
+This query behaves as expected (as described in http://docs.datastax.com/en/cql/3.3/cql/cql_using/useQueryIN.html)
+cqlsh> select * from myschema.in_test where col_1=1 and col_2 IN (1,2) order by col_3 desc;
+InvalidRequest: code=2200 [Invalid query] message="Cannot page queries with both ORDER BY and a IN restriction on the partition key; you must either remove the ORDER BY or the IN and sort client side, or disable paging for this query"
+But if you swap the order of the statements in the where clause, the query executes without error and doesn't totally honor the order by clause:
+cqlsh> select * from myschema.in_test where col_2 IN (1,2) and col_1=1 order by col_3 desc;
+
+ col_1 | col_2 | col_3
+-------+-------+-------
+     1 |     2 |    11
+     1 |     2 |    10
+     1 |     1 |    13
+     1 |     1 |     2
+     1 |     1 |     1
+
+(5 rows)
+Apologies in advance if this is working as intended, or I'm duplicating an existing issue. Also please let me know if you need any additional info.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.1, 3.0 beta 1
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Marc Zbyszynski
+Create date:
+03/Aug/15 22:39
+Update date:
+16/Apr/19 09:31
+Resolved date:
+17/Aug/15 10:51

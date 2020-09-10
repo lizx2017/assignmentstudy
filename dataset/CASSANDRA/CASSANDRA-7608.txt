@@ -1,0 +1,58 @@
+Summary:
+StressD can't create keyspaces with Write Command
+Description:
+It is impossible to run the default stress command via the dameon ./stress write
+Because the column names are HeapByteBuffers so they get ignored during serilization (no error is thrown) and then when the object is deserialized on the server the settings.columns.names is null. This leads to a null pointer on the dameon for what would have worked had it run locally.
+Settings object on the Local machine
+columns = {org.apache.cassandra.stress.settings.SettingsColumn@1465}
+maxColumnsPerKey = 5
+names = {java.util.Arrays$ArrayList@1471} size = 5
+[0] = {java.nio.HeapByteBuffer@1478}"java.nio.HeapByteBuffer[pos=0 lim=2 cap=2]"
+[1] = {java.nio.HeapByteBuffer@1483}"java.nio.HeapByteBuffer[pos=0 lim=2 cap=2]"
+[2] = {java.nio.HeapByteBuffer@1484}"java.nio.HeapByteBuffer[pos=0 lim=2 cap=2]"
+[3] = {java.nio.HeapByteBuffer@1485}"java.nio.HeapByteBuffer[pos=0 lim=2 cap=2]"
+[4] = {java.nio.HeapByteBuffer@1486}"java.nio.HeapByteBuffer[pos=0 lim=2 cap=2]"
+Setings object on the StressD Machine
+columns = {org.apache.cassandra.stress.settings.SettingsColumn@810}
+maxColumnsPerKey = 5
+names = null
+This leads to the null pointer in
+Exception in thread "Thread-1" java.lang.NullPointerException
+    at org.apache.cassandra.stress.settings.SettingsSchema.createKeySpacesThrift(SettingsSchema.java:94)
+    at org.apache.cassandra.stress.settings.SettingsSchema.createKeySpaces(SettingsSchema.java:67)
+    at org.apache.cassandra.stress.settings.StressSettings.maybeCreateKeyspaces(StressSettings.java:193)
+    at org.apache.cassandra.stress.StressAction.run(StressAction.java:59)
+    at java.lang.Thread.run(Thread.java:745)
+Which refers to
+       for (int i = 0; i < settings.columns.names.size(); i++)
+            standardCfDef.addToColumn_metadata(new ColumnDef(settings.columns.names.get(i), "BytesType"));
+Possible solution:
+Just use the settings.columns.namestr and convert them to byte buffers at this point in the code.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.1
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Russell Spitzer
+Reporter:
+Russell Spitzer
+Create date:
+24/Jul/14 07:58
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Aug/14 20:46

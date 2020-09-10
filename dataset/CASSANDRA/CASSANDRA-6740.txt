@@ -1,0 +1,52 @@
+Summary:
+Non-empty flush directory causes NPE on startup
+Description:
+With the changes in CASSANDRA-6357, there is now the case where someone may want to start a fresh cluster on a machine that previously hosted one, clean out the directories they are familiar with (eg, data_file_directories, commitlog_directories) but fail to clean out the flush_directory. If they don't clean that out, they will see this in the logs:
+INFO  [main] 2014-02-19 12:20:13,530 ColumnFamilyStore.java:281 - Initializing system.IndexInfo
+INFO  [main] 2014-02-19 12:20:13,534 ColumnFamilyStore.java:281 - Initializing system.peers
+INFO  [main] 2014-02-19 12:20:13,539 ColumnFamilyStore.java:281 - Initializing system.local
+ERROR [main] 2014-02-19 12:20:13,703 CassandraDaemon.java:458 - Exception encountered during startup
+java.lang.NullPointerException: null
+        at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:167) ~[main/:na]
+        at org.apache.cassandra.serializers.AbstractTextSerializer.deserialize(AbstractTextSerializer.java:39) ~[main/:na]
+        at org.apache.cassandra.serializers.AbstractTextSerializer.deserialize(AbstractTextSerializer.java:26) ~[main/:na]
+        at org.apache.cassandra.db.marshal.AbstractType.compose(AbstractType.java:66) ~[main/:na]
+        at org.apache.cassandra.cql3.UntypedResultSet$Row.getString(UntypedResultSet.java:150) ~[main/:na]
+        at org.apache.cassandra.config.CFMetaData.fromSchemaNoTriggers(CFMetaData.java:1761) ~[main/:na]
+        at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1883) ~[main/:na]
+        at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:320) ~[main/:na]
+        at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:301) ~[main/:na]
+        at org.apache.cassandra.db.DefsTables.loadFromKeyspace(DefsTables.java:131) ~[main/:na]
+        at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:539) ~[main/:na]
+        at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:230) [main/:na]
+        at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:441) [main/:na]
+        at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:530) [main/:na]
+I suggest a better warning message telling them it's due to the unclean flush dir, instead of an NPE.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Ryan McGuire
+Create date:
+19/Feb/14 21:04
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Oct/14 15:52

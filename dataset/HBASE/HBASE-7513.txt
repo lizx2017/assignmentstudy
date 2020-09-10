@@ -1,0 +1,75 @@
+Summary:
+HDFSBlocksDistribution shouldn't send NPEs when something goes wrong
+Description:
+I saw a pretty weird failure on a cluster with corrupted files and this particular exception really threw me off:
+2013-01-07 09:58:59,054 ERROR org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Failed open of region=redacted., starting to roll back the global memstore size.
+java.io.IOException: java.io.IOException: java.lang.NullPointerException: empty hosts
+ at org.apache.hadoop.hbase.regionserver.HRegion.initializeRegionInternals(HRegion.java:548)
+ at org.apache.hadoop.hbase.regionserver.HRegion.initialize(HRegion.java:461)
+ at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:3814)
+ at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:3762)
+ at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.openRegion(OpenRegionHandler.java:332)
+ at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:108)
+ at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:169)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: java.io.IOException: java.lang.NullPointerException: empty hosts
+ at org.apache.hadoop.hbase.regionserver.Store.loadStoreFiles(Store.java:403)
+ at org.apache.hadoop.hbase.regionserver.Store.<init>(Store.java:256)
+ at org.apache.hadoop.hbase.regionserver.HRegion.instantiateHStore(HRegion.java:2995)
+ at org.apache.hadoop.hbase.regionserver.HRegion$1.call(HRegion.java:523)
+ at org.apache.hadoop.hbase.regionserver.HRegion$1.call(HRegion.java:521)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:441)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ ... 3 more
+Caused by: java.lang.NullPointerException: empty hosts
+ at org.apache.hadoop.hbase.HDFSBlocksDistribution.addHostsAndBlockWeight(HDFSBlocksDistribution.java:123)
+ at org.apache.hadoop.hbase.util.FSUtils.computeHDFSBlocksDistribution(FSUtils.java:597)
+ at org.apache.hadoop.hbase.regionserver.StoreFile.computeHDFSBlockDistribution(StoreFile.java:492)
+ at org.apache.hadoop.hbase.regionserver.StoreFile.open(StoreFile.java:521)
+ at org.apache.hadoop.hbase.regionserver.StoreFile.createReader(StoreFile.java:602)
+ at org.apache.hadoop.hbase.regionserver.Store$1.call(Store.java:380)
+ at org.apache.hadoop.hbase.regionserver.Store$1.call(Store.java:375)
+ ... 8 more
+2013-01-07 09:58:59,059 INFO org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Opening of region "redacted" failed, marking as FAILED_OPEN in ZK
+This is what the code looks like:
+if (hosts == null || hosts.length == 0) {
+ throw new NullPointerException("empty hosts");
+}
+So hosts can exist but we send an NPE anyways? And then this is wrapped in Store by:
+} catch (ExecutionException e) {
+  throw new IOException(e.getCause());
+FWIW there's another NPE thrown in HDFSBlocksDistribution.addHostAndBlockWeight and it looks wrong.
+We should change the code to just skip computing the locality if it's missing and not throw big ugly exceptions. In this case the region would fail opening later anyways but at least the error message will be clearer.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.4, 0.95.2
+Fix_version:
+0.94.5, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Elliott Clark
+Reporter:
+Jean-Daniel Cryans
+Create date:
+07/Jan/13 21:47
+Update date:
+26/Feb/13 08:27
+Resolved date:
+08/Jan/13 22:36

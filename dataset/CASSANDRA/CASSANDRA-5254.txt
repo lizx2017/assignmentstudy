@@ -1,0 +1,47 @@
+Summary:
+Nodes can be marked up after gossip sends the goodbye command
+Description:
+Finally tracked this down on dtestbot after setting the rpc_timeout to ridiculous levels:
+==> logs/last/node1.log <==
+ INFO [FlushWriter:1] 2013-02-14 10:01:10,311 Memtable.java (line 305) Completed flushing /tmp/dtest-iaYzzR/test/node1/data/system/schema_columns/system-schema_columns-hf-2-Data.db (558 bytes) for commitlog position ReplayPosition(segmentId=1360857665931, position=4770)
+ INFO [MemoryMeter:1] 2013-02-14 10:01:10,974 Memtable.java (line 213) CFS(Keyspace='ks', ColumnFamily='cf') liveRatio is 20.488836662749705 (just-counted was 20.488836662749705).  calculation took 96ms for 144 columns
+ INFO [GossipStage:1] 2013-02-14 10:01:12,119 Gossiper.java (line 831) InetAddress /127.0.0.3 is now dead.
+
+==> logs/last/node2.log <==
+ INFO [GossipStage:1] 2013-02-14 10:01:12,119 Gossiper.java (line 831) InetAddress /127.0.0.3 is now dead.
+ INFO [GossipStage:1] 2013-02-14 10:01:12,238 Gossiper.java (line 817) InetAddress /127.0.0.3 is now UP
+ INFO [GossipTasks:1] 2013-02-14 10:01:26,386 Gossiper.java (line 831) InetAddress /127.0.0.3 is now dead.
+
+==> logs/last/node3.log <==
+ INFO [StorageServiceShutdownHook] 2013-02-14 10:01:11,115 Gossiper.java (line 1134) Announcing shutdown
+ INFO [StorageServiceShutdownHook] 2013-02-14 10:01:12,118 MessagingService.java (line 549) Waiting for messaging service to quiesce
+ INFO [ACCEPT-/127.0.0.3] 2013-02-14 10:01:12,119 MessagingService.java (line 705) MessagingService shutting down server thread.
+node2 receives the goodbye command from node3, and node1 has already marked node3 down, but some kind of signal is still coming from node3 to node2 marking it up again.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.11
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Brandon Williams
+Create date:
+14/Feb/13 17:09
+Update date:
+16/Apr/19 09:32
+Resolved date:
+06/Mar/13 22:10

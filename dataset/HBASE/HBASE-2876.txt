@@ -1,0 +1,68 @@
+Summary:
+HBase hbck: false positive error reported for parent regions that are in offline state in meta after a split
+Description:
+HBase Checker will sometimes report something like the following:
+ERROR: Region test1,9922400000,1279934604048.8cb65b1882960f230abb97860dd13c53. is not served by any region server but is listed in META to be on server null
+The region in question is a parent region that has been offlined following a split. META still contains for the above region only because there are daughter regions which still have references to the parent region. Once the daughter regions undergo compaction, these references will be gone; and the parent region's entry will be removed from META. But "hbck" should detect entries in this condition and not complain.
+ test1,9922400000,12799346 column=info:regioninfo, timestamp=1279938675016, value=REGION => {NAME =>
+ 04048.8cb65b1882960f230ab  'test1,9922400000,1279934604048.8cb65b1882960f230abb97860dd13c53.', STAR
+ b97860dd13c53.            TKEY => '9922400000', ENDKEY => '', ENCODED => 8cb65b1882960f230abb97860d
+                           d13c53, OFFLINE => true, SPLIT => true, TABLE => {{NAME => 'test1', FAMIL
+                           IES => [{NAME => 'actions', BLOOMFILTER => 'NONE', REPLICATION_SCOPE => '
+                           0', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZ
+                           E => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}
+ test1,9922400000,12799346 column=info:server, timestamp=1279938675016, value=
+ 04048.8cb65b1882960f230ab
+ b97860dd13c53.
+ test1,9922400000,12799346 column=info:serverstartcode, timestamp=1279938675016, value=
+ 04048.8cb65b1882960f230ab
+ b97860dd13c53.
+ test1,9922400000,12799346 column=info:splitA, timestamp=1279938675016, value=\x00\x0A9961500000\x00
+ 04048.8cb65b1882960f230ab \x00\x00\x01*\x02J9'@test1,9922400000,1279938672935.94425ba581acd336d1cbd
+ b97860dd13c53.            11181ee2785.\x00\x0A9922400000\x00\x00\x00\x05\x05test1\x00\x00\x00\x00\x
+                           00\x02\x00\x00\x00\x07IS_ROOT\x00\x00\x00\x05false\x00\x00\x00\x07IS_META
+                           \x00\x00\x00\x05false\x00\x00\x00\x01\x08\x07actions\x00\x00\x00\x08\x00\
+                           x00\x00\x0BBLOOMFILTER\x00\x00\x00\x04NONE\x00\x00\x00\x11REPLICATION_SCO
+                           PE\x00\x00\x00\x010\x00\x00\x00\x0BCOMPRESSION\x00\x00\x00\x04NONE\x00\x0
+                           0\x00\x08VERSIONS\x00\x00\x00\x013\x00\x00\x00\x03TTL\x00\x00\x00\x0A2147
+                           483647\x00\x00\x00\x09BLOCKSIZE\x00\x00\x00\x0565536\x00\x00\x00\x09IN_ME
+                           MORY\x00\x00\x00\x05false\x00\x00\x00\x0ABLOCKCACHE\x00\x00\x00\x04true\x
+                           B7\x04q\x18
+ test1,9922400000,12799346 column=info:splitB, timestamp=1279938675016, value=\x00\x00\x00\x00\x00\x
+ 04048.8cb65b1882960f230ab 01*\x02J9'@test1,9961500000,1279938672935.bb521c9d8c51fd8133f145dc3c75013
+ b97860dd13c53.            6.\x00\x0A9961500000\x00\x00\x00\x05\x05test1\x00\x00\x00\x00\x00\x02\x00
+                           \x00\x00\x07IS_ROOT\x00\x00\x00\x05false\x00\x00\x00\x07IS_META\x00\x00\x
+                           00\x05false\x00\x00\x00\x01\x08\x07actions\x00\x00\x00\x08\x00\x00\x00\x0
+                           BBLOOMFILTER\x00\x00\x00\x04NONE\x00\x00\x00\x11REPLICATION_SCOPE\x00\x00
+                           \x00\x010\x00\x00\x00\x0BCOMPRESSION\x00\x00\x00\x04NONE\x00\x00\x00\x08V
+                           ERSIONS\x00\x00\x00\x013\x00\x00\x00\x03TTL\x00\x00\x00\x0A2147483647\x00
+                           \x00\x00\x09BLOCKSIZE\x00\x00\x00\x0565536\x00\x00\x00\x09IN_MEMORY\x00\x
+                           00\x00\x05false\x00\x00\x00\x0ABLOCKCACHE\x00\x00\x00\x04true"\xE8XD
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+24/Jul/10 04:33
+Update date:
+20/Nov/15 12:43
+Resolved date:
+25/Jul/10 03:46

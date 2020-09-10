@@ -1,0 +1,37 @@
+Summary:
+TableInputFormat should handle as many errors as possible
+Description:
+Prior to HBASE-4196 there was different handling of IOExceptions thrown from scanner in mapred and mapreduce API. The patch to HBASE-4196 unified this handling so that if exception is caught a reconnect is attempted (without bothering the mapred client). After that, HBASE-4269 changed this behavior back, but in both mapred and mapreduce APIs. The question is, is there any reason not to handle all errors that the input format can handle? In other words, why not try to reissue the request after any IOException? I see the following disadvantages of current approach
+the client may see exceptions like LeaseException and ScannerTimeoutException if he fails to process all fetched data in timeout
+to avoid ScannerTimeoutException the client must raise hbase.regionserver.lease.period
+timeouts for tasks is aready configured in mapred.task.timeout, so this seems to me a bit redundant, because typically one needs to update both these parameters
+I don't see any possibility to get rid of LeaseException (this is configured on server side)
+I think all of these issues would be gone, if the DoNotRetryIOException would not be rethrown. On the other hand, handling errors in InputFormat has disadvantage, that it may hide from the user some inefficiency. Eg. if I have very big scanner.caching, and I manage to process only a few rows in timeout, I will end up with single row being fetched many times (and will not be explicitly notified about this). Could we solve this problem by adding some counter to the InputFormat?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.6
+Fix_version:
+0.94.1, 0.95.0
+Component:
+mapreduce
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jan Lukavsky
+Reporter:
+Jan Lukavsky
+Create date:
+10/Apr/12 09:59
+Update date:
+26/Feb/13 08:16
+Resolved date:
+21/May/12 21:03

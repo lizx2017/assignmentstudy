@@ -1,0 +1,87 @@
+Summary:
+getDocumentCatalog() returns no results
+Description:
+Test below fails, getAllPages() returns empty list should return 2 pages (see attached test pdf)
+TestPdfToPng.java
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.junit.Assert;
+import org.junit.Test;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+public class TestPdfToPng {
+    public class PdfToPngTest {
+
+        @Test
+        public void testConvert() throws Exception {
+            testConvert(TestPdfToPng.class.getResource("/bad-to-png-test-2.pdf"), 2);
+        }
+
+        public void testConvert(URL url, int expectedPages) throws IOException {
+            final Path outDir2 = Files.createTempDirectory("test-convert-png");
+            final List<Path> images2 = toImages(url, outDir2);
+            Assert.assertEquals(expectedPages, images2.size());
+        }
+
+        public List<Path> toImages(URL url, Path outDir) throws IOException {
+            List<Path> images = new ArrayList<>();
+            System.out.println("Images copied to Folder: " + outDir);
+            try (PDDocument document = PDDocument.load(url)) {
+                List<PDPage> list = document.getDocumentCatalog().getAllPages();
+                System.out.println("Total files to be converted -> " + list.size());
+
+                int pageNumber = 1;
+                for (PDPage page : list) {
+                    final Path path = outDir.resolve("test" + "_" + pageNumber + ".png");
+                    final File imageFile = path.toFile();
+                    imageFile.deleteOnExit();
+
+                    BufferedImage image = page.convertToImage();
+                    ImageIO.write(image, "png", imageFile);
+
+                    System.out.println("Image Created -> " + imageFile.getName());
+                    images.add(path);
+                    pageNumber++;
+                }
+            }
+            return images;
+        }
+    }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+1.8.9
+Fix_version:
+None
+Component:
+PDModel
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Joseph Jezerinac
+Create date:
+09/Jul/15 03:07
+Update date:
+09/Jul/15 04:40
+Resolved date:
+09/Jul/15 04:40

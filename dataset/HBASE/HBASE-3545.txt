@@ -1,0 +1,39 @@
+Summary:
+Possible liveness issue with MasterServerAddress in HRegionServer getMaster
+Description:
+As part of our evaluation of HBase we have been testing failure scenarios to see how HBase fails in certain situations.
+One of these is the outright failure of a HBase master.
+What presently happens, if a HBase master is shutdown, is that the standby master becomes the active master in the Zookeeper. At the same time the region servers fail to connect to the dead master and typically fail their own heartbeats as part of the reportForDuty() method.
+Following this the region server attempts to get a connection to a working HBase master, inside the getMaster() method the first action is to get the address of a potentially working master server from zookeeper. Following this the code is put into a tight loop whereupon it keeps attempting to connect to the address of the master found in Zookeeper.
+Unfortunately it appears that during master fail-over, it becomes possible to get the address of the old, broken master, this address is then put into the connection attempt loop, whereupon the region server attempts to infinitely connect to the failed, none existent master. At this point nothing is able to break the loop in getMaster so the RS is unable to contact the master.
+At the same time the new master is waiting patiently for the existing region servers as reported in Zookeeper to re-establish contact with it.
+Attached is a patch that rectifies this issue in our test cluster for both the 0.90.0 tag and trunk versions (as of git SHA b72a24f71b67598e4077a9d1452f903082b0a9b7) of HBase.
+This patch is also available in a forked repository here https://github.com/GregBowyer/hbase/commit/543f5903731ef6bbfd58c990e04a2c635e5c94b4
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.2
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Greg Bowyer
+Create date:
+17/Feb/11 17:32
+Update date:
+20/Nov/15 12:42
+Resolved date:
+17/Feb/11 17:50

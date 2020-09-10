@@ -1,0 +1,70 @@
+Summary:
+CassandraStorage broken for bigints and ints
+Description:
+I am seeing something rather strange in the way Cass 1.2 + Pig seem to handle integer values.
+Setup: Cassandra 1.2.10, OSX 10.8, JDK 1.7u40, Pig 0.11.1. Single node for testing this.
+First a table:
+> CREATE TABLE testc (
+ key text PRIMARY KEY,
+ ivalue int,
+ svalue text,
+ value bigint
+) WITH COMPACT STORAGE;
+
+> insert into testc (key,ivalue,svalue,value) values ('foo',10,'bar',65);
+> select * from testc;
+
+key | ivalue | svalue | value
+-----+--------+--------+-------
+foo |     10 |    bar |     65
+For my Pig setup, I then use libraries from different C* versions to actually talk to my database (which stays on 1.2.10 all the time).
+Cassandra 1.0.12 (using cassandra_storage.jar):
+testc = LOAD 'cassandra://keyspace/testc' USING CassandraStorage();
+dump testc
+(foo,(svalue,bar),(ivalue,10),(value,65),{})
+Cassandra 1.1.10:
+testc = LOAD 'cassandra://keyspace/testc' USING CassandraStorage();
+dump testc
+(foo,(svalue,bar),(ivalue,10),(value,65),{})
+Cassandra 1.2.10:
+(testc = LOAD 'cassandra://keyspace/testc' USING CassandraStorage();
+dump testc
+foo,{(ivalue,
+),(svalue,bar),(value,A)})
+To me it appears that ints and bigints are interpreted as ascii values in cass 1.2.10. Did something change for CassandraStorage, is there a regression, or am I doing something wrong? Quick perusal of the JIRA didn't reveal anything that I could directly pin on this.
+Note that using compact storage does not seem to affect the issue, though it obviously changes the resulting pig format.
+In addition, trying to use Pygmalion
+tf = foreach testc generate key, flatten(FromCassandraBag('ivalue,svalue,value',columns)) as (ivalue:int,svalue:chararray,lvalue:long);
+dump tf
+
+(foo,
+,bar,A)
+So no help there. Explicitly casting the values to (long) or (int) just results in a ClassCastException.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.11
+Component:
+None
+Label:
+None
+Environment:
+pig, mac os x
+Attachment number:
+0
+Assignee:
+Alex Liu
+Reporter:
+Janne Jalkanen
+Create date:
+26/Sep/13 08:07
+Update date:
+16/Apr/19 09:32
+Resolved date:
+12/Oct/13 16:51

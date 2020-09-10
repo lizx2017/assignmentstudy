@@ -1,0 +1,63 @@
+Summary:
+If null is explicitly set to a column, paging_state will not work
+Description:
+If null is explicitly set to a column, paging_state will not work. My test procedure is as follows:
+------
+Create a table and insert 10 records using cqlsh. The query is as follows:
+CREATE TABLE mytable (id int, range int, value text, PRIMARY KEY (id, range));
+INSERT INTO mytable (id, range) VALUES (0, 0);
+INSERT INTO mytable (id, range) VALUES (0, 1);
+INSERT INTO mytable (id, range) VALUES (0, 2);
+INSERT INTO mytable (id, range) VALUES (0, 3);
+INSERT INTO mytable (id, range) VALUES (0, 4);
+INSERT INTO mytable (id, range, value) VALUES (0, 5, null);
+INSERT INTO mytable (id, range, value) VALUES (0, 6, null);
+INSERT INTO mytable (id, range, value) VALUES (0, 7, null);
+INSERT INTO mytable (id, range, value) VALUES (0, 8, null);
+INSERT INTO mytable (id, range, value) VALUES (0, 9, null);
+Select 10 records using datastax driver. The pseudocode is as follows:
+Statement statement = QueryBuilder.select().from("mytable").setFetchSize(1);
+ResultSet rs = session.execute(statement);
+for(Row row : rs){
+    System.out.println(String.format("id=%d, range=%d, value=%s",
+        row.getInt("id"), row.getInt("range"), row.getString("value")));
+}
+The result is as follows:
+id=0, range=0, value=null
+id=0, range=1, value=null
+id=0, range=2, value=null
+id=0, range=3, value=null
+id=0, range=4, value=null
+id=0, range=5, value=null
+id=0, range=7, value=null
+id=0, range=9, value=null
+------
+Result is 8 records although 10 records were expected. I originally raised this issue in the mailing lists: http://www.mail-archive.com/user@cassandra.apache.org/msg34752.html
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.6
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Katsutoshi Nagaoka
+Create date:
+21/Feb/14 03:09
+Update date:
+16/Apr/19 09:31
+Resolved date:
+25/Feb/14 09:46

@@ -1,0 +1,47 @@
+Summary:
+Invalid expires date format with non english default locale
+Description:
+There is a problem with the "rememberMe" cookie feature.
+A cookie is sent to the user to store the rememberMe data, but the expiration date used for the formating is the system default one.
+In my case, expiration date are formated in french and the browser cannot correctly handle it (so rememberMe cookie will automatically be removed when the browser is closed)
+A fix could be done in the class : org.apache.shiro.web.servlet.SimpleCookie
+Around line 330 :
+private static String toCookieDate(Date date)
+{ TimeZone tz = TimeZone.getTimeZone(GMT_TIME_ZONE_ID); DateFormat fmt = new SimpleDateFormat(COOKIE_DATE_FORMAT_STRING); // Here, SimpleDateFormat use default Locale fmt.setTimeZone(tz); return fmt.format(date); }
+replace with :
+private static String toCookieDate(Date date)
+{ TimeZone tz = TimeZone.getTimeZone(GMT_TIME_ZONE_ID); DateFormat fmt = new SimpleDateFormat(COOKIE_DATE_FORMAT_STRING, Locale.ENGLISH); // Force english locale fmt.setTimeZone(tz); return fmt.format(date); }
+—
+A workaround is to replace the default local when calling the login() method :
+Locale systemLocale = Locale.getDefault();
+Locale.setDefault(Locale.ENGLISH);
+currentUser.login(token);
+Locale.setDefault(systemLocale);
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Duplicate
+Affects_version:
+None
+Fix_version:
+1.1.0
+Component:
+Web
+Label:
+None
+Environment:
+java
+Attachment number:
+0
+Assignee:
+Kalle Korhonen
+Reporter:
+Nicolas ANTONIAZZI
+Create date:
+23/Jun/10 08:37
+Update date:
+26/Jun/11 21:51
+Resolved date:
+23/Jun/10 17:12

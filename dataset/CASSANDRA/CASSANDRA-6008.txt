@@ -1,0 +1,37 @@
+Summary:
+Getting 'This should never happen' error at startup due to sstables missing
+Description:
+Exception encountered during startup: "Unfinished compactions reference missing sstables. This should never happen since compactions are marked finished before we start removing the old sstables"
+This happens when sstables that have been compacted away are removed, but they still have entries in the system.compactions_in_progress table.
+Normally this should not happen because the entries in system.compactions_in_progress are deleted before the old sstables are deleted.
+However at startup recovery time, old sstables are deleted (NOT BEFORE they are removed from the compactions_in_progress table) and then after that is done it does a truncate using SystemKeyspace.discardCompactionsInProgress
+We ran into a case where the disk filled up and the node died and was bounced and then failed to truncate this table on startup, and then got stuck hitting this exception in ColumnFamilyStore.removeUnfinishedCompactionLeftovers.
+Maybe on startup we can delete from this table incrementally as we clean stuff up in the same way that compactions delete from this table before they delete old sstables.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+John Carrino
+Create date:
+11/Sep/13 21:50
+Update date:
+16/Apr/19 09:32
+Resolved date:
+17/Dec/13 18:03

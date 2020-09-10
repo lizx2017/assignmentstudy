@@ -1,0 +1,57 @@
+Summary:
+Indexed color space in JPX
+Description:
+I get this with the attached file on page 11:
+java.lang.ArrayIndexOutOfBoundsException: 8296
+ at org.apache.pdfbox.pdmodel.graphics.image.SampledImageReader.from8bit(SampledImageReader.java:253)
+ at org.apache.pdfbox.pdmodel.graphics.image.SampledImageReader.getRGBImage(SampledImageReader.java:146)
+ at org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject.getImage(PDImageXObject.java:188)
+ at org.apache.pdfbox.util.operator.pagedrawer.Invoke.process(Invoke.java:80)
+The problem is in JPXFilter. Per the spec, we must ignore the BITS_PER_COMPONENT value from the PDF and use the one from the image. We set BITS_PER_COMPONENT to 8 because colorModel.getComponentSize(0) is 8. colorModel.getPixelSize() is 4. In "normal" images, the sum of the colorModel.getComponentSize() values equals colorModel.getPixelSize().
+I'm not sure what to do. I am using this code locally:
+            ColorModel colorModel = image.getColorModel();
+            int pixelSize = colorModel.getPixelSize();
+            int[] componentSize = colorModel.getComponentSize();
+            if (pixelSize < componentSize[0])
+            {
+                LOG.warn("componentSize[0] of image ignored, because pixelSize < componentSize[0]");
+                LOG.warn("pixelSize: " + pixelSize);
+                LOG.warn("componentSize.length " + componentSize.length);
+                for (int i = 0; i < componentSize.length; ++i)
+                {
+                    LOG.warn("componentSize[" + i + "]: " + componentSize[i]);
+                }
+            }
+            else
+            {
+                parameters.setInt(COSName.BITS_PER_COMPONENT, componentSize[0]);
+            }
+and now the PDF renders properly and the image at the bottom right is almost correct. (A circle on the left is missing)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+Rendering
+Label:
+JPEG2000 JPXDecode J
+Environment:
+
+Attachment number:
+0
+Assignee:
+John Hewson
+Reporter:
+Tilman Hausherr
+Create date:
+12/Jul/14 12:52
+Update date:
+29/Sep/18 11:46
+Resolved date:
+11/Aug/15 03:17

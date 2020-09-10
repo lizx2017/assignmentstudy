@@ -1,0 +1,47 @@
+Summary:
+Paxos loops endlessly due to faulty condition check
+Description:
+Following is the code segment (StorageProxy.java:361) which causes the issue:
+Start is the start time of the paxos, is always less than the current system time, and therefore the negative difference is always less than the timeout.
+StorageProxy.java
+private static UUID beginAndRepairPaxos(long start, ByteBuffer key, CFMetaData metadata, List<InetAddress> liveEndpoints, int requiredParticipants, ConsistencyLevel consistencyForPaxos)
+    throws WriteTimeoutException
+    {
+        long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
+
+        PrepareCallback summary = null;
+        while (start - System.nanoTime() < timeout)
+        {
+            long ballotMillis = summary == null
+                              ? System.currentTimeMillis()
+                              : Math.max(System.currentTimeMillis(), 1 + UUIDGen.unixTimestamp(summary.inProgressCommit.ballot));
+            UUID ballot = UUIDGen.getTimeUUID(ballotMillis);
+Here, the paxos gets stuck when PREPARE returns 'true' but with inProgressCommit. The code in StorageProxy.java:beginAndRepairPaxos() then tries to issue a PROPOSE and COMMIT for the inProgressCommit, and if it repeatedly receives 'false' as a PREPARE_RESPONSE it gets stuck in an endless loop until PREPARE_RESPONSE is true.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.0
+Component:
+None
+Label:
+LWT paxos
+Environment:
+
+Attachment number:
+0
+Assignee:
+Soumava Ghosh
+Reporter:
+Soumava Ghosh
+Create date:
+30/Jul/13 17:52
+Update date:
+16/Apr/19 09:32
+Resolved date:
+05/Aug/13 21:44

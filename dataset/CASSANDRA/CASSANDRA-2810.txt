@@ -1,0 +1,174 @@
+Summary:
+RuntimeException in Pig when using "dump" command on column name
+Description:
+This bug was previously report on Brisk bug tracker.
+In cassandra-cli:
+[default@unknown] create keyspace Test
+    with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
+    and strategy_options = [{replication_factor:1}];
+
+[default@unknown] use Test;
+Authenticated to keyspace: Test
+
+[default@Test] create column family test;
+
+[default@Test] set test[ascii('row1')][long(1)]=integer(35);
+set test[ascii('row1')][long(2)]=integer(36);
+set test[ascii('row1')][long(3)]=integer(38);
+set test[ascii('row2')][long(1)]=integer(45);
+set test[ascii('row2')][long(2)]=integer(42);
+set test[ascii('row2')][long(3)]=integer(33);
+
+[default@Test] list test;
+Using default limit of 100
+-------------------
+RowKey: 726f7731
+=> (column=0000000000000001, value=35, timestamp=1308744931122000)
+=> (column=0000000000000002, value=36, timestamp=1308744931124000)
+=> (column=0000000000000003, value=38, timestamp=1308744931125000)
+-------------------
+RowKey: 726f7732
+=> (column=0000000000000001, value=45, timestamp=1308744931127000)
+=> (column=0000000000000002, value=42, timestamp=1308744931128000)
+=> (column=0000000000000003, value=33, timestamp=1308744932722000)
+
+2 Rows Returned.
+
+[default@Test] describe keyspace;
+Keyspace: Test:
+  Replication Strategy: org.apache.cassandra.locator.SimpleStrategy
+  Durable Writes: true
+    Options: [replication_factor:1]
+  Column Families:
+    ColumnFamily: test
+      Key Validation Class: org.apache.cassandra.db.marshal.BytesType
+      Default column value validator: org.apache.cassandra.db.marshal.BytesType
+      Columns sorted by: org.apache.cassandra.db.marshal.BytesType
+      Row cache size / save period in seconds: 0.0/0
+      Key cache size / save period in seconds: 200000.0/14400
+      Memtable thresholds: 0.571875/122/1440 (millions of ops/MB/minutes)
+      GC grace seconds: 864000
+      Compaction min/max thresholds: 4/32
+      Read repair chance: 1.0
+      Replicate on write: false
+      Built indexes: []
+In Pig command line:
+grunt> test = LOAD 'cassandra://Test/test' USING CassandraStorage() AS (rowkey:chararray, columns: bag {T: (name:long, value:int)});
+
+grunt> value_test = foreach test generate rowkey, columns.name, columns.value;
+
+grunt> dump value_test;
+In /var/log/cassandra/system.log, I have severals time this exception:
+INFO [IPC Server handler 3 on 8012] 2011-06-22 15:03:28,533 TaskInProgress.java (line 551) Error from attempt_201106210955_0051_m_000000_3: java.lang.RuntimeException: Unexpected data type -1 found in stream.
+ at org.apache.pig.data.BinInterSedes.writeDatum(BinInterSedes.java:478)
+ at org.apache.pig.data.BinInterSedes.writeTuple(BinInterSedes.java:541)
+ at org.apache.pig.data.BinInterSedes.writeBag(BinInterSedes.java:522)
+ at org.apache.pig.data.BinInterSedes.writeDatum(BinInterSedes.java:361)
+ at org.apache.pig.data.BinInterSedes.writeTuple(BinInterSedes.java:541)
+ at org.apache.pig.data.BinInterSedes.writeDatum(BinInterSedes.java:357)
+ at org.apache.pig.impl.io.InterRecordWriter.write(InterRecordWriter.java:73)
+ at org.apache.pig.impl.io.InterStorage.putNext(InterStorage.java:87)
+ at org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigOutputFormat$PigRecordWriter.write(PigOutputFormat.java:138)
+ at org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigOutputFormat$PigRecordWriter.write(PigOutputFormat.java:97)
+ at org.apache.hadoop.mapred.MapTask$NewDirectOutputCollector.write(MapTask.java:638)
+ at org.apache.hadoop.mapreduce.TaskInputOutputContext.write(TaskInputOutputContext.java:80)
+ at org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigMapOnly$Map.collect(PigMapOnly.java:48)
+ at org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigMapBase.runPipeline(PigMapBase.java:239)
+ at org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigMapBase.map(PigMapBase.java:232)
+ at org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigMapBase.map(PigMapBase.java:53)
+ at org.apache.hadoop.mapreduce.Mapper.run(Mapper.java:144)
+ at org.apache.hadoop.mapred.MapTask.runNewMapper(MapTask.java:763)
+ at org.apache.hadoop.mapred.MapTask.run(MapTask.java:369)
+ at org.apache.hadoop.mapred.Child$4.run(Child.java:259)
+ at java.security.AccessController.doPrivileged(Native Method)
+ at javax.security.auth.Subject.doAs(Subject.java:396)
+ at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1059)
+ at org.apache.hadoop.mapred.Child.main(Child.java:253)
+and the request failed.
+grunt> test = LOAD 'cassandra://Test/test' USING CassandraStorage() AS (rowkey:chararray, columns: bag {T: (name:long, value:int)});
+
+grunt> value_test = foreach test generate rowkey, columns.value;
+
+grunt> dump value_test;
+This time, without the column name, it's work (but the value are displayed as char instead of integer). Result:
+(row1,{(#),($),(&)})
+(row2,{(-),(*),(!)})
+Now we do the same test but we set a comparator to the CF.
+[default@Test] create column family test with comparator = 'LongType';
+
+[default@Test] set test[ascii('row1')][long(1)]=integer(35);
+set test[ascii('row1')][long(2)]=integer(36);
+set test[ascii('row1')][long(3)]=integer(38);
+set test[ascii('row2')][long(1)]=integer(45);
+set test[ascii('row2')][long(2)]=integer(42);
+set test[ascii('row2')][long(3)]=integer(33);
+
+[default@Test] list test;
+Using default limit of 100
+-------------------
+RowKey: 726f7731
+=> (column=1, value=35, timestamp=1308748643506000)
+=> (column=2, value=36, timestamp=1308748643508000)
+=> (column=3, value=38, timestamp=1308748643509000)
+-------------------
+RowKey: 726f7732
+=> (column=1, value=45, timestamp=1308748643510000)
+=> (column=2, value=42, timestamp=1308748643512000)
+=> (column=3, value=33, timestamp=1308748645138000)
+
+2 Rows Returned.
+
+[default@Test] describe keyspace;
+Keyspace: Test:
+  Replication Strategy: org.apache.cassandra.locator.SimpleStrategy
+  Durable Writes: true
+    Options: [replication_factor:1]
+  Column Families:
+    ColumnFamily: test
+      Key Validation Class: org.apache.cassandra.db.marshal.BytesType
+      Default column value validator: org.apache.cassandra.db.marshal.BytesType
+      Columns sorted by: org.apache.cassandra.db.marshal.LongType
+      Row cache size / save period in seconds: 0.0/0
+      Key cache size / save period in seconds: 200000.0/14400
+      Memtable thresholds: 0.571875/122/1440 (millions of ops/MB/minutes)
+      GC grace seconds: 864000
+      Compaction min/max thresholds: 4/32
+      Read repair chance: 1.0
+      Replicate on write: false
+      Built indexes: []
+grunt> test = LOAD 'cassandra://Test/test' USING CassandraStorage() AS (rowkey:chararray, columns: bag {T: (name:long, value:int)});
+
+grunt> value_test = foreach test generate rowkey, columns.name, columns.value;
+
+grunt> dump value_test;
+This time it's work as expected (appart from the value displayed as char). Result:
+(row1,{(1),(2),(3)},{(#),($),(&)})
+(row2,{(1),(2),(3)},{(-),(*),(!)})
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.7
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Silvère Lestang
+Create date:
+22/Jun/11 14:49
+Update date:
+16/Apr/19 09:32
+Resolved date:
+28/Sep/11 22:01

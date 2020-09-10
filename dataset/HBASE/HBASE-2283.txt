@@ -1,0 +1,46 @@
+Summary:
+row level atomicity
+Description:
+The flow during a HRegionServer.put() seems to be the following. [For now, let's just consider single row Put containing edits to multiple column families/columns.
+HRegionServer.put() does a:
+HRegion.put();
+syncWal() (the HDFS sync call). /* this is assuming we have HDFS-200 */
+HRegion.put() does a:
+for each column family
+{ HLog.append(all edits to the colum family); write all edits to Memstore; }
+HLog.append() does a :
+foreach edit in a single column family
+{ doWrite() }
+doWrite() does a:
+this.writer.append().
+There seems to be two related issues here that could result in inconsistencies.
+Issue #1: A put() does a bunch of HLog.append() calls. These in turn do a bunch of "write" calls on the underlying DFS stream. If we crash after having written out some append's to DFS, recovery will run and apply a partial transaction to memstore.
+Issue #2: The updates to memstore should happen after the sync rather than before. Otherwise, there is the danger that the write to DFS (sync) fails for some reason & we return an error to the client, but we have already taken edits to the memstore. So subsequent reads will serve uncommitted data.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Kannan Muthukkaruppa
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+03/Mar/10 23:55
+Update date:
+20/Nov/15 12:43
+Resolved date:
+20/Mar/10 00:54

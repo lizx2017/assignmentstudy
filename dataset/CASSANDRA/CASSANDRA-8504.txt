@@ -1,0 +1,51 @@
+Summary:
+Stack trace is erroneously logged twice
+Description:
+The dtest replace_address_test.TestReplaceAddress.replace_active_node_test is failing on 3.0. The following can be seen in the log:
+ERROR [main] 2014-12-17 15:12:33,871 CassandraDaemon.java:496 - Exception encountered during startup
+java.lang.UnsupportedOperationException: Cannot replace a live node...
+        at org.apache.cassandra.service.StorageService.joinTokenRing(StorageService.java:773) ~[main/:na]
+        at org.apache.cassandra.service.StorageService.initServer(StorageService.java:593) ~[main/:na]
+        at org.apache.cassandra.service.StorageService.initServer(StorageService.java:483) ~[main/:na]
+        at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:356) [main/:na]
+        at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:479) [main/:na]
+        at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:571) [main/:na]
+ERROR [main] 2014-12-17 15:12:33,872 CassandraDaemon.java:584 - Exception encountered during startup
+java.lang.UnsupportedOperationException: Cannot replace a live node...
+        at org.apache.cassandra.service.StorageService.joinTokenRing(StorageService.java:773) ~[main/:na]
+        at org.apache.cassandra.service.StorageService.initServer(StorageService.java:593) ~[main/:na]
+        at org.apache.cassandra.service.StorageService.initServer(StorageService.java:483) ~[main/:na]
+        at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:356) [main/:na]
+        at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:479) [main/:na]
+        at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:571) [main/:na]
+INFO  [StorageServiceShutdownHook] 2014-12-17 15:12:33,873 Gossiper.java:1349 - Announcing shutdown
+INFO  [StorageServiceShutdownHook] 2014-12-17 15:12:35,876 MessagingService.java:708 - Waiting for messaging service to quiesce
+The test starts up a three node cluster, loads some data, then attempts to start a fourth node with replace_address against the IP of a live node. This is expected to fail, with one ERROR message in the log. In 3.0, we are seeing two messages. 2.1-HEAD is working as expected. Attached is the full log of the fourth node.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/Testing
+Label:
+None
+Environment:
+mac os x, ubuntu
+Attachment number:
+0
+Assignee:
+Stefania
+Reporter:
+Philip Thompson
+Create date:
+17/Dec/14 20:28
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Mar/15 18:14

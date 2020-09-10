@@ -1,0 +1,56 @@
+Summary:
+DirectoryReader.openIfChanged(oldReader, commit) incorrectly assumes given commit point has deletes/field updates
+Description:
+StandardDirectoryReader assumes that the segments from commit point have deletes, when they may not, yet the original SegmentReader for the segment that we are trying to reuse does. This is evident when running attached JUnit test case with asserts enabled (default):
+java.lang.AssertionError
+ at org.apache.lucene.index.StandardDirectoryReader.open(StandardDirectoryReader.java:188)
+ at org.apache.lucene.index.StandardDirectoryReader.doOpenIfChanged(StandardDirectoryReader.java:326)
+ at org.apache.lucene.index.StandardDirectoryReader$2.doBody(StandardDirectoryReader.java:320)
+ at org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run(SegmentInfos.java:702)
+ at org.apache.lucene.index.StandardDirectoryReader.doOpenFromCommit(StandardDirectoryReader.java:315)
+ at org.apache.lucene.index.StandardDirectoryReader.doOpenNoWriter(StandardDirectoryReader.java:311)
+ at org.apache.lucene.index.StandardDirectoryReader.doOpenIfChanged(StandardDirectoryReader.java:262)
+ at org.apache.lucene.index.DirectoryReader.openIfChanged(DirectoryReader.java:183)
+or, if asserts are disabled then it falls through into NPE:
+java.lang.NullPointerException
+ at java.io.File.<init>(File.java:305)
+ at org.apache.lucene.store.NIOFSDirectory.openInput(NIOFSDirectory.java:80)
+ at org.apache.lucene.codecs.lucene40.BitVector.<init>(BitVector.java:327)
+ at org.apache.lucene.codecs.lucene40.Lucene40LiveDocsFormat.readLiveDocs(Lucene40LiveDocsFormat.java:90)
+ at org.apache.lucene.index.SegmentReader.<init>(SegmentReader.java:131)
+ at org.apache.lucene.index.StandardDirectoryReader.open(StandardDirectoryReader.java:194)
+ at org.apache.lucene.index.StandardDirectoryReader.doOpenIfChanged(StandardDirectoryReader.java:326)
+ at org.apache.lucene.index.StandardDirectoryReader$2.doBody(StandardDirectoryReader.java:320)
+ at org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run(SegmentInfos.java:702)
+ at org.apache.lucene.index.StandardDirectoryReader.doOpenFromCommit(StandardDirectoryReader.java:315)
+ at org.apache.lucene.index.StandardDirectoryReader.doOpenNoWriter(StandardDirectoryReader.java:311)
+ at org.apache.lucene.index.StandardDirectoryReader.doOpenIfChanged(StandardDirectoryReader.java:262)
+ at org.apache.lucene.index.DirectoryReader.openIfChanged(DirectoryReader.java:183)
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+4.6.1
+Fix_version:
+6.2, 7.0
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Vitaly Funstein
+Create date:
+10/Sep/14 01:01
+Update date:
+26/Aug/16 14:00
+Resolved date:
+12/Jun/16 21:02

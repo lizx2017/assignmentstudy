@@ -1,0 +1,41 @@
+Summary:
+Map keys aren't properly serialized as strings in SELECT JSON queries
+Description:
+When I run a SELECT JSON query on a table that contains a column of type map, the JSON output doesn’t wrap the map keys with quotes, thus creating a non-standard JSON representation, which doesn’t play along with JSON parsers very well.
+Here’s an example where the map keys are actually a set:
+create table table1 (id int primary key, mymap map<frozen<set<int>>,int>);
+insert into table1 (id,mymap) values (1, {{1,2,3,4}:1});
+select json id,mymap from table1;
+The output is:
+{"id": 1, "mymap": {[1, 2, 3, 4]: 1}}
+But what I expected was that the map key, in this case the entire integer set, would be wrapped with quotes.
+The same thing happens when the key is a primitive, such as int, or when it’s another type of collection.
+I tried this with the latest version of the Cassandra codebase from the repository’s trunk (1f65a12c33).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Gianluca Righetto
+Create date:
+14/Apr/15 21:50
+Update date:
+16/Apr/19 09:31
+Resolved date:
+13/May/15 17:39

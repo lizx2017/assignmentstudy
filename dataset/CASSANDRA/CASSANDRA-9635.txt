@@ -1,0 +1,50 @@
+Summary:
+Silent startup failure with filesystem that does not support mmap
+Description:
+C* version 2.0.9.
+When running C* in virtualbox on OS X via boot2docker with the data directory on a shared volume from the host system (vboxfs), C* fails to start without printing any errors.
+I do not know if C* is supposed to support filesystems that do not support mmap (does not appear so), however, I think the failure exposes a static initialization deadlock (http://ternarysearch.blogspot.ru/2013/07/static-initialization-deadlock.html).
+I believe the virtualbox "bug" is https://www.virtualbox.org/ticket/819.
+Stacktrace of the deadlock is attached. When placing a t.printStackTrace() between lines 115 and 116 in https://github.com/apache/cassandra/blob/cassandra-2.0.9/src/java/org/apache/cassandra/db/commitlog/CommitLogAllocator.java, the stack trace at startup is:
+DEBUG 21:16:54,716 Creating new commit log segment /var/lib/cassandra/commitlog/CommitLog-3-1435007814714.log
+FSWriteError in /var/lib/cassandra/commitlog/CommitLog-3-1435007814714.log
+at org.apache.cassandra.db.commitlog.CommitLogSegment.<init>(CommitLogSegment.java:143)
+at org.apache.cassandra.db.commitlog.CommitLogSegment.freshSegment(CommitLogSegment.java:90)
+at org.apache.cassandra.db.commitlog.CommitLogAllocator.createFreshSegment(CommitLogAllocator.java:263)
+at org.apache.cassandra.db.commitlog.CommitLogAllocator.access$500(CommitLogAllocator.java:50)
+at org.apache.cassandra.db.commitlog.CommitLogAllocator$1.runMayThrow(CommitLogAllocator.java:109)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+at java.lang.Thread.run(Thread.java:745)
+Caused by: java.io.IOException: Invalid argument
+at sun.nio.ch.FileChannelImpl.map0(Native Method)
+at sun.nio.ch.FileChannelImpl.map(FileChannelImpl.java:893)
+at org.apache.cassandra.db.commitlog.CommitLogSegment.<init>(CommitLogSegment.java:133)
+... 6 more
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/Local Write-Read Paths
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Stefania
+Reporter:
+Kevin McLaughlin
+Create date:
+22/Jun/15 22:01
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Jul/15 14:24

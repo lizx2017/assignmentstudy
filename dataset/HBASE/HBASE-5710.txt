@@ -1,0 +1,61 @@
+Summary:
+NPE in MiniCluster during metadata scan for a pre-split table with multiple column families
+Description:
+In the MiniCluster test environment, an NPE occurs while scanning regions
+of a pre-split table with multiple column families. Without this working
+in the test environment, you cannot write unit tests for these types of
+scenarios.
+Add the following to TestMetaScanner to repro:
+@Test
+public void testMultiFamilyMultiRegionMetaScanner() throws Exception {
+LOG.info("Starting testMetaScanner");
+final byte[] TABLENAME = Bytes.toBytes("testMetaScanner");
+final byte[] FAMILY1 = Bytes.toBytes("family1");
+final byte[] FAMILY2 = Bytes.toBytes("family2");
+TEST_UTIL.createTable(TABLENAME, new byte[][]
+{FAMILY1,FAMILY2}
+);
+Configuration conf = TEST_UTIL.getConfiguration();
+HTable table = new HTable(conf, TABLENAME);
+TEST_UTIL.createMultiRegions(conf, table, FAMILY1,
+new byte[][]
+{ HConstants.EMPTY_START_ROW, Bytes.toBytes("region_a"), Bytes.toBytes("region_b")}
+);
+TEST_UTIL.createMultiRegions(conf, table, FAMILY2,
+new byte[][]
+{ HConstants.EMPTY_START_ROW, Bytes.toBytes("region_a"), Bytes.toBytes("region_b")}
+);
+// Make sure all the regions are deployed
+TEST_UTIL.countRows(table);
+// This fails with an NPE currently
+MetaScanner.allTableRegions(conf, TABLENAME, false).keySet();
+table.close();
+}
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Not A Problem
+Affects_version:
+0.94.0
+Fix_version:
+None
+Component:
+test, util
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+James Taylor
+Create date:
+04/Apr/12 01:04
+Update date:
+11/Apr/15 01:25
+Resolved date:
+11/Apr/15 01:25

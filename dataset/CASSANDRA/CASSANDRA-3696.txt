@@ -1,0 +1,61 @@
+Summary:
+Adding another datacenter's node results in 0 rows returned on first datacenter
+Description:
+On Cassandra-1.0.5:
+1. Create a node in C* with a fresh installation and create a keyspace on that node with one column family -
+CREATE KEYSPACE test
+WITH placement_strategy = 'SimpleStrategy'
+and strategy_options=
+{replication_factor:1}
+;
+use test;
+create column family cf1;
+2. Insert values into cf1 -
+set cf1[ascii('k')][ascii('c')] = ascii('v');
+get cf1[ascii('k')];
+=> (column=63, value=v, timestamp=1325689630397000)
+Returned 1 results.
+3. update the strategy options from simple to networktopology with
+{Cassandra:1, Backup:1}
+
+4. read from cf1 to make sure the options change doesn't affect anything -
+consistencylevel as LOCAL_QUORUM;
+get cf1[ascii('k')];
+=> (column=63, value=v, timestamp=1325689630397000)
+Returned 1 results.
+5. start a second node in the Backup datacenter
+6. read from cf1 again (on the first node) -
+consistencylevel as LOCAL_QUORUM;
+get cf1[ascii('k')];
+Returned 0 results.
+After about 60 seconds, "get cf1[ascii('k')]" started to return results again.
+Also, when running at a CL of ONE on 1.0's head, we were able to see issues as well.
+But, if more than one node was added to the second datacenter, then replication_strategy is changed, it seems okay.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.10, 1.0.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Joaquin Casares
+Create date:
+04/Jan/12 19:02
+Update date:
+16/Apr/19 09:32
+Resolved date:
+05/Jan/12 22:42

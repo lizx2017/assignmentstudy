@@ -1,0 +1,66 @@
+Summary:
+Commit logs are not removed after nodetool flush or nodetool drain
+Description:
+Commit logs are not removed after nodetool flush or nodetool drain. This can lead to unnecessary commit log replay during startup. I've reproduced this on Apache Cassandra 1.2.8. Usually this isn't much of an issue but on a Solr-indexed column family in DSE, each replayed mutation has to be reindexed which can make startup take a long time (on the order of 20-30 min).
+Reproduction follows:
+jblangston:bin jblangston$ ./cassandra > /dev/null
+jblangston:bin jblangston$ ../tools/bin/cassandra-stress -n 20000000 > /dev/null
+jblangston:bin jblangston$ du -h ../commitlog
+576M ../commitlog
+jblangston:bin jblangston$ nodetool flush
+jblangston:bin jblangston$ du -h ../commitlog
+576M ../commitlog
+jblangston:bin jblangston$ nodetool drain
+jblangston:bin jblangston$ du -h ../commitlog
+576M ../commitlog
+jblangston:bin jblangston$ pkill java
+jblangston:bin jblangston$ du -h ../commitlog
+576M ../commitlog
+jblangston:bin jblangston$ ./cassandra -f | grep Replaying
+ INFO 10:03:42,915 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566761.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566762.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566763.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566764.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566765.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566766.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566767.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566768.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566769.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566770.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566771.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566772.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566773.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566774.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566775.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566776.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566777.log, /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566778.log
+ INFO 10:03:42,922 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566761.log
+ INFO 10:03:43,907 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566762.log
+ INFO 10:03:43,907 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566763.log
+ INFO 10:03:43,907 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566764.log
+ INFO 10:03:43,908 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566765.log
+ INFO 10:03:43,908 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566766.log
+ INFO 10:03:43,908 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566767.log
+ INFO 10:03:43,909 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566768.log
+ INFO 10:03:43,909 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566769.log
+ INFO 10:03:43,909 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566770.log
+ INFO 10:03:43,910 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566771.log
+ INFO 10:03:43,910 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566772.log
+ INFO 10:03:43,911 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566773.log
+ INFO 10:03:43,911 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566774.log
+ INFO 10:03:43,911 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566775.log
+ INFO 10:03:43,912 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566776.log
+ INFO 10:03:43,912 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566777.log
+ INFO 10:03:43,912 Replaying /opt/apache-cassandra-1.2.8/commitlog/CommitLog-2-1377096566778.log
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Vijay
+Reporter:
+J.B. Langston
+Create date:
+21/Aug/13 15:08
+Update date:
+16/Apr/19 09:32
+Resolved date:
+19/Dec/13 23:35

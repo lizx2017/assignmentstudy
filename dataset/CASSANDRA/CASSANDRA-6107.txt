@@ -1,0 +1,42 @@
+Summary:
+CQL3 Batch statement memory leak
+Description:
+We are doing large volume insert/update tests on a CASS via CQL3.
+Using 4GB heap, after roughly 750,000 updates create/update 75,000 row keys, we run out of heap, and it never dissipates, and we begin getting this infamous error which many people seem to be encountering:
+WARN [ScheduledTasks:1] 2013-09-26 16:17:10,752 GCInspector.java (line 142) Heap is 0.9383457210434385 full. You may need to reduce memtable and/or cache sizes. Cassandra will now flush up to the two largest memtables to free up memory. Adjust flush_largest_memtables_at threshold in cassandra.yaml if you don't want Cassandra to do this automatically
+INFO [ScheduledTasks:1] 2013-09-26 16:17:10,753 StorageService.java (line 3614) Unable to reduce heap usage since there are no dirty column families
+8 and 12 GB heaps appear to delay the problem by roughly proportionate amounts of 75,000 - 100,000 rowkeys per 4GB. Each run of 50,000 row key creations sees the heap grow and never shrink again.
+We have attempted to no effect:
+removing all secondary indexes to see if that alleviates overuse of bloom filters
+adjusted parameters for compaction throughput
+adjusted memtable flush thresholds and other parameters
+By examining heapdumps, it seems apparent that the problem is perpetual retention of CQL3 BATCH statements. We have even tried dropping the keyspaces after the updates and the CQL3 statement are still visible in the heapdump, and after many many many CMS GC runs. G1 also showed this issue.
+The 750,000 statements are broken into batches of roughly 200 statements.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.11
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+cass, mac os x
+Attachment number:
+0
+Assignee:
+Lyuben Todorov
+Reporter:
+Constance Eustace
+Create date:
+27/Sep/13 15:18
+Update date:
+16/Apr/19 09:32
+Resolved date:
+06/Oct/13 16:29

@@ -1,0 +1,47 @@
+Summary:
+Column names are not converted correctly for non-text comparators
+Description:
+If a column family is created with a non-text comparator through Thrift (or cassandra-cli) and column metadata is defined, those column names cannot be queried through cql3.
+For example:
+[default@ks1] create column family entity_data
+...   with column_type = 'Standard'
+...   and comparator = 'BytesType'
+...   and default_validation_class = 'BytesType'
+...   and key_validation_class = 'UTF8Type'
+...   and column_metadata = [
+...     {column_name : '0008',
+...     validation_class : UTF8Type,
+...     index_name : 'entity_data_0008_idx',
+...     index_type : 0}];
+When you attempt to query that column through cqlsh, you'll get an error like this:
+cqlsh:ks1> select "0008" FROM entity_data ;
+Bad Request: Undefined name 0008 in selection clause
+The problem is that we aren't taking the comparator type into account when converting column names in cql3 statements to their internal (ByteBuffer) representation.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.12, 2.1.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Tyler Hobbs
+Create date:
+23/Oct/14 20:04
+Update date:
+16/Apr/19 09:31
+Resolved date:
+04/Nov/14 23:28

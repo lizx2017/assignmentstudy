@@ -1,0 +1,108 @@
+Summary:
+BooleanQuery.rewrite doen't
+Description:
+(lucene 1.3-rc2)
+BooleanQuery.rewrite contains an optimization for single terms that seems to be
+missing a call to query.rewrite. The problem manifested for me when I had a
+single BooleanClause that contained a PrefixQuery. The fix seems to be a single
+line:
+P:\vipscan\src\org\apache\lucene\search>diff BooleanQuery.java D:\java\lucene-1.
+3-rc2\src\java\org\apache\lucene\search\BooleanQuery.java
+228c228
+< Query query = c.query.rewrite(reader);
+—
+> Query query = c.query;
+Here's the JUnit test case that probably should pass:
+package org.apache.lucene.search;
+import junit.framework.TestCase;
+import junit.framework.Test;
+import junit.framework.TestSuite;
+import junit.textui.TestRunner;
+import org.apache.lucene.store.RAMDirectory;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.analysis.WhitespaceAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.search.PrefixQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.BooleanQuery;
+import java.io.IOException;
+/**
+@author schnee
+@version $Id: BooleanPrefixQueryTest.java,v 1.1 2003/11/13 17:01:08 schnee Exp $
+**/
+public class BooleanPrefixQueryTest extends TestCase
+{
+public static final String cvsrevision = "$Revision: 1.1 $";
+public static void main(String[] args)
+{ TestRunner.run(suite()); }
+public static Test suite()
+{ return new TestSuite(BooleanPrefixQueryTest.class); }
+public BooleanPrefixQueryTest(String name)
+{ super(name); }
+public void testMethod()
+{
+RAMDirectory directory = new RAMDirectory();
+String[] categories = new String[]
+{"food", "foodanddrink", "foodanddrinkandgoodtimes", "food and drink"}
+;
+Query rw1 = null;
+Query rw2 = null;
+try
+{
+IndexWriter writer = new IndexWriter(directory, new
+WhitespaceAnalyzer(), true);
+for (int i = 0; i < categories.length; i++)
+{ Document doc = new Document(); doc.add(Field.Keyword("category", categories[i])); writer.addDocument(doc); }
+writer.close();
+IndexReader reader = IndexReader.open(directory);
+PrefixQuery query = new PrefixQuery(new Term("category", "foo"));
+rw1 = query.rewrite(reader);
+BooleanQuery bq = new BooleanQuery();
+add(query, true, false);
+rw2 = bq.rewrite(reader);
+}
+catch (IOException e)
+{ fail(e.getMessage()); }
+BooleanQuery bq1 = null;
+if (rw1 instanceof BooleanQuery)
+{ bq1 = (BooleanQuery) rw1; }
+BooleanQuery bq2 = null;
+if (rw2 instanceof BooleanQuery)
+{ bq2 = (BooleanQuery) rw2; }
+else
+{ fail("Rewrite"); }
+assertEquals("Number of Clauses Mismatch", bq1.getClauses().length,
+bq2.getClauses().length);
+}
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+bschneeman
+Create date:
+18/Nov/03 23:09
+Update date:
+02/Jun/11 22:04
+Resolved date:
+27/May/06 01:37

@@ -1,0 +1,88 @@
+Summary:
+NativeDragManagerImpl does not release drag initiator (and applicable view hierarchy) for garbage collection
+Description:
+Steps to reproduce:
+1. Run test application
+Main.mxml
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:local="*"
+xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:s="library://ns.adobe.com/flex/spark" width="800"
+height="600">
+<fx:Script>
+<![CDATA[
+protected function start_clickHandler(event:MouseEvent):void
+{ var element:ListGroup = new ListGroup(); this.panel.addElement(element); }
+protected function stop_clickHandler(event:MouseEvent):void
+{ this.panel.removeAllElements(); }
+]]
+>
+</fx:Script>
+<s:Panel id="panel" top="100" left="100" bottom="100" right="100" title="Drag Drop Test">
+<s:controlBarContent>
+<s:Button label="Start" click="start_clickHandler(event)" />
+<s:Button label="Clear" click="stop_clickHandler(event)" />
+</s:controlBarContent>
+</s:Panel>
+</s:WindowedApplication>
+ListGroup.mxml
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:mx="library://ns.adobe.com/flex/mx"
+xmlns:s="library://ns.adobe.com/flex/spark" width="100%" height="100%">
+<s:layout>
+<s:HorizontalLayout />
+</s:layout>
+<s:List id="sourceList" width="100%" height="100%" dragEnabled="true" dragMoveEnabled="true" dropEnabled="true">
+<s:dataProvider>
+<s:ArrayCollection>
+<fx:String>Item 1</fx:String>
+<fx:String>Item 2</fx:String>
+<fx:String>Item 3</fx:String>
+<fx:String>Item 4</fx:String>
+</s:ArrayCollection>
+</s:dataProvider>
+</s:List>
+<s:List id="targetList" width="100%" height="100%" dragEnabled="true" dragMoveEnabled="true" dropEnabled="true">
+</s:List>
+</s:Group>
+2. Drag any item to the list on the right and click the "Clear" button.
+Actual Results:
+ListGroup is never freed from memory.
+Expected Results:
+ListGroup should eventually garbage collect. Normally this is not a big deal, but if ListGroup was instead a bulky View in a mobile app... you get the idea...
+Workaround (if any):
+Monkey patch NativeDragManagerImpl found in the airframework project.
+public function endDrag():void
+{
+//...[original code goes here]...
+_relatedObject = null;
+_dragInitiator = null;
+_dragImage = null;
+}
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.6 (
+Fix_version:
+None
+Component:
+Drag and Drop
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+19/Oct/11 13:50
+Update date:
+09/Dec/11 13:12
+Resolved date:
+

@@ -1,0 +1,45 @@
+Summary:
+Bad timing in repair can transfer data it is not suppose to
+Description:
+The core of the problem is that the sstables used to construct a merkle tree are not necessarily the same than the ones for which streaming is initiated. This is usually not a big deal: newly compacted sstables don't matter since data hasn't change. Newly flushed data (between the start of the validation compaction and the start of the streaming) are a little bit more problematic, even though one could argue that on average this won't be not too much data.
+But there can be more problematic scenario: suppose a 3 nodes cluster with RF=3, all the data on node3 is removed and then repair is started on node3. Also suppose the cluster havs two CFs, cf1 and cf2, sharing evenly the data.
+Node3 will request the usual merkle trees and let's pretend validation compaction is mono-threaded to simplify.
+What can happen is the following:
+node3 computes its merkle trees for all requests very quickly, having no data. It will thus wait on the other nodes trees (his own trees saying "I have no data").
+node1 starts computing its tree for say cf1 (queuing the computation for cf2). In the meantime, node2 may start computing the tree for cf2 (queuing the one for cf1).
+when node1 completes his first tree, it sends it to node3. Node3 receives it, compare to his own tree and initiate transfer of all the data for cf1 from node1 to him.
+not too long after that, node2 completes it's first tree, the one for cf2 and send it to node3. Based on it, transfer of all the data for cf2 from node2 to node3 starts.
+An arbitrary long time after that (compaction validation can take time), node2 will finish his second tree (for cf1 that is and send it back to node3. Node3 will compare to his own (empty) tree and decide that all the ranges should be repaired with node2 for cf1. The problem is that when that happens, the transfer of cf1 from node1 may have been done already, or at least partly done. For that reason, node3 will start streaming all this data to node2.
+For the same reasons, node3 may end up transfering all or part of cf2 to node1.
+So the problem is, even though at the beginning node1 and node2 may be perfectly consistent, we will end up streaming potentially huge amount of data to them.
+I think this affects both 0.7 and 0.8, though differently because compaction multi-threading and the fact that 0.8 differentiates the ranges make the timing different.
+One solution (in a way, the theoretically right solution) would be to grab references to the sstables we use for the validation compaction, and only initiate streaming on these sstables. However, in 0.8 where compaction is multi-threaded, this would mean retaining compacted sstables longer that necessary. This is also a bit complicated and in particular would require a network protocol change (because a streaming request message would have to contain some information allowing to decide what set of sstables to use).
+A maybe simpler solution could be to have the node coordinating the repair wait for the tree of all the remotes (in this obviously only for a given column family and range) before starting streaming.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+0.8.2
+Component:
+None
+Label:
+repair
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+23/Jun/11 07:53
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Jun/11 14:05

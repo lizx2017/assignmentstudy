@@ -1,0 +1,43 @@
+Summary:
+Splitting hlog and opening region concurrently may cause data loss
+Description:
+Case Description:
+1.Split hlog thread creat writer for the file region A/recoverd.edits/123456 and is appending log entry
+2.Regionserver is opening region A now, and in the process replayRecoveredEditsIfAny() ,it will delete the file region A/recoverd.edits/123456
+3.Split hlog thread catches the io exception, and stop parse this log file
+and if skipError = true , add it to the corrupt logs....However, data in other regions in this log file will loss
+4.Or if skipError = false, it will check filesystem.Of course, the file system is ok , and it only prints a error log, continue assigning regions. Therefore, data in other log files will also loss!!
+The case may happen in the following:
+1.Move region from server A to server B
+2.kill server A and Server B
+3.restart server A and Server B
+We could prevent this exception throuth forbiding deleting recover.edits file
+which is appending by split hlog thread
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.90.2
+Fix_version:
+0.90.5, 0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+24/Nov/11 06:46
+Update date:
+20/Nov/15 11:53
+Resolved date:
+28/Nov/11 22:00

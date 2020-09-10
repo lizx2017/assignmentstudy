@@ -1,0 +1,86 @@
+Summary:
+HBase VerifyReplication not working when security enabled
+Description:
+When security is enabled, HBase VerifyReplication fails for two reasons:
+1.MapReduce do not have the auth to read the replication paths "/hbase/replication/*" on ZK;
+2.VerifyReplication does not get the token for slave cluster, it's different from HBASE-7442, this VerifyReplication does not have the output.
+WARN [main] org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation: RemoteException connecting to RS
+javax.security.sasl.SaslException: DIGEST-MD5: digest response format violation. Mismatched response.
+   at org.apache.hadoop.hbase.security.HBaseSaslRpcClient.readStatus(HBaseSaslRpcClient.java:112)
+   at org.apache.hadoop.hbase.security.HBaseSaslRpcClient.saslConnect(HBaseSaslRpcClient.java:174)
+   at org.apache.hadoop.hbase.ipc.SecureClient$SecureConnection.setupSaslConnection(SecureClient.java:177)
+   at org.apache.hadoop.hbase.ipc.SecureClient$SecureConnection.access$500(SecureClient.java:85)
+   at org.apache.hadoop.hbase.ipc.SecureClient$SecureConnection$2.run(SecureClient.java:284)
+   at org.apache.hadoop.hbase.ipc.SecureClient$SecureConnection$2.run(SecureClient.java:281)
+   at java.security.AccessController.doPrivileged(Native Method)
+   at javax.security.auth.Subject.doAs(Subject.java:396)
+   at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1232)
+   at sun.reflect.GeneratedMethodAccessor3.invoke(Unknown Source)
+   at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+   at java.lang.reflect.Method.invoke(Method.java:597)
+   at org.apache.hadoop.hbase.util.Methods.call(Methods.java:37)
+   at org.apache.hadoop.hbase.security.User.call(User.java:586)
+   at org.apache.hadoop.hbase.security.User.access$700(User.java:50)
+   at org.apache.hadoop.hbase.security.User$SecureHadoopUser.runAs(User.java:440)
+   at org.apache.hadoop.hbase.ipc.SecureClient$SecureConnection.setupIOstreams(SecureClient.java:280)
+   at org.apache.hadoop.hbase.ipc.HBaseClient.getConnection(HBaseClient.java:1150)
+   at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:1000)
+   at org.apache.hadoop.hbase.ipc.SecureRpcEngine$Invoker.invoke(SecureRpcEngine.java:164)
+   at $Proxy13.getProtocolVersion(Unknown Source)
+   at org.apache.hadoop.hbase.ipc.SecureRpcEngine.getProxy(SecureRpcEngine.java:208)
+   at org.apache.hadoop.hbase.ipc.HBaseRPC.getProxy(HBaseRPC.java:335)
+   at org.apache.hadoop.hbase.ipc.HBaseRPC.getProxy(HBaseRPC.java:312)
+   at org.apache.hadoop.hbase.ipc.HBaseRPC.getProxy(HBaseRPC.java:364)
+   at org.apache.hadoop.hbase.ipc.HBaseRPC.waitForProxy(HBaseRPC.java:236)
+   at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getHRegionConnection(HConnectionManager.java:1313)
+   at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getHRegionConnection(HConnectionManager.java:1269)
+   at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getHRegionConnection(HConnectionManager.java:1256)
+   at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:965)
+   at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:860)
+   at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:962)
+   at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:864)
+   at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:821)
+   at org.apache.hadoop.hbase.client.HTable.finishSetup(HTable.java:234)
+   at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:174)
+   at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:133)
+   at org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication$Verifier$1.connect(VerifyReplication.java:117)
+   at org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication$Verifier$1.connect(VerifyReplication.java:110)
+   at org.apache.hadoop.hbase.client.HConnectionManager.execute(HConnectionManager.java:360)
+   at org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication$Verifier.map(VerifyReplication.java:110)
+   at org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication$Verifier.map(VerifyReplication.java:74)
+   at org.apache.hadoop.mapreduce.Mapper.run(Mapper.java:144)
+   at org.apache.hadoop.mapred.MapTask.runNewMapper(MapTask.java:726)
+   at org.apache.hadoop.mapred.MapTask.run(MapTask.java:333)
+   at org.apache.hadoop.mapred.YarnChild$2.run(YarnChild.java:154)
+   at java.security.AccessController.doPrivileged(Native Method)
+   at javax.security.auth.Subject.doAs(Subject.java:396)
+   at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1232)
+   at org.apache.hadoop.mapred.YarnChild.main(YarnChild.java:149)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.94.5, 0.99.0, (1)
+Fix_version:
+0.98.0, 0.96.2, 0.99.0, (1)
+Component:
+Replication, security
+Label:
+None
+Environment:
+Security is enabled on both clusters and all principals are in the same realm.
+Attachment number:
+0
+Assignee:
+Matteo Bertozzi
+Reporter:
+Water Chow
+Create date:
+28/Feb/13 08:12
+Update date:
+26/Feb/14 04:45
+Resolved date:
+03/Feb/14 22:25

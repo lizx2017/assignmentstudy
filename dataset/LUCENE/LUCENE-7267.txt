@@ -1,0 +1,41 @@
+Summary:
+Field with an explicit TokenStream must be tokenized and then uses the default Analyzer offset gaps
+Description:
+This took me somewhat by surprise. We have a pretty complex code that uses fields with explicit token streams (which provide their own offset data) and multivalues.
+It was surprising to see that offsets for subsequent values were shifted by 1 compared to what was explicitly provided in the OffsetAttribute. A bit of debugging showed this code inside PerField.invert:
+      if (analyzed) {
+        invertState.position += docState.analyzer.getPositionIncrementGap(fieldInfo.name);
+        invertState.offset += docState.analyzer.getOffsetGap(fieldInfo.name);
+      }
+A field with an explicit token stream must still be declared as tokenized and PerField then thinks that this field must have come from an analyzer (where in fact it didn't):
+      final boolean analyzed = fieldType.tokenized() && docState.analyzer != null;
+While the default position increment is 0, the default offset gap isn't – it's 1, causing the shift.
+Thoughts?
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Dawid Weiss
+Create date:
+29/Apr/16 18:44
+Update date:
+02/May/16 04:22
+Resolved date:
+

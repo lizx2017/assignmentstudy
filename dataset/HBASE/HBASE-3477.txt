@@ -1,0 +1,63 @@
+Summary:
+Filter for deprecated mapred APIs doesn't work when the table has few rows
+Description:
+It seems that the filters will not be invoke when there are only a few data in the table.
+I added some logs to the org.apache.hadoop.hbase.filte. PrefixFilter, and has a MyInputFormat extends hbase.mapred.TableInputFormat, the deprecated mapred APIs.
+The log added to PrefixFilter
+ 
+  public boolean filterRowKey(byte[] buffer, int offset, int length) {
+    log.info("TODO: filterRowKey invoked");
+    if (buffer == null || this.prefix == null) {
+        log.info("TODO: #1 of filter");
+      return true;
+    }
+    if (length < prefix.length) {
+   ...
+  }
+This is the code in my InputFormat's configure method.
+ 
+byte[] prefix = Bytes.toBytes("001");
+Filter filter = new PrefixFilter(prefix);
+setRowFilter(filter);
+And the job setup code.
+ 
+job.setInputFormat(MyInputFormat.class);
+FileInputFormat.addInputPaths(job, "my_table_in_hbase");
+job.set(TableInputFormat.COLUMN_LIST, "data:");
+When I put lots of data (> 500,000) in the table, the filter works well, but when I put only a few data (<100) in the table, it seems that the filter will not be invoked, and the log in the filter has no output either.
+This is the log output when lots of data in the table
+ 
+2011-01-25 16:43:59,568 INFO org.apache.hadoop.hbase.filter.PrefixFilter: TODO: default constructor
+2011-01-25 16:44:01,728 INFO org.apache.hadoop.hbase.filter.PrefixFilter: TODO: filterRowKey invoked
+2011-01-25 16:44:01,728 INFO org.apache.hadoop.hbase.filter.PrefixFilter: TODO: #3 of filter
+2011-01-25 16:44:01,728 INFO org.apache.hadoop.hbase.filter.PrefixFilter: TODO: filterAllRemaining invoked
+2011-01-25 16:44:01,729 INFO org.apache.hadoop.hbase.filter.PrefixFilter: TODO: filterAllRemaining invoked
+2011-01-25 16:44:01,729 INFO org.apache.hadoop.hbase.filter.PrefixFilter: TODO: filterAllRemaining invoked
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.90.0
+Fix_version:
+None
+Component:
+Filters
+Label:
+None
+Environment:
+debian
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Yifeng Jiang
+Create date:
+25/Jan/11 10:38
+Update date:
+19/Jul/14 01:07
+Resolved date:
+19/Jul/14 01:07

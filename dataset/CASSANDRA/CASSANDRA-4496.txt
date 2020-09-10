@@ -1,0 +1,217 @@
+Summary:
+NPE on creating secondary index
+Description:
+The following code has been working fine up to and including 1.0.x
+public static String createIndexedColumnFamily(String cf){
+Cluster cluster = HectorConfig.cluster;
+ComparatorType ctName = ComparatorType.getByClassName(JNameComparator.class.getName());
+try
+{ cluster.dropColumnFamily(HectorConfig.dfltKeyspaceName, cf ); }
+catch (Exception e){}
+List<ColumnDefinition> cdL = new ArrayList<ColumnDefinition>();
+BasicColumnDefinition cd;
+cd = new BasicColumnDefinition();
+cd.setName(ss.toByteBuffer("id"));
+cd.setIndexName("id");
+cd.setIndexType(ColumnIndexType.KEYS);
+cd.setValidationClass(JValueComparator.class.getName());
+cdL.add(cd);
+ThriftCfDef cfd= new ThriftCfDef(HectorConfig.dfltKeyspaceName, cf, ctName, cdL);
+cfd.setKeyValidationClass(ComparatorType.UTF8TYPE.getClassName());
+cfd.setDefaultValidationClass(JValueComparator.class.getName());
+cluster.addColumnFamily(cfd);
+return "created: " + cf;
+}
+}
+I'm inclined to exclude the presence of the custom comparator since:
+(1) there is no issue using it if the cf doesn't have a secondary index
+(2) the stack trace (see below) doesn't include the comparator
+The above code throws the following error in Cassandra 1.1.2 and 1.1.3
+david@vlap1:~/opt/cassandra$ sudo bin/cassandra -f
+xss = -ea -javaagent:/usr/share/cassandra/lib/jamm-0.2.5.jar -XX:+UseThreadPriorities -XX:ThreadPriorityPolicy=42 -Xms128M -Xmx128M -Xmn32M -XX:+HeapDumpOnOutOfMemoryError -Xss160k
+INFO 23:15:31,333 Logging initialized
+INFO 23:15:31,337 JVM vendor/version: Java HotSpot(TM) 64-Bit Server VM/1.7.0
+INFO 23:15:31,338 Heap size: 130875392/130875392
+INFO 23:15:31,338 Classpath: /etc/cassandra:/usr/share/cassandra/lib/antlr-3.2.jar:/usr/share/cassandra/lib/avro-1.4.0-fixes.jar:/usr/share/cassandra/lib/avro-1.4.0-sources-fixes.jar:/usr/share/cassandra/lib/commons-cli-1.1.jar:/usr/share/cassandra/lib/commons-codec-1.2.jar:/usr/share/cassandra/lib/commons-lang-2.4.jar:/usr/share/cassandra/lib/compress-lzf-0.8.4.jar:/usr/share/cassandra/lib/concurrentlinkedhashmap-lru-1.3.jar:/usr/share/cassandra/lib/guava-r08.jar:/usr/share/cassandra/lib/hector-core-1.0-3.jar:/usr/share/cassandra/lib/high-scale-lib-1.1.2.jar:/usr/share/cassandra/lib/jackson-core-asl-1.9.2.jar:/usr/share/cassandra/lib/jackson-mapper-asl-1.9.2.jar:/usr/share/cassandra/lib/jamm-0.2.5.jar:/usr/share/cassandra/lib/jellyfish.jar:/usr/share/cassandra/lib/jline-0.9.94.jar:/usr/share/cassandra/lib/json-simple-1.1.jar:/usr/share/cassandra/lib/libthrift-0.7.0.jar:/usr/share/cassandra/lib/log4j-1.2.16.jar:/usr/share/cassandra/lib/metrics-core-2.0.3.jar:/usr/share/cassandra/lib/servlet-api-2.5-20081211.jar:/usr/share/cassandra/lib/slf4j-api-1.6.1.jar:/usr/share/cassandra/lib/slf4j-log4j12-1.6.1.jar:/usr/share/cassandra/lib/snakeyaml-1.6.jar:/usr/share/cassandra/lib/snappy-java-1.0.4.1.jar:/usr/share/cassandra/lib/snaptree-0.1.jar:/usr/share/cassandra/apache-cassandra-1.1.2.jar:/usr/share/cassandra/apache-cassandra-thrift-1.1.2.jar:/usr/share/cassandra/apache-cassandra.jar:/usr/share/cassandra/stress.jar:/usr/share/cassandra/lib/jamm-0.2.5.jar
+INFO 23:15:31,340 JNA not found. Native methods will be disabled.
+INFO 23:15:31,351 Loading settings from file:/etc/cassandra/cassandra.yaml
+INFO 23:15:31,566 DiskAccessMode 'auto' determined to be mmap, indexAccessMode is mmap
+INFO 23:15:31,875 Global memtable threshold is enabled at 41MB
+INFO 23:15:32,380 Initializing key cache with capacity of 6 MBs.
+INFO 23:15:32,394 Scheduling key cache save to each 14400 seconds (going to save all keys).
+INFO 23:15:32,395 Initializing row cache with capacity of 0 MBs and provider org.apache.cassandra.cache.SerializingCacheProvider
+INFO 23:15:32,400 Scheduling row cache save to each 0 seconds (going to save all keys).
+INFO 23:15:32,661 Couldn't detect any schema definitions in local storage.
+INFO 23:15:32,665 Found table data in data directories. Consider using the CLI to define your schema.
+INFO 23:15:32,714 No commitlog files found; skipping replay
+INFO 23:15:32,740 Cassandra version: 1.1.2
+INFO 23:15:32,754 Thrift API version: 19.32.0
+INFO 23:15:32,763 CQL supported versions: 2.0.0,3.0.0-beta1 (default: 2.0.0)
+INFO 23:15:32,803 Loading persisted ring state
+INFO 23:15:32,807 Starting up server gossip
+INFO 23:15:32,821 Enqueuing flush of Memtable-LocationInfo@1473831778(163/203 serialized/live bytes, 3 ops)
+INFO 23:15:32,822 Writing Memtable-LocationInfo@1473831778(163/203 serialized/live bytes, 3 ops)
+INFO 23:15:33,072 Completed flushing /var/lib/cassandra/data/system/LocationInfo/system-LocationInfo-hd-1-Data.db (235 bytes) for commitlog position ReplayPosition(segmentId=126105713813993, position=587)
+INFO 23:15:33,094 Starting Messaging Service on port 7000
+INFO 23:15:33,102 This node will not auto bootstrap because it is configured to be a seed node.
+WARN 23:15:33,112 Generated random token 73932790073580646673058527716402832414. Random tokens will result in an unbalanced ring; see http://wiki.apache.org/cassandra/Operations
+INFO 23:15:33,160 Enqueuing flush of Memtable-LocationInfo@248801290(77/96 serialized/live bytes, 2 ops)
+INFO 23:15:33,161 Writing Memtable-LocationInfo@248801290(77/96 serialized/live bytes, 2 ops)
+INFO 23:15:33,364 Completed flushing /var/lib/cassandra/data/system/LocationInfo/system-LocationInfo-hd-2-Data.db (163 bytes) for commitlog position ReplayPosition(segmentId=126105713813993, position=768)
+INFO 23:15:33,366 Node vlap1/127.0.1.1 state jump to normal
+INFO 23:15:33,367 Bootstrap/Replace/Move completed! Now serving reads.
+INFO 23:15:33,368 Will not load MX4J, mx4j-tools.jar is not in the classpath
+INFO 23:15:33,408 Binding thrift service to vlap1/127.0.1.1:9160
+INFO 23:15:33,429 Using TFastFramedTransport with a max frame size of 15728640 bytes.
+INFO 23:15:33,432 Using synchronous/threadpool thrift server on vlap1/127.0.1.1 : 9160
+INFO 23:15:33,433 Listening for thrift clients...
+INFO 23:16:16,665 Enqueuing flush of Memtable-schema_keyspaces@1373026871(199/248 serialized/live bytes, 4 ops)
+INFO 23:16:16,665 Writing Memtable-schema_keyspaces@1373026871(199/248 serialized/live bytes, 4 ops)
+INFO 23:16:16,944 Completed flushing /var/lib/cassandra/data/system/schema_keyspaces/system-schema_keyspaces-hd-1-Data.db (246 bytes) for commitlog position ReplayPosition(segmentId=126105713813993, position=1023)
+INFO 23:16:33,592 Enqueuing flush of Memtable-schema_columnfamilies@341129413(1202/1502 serialized/live bytes, 20 ops)
+INFO 23:16:33,592 Writing Memtable-schema_columnfamilies@341129413(1202/1502 serialized/live bytes, 20 ops)
+INFO 23:16:33,900 Completed flushing /var/lib/cassandra/data/system/schema_columnfamilies/system-schema_columnfamilies-hd-1-Data.db (1257 bytes) for commitlog position ReplayPosition(segmentId=126105713813993, position=2577)
+INFO 23:16:33,900 Enqueuing flush of Memtable-schema_columns@43094749(283/353 serialized/live bytes, 5 ops)
+INFO 23:16:33,901 Writing Memtable-schema_columns@43094749(283/353 serialized/live bytes, 5 ops)
+INFO 23:16:34,101 Completed flushing /var/lib/cassandra/data/system/schema_columns/system-schema_columns-hd-1-Data.db (330 bytes) for commitlog position ReplayPosition(segmentId=126105713813993, position=2577)
+ERROR 23:16:34,132 Error occurred during processing of message.
+java.lang.RuntimeException: java.util.concurrent.ExecutionException: java.lang.NullPointerException
+at org.apache.cassandra.utils.FBUtilities.waitOnFuture(FBUtilities.java:373)
+at org.apache.cassandra.service.MigrationManager.announce(MigrationManager.java:188)
+at org.apache.cassandra.service.MigrationManager.announceNewColumnFamily(MigrationManager.java:139)
+at org.apache.cassandra.thrift.CassandraServer.system_add_column_family(CassandraServer.java:926)
+at org.apache.cassandra.thrift.Cassandra$Processor$system_add_column_family.getResult(Cassandra.java:3410)
+at org.apache.cassandra.thrift.Cassandra$Processor$system_add_column_family.getResult(Cassandra.java:3398)
+at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:186)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:722)
+Caused by: java.util.concurrent.ExecutionException: java.lang.NullPointerException
+at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:252)
+at java.util.concurrent.FutureTask.get(FutureTask.java:111)
+at org.apache.cassandra.utils.FBUtilities.waitOnFuture(FBUtilities.java:369)
+... 11 more
+Caused by: java.lang.NullPointerException
+at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:167)
+at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:124)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.getString(JdbcUTF8.java:77)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.compose(JdbcUTF8.java:97)
+at org.apache.cassandra.db.marshal.UTF8Type.compose(UTF8Type.java:35)
+at org.apache.cassandra.cql3.UntypedResultSet$Row.getString(UntypedResultSet.java:87)
+at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:256)
+at org.apache.cassandra.config.CFMetaData.addColumnDefinitionSchema(CFMetaData.java:1293)
+at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1225)
+at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:294)
+at org.apache.cassandra.db.DefsTable.mergeColumnFamilies(DefsTable.java:359)
+at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:271)
+at org.apache.cassandra.service.MigrationManager$1.call(MigrationManager.java:211)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:334)
+at java.util.concurrent.FutureTask.run(FutureTask.java:166)
+... 3 more
+ERROR 23:16:34,140 Exception in thread Thread[MigrationStage:1,5,main]
+java.lang.NullPointerException
+at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:167)
+at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:124)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.getString(JdbcUTF8.java:77)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.compose(JdbcUTF8.java:97)
+at org.apache.cassandra.db.marshal.UTF8Type.compose(UTF8Type.java:35)
+at org.apache.cassandra.cql3.UntypedResultSet$Row.getString(UntypedResultSet.java:87)
+at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:256)
+at org.apache.cassandra.config.CFMetaData.addColumnDefinitionSchema(CFMetaData.java:1293)
+at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1225)
+at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:294)
+at org.apache.cassandra.db.DefsTable.mergeColumnFamilies(DefsTable.java:359)
+at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:271)
+at org.apache.cassandra.service.MigrationManager$1.call(MigrationManager.java:211)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:334)
+at java.util.concurrent.FutureTask.run(FutureTask.java:166)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:722)
+Upon a restart of the server another NPE is thrown:
+david@vlap1:~/opt/cassandra$ sudo bin/cassandra -f
+xss = -ea -javaagent:/usr/share/cassandra/lib/jamm-0.2.5.jar -XX:+UseThreadPriorities -XX:ThreadPriorityPolicy=42 -Xms128M -Xmx128M -Xmn32M -XX:+HeapDumpOnOutOfMemoryError -Xss160k
+INFO 23:17:51,158 Logging initialized
+INFO 23:17:51,163 JVM vendor/version: Java HotSpot(TM) 64-Bit Server VM/1.7.0
+INFO 23:17:51,163 Heap size: 130875392/130875392
+INFO 23:17:51,163 Classpath: /etc/cassandra:/usr/share/cassandra/lib/antlr-3.2.jar:/usr/share/cassandra/lib/avro-1.4.0-fixes.jar:/usr/share/cassandra/lib/avro-1.4.0-sources-fixes.jar:/usr/share/cassandra/lib/commons-cli-1.1.jar:/usr/share/cassandra/lib/commons-codec-1.2.jar:/usr/share/cassandra/lib/commons-lang-2.4.jar:/usr/share/cassandra/lib/compress-lzf-0.8.4.jar:/usr/share/cassandra/lib/concurrentlinkedhashmap-lru-1.3.jar:/usr/share/cassandra/lib/guava-r08.jar:/usr/share/cassandra/lib/hector-core-1.0-3.jar:/usr/share/cassandra/lib/high-scale-lib-1.1.2.jar:/usr/share/cassandra/lib/jackson-core-asl-1.9.2.jar:/usr/share/cassandra/lib/jackson-mapper-asl-1.9.2.jar:/usr/share/cassandra/lib/jamm-0.2.5.jar:/usr/share/cassandra/lib/jellyfish.jar:/usr/share/cassandra/lib/jline-0.9.94.jar:/usr/share/cassandra/lib/json-simple-1.1.jar:/usr/share/cassandra/lib/libthrift-0.7.0.jar:/usr/share/cassandra/lib/log4j-1.2.16.jar:/usr/share/cassandra/lib/metrics-core-2.0.3.jar:/usr/share/cassandra/lib/servlet-api-2.5-20081211.jar:/usr/share/cassandra/lib/slf4j-api-1.6.1.jar:/usr/share/cassandra/lib/slf4j-log4j12-1.6.1.jar:/usr/share/cassandra/lib/snakeyaml-1.6.jar:/usr/share/cassandra/lib/snappy-java-1.0.4.1.jar:/usr/share/cassandra/lib/snaptree-0.1.jar:/usr/share/cassandra/apache-cassandra-1.1.2.jar:/usr/share/cassandra/apache-cassandra-thrift-1.1.2.jar:/usr/share/cassandra/apache-cassandra.jar:/usr/share/cassandra/stress.jar:/usr/share/cassandra/lib/jamm-0.2.5.jar
+INFO 23:17:51,165 JNA not found. Native methods will be disabled.
+INFO 23:17:51,187 Loading settings from file:/etc/cassandra/cassandra.yaml
+INFO 23:17:51,416 DiskAccessMode 'auto' determined to be mmap, indexAccessMode is mmap
+INFO 23:17:51,713 Global memtable threshold is enabled at 41MB
+INFO 23:17:52,131 Initializing key cache with capacity of 6 MBs.
+INFO 23:17:52,142 Scheduling key cache save to each 14400 seconds (going to save all keys).
+INFO 23:17:52,143 Initializing row cache with capacity of 0 MBs and provider org.apache.cassandra.cache.SerializingCacheProvider
+INFO 23:17:52,148 Scheduling row cache save to each 0 seconds (going to save all keys).
+INFO 23:17:52,239 Opening /var/lib/cassandra/data/system/schema_columnfamilies/system-schema_columnfamilies-hd-1 (1257 bytes)
+INFO 23:17:52,272 Opening /var/lib/cassandra/data/system/schema_columns/system-schema_columns-hd-1 (330 bytes)
+INFO 23:17:52,287 Opening /var/lib/cassandra/data/system/schema_keyspaces/system-schema_keyspaces-hd-1 (246 bytes)
+INFO 23:17:52,291 Opening /var/lib/cassandra/data/system/LocationInfo/system-LocationInfo-hd-2 (163 bytes)
+INFO 23:17:52,297 Opening /var/lib/cassandra/data/system/LocationInfo/system-LocationInfo-hd-1 (235 bytes)
+ERROR 23:17:52,500 Exception encountered during startup
+java.lang.NullPointerException
+at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:167)
+at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:124)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.getString(JdbcUTF8.java:77)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.compose(JdbcUTF8.java:97)
+at org.apache.cassandra.db.marshal.UTF8Type.compose(UTF8Type.java:35)
+at org.apache.cassandra.cql3.UntypedResultSet$Row.getString(UntypedResultSet.java:87)
+at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:256)
+at org.apache.cassandra.config.CFMetaData.addColumnDefinitionSchema(CFMetaData.java:1293)
+at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1225)
+at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:294)
+at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:275)
+at org.apache.cassandra.db.DefsTable.loadFromTable(DefsTable.java:158)
+at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:535)
+at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:182)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:353)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:106)
+java.lang.NullPointerException
+at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:167)
+at org.apache.cassandra.utils.ByteBufferUtil.string(ByteBufferUtil.java:124)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.getString(JdbcUTF8.java:77)
+at org.apache.cassandra.cql.jdbc.JdbcUTF8.compose(JdbcUTF8.java:97)
+at org.apache.cassandra.db.marshal.UTF8Type.compose(UTF8Type.java:35)
+at org.apache.cassandra.cql3.UntypedResultSet$Row.getString(UntypedResultSet.java:87)
+at org.apache.cassandra.config.ColumnDefinition.fromSchema(ColumnDefinition.java:256)
+at org.apache.cassandra.config.CFMetaData.addColumnDefinitionSchema(CFMetaData.java:1293)
+at org.apache.cassandra.config.CFMetaData.fromSchema(CFMetaData.java:1225)
+at org.apache.cassandra.config.KSMetaData.deserializeColumnFamilies(KSMetaData.java:294)
+at org.apache.cassandra.config.KSMetaData.fromSchema(KSMetaData.java:275)
+at org.apache.cassandra.db.DefsTable.loadFromTable(DefsTable.java:158)
+at org.apache.cassandra.config.DatabaseDescriptor.loadSchemas(DatabaseDescriptor.java:535)
+at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:182)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:353)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:106)
+Exception encountered during startup: null
+david@vlap1:~/opt/cassandra$
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+David Semeria
+Create date:
+06/Aug/12 21:19
+Update date:
+16/Apr/19 09:32
+Resolved date:
+12/Aug/12 21:19

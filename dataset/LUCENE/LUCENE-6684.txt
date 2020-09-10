@@ -1,0 +1,58 @@
+Summary:
+TestSimpleFSLockFactory.testStressLock assert trip only on Windows?
+Description:
+It's happened at least twice before; here's the second occurrence:
+http://jenkins.thetaphi.de/job/Lucene-Solr-trunk-Windows/5042/
+  [junit4]   2> NOTE: reproduce with: ant test  -Dtestcase=TestSimpleFSLockFactory -Dtests.method=testStressLocks -Dtests.seed=86DA7F883D64B036 -Dtests.slow=true -Dtests.locale=th -Dtests.timezone=America/Metlakatla -Dtests.asserts=true -Dtests.file.encoding=Cp1252
+   [junit4] ERROR   1.58s J1 | TestSimpleFSLockFactory.testStressLocks <<<
+   [junit4]    > Throwable #1: com.carrotsearch.randomizedtesting.UncaughtExceptionError: Captured an uncaught exception in thread: Thread[id=62, name=Thread-35, state=RUNNABLE, group=TGRP-TestSimpleFSLockFactory]
+   [junit4]    >  at __randomizedtesting.SeedInfo.seed([86DA7F883D64B036:D8EB317521C87850]:0)
+   [junit4]    > Caused by: java.lang.AssertionError: hit unexpected NoSuchFileException: file=_3.cfs
+   [junit4]    >  at __randomizedtesting.SeedInfo.seed([86DA7F883D64B036]:0)
+   [junit4]    >  at org.apache.lucene.index.IndexFileDeleter.deleteFile(IndexFileDeleter.java:750)
+   [junit4]    >  at org.apache.lucene.index.IndexFileDeleter.deletePendingFiles(IndexFileDeleter.java:528)
+   [junit4]    >  at org.apache.lucene.index.IndexFileDeleter.deleteNewFiles(IndexFileDeleter.java:731)
+   [junit4]    >  at org.apache.lucene.index.IndexWriter.deleteNewFiles(IndexWriter.java:4686)
+   [junit4]    >  at org.apache.lucene.index.DocumentsWriter$DeleteNewFilesEvent.process(DocumentsWriter.java:732)
+   [junit4]    >  at org.apache.lucene.index.IndexWriter.processEvents(IndexWriter.java:4743)
+   [junit4]    >  at org.apache.lucene.index.IndexWriter.processEvents(IndexWriter.java:4734)
+   [junit4]    >  at org.apache.lucene.index.IndexWriter.doFlush(IndexWriter.java:3115)
+   [junit4]    >  at org.apache.lucene.index.IndexWriter.flush(IndexWriter.java:3082)
+   [junit4]    >  at org.apache.lucene.index.IndexWriter.shutdown(IndexWriter.java:1064)
+   [junit4]    >  at org.apache.lucene.index.IndexWriter.close(IndexWriter.java:1109)
+   [junit4]    >  at org.apache.lucene.store.BaseLockFactoryTestCase$WriterThread.run(BaseLockFactoryTestCase.java:221)
+   [junit4] IGNOR/A 0.01s J1 | TestSimpleFSLockFactory.testDeleteLockFile
+   [junit4]    > Assumption #1: test requires the ability to delete a locked file(throwable: java.io.IOException: cannot delete file: test.lock, a virus scanner has it open)
+   [junit4]   2> NOTE: test params are: codec=CheapBastard, sim=DefaultSimilarity, locale=th, timezone=America/Metlakatla
+   [junit4]   2> NOTE: Windows 7 6.1 amd64/Oracle Corporation 1.8.0_45 (64-bit)/cpus=3,threads=1,free=44713016,total=64880640
+   [junit4]   2> NOTE: All tests run in this JVM: [TestRAMDirectory, TestFastDecompressionMode, TestSetOnce, TestRegexpQuery, TestDeterminism, TestCachingTokenFilter, TestIOUtils, TestSimpleFSLockFactory]
+   [junit4] Completed [16/398] on J1 in 5.05s, 7 tests, 1 error, 1 skipped <<< FAILURES!
+It means that somehow on flush IW was asked to remove a new file _3.cfs yet that file does not exist. I don't think this test generates fake (for testing) exceptions so it's especially curious...
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Michael McCandless
+Create date:
+17/Jul/15 16:13
+Update date:
+08/Feb/16 18:53
+Resolved date:
+30/Aug/15 09:39

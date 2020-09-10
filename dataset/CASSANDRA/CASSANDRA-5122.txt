@@ -1,0 +1,65 @@
+Summary:
+Select on composite partition keys are not validated correctly
+Description:
+From Kais Ahmed on the mailing list:
+----------------------------------------------------------------------------------------------------------------------
+[cqlsh 2.3.0 | Cassandra 1.2.0-SNAPSHOT | CQL spec 3.0.0 | Thrift protocol
+19.35.0]
+
+cqlsh:test> CREATE TABLE foo (   a int,   b text,   c uuid,   PRIMARY KEY
+((a, b)) );
+
+cqlsh:test> INSERT INTO foo (a, b , c ) VALUES (  1 , 'aze',
+'4d481800-4c5f-11e1-82e0-3f484de45426');
+cqlsh:test> INSERT INTO foo (a, b , c ) VALUES (  1 , 'ert',
+'693f5800-8acb-11e3-82e0-3f484de45426');
+cqlsh:test> INSERT INTO foo (a, b , c ) VALUES (  1 , 'opl',
+'d4815800-2d8d-11e0-82e0-3f484de45426');
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+
+cqlsh:test> SELECT * FROM foo;
+
+ a | b   | c
+---+-----+--------------------------------------
+ 1 | ert | 693f5800-8acb-11e3-82e0-3f484de45426
+ 1 | opl | d4815800-2d8d-11e0-82e0-3f484de45426
+ 1 | aze | 4d481800-4c5f-11e1-82e0-3f484de45426
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+
+cqlsh:test> SELECT * FROM foo where a=1;
+
+ a | b   | c
+---+-----+--------------------------------------
+ 1 | ert | 693f5800-8acb-11e3-82e0-3f484de45426
+ 1 | opl | d4815800-2d8d-11e0-82e0-3f484de45426
+The last request should be invalid (since we don't have a good way to do it, at least not with a random partitioner).
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+07/Jan/13 11:32
+Update date:
+16/Apr/19 09:32
+Resolved date:
+07/Jan/13 16:23

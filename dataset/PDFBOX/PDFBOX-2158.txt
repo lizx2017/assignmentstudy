@@ -1,0 +1,35 @@
+Summary:
+ExtractText missing most of text in this PDF file, due to font bounding box with minus infinity
+Description:
+Attached PDF file is missing most of the text when processed by the ExtractText example program
+I traced it down to PDFontDescriptorDictionary.getFontBoundingBox() getting a rectange for COSName.FONT_BBOX that contained a ymin value of minus infinity. That method then creates a PDRectangle which calculates a bounding box with a ymin value of -65,329, and results in an enormous text size, and things go downhill from there. The text cannot be matched up, and most of it ends up being discarded.
+I was able to hack a fix by doing a check in the constructor PDRectangle.PDRectangle( COSArray array ) for big negative numbers and setting them to 0. With that change, all the text came through as expected. However, I don't have enough familiarity with the code to understand what a real fix ought to look like.
+The PDF file looks to be fine by other programs such as Acrobat and NitroPDF
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.5, 2.0.0
+Fix_version:
+2.0.0
+Component:
+Parsing, (1)
+Label:
+None
+Environment:
+windows
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Joel Hirsh
+Create date:
+22/Jun/14 20:39
+Update date:
+17/Mar/16 19:07
+Resolved date:
+24/Nov/15 20:22

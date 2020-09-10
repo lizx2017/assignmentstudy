@@ -1,0 +1,63 @@
+Summary:
+NPE in calculateNaturalEndpoints
+Description:
+I was running a test where I added a new data center to an existing cluster.
+Test outline:
+Start 25 Node DC1
+Keyspace Setup Replication 3
+Begin insert against DC1 Using Stress
+While the inserts are occuring
+Start up 25 Node DC2
+Alter Keyspace to include Replication in 2nd DC
+Run rebuild on DC2
+Wait for stress to finish
+Run repair on Cluster
+... Some other operations
+Although there are no issues with smaller clusters or clusters without vnodes, Larger setups with vnodes seem to consistently see the following exception in the logs as well as a write operation failing for each exception. Usually this happens between 1-8 times during an experiment.
+The exceptions/failures are Occurring when DC2 is brought online but before any alteration of the Keyspace. All of the exceptions are happening on DC1 nodes. One of the exceptions occurred on a seed node though this doesn't seem to be the case most of the time.
+While the test was running, nodetool was run every second to get cluster status. At no time did any nodes report themselves as down.
+ystem_logs-107.21.186.208/system.log-ERROR [Thrift:1] 2013-12-13 06:19:52,647 CustomTThreadPoolServer.java (line 217) Error occurred during processing of message.
+system_logs-107.21.186.208/system.log:java.lang.NullPointerException
+system_logs-107.21.186.208/system.log- at org.apache.cassandra.locator.AbstractReplicationStrategy.getNaturalEndpoints(AbstractReplicationStrategy.java:128)
+system_logs-107.21.186.208/system.log- at org.apache.cassandra.service.StorageService.getNaturalEndpoints(StorageService.java:2624)
+system_logs-107.21.186.208/system.log- at org.apache.cassandra.service.StorageProxy.performWrite(StorageProxy.java:375)
+system_logs-107.21.186.208/system.log- at org.apache.cassandra.service.StorageProxy.mutate(StorageProxy.java:190)
+system_logs-107.21.186.208/system.log- at org.apache.cassandra.thrift.CassandraServer.doInsert(CassandraServer.java:866)
+system_logs-107.21.186.208/system.log- at org.apache.cassandra.thrift.CassandraServer.doInsert(CassandraServer.java:849)
+system_logs-107.21.186.208/system.log- at org.apache.cassandra.thrift.CassandraServer.batch_mutate(CassandraServer.java:749)
+system_logs-107.21.186.208/system.log- at org.apache.cassandra.thrift.Cassandra$Processor$batch_mutate.getResult(Cassandra.java:3690)
+system_logs-107.21.186.208/system.log- at org.apache.cassandra.thrift.Cassandra$Processor$batch_mutate.getResult(Cassandra.java:3678)
+system_logs-107.21.186.208/system.log- at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+system_logs-107.21.186.208/system.log- at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+system_logs-107.21.186.208/system.log- at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:199)
+system_logs-107.21.186.208/system.log- at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+system_logs-107.21.186.208/system.log- at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+system_logs-107.21.186.208/system.log- at java.lang.Thread.run(Thread.java:724)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.13, 2.0.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Russell Spitzer
+Create date:
+13/Dec/13 19:41
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Dec/13 04:10

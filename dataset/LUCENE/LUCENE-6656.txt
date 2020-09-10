@@ -1,0 +1,118 @@
+Summary:
+StandardTokenizer.close() can leave the object in an uncloseable state
+Description:
+The following pair of tests shows that if a reader throws IOException from the close() method, StandardTokenizer is left in an inconsistent state where it thinks you didn't call close on the tokeniser, even though you did. To make matters worse, it holds onto the reader so that any subsequent attempts to close the tokeniser will also fail.
+Possible workarounds:
+1. Don't reuse tokenisers.
+2. Still reuse tokenisers, but if close() throws anything, discard that tokeniser and create a new one.
+3. Wrap every reader you pass in to ensure that close() can't throw an exception.
+Code follows:
+public class TestStandardTokenizerCloseIssue {
+    @Test
+    public void testStreamReuse() throws Exception
+    {
+        // Attempts to verify that consumeAndClose itself is not broken.
+        try (Tokenizer stream = new StandardTokenizer())
+        {
+            stream.setReader(new StringReader("reader #1"));
+            assertThat(consumeAndClose(stream), contains("reader", "1"));
+
+            stream.setReader(new StringReader("reader 2"));
+            assertThat(consumeAndClose(stream), contains("reader", "2"));
+        }
+    }
+
+    @Test
+    public void testStreamReuseAfterFailure() throws Exception {
+        class FailingReader extends Reader {
+            @Override
+            public int read(@NotNull char[] buffer, int off, int len)
+                    throws IOException {
+                throw new IOException("Synthetic exception");
+            }
+
+            @Override
+            public void close() throws IOException {
+                throw new IOException("Synthetic exception");
+            }
+        }
+
+        // Simulating sharing the instance inside some factory.
+        try (Tokenizer stream = new StandardTokenizer()) {
+
+            try {
+                stream.setReader(new FailingReader());
+                consumeAndClose(stream);
+                fail("Expected IOException");
+            } catch (IOException e) {
+                // Expected
+            }
+
+            stream.setReader(new StringReader("working reader"));
+
+            // Test fails here - even though the consumeAndClose above
+            // did close the tokeniser, the tokeniser didn't clear its reference to
+            // the reader.
+            assertThat(consumeAndClose(stream), contains("working", "reader"));
+        }
+    }
+
+    // Attempts to implement the correct workflow for consuming a
+    // TokenStream.
+    private List<String> consumeAndClose(TokenStream stream)
+            throws Exception {
+        ImmutableList.Builder<String> tokens = ImmutableList.builder();
+
+        //The consumer calls reset().
+        stream.reset();
+        try {
+            // The consumer retrieves attributes from the stream and stores
+            // local references to all attributes it wants to access.
+            CharTermAttribute termAttribute =
+                stream.getAttribute(CharTermAttribute.class);
+            // The consumer calls incrementToken() until it returns false
+            // consuming the attributes after each call.
+            while (stream.incrementToken()) {
+                tokens.add(termAttribute.toString());
+            }
+            // The consumer calls end() so that any end-of-stream operations
+            // can be performed.
+            stream.end();
+        } finally {
+            // The consumer calls close() to release any resource when finished
+            // using the TokenStream.
+            stream.close();
+        }
+
+        return tokens.build();
+    }
+}
+Originally discovered on 4.10.4. Code has been ported to work on 5.1 since initially created and sooner or later I'll get to test 5.2.1, but I don't see anyone else having reported a similar issue yet, so I'm guessing it won't be fixed yet.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+4.10.4, 5.1
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Trejkaz
+Create date:
+03/Jul/15 04:13
+Update date:
+03/Jul/15 04:13
+Resolved date:
+

@@ -1,0 +1,50 @@
+Summary:
+Master failover can split logs of live servers
+Description:
+The reason why TestMasterFailover fails is that when it does the master failover, the new master doesn't wait long enough for all region servers to checkin so it goes ahead and split logs... which doesn't work because of the way lease timeouts work:
+2010-12-21 07:30:36,977 DEBUG [Master:0;vesta.apache.org:33170] wal.HLogSplitter(256): Splitting hlog 1 of 1:
+ hdfs://localhost:49187/user/hudson/.logs/vesta.apache.org,38743,1292916616340/vesta.apache.org%3A38743.1292916617204, length=0
+2010-12-21 07:30:36,977 DEBUG [WriterThread-1] wal.HLogSplitter$WriterThread(619): Writer thread Thread[WriterThread-1,5,main]: starting
+2010-12-21 07:30:36,977 DEBUG [WriterThread-2] wal.HLogSplitter$WriterThread(619): Writer thread Thread[WriterThread-2,5,main]: starting
+2010-12-21 07:30:36,977 INFO  [Master:0;vesta.apache.org:33170] util.FSUtils(625): Recovering file
+ hdfs://localhost:49187/user/hudson/.logs/vesta.apache.org,38743,1292916616340/vesta.apache.org%3A38743.1292916617204
+2010-12-21 07:30:36,979 WARN  [IPC Server handler 8 on 49187] namenode.FSNamesystem(1122): DIR* NameSystem.startFile:
+ failed to create file /user/hudson/.logs/vesta.apache.org,38743,1292916616340/vesta.apache.org%3A38743.1292916617204 for
+ DFSClient_hb_m_vesta.apache.org:33170_1292916630791 on client 127.0.0.1, because this file is already being created by
+ DFSClient_hb_rs_vesta.apache.org,38743,1292916616340_1292916617166 on 127.0.0.1
+...
+2010-12-21 07:33:44,332 WARN  [Master:0;vesta.apache.org:33170] util.FSUtils(644): Waited 187354ms for lease recovery on
+ hdfs://localhost:49187/user/hudson/.logs/vesta.apache.org,38743,1292916616340/vesta.apache.org%3A38743.1292916617204:
+ org.apache.hadoop.hdfs.protocol.AlreadyBeingCreatedException: failed to create file
+ /user/hudson/.logs/vesta.apache.org,38743,1292916616340/vesta.apache.org%3A38743.1292916617204
+ for DFSClient_hb_m_vesta.apache.org:33170_1292916630791 on client 127.0.0.1, because this file is already
+ being created by DFSClient_hb_rs_vesta.apache.org,38743,1292916616340_1292916617166 on 127.0.0.1
+I think that we should always check in ZK the number of live region servers before waiting for them to check in, this way we know how many we should expect during failover. There's also a case where we still want to timeout, since RS can die during that time, but we should wait a bit longer.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+Jean-Daniel Cryans
+Create date:
+21/Dec/10 18:38
+Update date:
+20/Nov/15 12:43
+Resolved date:
+22/Dec/10 18:33

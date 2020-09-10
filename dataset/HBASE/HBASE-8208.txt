@@ -1,0 +1,39 @@
+Summary:
+In some situations data is not replicated to slaves when deferredLogSync is enabled
+Description:
+This is a subtle issue. When deferredLogSync is enabled, there are chances we could flush data before syncing all HLog entries. Assuming we just flush the internal cache and the server dies with some unsynced hlog entries.
+Data is not lost at the source cluster while replication is based on WAL files and some changes we flushed at the source won't be replicated the slave clusters.
+Although enabling deferredLogSync with tolerances of data loss, it breaks the replication assumption that whatever persisted in the source should be replicated to its slave clusters.
+In short, the slave cluster could end up with double losses: the data loss in the source and some data stored in source cluster may not be replicated to slaves either.
+The fix of the issue isn't hard. Basically we can invoke sync during each flush when replication is enabled for a region server. Since sync returns immediately when nothing to sync so there should be no performance impact.
+Please let me know what you think!
+Thanks,
+-Jeffrey
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.94.6, 0.95.0
+Fix_version:
+0.98.0, 0.94.7, 0.95.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeffrey Zhong
+Reporter:
+Jeffrey Zhong
+Create date:
+28/Mar/13 00:24
+Update date:
+27/Apr/13 15:55
+Resolved date:
+06/Apr/13 03:19

@@ -1,0 +1,53 @@
+Summary:
+RS does not abort if the initialization of RS fails
+Description:
+If any exception occurs while initialization of RS the RS doesnot get
+aborted whereas only the RPC server gets stopped.
+private void preRegistrationInitialization()
+throws IOException, InterruptedException {
+try {
+initializeZooKeeper();
+initializeThreads();
+int nbBlocks = conf.getInt("hbase.regionserver.nbreservationblocks",4);
+for (int i = 0; i < nbBlocks; i++)
+{ reservedSpace.add(new byte[HConstants.DEFAULT_SIZE_RESERVATION_BLOCK]); }
+} catch (Throwable t)
+{ // Call stop if error or process will stick around for ever since server // puts up non-daemon threads. LOG.error("Stopping HRS because failed initialize", t); this.rpcServer.stop(); }
+}
+So if any exception occurs while initilization the RPC server gets stopped
+but RS process is still running. But the log says stopping HRegionServer.
+So in the below code the catch() block will be executed when the RPCServer
+stop fails?
+In all other cases it doesnt handle any initialization failure.
+try
+{ // Do pre-registration initializations; zookeeper, lease threads,tc. preRegistrationInitialization(); }
+catch (Exception e)
+{ abort("Fatal exception during initialization", e); }
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.90.5
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+27/Jul/11 15:02
+Update date:
+20/Nov/15 11:55
+Resolved date:
+29/Jul/11 13:36

@@ -1,0 +1,90 @@
+Summary:
+Rollback of split could cause closed region to be opened again
+Description:
+If master sending close region to rs and region's split transaction concurrently happen,
+it may cause closed region to opened.
+See the detailed code in SplitTransaction#createDaughters
+List<StoreFile> hstoreFilesToSplit = null;
+    try{
+      hstoreFilesToSplit = this.parent.close(false);
+      if (hstoreFilesToSplit == null) {
+        // The region was closed by a concurrent thread.  We can't continue
+        // with the split, instead we must just abandon the split.  If we
+        // reopen or split this could cause problems because the region has
+        // probably already been moved to a different server, or is in the
+        // process of moving to a different server.
+        throw new IOException("Failed to close region: already closed by " +
+          "another thread");
+      }
+    } finally {
+      this.journal.add(JournalEntry.CLOSED_PARENT_REGION);
+    }
+when rolling back, the JournalEntry.CLOSED_PARENT_REGION causes this.parent.initialize();
+Although this region is not onlined in the regionserver, it may bring some potential problem.
+For example, in our environment, the closed parent region is rolled back sucessfully , and then starting compaction and split again.
+The parent region is f892dd6107b6b4130199582abc78e9c1
+master log
+2011-12-26 00:24:42,693 INFO org.apache.hadoop.hbase.master.HMaster: balance hri=writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1., src=dw87.kgb.sqa.cm4,60020,1324827866085, dest=dw80.kgb.sqa.cm4,60020,1324827865780
+2011-12-26 00:24:42,693 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1. (offlining)
+2011-12-26 00:24:42,694 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Sent CLOSE to serverName=dw87.kgb.sqa.cm4,60020,1324827866085, load=(requests=0, regions=0, usedHeap=0, maxHeap=0) for region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.
+2011-12-26 00:24:42,699 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling new unassigned node: /hbase-tbfs/unassigned/f892dd6107b6b4130199582abc78e9c1 (region=writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1., server=dw87.kgb.sqa.cm4,60020,1324827866085, state=RS_ZK_REGION_CLOSING)
+2011-12-26 00:24:42,699 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_CLOSING, server=dw87.kgb.sqa.cm4,60020,1324827866085, region=f892dd6107b6b4130199582abc78e9c1
+2011-12-26 00:24:45,348 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_CLOSED, server=dw87.kgb.sqa.cm4,60020,1324827866085, region=f892dd6107b6b4130199582abc78e9c1
+2011-12-26 00:24:45,349 DEBUG org.apache.hadoop.hbase.master.handler.ClosedRegionHandler: Handling CLOSED event for f892dd6107b6b4130199582abc78e9c1
+2011-12-26 00:24:45,349 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Forcing OFFLINE; was=writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1. state=CLOSED, ts=1324830285347
+2011-12-26 00:24:45,349 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x13447f283f40e73 Creating (or updating) unassigned node for f892dd6107b6b4130199582abc78e9c1 with OFFLINE state
+2011-12-26 00:24:45,354 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=M_ZK_REGION_OFFLINE, server=dw75.kgb.sqa.cm4:60000, region=f892dd6107b6b4130199582abc78e9c1
+2011-12-26 00:24:45,354 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Found an existing plan for writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1. destination server is + serverName=dw80.kgb.sqa.cm4,60020,1324827865780, load=(requests=0, regions=1, usedHeap=0, maxHeap=0)
+2011-12-26 00:24:45,354 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Using pre-existing plan for region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.; plan=hri=writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1., src=dw87.kgb.sqa.cm4,60020,1324827866085, dest=dw80.kgb.sqa.cm4,60020,1324827865780
+2011-12-26 00:24:45,354 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1. to dw80.kgb.sqa.cm4,60020,1324827865780
+2011-12-26 00:24:46,899 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Opened region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1. on dw80.kgb.sqa.cm4,60020,1324827865780
+RE_dw87 log
+2011-12-26 00:24:42,694 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Received close region: writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.
+2011-12-26 00:24:42,694 DEBUG org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler: Processing close of writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.
+2011-12-26 00:24:42,694 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x43447f30cb31367 Creating unassigned node for f892dd6107b6b4130199582abc78e9c1 in a CLOSING state
+2011-12-26 00:24:42,699 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Closing writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.: disabling compactions & flushes
+2011-12-26 00:24:42,699 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: waiting for compaction to complete for region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.
+2011-12-26 00:24:43,340 INFO org.apache.hadoop.hbase.regionserver.HRegion: aborted compaction on region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1. after 49sec
+2011-12-26 00:24:43,340 INFO org.apache.hadoop.hbase.regionserver.HRegion: Running close preflush of writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.
+2011-12-26 00:24:43,340 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Started memstore flush for writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1., current region memstore size 59.5m
+2011-12-26 00:24:43,340 INFO org.apache.hadoop.hbase.regionserver.SplitTransaction: Starting split of region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.
+2011-12-26 00:24:45,347 INFO org.apache.hadoop.hbase.regionserver.HRegion: Closed writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.
+2011-12-26 00:24:45,347 WARN org.apache.hadoop.hbase.regionserver.HRegion: Region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1. already closed
+2011-12-26 00:24:45,347 WARN org.apache.hadoop.hbase.regionserver.CompactSplitThread: Running rollback of failed split of writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.; Failed to close region: already closed by another thread
+2011-12-26 00:24:45,348 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x43447f30cb31367 Successfully transitioned node f892dd6107b6b4130199582abc78e9c1 from RS_ZK_REGION_CLOSING to RS_ZK_REGION_CLOSED
+2011-12-26 00:24:45,348 DEBUG org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler: Closed region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.
+2011-12-26 00:24:46,837 INFO org.apache.hadoop.hbase.regionserver.HRegion: Onlined writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.; next sequenceid=717341809
+2011-12-26 00:24:46,841 INFO org.apache.hadoop.hbase.regionserver.CompactSplitThread: Successful rollback of failed split of writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.
+2011-12-26 00:24:46,841 INFO org.apache.hadoop.hbase.regionserver.HRegion: Starting compaction on region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.
+2011-12-26 00:25:23,288 INFO org.apache.hadoop.hbase.regionserver.HRegion: completed compaction on region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1. after 36sec
+2011-12-26 00:25:23,288 INFO org.apache.hadoop.hbase.regionserver.SplitTransaction: Starting split of region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1.
+2011-12-26 00:25:24,847 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Offlined parent region writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1. in META
+2011-12-26 00:25:26,165 INFO org.apache.hadoop.hbase.regionserver.CompactSplitThread: Region split, META updated, and report to master. Parent=writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324829936318.f892dd6107b6b4130199582abc78e9c1., new regions: writetest,8ZW417DZP93OU6SZ0QQMKTALTDP4883KW5AXSAFMQ952Y6J6VPPXEXRRPCWBR2PK7DQV3RKK28222JMOJSW3JJ8AB05MIREM1CL6,1324830323288.595f458507cecf208640cb4a1be8e293., writetest,DHZX0CD7A4OE1KRILMWEJL2HTBN6OJVSFOKGU0P938DJ1M44B79C068NCZPXK1Z5OD2RQJ6LMA41TC0D44H05525TO3AHLZ4BZXX,1324830323288.ba9376c83327c34c7926fccb68c3b9e3.. Split took 2sec
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+28/Dec/11 05:51
+Update date:
+12/Oct/12 05:35
+Resolved date:
+31/Dec/11 16:50

@@ -1,0 +1,61 @@
+Summary:
+Possible file handle leak with truncated HLog file.
+Description:
+When debugging hbck, found that the code responsible for this exception can leak open file handles.
+12/01/15 05:58:11 INFO regionserver.HRegion: Replaying edits from hdfs://haus01.
+sf.cloudera.com:56020/hbase-jon/test5/98a1e7255731aae44b3836641840113e/recovered
+.edits/0000000000003211315; minSequenceid=3214658
+12/01/15 05:58:11 ERROR handler.OpenRegionHandler: Failed open of region=test5,8
+\x90\x00\x00\x00\x00\x00\x00/000005_0,1326597390073.98a1e7255731aae44b3836641840
+113e.
+java.io.EOFException
+        at java.io.DataInputStream.readByte(DataInputStream.java:250)
+        at org.apache.hadoop.io.WritableUtils.readVLong(WritableUtils.java:299)
+        at org.apache.hadoop.io.WritableUtils.readVInt(WritableUtils.java:320)
+        at org.apache.hadoop.io.Text.readString(Text.java:400)
+        at org.apache.hadoop.io.SequenceFile$Reader.init(SequenceFile.java:1486)
+        at org.apache.hadoop.io.SequenceFile$Reader.<init>(SequenceFile.java:1437)
+        at org.apache.hadoop.io.SequenceFile$Reader.<init>(SequenceFile.java:1424)
+        at org.apache.hadoop.io.SequenceFile$Reader.<init>(SequenceFile.java:1419)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader$WALReader.<init>(SequenceFileLogReader.java:57)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.init(SequenceFileLogReader.java:158)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.getReader(HLog.java:572)
+        at org.apache.hadoop.hbase.regionserver.HRegion.replayRecoveredEdits(HRegion.java:1940)
+        at org.apache.hadoop.hbase.regionserver.HRegion.replayRecoveredEditsIfAny(HRegion.java:1896)
+        at org.apache.hadoop.hbase.regionserver.HRegion.initialize(HRegion.java:366)
+        at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:2661)
+        at org.apache.hadoop.hbase.regionserver.HRegion.openHRegion(HRegion.java:2647)
+        at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.openRegion(OpenRegionHandler.java:312)
+        at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:99)
+        at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:158)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:619)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.5, (2)
+Fix_version:
+0.92.1, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Hsieh
+Reporter:
+Jonathan Hsieh
+Create date:
+26/Jan/12 13:05
+Update date:
+12/Oct/12 05:35
+Resolved date:
+26/Jan/12 23:50

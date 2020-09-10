@@ -1,0 +1,48 @@
+Summary:
+TestHLog.testSplit hangs
+Description:
+This a blocker had it blocks and times out Hudson.
+It seems that when we upgraded to latest of 0.20-append we got into a new situation where we can't recover a file that's empty if the original writer is still alive:
+2010-06-24 10:41:20,645 DEBUG [main] wal.HLog(1281): Splitting hlog 4 of 4: hdfs://localhost:64456/hbase/testSplit/.logs/hlog.1277401279534, length=0
+2010-06-24 10:41:20,645 INFO  [main] util.FSUtils(612): Recovering filehdfs://localhost:64456/hbase/testSplit/.logs/hlog.1277401279534
+2010-06-24 10:41:20,647 WARN  [IPC Server handler 5 on 64456] namenode.FSNamesystem(1156): DIR* NameSystem.startFile: 
+failed to create file /hbase/testSplit/.logs/hlog.1277401279534 for DFSClient_-1981892617 on client 127.0.0.1 because current leaseholder is trying to recreate file
+...
+
+2010-06-24 10:42:24,919 WARN  [IPC Server handler 0 on 64456] namenode.FSNamesystem(1156): DIR* NameSystem.startFile: 
+failed to create file /hbase/testSplit/.logs/hlog.1277401279534 for DFSClient_-1981892617 on client 127.0.0.1 because current leaseholder is trying to recreate file.
+2010-06-24 10:42:24,919 WARN  [main] util.FSUtils(631): Waited 64274ms for lease recovery on 
+hdfs://localhost:64456/hbase/testSplit/.logs/hlog.1277401279534:org.apache.hadoop.hdfs.protocol.AlreadyBeingCreatedException: 
+failed to create file /hbase/testSplit/.logs/hlog.1277401279534 for DFSClient_-1981892617 on client 127.0.0.1 because current leaseholder is trying to recreate file.
+        at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.startFileInternal(FSNamesystem.java:1058)
+        at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.appendFile(FSNamesystem.java:1171)
+        at org.apache.hadoop.hdfs.server.namenode.NameNode.append(NameNode.java:396)
+We could just not roll the latest log and it would probably fix the issue, but I wonder if we could change something in HDFS instead. Todd?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.20.6, 0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Spiegelberg
+Reporter:
+Jean-Daniel Cryans
+Create date:
+24/Jun/10 18:15
+Update date:
+02/May/13 02:29
+Resolved date:
+24/Jun/10 20:57

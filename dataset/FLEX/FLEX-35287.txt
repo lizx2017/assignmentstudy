@@ -1,0 +1,74 @@
+Summary:
+MXMLC Ant Tasks do not support new "broker-local-connection" compiler flag
+Description:
+"broker-local-connection" was added to the MXML compiler in v4.16.0, and can be used when calling mxmlc directly... ex:
+C:\tools\flex-sdk\apache_flex_4.16.0_air23_flash23\bin>mxmlc -help list
+
+Apache Flex Compiler (mxmlc)
+Version 4.16.0 build 20170305
+Copyright 2017 The Apache Software Foundation.
+
+
+-benchmark
+-broker-local-connection
+-broker-product-manager
+-compiler.accessible
+...
+Unfortunately, it appears it was not added to the Ant MXMLC Tasks. Note the missing ConfigBooleans for "broker-local-connection" and "broker-product-manager" in \ant\src\flex\ant\MxmlcTask.java:
+/**
+     *
+     */
+    public MxmlcTask()
+    {
+        super("mxmlc", "flex2.tools.Mxmlc", "mxmlc.jar", new ConfigVariable[] {
+            //Basic Booleans
+            new ConfigBoolean(new OptionSpec("benchmark")),
+            new ConfigBoolean(new OptionSpec("compiler", "accessible")),
+            ...
+--------------------------------------------------
+To reproduce, create an ant build file with the following syntax:
+<mxmlc file="..." output="...">
+    ...
+    <broker-local-connection>true</broker-local-connection>
+    ...
+</mxmlc>
+And note the following error:
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 37.019 s
+[INFO] Finished at: 2017-03-20T16:14:45-04:00
+[INFO] Final Memory: 34M/1265M
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.8:run (compile) on project cornerstone-web-client: An Ant BuildException has occured: The following error occurred while executing this line:
+[ERROR] \build.xml:42: The <mxmlc> type doesn't support the "broker-local-connection" nested element.
+[ERROR] around Ant part ...<ant antfile="/../../build.xml">... @ 4:124 in \target\antrun\build-main.xml
+[ERROR] -> [Help 1]
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Apache Flex 4.16.0
+Fix_version:
+None
+Component:
+Ant Tasks
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Skylar Sutton
+Create date:
+20/Mar/17 20:29
+Update date:
+21/Mar/17 13:38
+Resolved date:
+

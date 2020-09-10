@@ -1,0 +1,38 @@
+Summary:
+Make segments_NN file codec-independent
+Description:
+I propose to change the format of SegmentInfos file (segments_NN) to use plain text instead of the current binary format.
+SegmentInfos file represents a commit point, and it also declares what codecs were used for writing each of the segments that the commit point consists of. However, this is a chicken and egg situation - in theory the format of this file is customizable via Codec.getSegmentInfosFormat, but in practice we have to first discover what is the codec implementation that wrote this file - so the SegmentCoreReaders assumes a certain fixed binary layout of a preamble of this file that contains the codec name... and then the file is read again, only this time using the right Codec.
+This is ugly. Instead I propose to use a simple plain text format, either line oriented properties or JSON, in such a way that newer versions could easily extend it, and which wouldn't require any special Codec to read and parse. Consequently we could remove SegmentInfosFormat altogether, and instead add SegmentInfoFormat (notice the singular) to Codec to read single per-segment SegmentInfo-s in a codec-specific way. E.g. for Lucene40 codec we could either add another file or we could extend the .fnm file (FieldInfos) to contain also this information.
+Then the plain text SegmentInfos would contain just the following information:
+list of global files for this commit point (if any)
+list of segments for this commit point, and their corresponding codec class names
+user data map
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+4.0-ALPHA
+Component:
+core/codecs
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Robert Muir
+Reporter:
+Andrzej Bialecki
+Create date:
+12/May/12 03:01
+Update date:
+10/May/13 10:43
+Resolved date:
+03/Aug/12 13:34

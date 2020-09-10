@@ -1,0 +1,72 @@
+Summary:
+PDDocument.save double-closes stream causing exceptions with well-behaving streams
+Description:
+This might be a duplicate of PDFBOX-273, although closed, it is clearly not fixed.
+PDDocument save (through COSWriter) closes the output, and to make things worse, it closes it twice. Also, it is generally not good practice to close streams, unless you opened them yourself, so I think the streams should just be left alone, and instead the references should be cleared.
+The critical code in PDDocument.save(OutputStream output) is:
+COSWriter writer = new COSWriter(output);
+try
+{
+    writer.write(this);
+}
+finally
+{
+    writer.close();
+}
+With COSWriter.close() being:
+public void close() throws IOException
+{
+    if (getStandardOutput() != null)
+    {
+      getStandardOutput().close();
+    }
+    if (getOutput() != null)
+    {
+        getOutput().close();
+    }
+    if (incrementalOutput != null)
+    {
+        incrementalOutput.close();
+    }
+}
+The problem here is that standardOutput in this case wraps  output, thus causing a double close() on output (as FilterOutputStream already closes the stream it wraps).
+Double closing itself might not have been a problem, but again FilterOutputStream.close() invokes flush() in its standard implementation,  and you cannot flush a closed stream...
+Example stack trace:
+Exception in thread "main" java.io.IOException: stream already closed
+at com.twelvemonkeys.imageio.util.IIOOutputStreamAdapter.assertOpen(IIOOutputStreamAdapter.java:80)
+at com.twelvemonkeys.imageio.util.IIOOutputStreamAdapter.flush(IIOOutputStreamAdapter.java:75)
+at java.io.BufferedOutputStream.flush(Unknown Source)
+at java.io.FilterOutputStream.close(Unknown Source)
+at org.apache.pdfbox.pdfwriter.COSWriter.close(COSWriter.java:315)
+at org.apache.pdfbox.pdmodel.PDDocument.save(PDDocument.java:1236)
+at com.twelvemonkeys.imageio.plugins.pdf.PDFImageWriter.endWriteSequence(PDFImageWriter.java:83)
+at com.twelvemonkeys.imageio.plugins.pdf.PDFImageWriter.main(PDFImageWriter.java:183)
+I tagged the issue with 2.0.4 and 2.0.9 as those are the versions I tested, but I assume the problem is there even before 2.0.4.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.4, 2.0.9
+Fix_version:
+2.0.11, 3.0.0 PDFBox
+Component:
+Writing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Harald Kuhr
+Create date:
+06/Jun/18 20:22
+Update date:
+23/Sep/18 16:33
+Resolved date:
+23/Sep/18 16:20

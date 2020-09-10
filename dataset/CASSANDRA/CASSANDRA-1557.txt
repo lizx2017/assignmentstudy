@@ -1,0 +1,66 @@
+Summary:
+ColumnFamilyStore masking IOException from FileUtils as IOError
+Description:
+The code in ColumnFamilyStore.snapshot() line 1368 is catching an IOException from the call to FileUtils.createHardLink() and wrapping it in an IOError. However the code in TruncateVerbHandler:56 is looking for the IOException. This can result in the client not getting a response to a truncate() API call.
+When running on a machine with very low memory I attempted to truncate a CF with few rows, the following error occurred in the logs.
+ERROR [MUTATION_STAGE:25] 2010-09-29 16:44:39,341 AbstractCassandraDaemon.java (line 88) Fatal exception in thread Thread[MUTATION_STAGE:25,5,main]
+java.io.IOError: java.io.IOException: Cannot run program "ln": java.io.IOException: error=12, Cannot allocate memory
+at org.apache.cassandra.db.ColumnFamilyStore.snapshot(ColumnFamilyStore.java:1368)
+at org.apache.cassandra.db.ColumnFamilyStore.truncate(ColumnFamilyStore.java:1511)
+at org.apache.cassandra.db.Table.truncate(Table.java:633)
+at org.apache.cassandra.db.TruncateVerbHandler.doVerb(TruncateVerbHandler.java:54)
+at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:50)
+at javautil.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+Caused by: java.io.IOException: Cannot run program "ln": java.io.IOException: error=12, Cannot allocate memory
+at java.lang.ProcessBuilder.start(ProcessBuilder.java:460)
+at org.apache.cassandra.io.util.FileUtils.createHardLinkWithExec(FileUtils.java:263)
+at org.apache.cassandra.io.util.FileUtils.createHardLink(FileUtils.java:229)
+at org.apache.cassandra.db.ColumnFamilyStore.snapshot(ColumnFamilyStore.java:1360)
+... 7 more
+Caused by: java.io.IOException: java.io.IOException: error=12, Cannot allocate memory
+at java.lang.UNIXProcess.<init>(UNIXProcess.java:148)
+at java.lang.ProcessImpl.start(ProcessImpl.java:65)
+at java.lang.ProcessBuilder.start(ProcessBuilder.java:453)
+... 10 more
+On the client I got this:
+File "/tech/home//git_home/trojan/trojan/cassandra/Cassandrapy", line 846, in truncate
+self.recv_truncate()
+File "/tech/home//git_home/trojan/trojan/cassandra/Cassandra.py", line 857, in recv_truncate
+(fname, mtype, rseqid) = self._iprot.readMessageBegin()
+File "/tech/home//git_home/trojan/trojan/thrift/protocol/TBinaryProtocol.py", line 126, in readMessageBegin
+sz = self.readI32()
+<snip>
+chunk = self.read(sz-have)
+File "/tech/home//git_home/trojan/trojan/thrift/transport/TSocket.py", line 92, in read
+buff = self.handle.recv(sz)
+timeout: timed out
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 3
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+amorton
+Create date:
+29/Sep/10 08:02
+Update date:
+16/Apr/19 09:33
+Resolved date:
+07/Oct/10 20:59

@@ -1,0 +1,60 @@
+Summary:
+runtime exception -- cached an already cached block -- during compaction
+Description:
+#On YCSB client machine:
+/usr/local/bin/java -cp "build/ycsb.jar:db/hbase/lib/*:db/hbase/conf/" com.yahoo.ycsb.Client -load -db com.yahoo.ycsb.db.HBaseClient -P workloads/workloada -p columnfamily=family1 -p recordcount=5000000 -s > load.dat
+loaded 5mil records, that created 8 regions. (balanced all onto the same RS)
+/usr/local/bin/java -cp "build/ycsb.jar:db/hbase/lib/*:db/hbase/conf/" com.yahoo.ycsb.Client -t -db com.yahoo.ycsb.db.HBaseClient -P workloads/workloada -p columnfamily=family1 -p operationcount=5000000 -threads 10 -s > transaction.dat
+#On RS that was holding the 8 regions above.
+2012-01-25 23:23:51,556 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x134f70a343101a0 Successfully transitioned node 162702503c650e551130e5fb588b3ec2 from RS_ZK_REGION_SPLIT to RS_ZK_REGION_SPLIT
+2012-01-25 23:23:51,616 ERROR org.apache.hadoop.hbase.regionserver.HRegionServer:
+java.lang.RuntimeException: Cached an already cached block
+at org.apache.hadoop.hbase.io.hfile.LruBlockCache.cacheBlock(LruBlockCache.java:268)
+at org.apache.hadoop.hbase.io.hfile.HFileReaderV2.readBlock(HFileReaderV2.java:276)
+at org.apache.hadoop.hbase.io.hfile.HFileReaderV2$ScannerV2.seekTo(HFileReaderV2.java:487)
+at org.apache.hadoop.hbase.io.HalfStoreFileReader$1.seekTo(HalfStoreFileReader.java:168)
+at org.apache.hadoop.hbase.regionserver.StoreFileScanner.seekAtOrAfter(StoreFileScanner.java:181)
+at org.apache.hadoop.hbase.regionserver.StoreFileScanner.seek(StoreFileScanner.java:111)
+at org.apache.hadoop.hbase.regionserver.StoreScanner.<init>(StoreScanner.java:83)
+at org.apache.hadoop.hbase.regionserver.Store.getScanner(Store.java:1721)
+at org.apache.hadoop.hbase.regionserver.HRegion$RegionScannerImpl.<init>(HRegion.java:2861)
+at org.apache.hadoop.hbase.regionserver.HRegion.instantiateRegionScanner(HRegion.java:1432)
+at org.apache.hadoop.hbase.regionserver.HRegion.getScanner(HRegion.java:1424)
+at org.apache.hadoop.hbase.regionserver.HRegion.getScanner(HRegion.java:1400)
+at org.apache.hadoop.hbase.regionserver.HRegion.get(HRegion.java:3688)
+at org.apache.hadoop.hbase.regionserver.HRegion.get(HRegion.java:3581)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.get(HRegionServer.java:1771)
+at sun.reflect.GeneratedMethodAccessor38.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Server.call(WritableRpcEngine.java:364)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1325)
+2012-01-25 23:23:51,656 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x134f70a343101a0 Attempting to transition node 162702503c650e551130e5fb588b3ec2 from RS_ZK_REGION_SPLIT to RS_ZK_REGION_SPLIT
+Status:
+RESOLVED
+Priority:
+Trivial
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.92.0
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+hadoop
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Simon Dircks
+Create date:
+26/Jan/12 18:26
+Update date:
+18/May/14 04:10
+Resolved date:
+18/May/14 04:10

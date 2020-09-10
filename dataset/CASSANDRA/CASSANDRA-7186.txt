@@ -1,0 +1,34 @@
+Summary:
+alter table add column not always propogating
+Description:
+I've been many times in Cassandra 2.0.6 that adding columns to existing tables seems to not fully propagate to our entire cluster. We add an extra column to various tables maybe 0-2 times a week, and so far many of these ALTERs have resulted in at least one node showing the old table description a pretty long time (~30 mins) after the original ALTER command was issued.
+We originally identified this issue when a connected clients would complain that a column it issued a SELECT for wasn't a known column, at which point we have to ask each node to describe the most recently altered table. One of them will not know about the newly added field. Issuing the original ALTER statement on that node makes everything work correctly.
+We have seen this issue on multiple tables (we don't always alter the same one). It has affected various nodes in the cluster (not always the same one is not getting the mutation propagated). No new nodes have been added to the cluster recently. All nodes are homogenous (hardware and software), running 2.0.6. We don't see any particular errors or exceptions on the node that didn't get the schema update, only the later error from a Java client about asking for an unknown column in a SELECT. We have to check each node manually to find the offender. The tables he have seen this on are under fairly heavy read and write load, but we haven't altered any tables that are not, so that might not be important.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+2.0.12
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Philip Thompson
+Reporter:
+Martin Meyer
+Create date:
+07/May/14 14:34
+Update date:
+16/Apr/19 09:31
+Resolved date:
+04/Dec/14 16:52

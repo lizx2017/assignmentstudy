@@ -1,0 +1,107 @@
+Summary:
+[FlexJS] Data Binding Fails When Following Multiple References
+Description:
+Bracketed data binding to UI component do not works properly in FlexJS 0.8.0 nightly build SDK (my tests were mainly concentrated to HTML output in browsers).
+Works
+<js:Label id="lbl" text="{anyClass.fieldA}" width="300"/>
+Do not works
+<js:Label text="{anyClass.subClass.fieldB}" width="300"/>
+Binding to UI component seems do not works when there are multiple reference, i.e. class.field.field. Following are the snippets of the codes which I used in this test:
+InitialView MXML file
+[Bindable] private var anyClass:ClassA = new ClassA();
+protected function onTextInputChangeA(event:Event):void
+{
+ anyClass.fieldA = myTI1.text;
+}
+   
+protected function onTextInputChangeB(event:Event):void
+{
+ anyClass.subClass.fieldB = myTI2.text;
+}
+...
+<js:VContainer width="500">
+ ...
+ <js:TextInput id="myTI1" text="Change Value.." change="onTextInputChangeA(event)"/>
+ <js:Label id="lbl" text="{anyClass.fieldA}" width="300"/>
+</js:VContainer>
+<js:VContainer width="500">
+ ...
+ <js:TextInput id="myTI2" text="Change Value.." change="onTextInputChangeB(event)"/>
+ <js:Label text="{anyClass.subClass.fieldB}" width="300"/>
+</js:VContainer>
+ClassA
+public class ClassA extends EventDispatcher
+{
+ [Bindable] public var subClass:ClassB = new ClassB();
+  
+ public function ClassA() { }
+ 
+ private var _fieldA:String = "";
+
+ [Bindable("fieldAChanged")]
+ public function get fieldA():String
+ {
+  return _fieldA;
+ }
+  
+ public function set fieldA(value:String):void
+ {
+  if (value != _fieldA)
+  {
+   _fieldA = value;
+   dispatchEvent(new Event("fieldAChanged"));
+  }
+ }
+}
+ClassB
+[Bindable] public class ClassB extends EventDispatcher
+{
+ public function ClassB()
+ { }
+  
+ private var _fieldB:String;
+  
+ [Bindable(event="fieldBChanged")]
+ public function get fieldB():String
+ {
+  return _fieldB;
+ }
+  
+ public function set fieldB(value:String):void
+ {
+  if (value != _fieldB)
+  {
+   _fieldB= value;
+   dispatchEvent(new Event("fieldBChanged"));
+  }
+ }
+}
+I've attached herewith the source to the test project. Please, take a look.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Apache FlexJS 0.8.0
+Fix_version:
+Apache FlexJS 0.8.0,
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Piotr Zarzycki
+Reporter:
+Devsena
+Create date:
+22/Dec/16 12:22
+Update date:
+20/Jan/17 07:30
+Resolved date:
+19/Jan/17 23:16

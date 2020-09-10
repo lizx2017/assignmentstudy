@@ -1,0 +1,88 @@
+Summary:
+EnvironmentLoaderListener crashes if custom filters are configured.
+Description:
+Custom filters are initialized in init method of IniShiroFilter. EnvironmentLoaderListener runs before filters and is unable to access custom filters.
+How to reproduce it: define and use custom filter in Shiro.ini of samples-web application:
+[main]
+shiro.loginUrl = /login.jsp
+create custom filter
+filter=org.apache.shiro.web.filter.authc.FormAuthenticationFilter
+...
+[urls]
+Use custom filter defined above
+/login.jsp = filter
+/logout = logout
+/account/** = filter
+/remoting/** = filter, roles[b2bClient], perms["remote:invoke:lan,wan"]
+/** = filter
+Exception thrown on application start-up:
+java.lang.IllegalArgumentException: There is no filter with name 'filter' to apply to chain [/login.jsp] in the pool of available Filters. Ensure a filter with that name/path has first been registered with the addFilter method(s).
+at org.apache.shiro.web.filter.mgt.DefaultFilterChainManager.addToChain(DefaultFilterChainManager.java:185)
+at org.apache.shiro.web.filter.mgt.DefaultFilterChainManager.createChain(DefaultFilterChainManager.java:158)
+at org.apache.shiro.web.config.IniFilterChainResolverFactory.createChains(IniFilterChainResolverFactory.java:186)
+at org.apache.shiro.web.config.IniFilterChainResolverFactory.buildChains(IniFilterChainResolverFactory.java:127)
+at org.apache.shiro.web.config.IniFilterChainResolverFactory.createInstance(IniFilterChainResolverFactory.java:80)
+at org.apache.shiro.web.config.IniFilterChainResolverFactory.createInstance(IniFilterChainResolverFactory.java:1)
+at org.apache.shiro.config.IniFactorySupport.createInstance(IniFactorySupport.java:123)
+at org.apache.shiro.util.AbstractFactory.getInstance(AbstractFactory.java:47)
+at org.apache.shiro.web.env.IniWebEnvironment.createFilterChainResolver(IniWebEnvironment.java:187)
+at org.apache.shiro.web.env.IniWebEnvironment.configure(IniWebEnvironment.java:102)
+at org.apache.shiro.web.env.IniWebEnvironment.init(IniWebEnvironment.java:92)
+at org.apache.shiro.util.LifecycleUtils.init(LifecycleUtils.java:45)
+at org.apache.shiro.util.LifecycleUtils.init(LifecycleUtils.java:40)
+at org.apache.shiro.web.env.EnvironmentLoader.createEnvironment(EnvironmentLoader.java:226)
+at org.apache.shiro.web.env.EnvironmentLoader.initEnvironment(EnvironmentLoader.java:138)
+at org.apache.shiro.web.env.EnvironmentLoaderListener.contextInitialized(EnvironmentLoaderListener.java:58)
+at org.mortbay.jetty.handler.ContextHandler.startContext(ContextHandler.java:548)
+at org.mortbay.jetty.servlet.Context.startContext(Context.java:136)
+at org.mortbay.jetty.webapp.WebAppContext.startContext(WebAppContext.java:1250)
+at org.mortbay.jetty.handler.ContextHandler.doStart(ContextHandler.java:517)
+at org.mortbay.jetty.webapp.WebAppContext.doStart(WebAppContext.java:467)
+at org.mortbay.component.AbstractLifeCycle.start(AbstractLifeCycle.java:50)
+at org.mortbay.jetty.handler.HandlerWrapper.doStart(HandlerWrapper.java:130)
+at org.mortbay.jetty.Server.doStart(Server.java:224)
+at org.mortbay.component.AbstractLifeCycle.start(AbstractLifeCycle.java:50)
+at org.apache.shiro.test.AbstractContainerTest.startContainer(AbstractContainerTest.java:47)
+at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at sun.reflect.NativeMethodAccessorImpl.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+at java.lang.reflect.Method.invoke(Unknown Source)
+at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:44)
+at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:15)
+at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:41)
+at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:27)
+at org.junit.runners.ParentRunner.run(ParentRunner.java:236)
+at org.eclipse.jdt.internal.junit4.runner.JUnit4TestReference.run(JUnit4TestReference.java:49)
+at org.eclipse.jdt.internal.junit.runner.TestExecution.run(TestExecution.java:38)
+at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:467)
+at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:683)
+at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.run(RemoteTestRunner.java:390)
+at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.main(RemoteTestRunner.java:197)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+1.2.0
+Component:
+Web
+Label:
+None
+Environment:
+jetty
+Attachment number:
+0
+Assignee:
+Les Hazlewood
+Reporter:
+Maria Jurcovicova
+Create date:
+15/Jun/11 20:30
+Update date:
+24/Jan/12 01:11
+Resolved date:
+27/Dec/11 23:35

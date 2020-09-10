@@ -1,0 +1,59 @@
+Summary:
+get_slice ignores the "start" parameter
+Description:
+get_slice(string tablename, string key, string columnFamily_column, i32 start, i32 count) is expected is return all columns starting at offset "start" subject to a maximum of "count" columns. The current code does not do this.
+Example interaction:
+./Cassandra-remote insert 'Table1' 'key' 'DATA:c1' 'val1' 1
+None
+./Cassandra-remote insert 'Table1' 'key' 'DATA:c2' 'val2' 1
+None
+./Cassandra-remote insert 'Table1' 'key' 'DATA:c3' 'val3' 1
+None
+./Cassandra-remote get_slice 'Table1' 'key' 'DATA' 0 2
+[
+{'columnName': 'c1', 'value': 'val1', 'timestamp': 1}
+,
+{'columnName': 'c2', 'value': 'val2', 'timestamp': 1}
+]
+./Cassandra-remote get_slice 'Table1' 'key' 'DATA' 1 2
+[
+{'columnName': 'c1', 'value': 'val1', 'timestamp': 1}
+,
+{'columnName': 'c2', 'value': 'val2', 'timestamp': 1}
+]] <<---- Same as prev! "start" ignored
+./Cassandra-remote get_slice 'Table1' 'key' 'DATA' 0 1
+[
+{'columnName': 'c1', 'value': 'val1', 'timestamp': 1}
+]
+./Cassandra-remote get_slice 'Table1' 'key' 'DATA' 2 1
+[
+{'columnName': 'c1', 'value': 'val1', 'timestamp': 1}
+] <<---- Same as prev! "start" ignored
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sandeep Tata
+Reporter:
+Sandeep Tata
+Create date:
+14/Apr/09 22:54
+Update date:
+16/Apr/19 09:33
+Resolved date:
+22/Apr/09 22:54

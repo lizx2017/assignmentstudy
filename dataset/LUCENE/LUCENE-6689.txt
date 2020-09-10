@@ -1,0 +1,80 @@
+Summary:
+Odd analysis problem with WDF, appears to be triggered by preceding analysis components
+Description:
+This problem shows up for me in Solr, but I believe the issue is down at the Lucene level, so I've opened the issue in the LUCENE project. We can move it if necessary.
+I've boiled the problem down to this minimum Solr fieldType:
+    <fieldType name="testType" class="solr.TextField"
+sortMissingLast="true" positionIncrementGap="100">
+      <analyzer type="index">
+        <tokenizer
+class="org.apache.lucene.analysis.icu.segmentation.ICUTokenizerFactory"
+rulefiles="Latn:Latin-break-only-on-whitespace.rbbi"/>
+        <filter class="solr.PatternReplaceFilterFactory"
+          pattern="^(\p{Punct}*)(.*?)(\p{Punct}*)$"
+          replacement="$2"
+        />
+        <filter class="solr.WordDelimiterFilterFactory"
+          splitOnCaseChange="1"
+          splitOnNumerics="1"
+          stemEnglishPossessive="1"
+          generateWordParts="1"
+          generateNumberParts="1"
+          catenateWords="1"
+          catenateNumbers="1"
+          catenateAll="0"
+          preserveOriginal="1"
+        />
+      </analyzer>
+      <analyzer type="query">
+        <tokenizer
+class="org.apache.lucene.analysis.icu.segmentation.ICUTokenizerFactory"
+rulefiles="Latn:Latin-break-only-on-whitespace.rbbi"/>
+        <filter class="solr.PatternReplaceFilterFactory"
+          pattern="^(\p{Punct}*)(.*?)(\p{Punct}*)$"
+          replacement="$2"
+        />
+        <filter class="solr.WordDelimiterFilterFactory"
+          splitOnCaseChange="1"
+          splitOnNumerics="1"
+          stemEnglishPossessive="1"
+          generateWordParts="1"
+          generateNumberParts="1"
+          catenateWords="0"
+          catenateNumbers="0"
+          catenateAll="0"
+          preserveOriginal="0"
+        />
+      </analyzer>
+    </fieldType>
+On Solr 4.7, if this type is given the input "aaa-bbb: ccc" then index analysis puts aaa at term position 1 and bbb at term position 2. This seems perfectly reasonable to me. In Solr 4.9, both terms end up at position 2. This causes phrase queries which used to work to return zero hits. The exact text of the phrase query is in the original documents that match on 4.7.
+If the custom rbbi (which is included unmodified from the lucene icu analysis source code) is not used, then the problem doesn't happen, because the punctuation doesn't make it to the PRF. If the PatternReplaceFilterFactory is not present, then the problem doesn't happen.
+I can work around the problem by setting luceneMatchVersion to 4.7, but I think the behavior is a bug, and I would rather not continue to use 4.7 analysis when I upgrade to 5.x, which I hope to do soon.
+Whether luceneMatchversion is LUCENE_47 or LUCENE_4_9, query analysis puts aaa at term position 1 and bbb at term position 2.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+4.8
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Shawn Heisey
+Create date:
+20/Jul/15 15:37
+Update date:
+16/Sep/15 13:14
+Resolved date:
+

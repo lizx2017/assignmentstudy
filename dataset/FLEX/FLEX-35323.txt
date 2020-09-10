@@ -1,0 +1,97 @@
+Summary:
+NullPointerException when setting property of <fx:Object/> with binding
+Description:
+Using the following code:
+src/InternalError.mxml
+<?xml version="1.0" encoding="utf-8"?>
+<js:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+ xmlns:js="library://ns.apache.org/flexjs/basic"
+ xmlns:local="*">
+ <fx:Declarations>
+  <fx:Object test="{MY_CONST}"/>
+ </fx:Declarations>
+ <js:initialView>
+  <js:View>
+   <js:Label id="label" text="Hello World" x="100" y="100"/>
+  </js:View>
+ </js:initialView>
+ <js:valuesImpl>
+  <js:SimpleCSSValuesImpl />
+ </js:valuesImpl>
+ <fx:Script><![CDATA[
+  public static const MY_CONST:String = "hello";
+ ]]></fx:Script>
+</js:Application>
+Compile with js/bin/mxmlc:
+mxmlc src/InternalError.mxml
+The following error will be included in the output:
+InternalError.mxml Error: Internal error in ABC generator subsystem, when generating code for: /Users/joshtynjala/Development/NextGenAS/examples/HelloFlexJS/src/HelloFlexJS.mxml: java.lang.NullPointerException
+ at org.apache.flex.compiler.internal.as.codegen.LexicalScope.getNameFromDefinition(LexicalScope.java:1178)
+ at org.apache.flex.compiler.internal.as.codegen.LexicalScope.getBinding(LexicalScope.java:1069)
+ at org.apache.flex.compiler.internal.codegen.databinding.BindingDestinationMaker.makeDestinationFunctionInstructionList(BindingDestinationMaker.java:131)
+ at org.apache.flex.compiler.internal.codegen.databinding.BindingInfo.<init>(BindingInfo.java:114)
+ at org.apache.flex.compiler.internal.codegen.databinding.BindingAnalyzer.analyze(BindingAnalyzer.java:56)
+ at org.apache.flex.compiler.internal.codegen.databinding.BindingDatabase.analyze(BindingDatabase.java:122)
+ at org.apache.flex.compiler.internal.codegen.databinding.MXMLBindingDirectiveHelper.visitNode(MXMLBindingDirectiveHelper.java:116)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.processMXMLDataBinding(MXMLClassDirectiveProcessor.java:4803)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.processMXMLPropertySpecifier(MXMLClassDirectiveProcessor.java:3702)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.processNode(MXMLClassDirectiveProcessor.java:962)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.traverse(MXMLClassDirectiveProcessor.java:861)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.traverse(MXMLClassDirectiveProcessor.java:831)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.processMXMLObject(MXMLClassDirectiveProcessor.java:3014)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.processNode(MXMLClassDirectiveProcessor.java:919)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.traverse(MXMLClassDirectiveProcessor.java:861)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.traverse(MXMLClassDirectiveProcessor.java:831)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.processMXMLDeclarations(MXMLClassDirectiveProcessor.java:4132)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.processNode(MXMLClassDirectiveProcessor.java:977)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.traverse(MXMLClassDirectiveProcessor.java:861)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.traverse(MXMLClassDirectiveProcessor.java:831)
+ at org.apache.flex.compiler.internal.as.codegen.MXMLClassDirectiveProcessor.processMainClassDefinitionNode(MXMLClassDirectiveProcessor.java:653)
+ at org.apache.flex.compiler.internal.as.codegen.GlobalDirectiveProcessor.declareMXMLDocument(GlobalDirectiveProcessor.java:518)
+ at org.apache.flex.compiler.internal.as.codegen.DirectiveProcessor.processNode(DirectiveProcessor.java:232)
+ at org.apache.flex.compiler.internal.as.codegen.DirectiveProcessor.traverse(DirectiveProcessor.java:188)
+ at org.apache.flex.compiler.internal.as.codegen.ABCGenerator.generate(ABCGenerator.java:122)
+ at org.apache.flex.compiler.internal.units.MXMLCompilationUnit.handleABCBytesRequest(MXMLCompilationUnit.java:199)
+ at org.apache.flex.compiler.internal.units.CompilationUnitBase.processABCBytesRequest(CompilationUnitBase.java:876)
+ at org.apache.flex.compiler.internal.units.CompilationUnitBase.access$300(CompilationUnitBase.java:109)
+ at org.apache.flex.compiler.internal.units.CompilationUnitBase$4$1.call(CompilationUnitBase.java:313)
+ at org.apache.flex.compiler.internal.units.CompilationUnitBase$4$1.call(CompilationUnitBase.java:309)
+ at org.apache.flex.compiler.internal.units.requests.RequestMaker$1.call(RequestMaker.java:228)
+ at org.apache.flex.compiler.internal.units.requests.RequestMaker$1.call(RequestMaker.java:222)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)
+ at java.lang.Thread.run(Thread.java:745)
+Can reproduce with both FlexJS 0.7.0 and the latest 0.8.0 release branch nightly.
+Simply setting the property without binding does not produce a NullPointerException.
+Instead of using <fx:Object/>, if you switch to the following code, there is no NullPointerException:
+<js:Label text="{MY_CONST}"/>
+With that in mind, it may have something to do with the fact that the Object class is dynamic.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Apache FalconJX 0.7.
+Fix_version:
+Apache FalconJX 0.8.
+Component:
+Falcon
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Josh Tynjala
+Reporter:
+Josh Tynjala
+Create date:
+07/Jun/17 14:38
+Update date:
+07/Jun/17 16:37
+Resolved date:
+07/Jun/17 16:37

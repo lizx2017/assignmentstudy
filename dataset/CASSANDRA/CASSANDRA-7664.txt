@@ -1,0 +1,58 @@
+Summary:
+IndexOutOfBoundsException thrown during repair
+Description:
+I was running repair command with moderate read and write load at the same time. And I found tens of IndexOutOfBoundsException in system log as follows:
+ERROR [Thread-6056] 2013-05-22 14:47:59,416 CassandraDaemon.java (line132) Exception in thread Thread[Thread-6056,5,main]
+java.lang.IndexOutOfBoundsException
+at sun.nio.ch.ChannelInputStream.read(ChannelInputStream.java:75)
+at org.apache.cassandra.streaming.compress.CompressedInputStream$Reader.runMayThrow(CompressedInputStream.java:151)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+at java.lang.Thread.run(Thread.java:662)
+I read the source code of CompressedInputStream.java and found there surely will throw IndexOutOfBoundsException in the following situation:
+CompressedInputStream.java
+// Part of CompressedInputStream.java start from Line 139
+        protected void runMayThrow() throws Exception
+        {
+            byte[] compressedWithCRC;
+            while (chunks.hasNext())
+            {
+                CompressionMetadata.Chunk chunk = chunks.next();
+
+                int readLength = chunk.length + 4; // read with CRC
+                compressedWithCRC = new byte[readLength];
+
+                int bufferRead = 0;
+                while (bufferRead < readLength)
+                    bufferRead += source.read(compressedWithCRC, bufferRead, readLength - bufferRead);
+                dataBuffer.put(compressedWithCRC);
+            }
+        }
+If read function read nothing because the end of the stream has been reached, it will return -1, thus bufferRead can be negetive. In the next circle, read function will throw IndexOutOfBoundsException because bufferRead is negetive.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10
+Component:
+None
+Label:
+None
+Environment:
+redhat
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+ZhongYu
+Create date:
+01/Aug/14 08:01
+Update date:
+16/Apr/19 09:31
+Resolved date:
+20/Aug/14 06:37

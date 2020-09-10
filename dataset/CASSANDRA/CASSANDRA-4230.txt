@@ -1,0 +1,170 @@
+Summary:
+Deleting a CF always produces an error and that CF remains in an unknown state
+Description:
+From the CLI perspective:
+[default@Disco] drop column family client;
+null
+org.apache.thrift.transport.TTransportException
+at org.apache.thrift.transport.TIOStreamTransport.read(TIOStreamTransport.java:132)
+at org.apache.thrift.transport.TTransport.readAll(TTransport.java:84)
+at org.apache.thrift.transport.TFramedTransport.readFrame(TFramedTransport.java:129)
+at org.apache.thrift.transport.TFramedTransport.read(TFramedTransport.java:101)
+at org.apache.thrift.transport.TTransport.readAll(TTransport.java:84)
+at org.apache.thrift.protocol.TBinaryProtocol.readAll(TBinaryProtocol.java:378)
+at org.apache.thrift.protocol.TBinaryProtocol.readI32(TBinaryProtocol.java:297)
+at org.apache.thrift.protocol.TBinaryProtocol.readMessageBegin(TBinaryProtocol.java:204)
+at org.apache.thrift.TServiceClient.receiveBase(TServiceClient.java:69)
+at org.apache.cassandra.thrift.Cassandra$Client.recv_system_drop_column_family(Cassandra.java:1222)
+at org.apache.cassandra.thrift.Cassandra$Client.system_drop_column_family(Cassandra.java:1209)
+at org.apache.cassandra.cli.CliClient.executeDelColumnFamily(CliClient.java:1301)
+at org.apache.cassandra.cli.CliClient.executeCLIStatement(CliClient.java:234)
+at org.apache.cassandra.cli.CliMain.processStatementInteractive(CliMain.java:219)
+at org.apache.cassandra.cli.CliMain.main(CliMain.java:346)
+Log:
+INFO [MigrationStage:1] 2012-05-09 11:25:35,686 ColumnFamilyStore.java (line 634) Enqueuing flush of Memtable-schema_columnfamilies@225225949(978/1222 serialized/live bytes, 21 ops)
+INFO [FlushWriter:3] 2012-05-09 11:25:35,687 Memtable.java (line 266) Writing Memtable-schema_columnfamilies@225225949(978/1222 serialized/live bytes, 21 ops)
+INFO [FlushWriter:3] 2012-05-09 11:25:35,748 Memtable.java (line 307) Completed flushing /var/lib/cassandra/data/system/schema_columnfamilies/system-schema_columnfamilies-hc-34-Data.db (1041 bytes)
+INFO [MigrationStage:1] 2012-05-09 11:25:35,749 ColumnFamilyStore.java (line 634) Enqueuing flush of Memtable-schema_columns@213209572(586/732 serialized/live bytes, 12 ops)
+INFO [FlushWriter:3] 2012-05-09 11:25:35,750 Memtable.java (line 266) Writing Memtable-schema_columns@213209572(586/732 serialized/live bytes, 12 ops)
+INFO [FlushWriter:3] 2012-05-09 11:25:35,812 Memtable.java (line 307) Completed flushing /var/lib/cassandra/data/system/schema_columns/system-schema_columns-hc-28-Data.db (649 bytes)
+INFO [CompactionExecutor:20] 2012-05-09 11:25:35,814 CompactionTask.java (line 114) Compacting [SSTableReader(path='/var/lib/cassandra/data/system/schema_columns/system-schema_columns-hc-27-Data.db'), SSTableReader
+(path='/var/lib/cassandra/data/system/schema_columns/system-schema_columns-hc-25-Data.db'), SSTableReader(path='/var/lib/cassandra/data/system/schema_columns/system-schema_columns-hc-26-Data.db'), SSTableReader(path
+='/var/lib/cassandra/data/system/schema_columns/system-schema_columns-hc-28-Data.db')]
+INFO [MigrationStage:1] 2012-05-09 11:25:35,918 ColumnFamilyStore.java (line 634) Enqueuing flush of Memtable-Client@864320066(372/465 serialized/live bytes, 6 ops)
+INFO [FlushWriter:3] 2012-05-09 11:25:35,919 Memtable.java (line 266) Writing Memtable-Client@864320066(372/465 serialized/live bytes, 6 ops)
+INFO [CompactionExecutor:20] 2012-05-09 11:25:35,945 CompactionTask.java (line 225) Compacted to [/var/lib/cassandra/data/system/schema_columns/system-schema_columns-hc-29-Data.db,]. 22,486 to 20,621 (~91% of orig
+inal) bytes for 2 keys at 0.150120MB/s. Time: 131ms.
+INFO [FlushWriter:3] 2012-05-09 11:25:36,013 Memtable.java (line 307) Completed flushing /var/lib/cassandra/data/Disco/Client/Disco-Client-hc-5-Data.db (407 bytes)
+ERROR [MigrationStage:1] 2012-05-09 11:25:36,043 CLibrary.java (line 158) Unable to create hard link
+com.sun.jna.LastErrorException: errno was 17
+at org.apache.cassandra.utils.CLibrary.link(Native Method)
+at org.apache.cassandra.utils.CLibrary.createHardLink(CLibrary.java:150)
+at org.apache.cassandra.db.Directories.snapshotLeveledManifest(Directories.java:343)
+at org.apache.cassandra.db.ColumnFamilyStore.snapshotWithoutFlush(ColumnFamilyStore.java:1450)
+at org.apache.cassandra.db.ColumnFamilyStore.snapshot(ColumnFamilyStore.java:1483)
+at org.apache.cassandra.db.DefsTable.dropColumnFamily(DefsTable.java:512)
+at org.apache.cassandra.db.DefsTable.mergeColumnFamilies(DefsTable.java:403)
+at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:270)
+at org.apache.cassandra.service.MigrationManager$1.call(MigrationManager.java:214)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+ERROR [Thrift:3] 2012-05-09 11:25:36,048 CustomTThreadPoolServer.java (line 204) Error occurred during processing of message.
+java.lang.RuntimeException: java.util.concurrent.ExecutionException: java.io.IOError: java.io.IOException: Unable to create hard link from /var/lib/cassandra/data/Disco/Client/Client.json to /var/lib/cassandra/data/Disco/Client/snapshots/1336559135918-Client/Client.json (errno 17)
+at org.apache.cassandra.utils.FBUtilities.waitOnFuture(FBUtilities.java:372)
+at org.apache.cassandra.service.MigrationManager.announce(MigrationManager.java:191)
+at org.apache.cassandra.service.MigrationManager.announceColumnFamilyDrop(MigrationManager.java:182)
+at org.apache.cassandra.thrift.CassandraServer.system_drop_column_family(CassandraServer.java:948)
+at org.apache.cassandra.thrift.Cassandra$Processor$system_drop_column_family.getResult(Cassandra.java:3348)
+at org.apache.cassandra.thrift.Cassandra$Processor$system_drop_column_family.getResult(Cassandra.java:3336)
+at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:186)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Caused by: java.util.concurrent.ExecutionException: java.io.IOError: java.io.IOException: Unable to create hard link from /var/lib/cassandra/data/Disco/Client/Client.json to /var/lib/cassandra/data/Disco/Client/snapshots/1336559135918-Client/Client.json (errno 17)
+at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+at org.apache.cassandra.utils.FBUtilities.waitOnFuture(FBUtilities.java:368)
+... 11 more
+Caused by: java.io.IOError: java.io.IOException: Unable to create hard link from /var/lib/cassandra/data/Disco/Client/Client.json to /var/lib/cassandra/data/Disco/Client/snapshots/1336559135918-Client/Client.json (errno 17)
+at org.apache.cassandra.db.ColumnFamilyStore.snapshotWithoutFlush(ColumnFamilyStore.java:1454)
+at org.apache.cassandra.db.ColumnFamilyStore.snapshot(ColumnFamilyStore.java:1483)
+at org.apache.cassandra.db.DefsTable.dropColumnFamily(DefsTable.java:512)
+at org.apache.cassandra.db.DefsTable.mergeColumnFamilies(DefsTable.java:403)
+at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:270)
+at org.apache.cassandra.service.MigrationManager$1.call(MigrationManager.java:214)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+... 3 more
+Caused by: java.io.IOException: Unable to create hard link from /var/lib/cassandra/data/Disco/Client/Client.json to /var/lib/cassandra/data/Disco/Client/snapshots/1336559135918-Client/Client.json (errno 17)
+at org.apache.cassandra.utils.CLibrary.createHardLink(CLibrary.java:163)
+at org.apache.cassandra.db.Directories.snapshotLeveledManifest(Directories.java:343)
+at org.apache.cassandra.db.ColumnFamilyStore.snapshotWithoutFlush(ColumnFamilyStore.java:1450)
+... 10 more
+ERROR [MigrationStage:1] 2012-05-09 11:25:36,051 AbstractCassandraDaemon.java (line 134) Exception in thread Thread[MigrationStage:1,5,main]
+java.io.IOError: java.io.IOException: Unable to create hard link from /var/lib/cassandra/data/Disco/Client/Client.json to /var/lib/cassandra/data/Disco/Client/snapshots/1336559135918-Client/Client.json (errno 17)
+at org.apache.cassandra.db.ColumnFamilyStore.snapshotWithoutFlush(ColumnFamilyStore.java:1454)
+at org.apache.cassandra.db.ColumnFamilyStore.snapshot(ColumnFamilyStore.java:1483)
+at org.apache.cassandra.db.DefsTable.dropColumnFamily(DefsTable.java:512)
+at org.apache.cassandra.db.DefsTable.mergeColumnFamilies(DefsTable.java:403)
+at org.apache.cassandra.db.DefsTable.mergeSchema(DefsTable.java:270)
+at org.apache.cassandra.service.MigrationManager$1.call(MigrationManager.java:214)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Caused by: java.io.IOException: Unable to create hard link from /var/lib/cassandra/data/Disco/Client/Client.json to /var/lib/cassandra/data/Disco/Client/snapshots/1336559135918-Client/Client.json (errno 17)
+at org.apache.cassandra.utils.CLibrary.createHardLink(CLibrary.java:163)
+at org.apache.cassandra.db.Directories.snapshotLeveledManifest(Directories.java:343)
+at org.apache.cassandra.db.ColumnFamilyStore.snapshotWithoutFlush(ColumnFamilyStore.java:1450)
+... 10 more
+INFO [CompactionExecutor:22] 2012-05-09 11:25:36,052 CompactionTask.java (line 114) Compacting [SSTableReader(path='/var/lib/cassandra/data/Disco/Client/Disco-Client-hc-5-Data.db'), SSTableReader(path='/var/lib/cassandra/data/Disco/Client/Disco-Client-hc-4-Data.db')]
+INFO [CompactionExecutor:22] 2012-05-09 11:25:36,187 CompactionTask.java (line 225) Compacted to [/var/lib/cassandra/data/Disco/Client/Disco-Client-hc-6-Data.db,]. 728 to 458 (~62% of original) bytes for 8 keys at 0.003235MB/s. Time: 135ms.
+Schema:
+CREATE COLUMN FAMILY Client WITH
+key_validation_class = UUIDType AND
+comparator = UTF8Type AND
+column_metadata = [
+{ column_name: key, validation_class: BytesType } { column_name: name, validation_class: UTF8Type } { column_name: userid, validation_class: UUIDType, index_type: KEYS }
+] AND
+compression_options =
+{ sstable_compression:SnappyCompressor, chunk_length_kb:64 }
+AND
+compaction_strategy = LeveledCompactionStrategy AND
+compaction_strategy_options =
+{ sstable_size_in_mb: 10 }
+AND
+gc_grace = 432000;
+State of data dir after deletion attempt:
+ls -lah /var/lib/cassandra/data/Disco/Client/
+total 76K
+drwxr-xr-x 3 cassandra cassandra 4.0K May 9 11:25 .
+drwxr-xr-x 17 cassandra cassandra 4.0K May 3 12:34 ..
+rw-rr- 2 cassandra cassandra 420 May 9 11:25 Client-old.json
+rw-rr- 1 cassandra cassandra 418 May 7 18:04 Client.Client_userid_idx-old.json
+rw-rr- 1 cassandra cassandra 418 May 7 18:04 Client.Client_userid_idx.json
+rw-rr- 1 cassandra cassandra 418 May 9 11:25 Client.json
+rw-rr- 1 cassandra cassandra 46 May 9 11:25 Disco-Client-hc-6-CompressionInfo.db
+rw-rr- 1 cassandra cassandra 458 May 9 11:25 Disco-Client-hc-6-Data.db
+rw-rr- 1 cassandra cassandra 976 May 9 11:25 Disco-Client-hc-6-Filter.db
+rw-rr- 1 cassandra cassandra 208 May 9 11:25 Disco-Client-hc-6-Index.db
+rw-rr- 1 cassandra cassandra 4.3K May 9 11:25 Disco-Client-hc-6-Statistics.db
+rw-rr- 4 cassandra cassandra 46 May 7 18:04 Disco-Client.Client_userid_idx-hc-2-CompressionInfo.db
+rw-rr- 4 cassandra cassandra 92 May 7 18:04 Disco-Client.Client_userid_idx-hc-2-Data.db
+rw-rr- 4 cassandra cassandra 496 May 7 18:04 Disco-Client.Client_userid_idx-hc-2-Filter.db
+rw-rr- 4 cassandra cassandra 26 May 7 18:04 Disco-Client.Client_userid_idx-hc-2-Index.db
+rw-rr- 4 cassandra cassandra 4.3K May 7 18:04 Disco-Client.Client_userid_idx-hc-2-Statistics.db
+drwxr-xr-x 6 cassandra cassandra 4.0K May 9 11:25 snapshots
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.1
+Component:
+None
+Label:
+None
+Environment:
+debian
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+André Cruz
+Create date:
+09/May/12 10:28
+Update date:
+16/Apr/19 09:32
+Resolved date:
+15/May/12 17:10

@@ -1,0 +1,38 @@
+Summary:
+Decommissioned nodes are willing to rejoin the cluster if restarted
+Description:
+This issue comes from the Cassandra user group.
+If a node which was successfully decommissioned gets restarted with its data directory in tact, it will rejoin the cluster immediately going to UN and beginning to serve client requests.
+This is wrong - the node has consistency issues, having missed any writes while it was offline because no hinted handoffs were being kept. And in the best case scenario (it's spotted and remediated immediately), near-100% overstreaming will still occur.
+Also, whatever reasons the operator had for decommissioning the node would presumably still be valid, so this action may threaten cluster stability if the node is underpowered or suffering hardware issues.
+But what elevates this to critical is that if the node had been offline longer than gc_grace_seconds, it may cause permanent and unrecoverable consistency issues due to data resurrection.
+Recommendation:
+A node should remember that it was decommissioned and refuse to rejoin a cluster without at least a -Dflag forcing it to.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+3.0 alpha 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Eric Stevens
+Create date:
+13/Feb/15 15:03
+Update date:
+16/Apr/19 09:31
+Resolved date:
+19/May/15 15:47

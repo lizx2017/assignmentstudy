@@ -1,0 +1,69 @@
+Summary:
+[PATCH] CFF fonts render wrong glyphs
+Description:
+I've found three very closely related CFF encoding issues in v2.0.0 when using PDFToImage.
+Problem 1
+---------
+Look a line 7 of the poem, it should be "And the mouldering dust that years have made"
+but instead says "Afld the fioulderiflg dust that years have fiade"
+The CFF font is asseumed to use CIDs but it does not if its not a ROS font.
+Therefore we add a check for CFF ROS class.
+Patch 1 fixes this.
+Problem 2
+---------
+Look at line 3 "of right shoice" should be "of right choice".
+Likewise on line 2 of the 2nd paragraph "And a staunsh" should be "And a staunch",
+the st and ch ligatures are incorrect.
+This is because the font is an CFF ROS CID Font and the glyphs for the st and ch ligatures
+both have no name. The CFF format achieves this by using SIDs beyond the size of the string
+index, which map to .notdef. So there is a unique SID for each glyph, but not a unique name.
+Unfortuntely, PDFBox assumes that Type 1 fonts have glyphs with unique names, and this
+assumtion appears throughout the codebase. Because a glyph name and a SID perform essentially
+the same role, I recommend a simple solution to the problem: when an SID beyond the size of
+the string index is encounteted, instead of mapping it to .notdef it should be mapped to
+a new name with the prefix "SID" for example mapping SID 409 to the name "SID409". That way
+each glyph will have a unique name, which is what PDFbox assumes.
+Patch 2 fixes this.
+Problem 3
+---------
+Look at line 2, "That creepeth oÉer ruins old!" the word "o'er" is incorrectly rendered
+as "oÉer". This is because the Encoding entry in the PDF maps code 201 from "Eacute" in the
+base encoding to "quoteright", but this is being ignored by PDFBox.
+In the CFFGlyph2D constructor PDFBox examines the font's built-in charset. When the name
+"quoteright" is encountered it is looked up in the PDF Encoding (i.e. nameToCode) where
+it is changed to code 201. Thus code 201 is associated with the "quoteright" glyph in the
+codeToGlyph map. This is correct.
+However, later when the "Eacute" glyph is encountered, its built-in charset code is also
+201 (which is standard) and so the codeToGlyph map entry is overwritten, resulting in
+code 201 being associated with the "Eacute" glyph.
+The solution is to build the codeToGlyph map in a strict order: first populate it with the
+font's built-in charset, then the PDF Encoding overwrites any entries which it defines.
+Patch 3 fixes this (and also replaces patch 2)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+None
+Label:
+patch
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+John Hewson
+Create date:
+02/Jan/14 08:29
+Update date:
+17/Mar/16 19:08
+Resolved date:
+04/Jan/14 13:39

@@ -1,0 +1,75 @@
+Summary:
+IndexOutOfBoundsException reading results
+Description:
+I discovered this while testing out HBASE-3789, I can recreate this bug without my patch.
+When running TestFromClient, I get failures in testListTables and testJiraTest867. The assertion error is on a number mismatch, but when you look at the log you see:
+2011-06-02 16:51:24,602 WARN [IPC Client (47) connection to hbasedev/10.10.1.177:56606 from an unknown user] ipc.HBaseClient$Connection(489): Unexpected exception receiving call responses
+java.lang.IndexOutOfBoundsException
+at java.io.BufferedInputStream.read(BufferedInputStream.java:310)
+at java.io.DataInputStream.readFully(DataInputStream.java:178)
+at org.apache.hadoop.hbase.client.Result.readArray(Result.java:652)
+at org.apache.hadoop.hbase.io.HbaseObjectWritable.readObject(HbaseObjectWritable.java:540)
+at org.apache.hadoop.hbase.io.HbaseObjectWritable.readFields(HbaseObjectWritable.java:288)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.receiveResponse(HBaseClient.java:563)
+at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.run(HBaseClient.java:486)
+2011-06-02 16:51:24,603 WARN [IPC Reader 2 on port 56606] ipc.HBaseServer$Listener(600): IPC Server listener on 56606: readAndProcess threw exception java.io.IOException: Connection reset by peer. Count of bytes read: 0
+java.io.IOException: Connection reset by peer
+at sun.nio.ch.FileDispatcher.read0(Native Method)
+at sun.nio.ch.SocketDispatcher.read(SocketDispatcher.java:21)
+at sun.nio.ch.IOUtil.readIntoNativeBuffer(IOUtil.java:233)
+at sun.nio.ch.IOUtil.read(IOUtil.java:206)
+at sun.nio.ch.SocketChannelImpl.read(SocketChannelImpl.java:236)
+at org.apache.hadoop.hbase.ipc.HBaseServer.channelRead(HBaseServer.java:1518)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Connection.readAndProcess(HBaseServer.java:1001)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Listener.doRead(HBaseServer.java:596)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Listener$Reader.run(HBaseServer.java:390)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+It's not clear to me how I can debug this, but adding some debug inside Result.readArray shows me that the last ints being read are out of whack:
+numKeys 3
+0 keyLen 687
+0 offset 55551
+1 keyLen 127
+1 offset 56242
+2 keyLen 130
+2 offset 56373
+numKeys 3
+0 keyLen 666
+0 offset 56511
+1 keyLen 120
+1 offset 57181
+2 keyLen 123
+2 offset 57305
+numKeys 1768842863
+0 keyLen 1919248233
+0 offset 57436
+Here I'm printing the tail of the reading of an array of Results where each has 3 KVs. As you can see, the last one has a pretty big number of keys and then the keyLen is also completely off. Looking at the server side when writing, I see that the real number of that last keyLen should be 448.
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jean-Daniel Cryans
+Create date:
+03/Jun/11 00:03
+Update date:
+29/Aug/12 18:32
+Resolved date:
+29/Aug/12 18:32

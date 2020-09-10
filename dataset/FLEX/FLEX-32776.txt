@@ -1,0 +1,44 @@
+Summary:
+Focus lost when using inline editors (Combobox) next to default inline editor in AdvancedDataGrid and tabbing rapidly between cells
+Description:
+Steps to reproduce:
+Using provided example application...
+1. Click directly into the first cell of the ADG
+2. rapidly tab right/left between cells
+3. Watch the text area above the grid for changes. Every time it receives focus, it's text will be updated
+Actual Results:
+Focus is intermittently lost between cells when tabbing rapidly Since I've overridden setFocus on the base application (setting it to the text area), focus manager tries to restore focus to the application when an out-of-scope editor retains focus and then tries to focus out. This seems to happen most frequently when tabbing from a default editor to a combobox editor (cells 2->3 and 9->8 in the given application)
+Expected Results:
+ADG should never lose focus when tabbing between cells.
+Workaround (if any):
+Going through AdvancedDataGridBaseEx.as, the FOCUS_OUT event on the item editor instance is never removed. Changing the event registrations to the editor instance (there's a KEY_DOWN and FOCUS_OUT near eachother) to weak references and adding the FOCUS_OUT event removal in destroyItemEditor prevents perceptual focus from ever being lost, but the focus out does still occur so the event listener should probably be removed earlier than in destroyItemEditor – possibly in endEdit after checking to see if the ITEM_EDIT_END event.isDefaultPrevented(). I've included a monkeypatched version of AdvancedDataGridBaseEx.as that has these described changes for verification. Edits are on lines 4601-02, 4614-15 and 4756-57.
+Notes:
+This still occurs in Flex 4.0.0, but is harder to reproduce, probably due to 4's increased rendering performance. The best way I've found to reproduce the problem in Flex 4 is to profile the application, uncheck the "add processing" check box in the application, and then begin tabbing.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK 3.0 (
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+14/Apr/10 12:08
+Update date:
+29/Jun/11 22:58
+Resolved date:
+15/Mar/11 02:35

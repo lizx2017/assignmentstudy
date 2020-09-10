@@ -1,0 +1,35 @@
+Summary:
+Inline image parsing error causes RuntimeException + FIX
+Description:
+Inline images start with BI operator, followed by some parameters and ID operator. Then the binary image data with a trailing EI operator follows. The problem is the detection of the EI operator. The current code in PDFStreamParser requires the operator to be surrounded by whitespaces. However I have a document where the sequence EI with preceding 0x09 and following 0x20 occurs in the image data. Thus PDFBOX wrongly assumes the end of image data and the parsing later fails with a RuntimeException (from PDFStreamParser#getTokenIterator - this should be changed to throw IOException; will file another issue) because the following binary data is interpreted as operator.
+In earlier versions a heuristic was used to test the expected byte count of the image to circumvent this problem, however it was disabled because the data could also be compressed.
+To fix the problem I have added a test involving the following X (with X=5) bytes after the 'WS EI WS'. In order to treat the EI as operator all of the bytes must be printable ASCII characters because it can only be followed by PDF operators. If 5 bytes are too many because a comment with non ASCII character could follow this could be reduced to 3 bytes which in most cases should be enough.
+Diff of fix is added to this issue.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.7.0
+Fix_version:
+1.8.5, 2.0.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Timo Boehme
+Create date:
+10/Nov/11 17:31
+Update date:
+02/May/14 06:12
+Resolved date:
+07/Mar/14 22:06

@@ -1,0 +1,90 @@
+Summary:
+repair fails with java.io.EOFException
+Description:
+Issuing repair on node 1 (1.10.42.81) in a cluster quickly fails with
+INFO [AntiEntropyStage:1] 2011-06-09 19:02:47,999 AntiEntropyService.java (line 234) Queueing comparison #<Differencer #<TreeRequest manual-repair-0c17c5f9-583f-4a31-a6d4-a9e7306fb46e, /1
+.10.42.82, (JP,XXX), (Token(bytes[6e]),Token(bytes[313039])]>>
+INFO [AntiEntropyStage:1] 2011-06-09 19:02:48,026 AntiEntropyService.java (line 468) Endpoints somewhere/1.10.42.81 and /1.10.42.82 have 2 range(s) out of sync for (JP,XXX) on (Token(bytes[6e]),Token(bytes[313039])]
+INFO [AntiEntropyStage:1] 2011-06-09 19:02:48,026 AntiEntropyService.java (line 485) Performing streaming repair of 2 ranges for #<TreeRequest manual-repair-0c17c5f9-583f-4a31-a6d4-a9e7306
+fb46e, /1.10.42.82, (JP,XXX), (Token(bytes[6e]),Token(bytes[313039])]>
+INFO [AntiEntropyStage:1] 2011-06-09 19:02:48,030 StreamOut.java (line 173) Stream context metadata [/data/cassandra/node0/data/JP/XXX-g-3-Data.db sections=1 progress=0/36592 - 0%], 1 sstables.
+INFO [AntiEntropyStage:1] 2011-06-09 19:02:48,031 StreamOutSession.java (line 174) Streaming to /1.10.42.82
+ERROR [CompactionExecutor:9] 2011-06-09 19:02:48,970 AbstractCassandraDaemon.java (line 113) Fatal exception in thread Thread[CompactionExecutor:9,1,main]
+java.io.EOFException
+at java.io.RandomAccessFile.readInt(RandomAccessFile.java:725)
+at org.apache.cassandra.io.sstable.SSTableWriter$RowIndexer.doIndexing(SSTableWriter.java:457)
+at org.apache.cassandra.io.sstable.SSTableWriter$RowIndexer.index(SSTableWriter.java:364)
+at org.apache.cassandra.io.sstable.SSTableWriter$Builder.build(SSTableWriter.java:315)
+at org.apache.cassandra.db.CompactionManager$9.call(CompactionManager.java:1099)
+at org.apache.cassandra.db.CompactionManager$9.call(CompactionManager.java:1090)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+On .82
+ERROR [CompactionExecutor:12] 2011-06-09 19:02:48,051 AbstractCassandraDaemon.java (line 113) Fatal exception in thread Thread[CompactionExecutor:12,1,main]
+java.io.EOFException
+at java.io.RandomAccessFile.readInt(RandomAccessFile.java:725)
+at org.apache.cassandra.io.sstable.SSTableWriter$RowIndexer.doIndexing(SSTableWriter.java:457)
+at org.apache.cassandra.io.sstable.SSTableWriter$RowIndexer.index(SSTableWriter.java:364)
+at org.apache.cassandra.io.sstable.SSTableWriter$Builder.build(SSTableWriter.java:315)
+at org.apache.cassandra.db.CompactionManager$9.call(CompactionManager.java:1099)
+at org.apache.cassandra.db.CompactionManager$9.call(CompactionManager.java:1090)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+ERROR [Thread-132] 2011-06-09 19:02:48,051 AbstractCassandraDaemon.java (line 113) Fatal exception in thread Thread[Thread-132,5,main]
+java.lang.RuntimeException: java.util.concurrent.ExecutionException: java.io.EOFException
+at org.apache.cassandra.streaming.StreamInSession.closeIfFinished(StreamInSession.java:152)
+at org.apache.cassandra.streaming.IncomingStreamReader.read(IncomingStreamReader.java:63)
+at org.apache.cassandra.net.IncomingTcpConnection.stream(IncomingTcpConnection.java:155)
+at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:93)
+Caused by: java.util.concurrent.ExecutionException: java.io.EOFException
+at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+at org.apache.cassandra.streaming.StreamInSession.closeIfFinished(StreamInSession.java:136)
+... 3 more
+Caused by: java.io.EOFException
+at java.io.RandomAccessFile.readInt(RandomAccessFile.java:725)
+at org.apache.cassandra.io.sstable.SSTableWriter$RowIndexer.doIndexing(SSTableWriter.java:457)
+at org.apache.cassandra.io.sstable.SSTableWriter$RowIndexer.index(SSTableWriter.java:364)
+at org.apache.cassandra.io.sstable.SSTableWriter$Builder.build(SSTableWriter.java:315)
+at org.apache.cassandra.db.CompactionManager$9.call(CompactionManager.java:1099)
+at org.apache.cassandra.db.CompactionManager$9.call(CompactionManager.java:1090)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Looks to me like the receiving side fails first.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Terje Marthinussen
+Create date:
+09/Jun/11 11:24
+Update date:
+16/Apr/19 09:32
+Resolved date:
+14/Jun/11 07:56

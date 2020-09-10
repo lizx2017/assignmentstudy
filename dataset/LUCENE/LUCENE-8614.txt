@@ -1,0 +1,50 @@
+Summary:
+ArrayIndexOutOfBoundsException in ByteBlockPool
+Description:
+A field with a very large number of small tokens can cause ArrayIndexOutOfBoundsException in ByteBlockPool due to an arithmetic overflow in ByteBlockPool.
+The issue was originally reported in https://github.com/elastic/elasticsearch/issues/23670 where due to the indexing settings the geo_shape generated a very large number of tokens and caused the indexing operation to fail with the following exception: 
+Caused by: java.lang.ArrayIndexOutOfBoundsException: -65531
+ at org.apache.lucene.util.ByteBlockPool.setBytesRef(ByteBlockPool.java:308) ~[lucene-core-6.4.0.jar:6.4.0 bbe4b08cc1fb673d0c3eb4b8455f23ddc1364124 - jim - 2017-01-17 15:57:29]
+ at org.apache.lucene.util.BytesRefHash.equals(BytesRefHash.java:183) ~[lucene-core-6.4.0.jar:6.4.0 bbe4b08cc1fb673d0c3eb4b8455f23ddc1364124 - jim - 2017-01-17 15:57:29]
+ at org.apache.lucene.util.BytesRefHash.findHash(BytesRefHash.java:337) ~[lucene-core-6.4.0.jar:6.4.0 bbe4b08cc1fb673d0c3eb4b8455f23ddc1364124 - jim - 2017-01-17 15:57:29]
+ at org.apache.lucene.util.BytesRefHash.add(BytesRefHash.java:255) ~[lucene-core-6.4.0.jar:6.4.0 bbe4b08cc1fb673d0c3eb4b8455f23ddc1364124 - jim - 2017-01-17 15:57:29]
+ at org.apache.lucene.index.TermsHashPerField.add(TermsHashPerField.java:149) ~[lucene-core-6.4.0.jar:6.4.0 bbe4b08cc1fb673d0c3eb4b8455f23ddc1364124 - jim - 2017-01-17 15:57:29]
+ at org.apache.lucene.index.DefaultIndexingChain$PerField.invert(DefaultIndexingChain.java:766) ~[lucene-core-6.4.0.jar:6.4.0 bbe4b08cc1fb673d0c3eb4b8455f23ddc1364124 - jim - 2017-01-17 15:57:29]
+ at org.apache.lucene.index.DefaultIndexingChain.processField(DefaultIndexingChain.java:417) ~[lucene-core-6.4.0.jar:6.4.0 bbe4b08cc1fb673d0c3eb4b8455f23ddc1364124 - jim - 2017-01-17 15:57:29]
+ at org.apache.lucene.index.DefaultIndexingChain.processDocument(DefaultIndexingChain.java:373) ~[lucene-core-6.4.0.jar:6.4.0 bbe4b08cc1fb673d0c3eb4b8455f23ddc1364124 - jim - 2017-01-17 15:57:29]
+ at org.apache.lucene.index.DocumentsWriterPerThread.updateDocument(DocumentsWriterPerThread.java:231) ~[lucene-core-6.4.0.jar:6.4.0 bbe4b08cc1fb673d0c3eb4b8455f23ddc1364124 - jim - 2017-01-17 15:57:29]
+ at org.apache.lucene.index.DocumentsWriter.updateDocument(DocumentsWriter.java:478) ~[lucene-core-6.4.0.jar:6.4.0 bbe4b08cc1fb673d0c3eb4b8455f23ddc1364124 - jim - 2017-01-17 15:57:29]
+ at org.apache.lucene.index.IndexWriter.updateDocument(IndexWriter.java:1575) ~[lucene-core-6.4.0.jar:6.4.0 bbe4b08cc1fb673d0c3eb4b8455f23ddc1364124 - jim - 2017-01-17 15:57:29]
+ at org.apache.lucene.index.IndexWriter.addDocument(IndexWriter.java:1320) ~[lucene-core-6.4.0.jar:6.4.0 bbe4b08cc1fb673d0c3eb4b8455f23ddc1364124 - jim - 2017-01-17 15:57:29]
+I was able to reproduce the issue and somewhat reduce the test that reproduces it (see enclosed patch) but unfortunately it still requires 12G of heap to run.
+The issue seems to be caused by arithmetic overflow in the byteOffset calculation when BytesBlockPool advances to the next buffer on the last line of the nextBuffer() method, but it doesn't manifest itself until much later when this offset is used to calculate the bytesStart in BytesRefHash, which in turn causes AIOB back in the ByteBlockPool setBytesRef() method where it is used to find the term's buffer.
+I realize that it's unreasonable to expect lucene to index such fields, but I wonder if an overflow check should be added to BytesBlockPool.nextBuffer in order to handle such condition more gracefully.
+   
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+7.5
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Igor Motov
+Create date:
+19/Dec/18 00:18
+Update date:
+19/Dec/18 00:19
+Resolved date:
+

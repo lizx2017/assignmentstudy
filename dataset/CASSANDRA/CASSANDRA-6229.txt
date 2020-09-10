@@ -1,0 +1,51 @@
+Summary:
+transfers never occur after enabling a shuffle
+Description:
+Using the following documentation as reference:
+http://www.datastax.com/documentation/cassandra/2.0/webhelp/cassandra/tools/toolsCassandraShuffle.html
+After running the 'shuffle en' step, the command does not block giving the indication that a transfer has occurred. However, running 'shuffle ls' at an arbitrary time after enabling the shuffle results in a large list of pending transfers. From the users perspective it is unclear what is happening; however, it looks like the transfer does not actually occur.
+repro steps:
+1) cd to latest cassandra-2.0 branch
+2) ccm create shuffle_test
+3 ccm populate -n 3
+4) delete the 'num_tokens' line from each cassandra.yaml file for all three nodes.
+5) ccm start
+6) run 'ccm node1 ring' and verify the vnodes are not enabled.
+7) ccm node1 stress -o insert
+8) for each node set 'num_tokens: 256' in the cassandra.yaml
+9) restart the nodes
+10) run 'ccm node1 ring' to verify vnodes is enabled
+11) ccm node1 shuffle create
+12) ccm node1 shuffle en
+13) wait arbitrary amount of time and run 'ccm node1 shuffle ls'.
+Expected: transfers should eventually happen and not be observed with 'shuffle ls'
+Actual: transfers never seem to occur. If in fact they do occur it is not obvious.
+If transfers do in fact occur it is very difficult to tell. This was initially discovered on a real cluster and the cluster sat overnight without any transfers happening. As a user I would also expect 'shuffle en' to block. The non blocking behavior does not seem ideal from a user perspective.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Joshua McKenzie
+Reporter:
+Daniel Meyer
+Create date:
+22/Oct/13 15:26
+Update date:
+16/Apr/19 09:32
+Resolved date:
+31/Jul/14 13:02

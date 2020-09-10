@@ -1,0 +1,74 @@
+Summary:
+ArrayIndexOutOfBoundsException in GlyfSimpleDescript.readFlags() when multithreading
+Description:
+From Kenneth K. in the mailing list:
+I have a client application that convert pdf documents into single page tiff images. Since the user export large quantities of documents I use a multithreaded approach. Each thread loads it own document and converts the pages one by one.
+The pdf file is serialized to the client thread and then each thread executes the following code. If I only use 1 thread there is no problem. I checked to make sure objects are shared between threads.
+            docin = PDDocument.load(new ByteArrayInputStream(documentResult.getImage().getContent()),true);
+            if(null==docin)
+              throw new Exception("Invalid PDF document or an occured during retrieval");
+               int numPages = docin.getNumberOfPages();
+                     String strPath = getPath(numPages);
+                     int iPage = 0;
+            PDFRenderer renderer = new PDFRenderer(docin);
+            for (int i=0;i<numPages;i++)
+            {
+              PDPage page = docin.getPage(i);
+              PDRectangle rect = page.getMediaBox();
+              BufferedImage pageImage = null;
+              pageImage = renderer.renderImageWithDPI(i, 200f, ImageType.BINARY);
+              ...
+            }
+Array index out of range: 8
+       at org.apache.fontbox.ttf.GlyfSimpleDescript.readFlags(GlyfSimpleDescript.java:202)
+       at org.apache.fontbox.ttf.GlyfSimpleDescript.<init>(GlyfSimpleDescript.java:77)
+       at org.apache.fontbox.ttf.GlyphData.initData(GlyphData.java:58)
+       at org.apache.fontbox.ttf.GlyphTable.getGlyph(GlyphTable.java:161)
+       at org.apache.pdfbox.rendering.TTFGlyph2D.getPathForGID(TTFGlyph2D.java:140)
+       at org.apache.pdfbox.rendering.TTFGlyph2D.getPathForCharacterCode(TTFGlyph2D.java:92)
+       at org.apache.pdfbox.rendering.PageDrawer.drawGlyph2D(PageDrawer.java:333)
+       at org.apache.pdfbox.rendering.PageDrawer.showFontGlyph(PageDrawer.java:314)
+       at org.apache.pdfbox.contentstream.PDFStreamEngine.showGlyph(PDFStreamEngine.java:731)
+       at org.apache.pdfbox.contentstream.PDFStreamEngine.showText(PDFStreamEngine.java:690)
+       at org.apache.pdfbox.rendering.PageDrawer.showText(PageDrawer.java:296)
+       at org.apache.pdfbox.contentstream.PDFStreamEngine.showTextStrings(PDFStreamEngine.java:600)
+       at org.apache.pdfbox.contentstream.operator.text.ShowTextAdjusted.process(ShowTextAdjusted.java:38)
+       at org.apache.pdfbox.contentstream.PDFStreamEngine.processOperator(PDFStreamEngine.java:802)
+       at org.apache.pdfbox.contentstream.PDFStreamEngine.processStreamOperators(PDFStreamEngine.java:464)
+       at org.apache.pdfbox.contentstream.PDFStreamEngine.processStream(PDFStreamEngine.java:438)
+       at org.apache.pdfbox.contentstream.PDFStreamEngine.processPage(PDFStreamEngine.java:149)
+       at org.apache.pdfbox.rendering.PageDrawer.drawPage(PageDrawer.java:179)
+       at org.apache.pdfbox.rendering.PDFRenderer.renderPage(PDFRenderer.java:205)
+       at org.apache.pdfbox.rendering.PDFRenderer.renderImage(PDFRenderer.java:136)
+       at org.apache.pdfbox.rendering.PDFRenderer.renderImageWithDPI(PDFRenderer.java:95)
+       at org.ilsos.cm.export.client.rmi.workers.Pdf2SinglePageTiff.processResult(Pdf2SinglePageTiff.java:142)
+       at org.ilsos.cm.export.client.rmi.ExportWorker.run(ExportWorker.java:72)
+       at java.lang.Thread.run(Thread.java:784)
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+FontBox
+Label:
+multithreading
+Environment:
+
+Attachment number:
+0
+Assignee:
+John Hewson
+Reporter:
+Tilman Hausherr
+Create date:
+04/Jun/15 19:27
+Update date:
+17/Mar/16 19:06
+Resolved date:
+12/Jun/15 18:40

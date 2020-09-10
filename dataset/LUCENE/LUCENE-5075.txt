@@ -1,0 +1,52 @@
+Summary:
+Wasted work in FailTwiceDuringMerge.eval()
+Description:
+The problem appears in version 4.3.1 and in revision 1495833. I
+attached a one-line patch (patch.diff) that fixes it. This problem
+and the attached patch are similar to some of the problems reported in
+LUCENE-5044 and their patch (patchAll.diff in LUCENE-5044).
+In method "FailTwiceDuringMerge.eval", the loop over "trace" should
+only be executed when at least one of "!didFail1" or "!didFail2" are
+"true". The loop has no side effects when both "!didFail1" and
+"!didFail2" are "false" due to these two "if" statements:
+if (SegmentMerger.class.getName().equals(trace[i].getClassName()) && "mergeTerms".equals(trace[i].getMethodName()) && !didFail1) {
+and
+if (LiveDocsFormat.class.getName().equals(trace[i].getClassName()) && "writeLiveDocs".equals(trace[i].getMethodName()) && !didFail2) {
+A similar problem exists in "FailOnlyInSync.eval", where the loop over
+"trace" should only be executed when "doFail" is "true", because the
+loop has no side effect when "doFail" is "false" due to this "if"
+statement:
+if (doFail && MockDirectoryWrapper.class.getName().equals(trace[i].getClassName()) && "sync".equals(trace[i].getMethodName())) {
+I attached a second patch (patch2.diff) for this second problem. Note
+that the code already checks outside the loop if "doFail" is "true":
+if (doFail) {
+and thus the patch does not need to check again (the patch only needs
+to delete the check inside the loop).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+4.3.1
+Fix_version:
+None
+Component:
+None
+Label:
+patch performance
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adrian Nistor
+Create date:
+23/Jun/13 19:54
+Update date:
+24/Jun/13 14:50
+Resolved date:
+24/Jun/13 14:50

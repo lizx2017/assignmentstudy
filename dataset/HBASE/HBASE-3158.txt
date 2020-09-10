@@ -1,0 +1,45 @@
+Summary:
+Bloom File Writes Broken if keySize is large
+Description:
+Yesterday, on our cluster, a region compact() kept crashing at giving this stack trace
+2010-10-25 08:48:28,330 ERROR org.apache.hadoop.hbase.regionserver.CompactSplitThread: Compaction failed for region MailBox_dark_launch_2010_10-04,4b64b600,1286302852538.9183a3b91ebd289bab7724d028cffa69.
+java.lang.IllegalArgumentException: maxValue must be > 0
+at org.apache.hadoop.hbase.util.ByteBloomFilter.sanityCheck(ByteBloomFilter.java:170)
+at org.apache.hadoop.hbase.util.ByteBloomFilter.<init>(ByteBloomFilter.java:156)
+at org.apache.hadoop.hbase.regionserver.StoreFile$Writer.<init>(StoreFile.java:707)
+at org.apache.hadoop.hbase.regionserver.StoreFile.createWriter(StoreFile.java:566)
+at org.apache.hadoop.hbase.regionserver.Store.createWriterInTmp(Store.java:504)
+at org.apache.hadoop.hbase.regionserver.Store.compact(Store.java:817)
+at org.apache.hadoop.hbase.regionserver.Store.compact(Store.java:678)
+at org.apache.hadoop.hbase.regionserver.HRegion.compactStores(HRegion.java:842)
+at org.apache.hadoop.hbase.regionserver.HRegion.compactStores(HRegion.java:793)
+at org.apache.hadoop.hbase.regionserver.CompactSplitThread.run(CompactSplitThread.java:103)
+The problem is that we are oveflowing "int" for "bitSize". The number of keys is about 272M, and we are using about 11 bit per key. So, bitSize ends up being > 2G..
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.0
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicolas Spiegelberg
+Reporter:
+Nicolas Spiegelberg
+Create date:
+26/Oct/10 23:50
+Update date:
+20/Nov/15 12:43
+Resolved date:
+27/Oct/10 04:16

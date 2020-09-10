@@ -1,0 +1,40 @@
+Summary:
+log recovery: deleted items may be resurrected
+Description:
+While working on HBASE-2283, noticed that if you do a put followed by a delete, and then crash the RS, and trigger log recovery to happen, then deleted entries may be resurrected.
+Suprisingly, the issue only affected delete of a specific column. Full row delete didn't run into this issue.
+—
+Code inspection revealed that we might have an issue with timestamps & WAL stuff for delete that come in with "LATEST" timestamp. [Note: The "LATEST" timestamp is syntax sugar/hint to the RS to convert it to "now". ]
+Basically, in:
+delete(byte [] family, List<KeyValue> kvs, boolean writeToWAL)
+the "kv.updateLatestStamp(byteNow);" time stamp massaging (from LATEST to now) happens after the WAL log.append() call. So the KeyValue entries written to the HLog do not have the massaged timestamp. On recovery, when these entries are replayed, we add them back to reconstructionCache but don't do anything with timestamps.
+The above could be the potential source of the problem. But there could be more to the problem than my simple analysis. For instance, we still don't know why full row delete worked fine, but delete of a specific column didn't work ok. Forking this off as a separate issue from HBASE-2283.
+[Note: Aravind is starting to take a look at this issue.]
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.4
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aravind Menon
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+17/Mar/10 17:34
+Update date:
+20/Nov/15 12:44
+Resolved date:
+01/Apr/10 13:29

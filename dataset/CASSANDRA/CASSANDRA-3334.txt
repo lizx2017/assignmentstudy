@@ -1,0 +1,81 @@
+Summary:
+dropping index causes some inflight mutations to fail
+Description:
+dropping index causes some inflight mutations to fail. hector on client side didnt throw any exception
+INFO [MigrationStage:1] 2011-10-07 23:11:53,742 Migration.java (line 119) Applying migration fb1a8540-f128-11e0-0000-23b38323f4da Update column family to org.apache.cassandra.config.CFMetaData@786669[cfId=1000,ksName=test,cfName=sipdb,cfType=Standard,comparator=org.apache.cassandra.db.marshal.AsciiType,subcolumncomparator=<null>,comment=phone calls routing information,rowCacheSize=0.0,keyCacheSize=0.0,readRepairChance=0.0,replicateOnWrite=false,gcGraceSeconds=0,defaultValidator=org.apache.cassandra.db.marshal.BytesType,keyValidator=org.apache.cassandra.db.marshal.Int32Type,minCompactionThreshold=4,maxCompactionThreshold=32,rowCacheSavePeriodInSeconds=0,keyCacheSavePeriodInSeconds=0,rowCacheKeysToSave=2147483647,rowCacheProvider=org.apache.cassandra.cache.ConcurrentLinkedHashCacheProvider@8bb33c,mergeShardsChance=0.1,keyAlias=java.nio.HeapByteBuffer[pos=461 lim=464 cap=466],column_metadata={java.nio.HeapByteBuffer[pos=0 lim=3 cap=3]=ColumnDefinition{name=6b616d, validator=org.apache.cassandra.db.marshal.AsciiType, index_type=null, index_name='null'}},compactionStrategyClass=class org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy,compactionStrategyOptions={},compressionOptions={}]
+INFO [MigrationStage:1] 2011-10-07 23:11:53,805 ColumnFamilyStore.java (line 664) Enqueuing flush of Memtable-Migrations@27537043(7860/9825 serialized/live bytes, 1 ops)
+INFO [MigrationStage:1] 2011-10-07 23:11:53,820 ColumnFamilyStore.java (line 664) Enqueuing flush of Memtable-Schema@8340427(3320/4150 serialized/live bytes, 3 ops)
+INFO [FlushWriter:3] 2011-10-07 23:11:53,820 Memtable.java (line 237) Writing Memtable-Migrations@27537043(7860/9825 serialized/live bytes, 1 ops)
+INFO [FlushWriter:3] 2011-10-07 23:11:55,008 Memtable.java (line 273) Completed flushing \var\lib\cassandra\data\system\Migrations-h-14-Data.db (7924 bytes)
+INFO [FlushWriter:3] 2011-10-07 23:11:55,008 Memtable.java (line 237) Writing Memtable-Schema@8340427(3320/4150 serialized/live bytes, 3 ops)
+INFO [CompactionExecutor:4] 2011-10-07 23:11:55,008 CompactionTask.java (line 119) Compacting [SSTableReader(path='\var\lib\cassandra\data\system\Migrations-h-13-Data.db'), SSTableReader(path='\var\lib\cassandra\data\system\Migrations-h-14-Data.db'), SSTableReader(path='\var\lib\cassandra\data\system\Migrations-h-11-Data.db'), SSTableReader(path='\var\lib\cassandra\data\system\Migrations-h-12-Data.db')]
+INFO [FlushWriter:3] 2011-10-07 23:11:56,430 Memtable.java (line 273) Completed flushing \var\lib\cassandra\data\system\Schema-h-14-Data.db (3470 bytes)
+INFO [CompactionExecutor:3] 2011-10-07 23:11:56,446 CompactionTask.java (line 119) Compacting [SSTableReader(path='\var\lib\cassandra\data\system\Schema-h-13-Data.db'), SSTableReader(path='\var\lib\cassandra\data\system\Schema-h-14-Data.db'), SSTableReader(path='\var\lib\cassandra\data\system\Schema-h-12-Data.db'), SSTableReader(path='\var\lib\cassandra\data\system\Schema-h-11-Data.db')]
+ERROR [MutationStage:56] 2011-10-07 23:11:56,508 AbstractCassandraDaemon.java (line 133) Fatal exception in thread Thread[MutationStage:56,5,main]
+java.lang.AssertionError
+at org.apache.cassandra.db.index.SecondaryIndexManager.applyIndexUpdates(SecondaryIndexManager.java:369)
+at org.apache.cassandra.db.Table.apply(Table.java:457)
+at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:253)
+at org.apache.cassandra.service.StorageProxy$5.runMayThrow(StorageProxy.java:436)
+at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1263)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+ERROR [MutationStage:51] 2011-10-07 23:11:56,539 AbstractCassandraDaemon.java (line 133) Fatal exception in thread Thread[MutationStage:51,5,main]
+java.lang.AssertionError
+at org.apache.cassandra.db.index.SecondaryIndexManager.applyIndexUpdates(SecondaryIndexManager.java:369)
+at org.apache.cassandra.db.Table.apply(Table.java:457)
+at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:253)
+at org.apache.cassandra.service.StorageProxy$5.runMayThrow(StorageProxy.java:436)
+at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1263)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+ERROR [MutationStage:38] 2011-10-07 23:11:56,633 AbstractCassandraDaemon.java (line 133) Fatal exception in thread Thread[MutationStage:38,5,main]
+java.lang.AssertionError
+at org.apache.cassandra.db.index.SecondaryIndexManager.applyIndexUpdates(SecondaryIndexManager.java:369)
+at org.apache.cassandra.db.Table.apply(Table.java:457)
+at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:253)
+at org.apache.cassandra.service.StorageProxy$5.runMayThrow(StorageProxy.java:436)
+at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1263)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+ERROR [MutationStage:57] 2011-10-07 23:11:56,664 AbstractCassandraDaemon.java (line 133) Fatal exception in thread Thread[MutationStage:57,5,main]
+java.lang.AssertionError
+at org.apache.cassandra.db.index.SecondaryIndexManager.applyIndexUpdates(SecondaryIndexManager.java:369)
+at org.apache.cassandra.db.Table.apply(Table.java:457)
+at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:253)
+at org.apache.cassandra.service.StorageProxy$5.runMayThrow(StorageProxy.java:436)
+at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1263)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.1
+Component:
+None
+Label:
+indexing
+Environment:
+windows
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Radim Kolar
+Create date:
+07/Oct/11 21:20
+Update date:
+16/Apr/19 09:32
+Resolved date:
+20/Oct/11 21:13

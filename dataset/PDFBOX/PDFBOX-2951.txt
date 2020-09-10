@@ -1,0 +1,40 @@
+Summary:
+quotedbl causes NullPointerException
+Description:
+I have a pdf document using (besides others) the font CourierNewPS-BoldMT and text with this font containing a double quote.
+When calling PDFont.encode, this results in a NullPointerException due to the following:
+The font encoding is built using pdf /DIFFERENCES which overwrites the original "quotedbl" at index 34 with an "A". The entries for quotedblbase/left/right are left unchanged. As a result, the inverted font does not contain "quotedbl" as key.
+Within encode, the character code 34 gets assigned the name "quotedbl", which is then not found in the inverse encoding (PDTrueTypeFont.encode -> int code = inverted.get(name))
+Right before this code line causing the NullPointerException, there is a check whether ttf.hasGlyph("quotedbl") (which in this case is false) and, if not, whether ttf.hasGlyph("uni0022") (which in this case is true); however, this has no consequence for the continuation of the code, which then crashes, since inverted.get("quotedbl") is null (which is assigned to an int).
+I believe, this is a bug in PDFBox, but have no idea, whether the handling within encode should be changed (maybe using the "else" part in case ttf.hasGlyph("quotedbl") is false or whether code 34 should be assigned to quotedblbase in the first place, or even something else.
+I attached the file (Test.pdf) where the error occurs and a jar (main is com.juergisApps.pdfConverter.Test) that reproduces the problem.
+You may also see http://stackoverflow.com/questions/7140476/pdf-font-mapping-error
+Juergen
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+PDModel
+Label:
+None
+Environment:
+windows 10
+Attachment number:
+0
+Assignee:
+John Hewson
+Reporter:
+Juergen Uhl
+Create date:
+01/Sep/15 10:53
+Update date:
+17/Mar/16 19:07
+Resolved date:
+02/Sep/15 20:35

@@ -1,0 +1,57 @@
+Summary:
+URL Path matching issue with WebUtils.getPathWithinApplication
+Description:
+Summary:
+In WebUtils.getPathWithinApplication
+request.getRequestURI() - Is normalized to remove //, ../, ./ etc
+request.getContextPath() - is not normalized
+When these values are compared for which url authorization to use all existing rules are bypassed.
+Long Version:
+If I access my application using a url like:
+http://localhost:8080//context/path/Action.action
+(note the double // after the port):
+This causes shiro to not match any of my urls
+The cause of this appears to be in WebUtils.getPathWithinApplication()
+in WebUtils.getContextPath()
+request.getContextPath() returns //context
+which is left as //context
+In WebUtils.getRequestUri()
+request.getRequestURI() returns //context/path/Action.action
+this is then sanitized in the WebUtils.normalize() method to return /context/path/Action.action.
+WebUtils.getPathWithinApplication then compares the 2 values with:
+if (StringUtils.startsWithIgnoreCase(requestUri, contextPath))
+Which doesn't match.
+So the method returns /context/path/Action.action instead of /path/Action.action
+Because all the matching URLS are /path/** they don't match the /context/path
+So PathMatchingFilterChainResolver.getChain() doesn't return any chains.
+It seems to me that the contextPath should also be passed through the normalize() method to remove the leading //
+Regards
+Mark
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.3.1
+Fix_version:
+1.3.2
+Component:
+Authorization (access control)
+Label:
+None
+Environment:
+tomcat
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Mark Bortolazzo
+Create date:
+06/Sep/16 22:52
+Update date:
+28/Sep/16 13:16
+Resolved date:
+28/Sep/16 13:16

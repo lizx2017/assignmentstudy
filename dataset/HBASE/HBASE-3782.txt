@@ -1,0 +1,43 @@
+Summary:
+Multi-Family support for bulk upload tools causes File Not Found Exception
+Description:
+I've been testing HBASE-1861 in 0.90.2, which adds multi-family support for bulk upload tools.
+I found that when running the importtsv program, some reduce tasks fail with a File Not Found exception if there are no keys in the input data which fall into the region assigned to that reduce task. From what I can determine, it seems that an output directory is created in the write() method and expected to exist in the writeMetaData() method...if there are no keys to be written for that reduce task, the write method is never called and the output directory is never created, but writeMetaData is expecting the output directory to exist...thus the FnF exception:
+2011-03-17 11:52:48,095 WARN org.apache.hadoop.mapred.TaskTracker: Error running child
+java.io.FileNotFoundException: File does not exist: hdfs://master:9000/awardsData/_temporary/_attempt_201103151859_0066_r_000000_0
+at org.apache.hadoop.hdfs.DistributedFileSystem.getFileStatus(DistributedFileSystem.java:468)
+at org.apache.hadoop.hbase.regionserver.StoreFile.getUniqueFile(StoreFile.java:580)
+at org.apache.hadoop.hbase.mapreduce.HFileOutputFormat$1.writeMetaData(HFileOutputFormat.java:186)
+at org.apache.hadoop.hbase.mapreduce.HFileOutputFormat$1.close(HFileOutputFormat.java:247)
+at org.apache.hadoop.mapred.ReduceTask.runNewReducer(ReduceTask.java:567)
+at org.apache.hadoop.mapred.ReduceTask.run(ReduceTask.java:408)
+at org.apache.hadoop.mapred.Child.main(Child.java:170)
+Simply checking if the file exists should fix the issue.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.90.3
+Fix_version:
+None
+Component:
+mapreduce
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Nichole Treadway
+Create date:
+14/Apr/11 15:17
+Update date:
+16/Nov/16 21:02
+Resolved date:
+16/Nov/16 21:02

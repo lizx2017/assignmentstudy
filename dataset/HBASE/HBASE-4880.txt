@@ -1,0 +1,41 @@
+Summary:
+Region is on service before openRegionHandler completes, may cause data loss
+Description:
+OpenRegionHandler in regionserver is processed as the following steps:
+1.openregion()(Through it, closed = false, closing = false)
+2.addToOnlineRegions(region)
+3.update .meta. table 
+4.update ZK's node state to RS_ZK_REGION_OPEND
+We can find that region is on service before Step 4.
+It means client could put data to this region after step 3.
+What will happen if step 4 is failed processing?
+It will execute OpenRegionHandler#cleanupFailedOpen which will do closing region, and master assign this region to another regionserver.
+If closing region is failed, the data which is put between step 3 and step 4 may loss, because the region has been opend on another regionserver and be put new data. Therefore, it may not be recoverd through replayRecoveredEdit() because the edit's LogSeqId is smaller than current region SeqId.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0, 0.94.0
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+28/Nov/11 05:17
+Update date:
+20/Nov/15 11:52
+Resolved date:
+09/Dec/11 06:12

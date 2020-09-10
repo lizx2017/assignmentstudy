@@ -1,0 +1,35 @@
+Summary:
+Replication handling of changes to peer clusters is inefficient
+Description:
+The current handling of changes to the region servers in a replication peer cluster is currently quite inefficient. The list of region servers that are being replicated to is only updated if there are a large number of issues encountered while replicating.
+This can cause it to take quite a while to recognize that a number of the regionserver in a peer cluster are no longer available. A potentially bigger problem is that if a replication peer cluster is started with a small number of regionservers, and then more region servers are added after replication has started, the additional region servers will never be used for replication (unless there are failures on the in-use regionservers).
+Part of the current issue is that the retry code in ReplicationSource#shipEdits checks a randomly-chosen replication peer regionserver (in ReplicationSource#isSlaveDown) to see if it is up after a replication write has failed on a different randonly-chosen replication peer. If the peer is seen as not down, another randomly-chosen peer is used for writing.
+A second part of the issue is that changes to the list of region servers in a peer cluster are not detected at all, and are only picked up if a certain number of failures have occurred when trying to ship edits.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.98.0, 0.95.2
+Component:
+Replication
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gabriel Reid
+Reporter:
+Gabriel Reid
+Create date:
+21/Jan/13 16:02
+Update date:
+23/Sep/13 19:22
+Resolved date:
+01/Aug/13 17:04

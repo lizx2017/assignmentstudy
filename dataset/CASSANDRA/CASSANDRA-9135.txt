@@ -1,0 +1,49 @@
+Summary:
+testScrubCorruptedCounterRow is failing under test-compression target
+Description:
+org.apache.cassandra.db.ScrubTest.testScrubCorruptedCounterRow is failing with the following stack trace:
+org.apache.cassandra.io.sstable.CorruptSSTableException: org.apache.cassandra.io.compress.CorruptBlockException: (/home/automaton/cassandra/build/test/cassandra/data/Keyspace1/Counter1/Keyspace1-Counter1-jb-1-Data.db): corruption detected, chunk at 0 of length 79.
+ at org.apache.cassandra.io.compress.CompressedRandomAccessReader.reBuffer(CompressedRandomAccessReader.java:91)
+ at org.apache.cassandra.io.compress.CompressedThrottledReader.reBuffer(CompressedThrottledReader.java:41)
+ at org.apache.cassandra.io.util.RandomAccessReader.seek(RandomAccessReader.java:283)
+ at org.apache.cassandra.db.compaction.Scrubber.scrub(Scrubber.java:243)
+ at org.apache.cassandra.db.ScrubTest.testScrubCorruptedCounterRow(ScrubTest.java:124)
+Caused by: org.apache.cassandra.io.compress.CorruptBlockException: (/home/automaton/cassandra/build/test/cassandra/data/Keyspace1/Counter1/Keyspace1-Counter1-jb-1-Data.db): corruption detected, chunk at 0 of length 79.
+ at org.apache.cassandra.io.compress.CompressedRandomAccessReader.decompressChunk(CompressedRandomAccessReader.java:122)
+ at org.apache.cassandra.io.compress.CompressedRandomAccessReader.reBuffer(CompressedRandomAccessReader.java:87)
+Caused by: java.io.IOException: FAILED_TO_UNCOMPRESS(5)
+ at org.xerial.snappy.SnappyNative.throw_error(SnappyNative.java:78)
+ at org.xerial.snappy.SnappyNative.rawUncompress(Native Method)
+ at org.xerial.snappy.Snappy.rawUncompress(Snappy.java:395)
+ at org.apache.cassandra.io.compress.SnappyCompressor.uncompress(SnappyCompressor.java:93)
+ at org.apache.cassandra.io.compress.CompressedRandomAccessReader.decompressChunk(CompressedRandomAccessReader.java:118)
+I've bisected back 400 commits and can't find a time that this passed. Reproduce on 2.0-head with the following command:
+ant test-compression -Dtest.name=ScrubTest
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15, 2.1.5
+Component:
+Legacy/Testing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Philip Thompson
+Create date:
+08/Apr/15 19:27
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/Apr/15 22:53

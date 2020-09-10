@@ -1,0 +1,47 @@
+Summary:
+repair leaving FDs unclosed
+Description:
+"We noticed that after a `nodetool repair` was ran, several of our nodes reported high disk usage; – even one node hit 100% disk usage. After a restart of that node, disk usage drop instantly by 80 gigabytes – well that was confusing, but we quickly formed the theory that Cassandra must of been holding open references to deleted file descriptors.
+"Later, i found this node as an example, it is using about 8-10 gigabytes more than it should be – 118 gigabytes reported by df, yet du reports only 106 gigabytes in the cassandra directory (nothing else on the mahcine). As you can see from the lsof listing, it is holding open FDs to files that no longer exist on the filesystem, and there are no open streams or as far as I can tell other reasons for the deleted sstable to be open.
+"This seems to be related to running a repair, as we haven't seen it in any other situations before."
+A quick check of FileStreamTask shows that the obvious base is covered:
+        finally
+        {
+            try
+            {
+                raf.close();
+            }
+            catch (IOException e)
+            {
+                throw new AssertionError(e);
+            }
+        }
+So it seems that either the transfer loop is never finishing to get to that finally block (in which case why isn't it showing up in outbound streams?) or something else is the problem.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.9
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Jonathan Ellis
+Create date:
+17/Nov/10 09:15
+Update date:
+16/Apr/19 09:33
+Resolved date:
+01/Dec/10 22:42

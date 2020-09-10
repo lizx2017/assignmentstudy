@@ -1,0 +1,62 @@
+Summary:
+Allow specific permissions for wsdl / wadl & xsd
+Description:
+ShiroFilterFactoryBean should have a setFilterChainResolver to allow overriding the PathMatchingFilterChainResolver being created in the createInstance method.
+I would like to allow wsdl, wadls and xsds for anon while the same URI
+<bean id="shiroFilter" class="com.railinc.shiro.spring.web.ShiroFilterFactoryBean">
+<property name="securityManager" ref="securityManager"/>
+<property name="pathWithParamMatchingFilterChainResolver " ref="pathWithParamMatchingFilterChainResolver "
+<property name="filterChainDefinitions">
+<value>
+<!-- allow access to wsdls, wadls and schemas -->
+/services/validation/r2009v1?_wadl = noSessionCreation, anon
+/services/soap/equipmentValidationService/r2009v1?wsdl = noSessionCreation, anon
+<!-- replace = in the path with ? for the pattern matcher -->
+/services/soap/equipmentValidationService/r2009v1?xsd?../schemas/ExampleEquipmentValidation.xsd = noSessionCreation, anon
+/services/soap/equipmentValidationService/r2009v1?xsd?./bindingMapping.xsd = noSessionCreation, anon
+/services/soap/equipmentValidationService/r2009v1?xsd?./ExampleRailincEquipment.xsd = noSessionCreation, anon
+/** = noSessionCreation, authcBasic
+</value>
+</property>
+</bean>
+Then I could extend PathMatchingFilterChainResolver as such
+public class PathWithParamMatchingFilterChainResolver extends PathMatchingFilterChainResolver {
+@Override
+protected String getPathWithinApplication(ServletRequest request) {
+HttpServletRequest httpReq =WebUtils.toHttp(request);
+StringBuilder completeURI = new StringBuilder();
+completeURI.append( WebUtils.getPathWithinApplication(httpReq));
+String queryStr = httpReq.getQueryString();
+if(!StringUtils.isEmpty(queryStr))
+{ completeURI.append("?"); completeURI.append(queryStr); }
+return completeURI.toString();
+}
+}
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+1.2.2, 2.0.0
+Fix_version:
+None
+Component:
+Web
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Barry Knapp
+Create date:
+10/Oct/14 13:16
+Update date:
+10/Oct/14 13:16
+Resolved date:
+

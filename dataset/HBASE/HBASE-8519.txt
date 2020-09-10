@@ -1,0 +1,50 @@
+Summary:
+Backup master will never come up if primary master dies during initialization
+Description:
+The problem happens if primary master dies after becoming master but before it completes initialization and calls clusterStatusTracker.setClusterUp(),
+The backup master will try to become the master, but will shutdown itself promptly because it sees 'the cluster is not up'.
+This is the backup master log:
+2013-05-09 15:08:05,568 INFO org.apache.hadoop.hbase.master.metrics.MasterMetrics: Initialized
+2013-05-09 15:08:05,573 DEBUG org.apache.hadoop.hbase.master.HMaster: HMaster started in backup mode. Stalling until master znode is written.
+2013-05-09 15:08:05,589 INFO org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper: Node /hbase/master already exists and this is not a retry
+2013-05-09 15:08:05,590 INFO org.apache.hadoop.hbase.master.ActiveMasterManager: Adding ZNode for /hbase/backup-masters/xxx.com,60000,1368137285373 in backup master directory
+2013-05-09 15:08:05,595 INFO org.apache.hadoop.hbase.master.ActiveMasterManager: Another master is the active master, xxx.com,60000,1368137283107; waiting to become the next active master
+2013-05-09 15:09:45,006 DEBUG org.apache.hadoop.hbase.master.ActiveMasterManager: No master available. Notifying waiting threads
+2013-05-09 15:09:45,006 INFO org.apache.hadoop.hbase.master.HMaster: Cluster went down before this master became active
+2013-05-09 15:09:45,006 DEBUG org.apache.hadoop.hbase.master.HMaster: Stopping service threads
+2013-05-09 15:09:45,006 INFO org.apache.hadoop.ipc.HBaseServer: Stopping server on 60000
+In ActiveMasterManager::blockUntilBecomingActiveMaster()
+  ..
+  if (!clusterStatusTracker.isClusterUp()) {
+          this.master.stop(
+            "Cluster went down before this master became active");
+        }
+  ..
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.7, 0.95.0
+Fix_version:
+0.98.0, 0.95.1
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jerry He
+Reporter:
+Jerry He
+Create date:
+09/May/13 22:38
+Update date:
+18/Feb/14 02:44
+Resolved date:
+15/May/13 18:09

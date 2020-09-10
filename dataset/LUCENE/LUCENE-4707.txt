@@ -1,0 +1,43 @@
+Summary:
+Track file reference kept by readers that are opened through the writer
+Description:
+We ran into a bug where files (mostly CFS) that are still referred to by our NRT reader/searcher are deleted by IndexFileDeleter. As far as I can see from the verbose logging and reading the code, it seems that the problem is the creation and merging of these CFS files between hard commits. The files referred to by hard commits are incRef’ed at commit checkpoints, so these files won’t be deleted until they are decRef’ed when the commit is deleted according to the DeletionPolicy (good). However, intermediate files that are created and merged between the hard commits only have refs through the regular checkpoints, so as soon as a new checkpoint no longer includes those files, they are immediately deleted by the deleter. See the abridged verbose log lines that illustrate this behavior:
+IW 11 [Mon Jan 21 17:30:35 PST 2013; commitScheduler]: create compound file _8.cfs
+IFD 7 [Mon Jan 21 17:23:41 PST 2013; commitScheduler]: now checkpoint "_0(4.0.0.2):C3_1(4.0.0.2):C7 _2(4.0.0.2):C16 _3(4.0.0.2):C21 _4(4.0.0.2):C5 _5(4.0.0.2):C5_6(4.0.0.2):C5 _7(4.0.0.2):C7 _8(4.0.0.2):c6" [9 segments ; isCommit = false]
+IFD 7 [Mon Jan 21 17:23:41 PST 2013; commitScheduler]: IncRef "_8.cfs": pre-incr count is 0
+IFD 7 [Mon Jan 21 17:23:42 PST 2013; commitScheduler]: now checkpoint "_0(4.0.0.2):C3_1(4.0.0.2):C7 _2(4.0.0.2):C16 _3(4.0.0.2):C21 _4(4.0.0.2):C5 _5(4.0.0.2):C5 _6(4.0.0.2):C5 _7(4.0.0.2):C7 _8(4.0.0.2):c6 _9(4.0.0.2):c6" [10 segments ; isCommit = false]
+IFD 7 [Mon Jan 21 17:23:42 PST 2013; commitScheduler]: IncRef "_8.cfs": pre-incr count is 1
+IFD 7 [Mon Jan 21 17:23:42 PST 2013; commitScheduler]: DecRef "_8.cfs": pre-decr count is 2
+IFD 7 Mon Jan 21 17:23:42 PST 2013; Lucene Merge Thread #0: now checkpoint "_b(4.0.0.2):C81" [1 segments ; isCommit = false]
+IFD 7 Mon Jan 21 17:23:42 PST 2013; Lucene Merge Thread #0: DecRef "_8.cfs": pre-decr count is 1
+IFD 7 Mon Jan 21 17:23:42 PST 2013; Lucene Merge Thread #0: delete "_8.cfs"
+With this behavior, it seems no matter how frequently we refresh the reader (unless we do it at every read), we’d run into the race where the reader still holds a reference to the file that’s just been deleted by the deleter. My proposal is to count the file reference handed out to the NRT reader/searcher when writer.getReader(boolean) is called and decRef the files only when the said reader is closed.
+Please take a look and evaluate if my observations are correct and if the proposal makes sense. Thanks!
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+4.0
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+mac os x, linux
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jessica Cheng Mallet
+Create date:
+22/Jan/13 20:13
+Update date:
+16/Mar/13 00:24
+Resolved date:
+

@@ -1,0 +1,97 @@
+Summary:
+Commit fails occasionally with NotServingRegionException in transactional hbase inserts
+Description:
+I'm testing a simple bulk upload to HBase. Single table, single family. The aim is to upload 200M+ lines into HBase. I've tried to commit the upload in various batches, from 1 line at time to 25000 lines at time. Each time, at seemingly random point, the upload fails in commit with a org.apache.hadoop.hbase.NotServingRegionException
+Failure stack trace from the client:
+—
+10/02/07 16:38:40 DEBUG transactional.TransactionManager: Begining transaction 5311384003652808027
+10/02/07 16:38:40 DEBUG transactional.TransactionState: Adding new hregion [db,,1265553236583] to transaction [5311384003652808027]
+10/02/07 16:38:46 DEBUG transactional.TransactionManager: atempting to commit trasaction: id: 5311384003652808027, particpants: 1
+10/02/07 16:38:46 DEBUG transactional.TransactionManager: Region [db,,1265553236583] votes to commit transaction 5311384003652808027
+10/02/07 16:38:46 DEBUG transactional.TransactionManager: Commiting [5311384003652808027]
+10/02/07 16:38:46 DEBUG transactional.TransactionManager: Committed transaction [5311384003652808027] in [379]ms
+10/02/07 16:38:46 DEBUG transactional.TransactionManager: Begining transaction -5274908504613584338
+10/02/07 16:38:46 DEBUG transactional.TransactionState: Adding new hregion [db,,1265553236583] to transaction [-5274908504613584338]
+10/02/07 16:38:47 DEBUG client.HConnectionManager$TableServers: Removed db,,1265553236583 for tableName=db from cache because of \x00\x00\x01\x24\xAC\xC3\x98\x1C
+10/02/07 16:38:47 DEBUG client.HConnectionManager$TableServers: Cached location for db,,1265553236583 is 1.1.1.1:43917
+10/02/07 16:38:48 DEBUG client.HConnectionManager$TableServers: Removed db,,1265553236583 for tableName=db from cache because of \x00\x00\x01\x24\xAC\xC3\x98\x1C
+10/02/07 16:38:48 DEBUG client.HConnectionManager$TableServers: Cached location for db,,1265553236583 is 1.1.1.1:43917
+10/02/07 16:38:49 DEBUG client.HConnectionManager$TableServers: Removed db,,1265553236583 for tableName=db from cache because of \x00\x00\x01\x24\xAC\xC3\x98\x1C
+10/02/07 16:38:49 DEBUG client.HConnectionManager$TableServers: locateRegionInMeta attempt 0 of 10 failed; retrying after sleep of 1000 because: No server address listed in .META. for region db,\x00\x00\x01\x24\xAC\xA5\xEAB,1265553527794
+10/02/07 16:38:49 DEBUG client.HConnectionManager$TableServers: Removed .META.,,1 for tableName=.META. from cache because of db,\x00\x00\x01\x24\xAC\xC3\x98\x1C,99999999999999
+10/02/07 16:38:49 DEBUG client.HConnectionManager$TableServers: Cached location for .META.,,1 is 1.1.1.1:43917
+10/02/07 16:38:50 DEBUG client.HConnectionManager$TableServers: Cached location for db,\x00\x00\x01\x24\xAC\xA5\xEAB,1265553527794 is 1.1.1.1:43917
+10/02/07 16:38:50 DEBUG transactional.TransactionState: Adding new hregion [db,\x00\x00\x01\x24\xAC\xA5\xEAB,1265553527794] to transaction [-5274908504613584338]
+10/02/07 16:38:51 DEBUG transactional.TransactionManager: atempting to commit trasaction: id: -5274908504613584338, particpants: 2
+10/02/07 16:38:51 DEBUG transactional.TransactionManager: Commit of transaction [-5274908504613584338] was unsucsessful
+org.apache.hadoop.ipc.RemoteException: org.apache.hadoop.hbase.NotServingRegionException: db,,1265553236583
+at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:2266)
+at org.apache.hadoop.hbase.regionserver.transactional.TransactionalRegionServer.getTransactionalRegion(TransactionalRegionServer.java:131)
+at org.apache.hadoop.hbase.regionserver.transactional.TransactionalRegionServer.commitRequest(TransactionalRegionServer.java:179)
+at sun.reflect.GeneratedMethodAccessor10.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:657)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:915)
+at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:723)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:333)
+at $Proxy0.commitRequest(Unknown Source)
+at org.apache.hadoop.hbase.client.transactional.TransactionManager.prepareCommit(TransactionManager.java:94)
+at org.apache.hadoop.hbase.client.transactional.TransactionManager.tryCommit(TransactionManager.java:151)
+at dbloader.dbLoader.run2(dbLoader.java:181)
+at dbloader.dbLoader.main(dbLoader.java:24)
+Exception in thread "main" org.apache.hadoop.hbase.client.transactional.CommitUnsuccessfulException: org.apache.hadoop.ipc.RemoteException: org.apache.hadoop.hbase.NotServingRegionException: db,,1265553236583
+at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:2266)
+at org.apache.hadoop.hbase.regionserver.transactional.TransactionalRegionServer.getTransactionalRegion(TransactionalRegionServer.java:131)
+at org.apache.hadoop.hbase.regionserver.transactional.TransactionalRegionServer.commitRequest(TransactionalRegionServer.java:179)
+at sun.reflect.GeneratedMethodAccessor10.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:657)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:915)
+at org.apache.hadoop.hbase.client.transactional.TransactionManager.prepareCommit(TransactionManager.java:135)
+at org.apache.hadoop.hbase.client.transactional.TransactionManager.tryCommit(TransactionManager.java:151)
+at dbloader.dbLoader.run2(dbLoader.java:181)
+at dbloader.dbLoader.main(dbLoader.java:24)
+Caused by: org.apache.hadoop.ipc.RemoteException: org.apache.hadoop.hbase.NotServingRegionException: db,,1265553236583
+at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:2266)
+at org.apache.hadoop.hbase.regionserver.transactional.TransactionalRegionServer.getTransactionalRegion(TransactionalRegionServer.java:131)
+at org.apache.hadoop.hbase.regionserver.transactional.TransactionalRegionServer.commitRequest(TransactionalRegionServer.java:179)
+at sun.reflect.GeneratedMethodAccessor10.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:657)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:915)
+at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:723)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:333)
+at $Proxy0.commitRequest(Unknown Source)
+at org.apache.hadoop.hbase.client.transactional.TransactionManager.prepareCommit(TransactionManager.java:94)
+... 3 more
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.20.3
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+opensolaris, java 1.6
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jesse Hallio
+Create date:
+07/Feb/10 16:58
+Update date:
+05/May/11 07:05
+Resolved date:
+05/May/11 07:05

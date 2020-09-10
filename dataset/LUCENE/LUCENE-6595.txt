@@ -1,0 +1,60 @@
+Summary:
+CharFilter offsets correction is wonky
+Description:
+Spinoff from this original Elasticsearch issue: https://github.com/elastic/elasticsearch/issues/11726
+If I make a MappingCharFilter with these mappings:
+  ( -> 
+  ) -> 
+i.e., just erase left and right paren, then tokenizing the string
+"(F31)" with e.g. WhitespaceTokenizer, produces a single token F31,
+with start offset 1 (good).
+But for its end offset, I would expect/want 4, but it produces 5
+today.
+This can be easily explained given how the mapping works: each time a
+mapping rule matches, we update the cumulative offset difference,
+conceptually as an array like this (it's encoded more compactly):
+  Output offset: 0 1 2 3
+   Input offset: 1 2 3 5
+When the tokenizer produces F31, it assigns it startOffset=0 and
+endOffset=3 based on the characters it sees (F, 3, 1). It then asks
+the CharFilter to correct those offsets, mapping them backwards
+through the above arrays, which creates startOffset=1 (good) and
+endOffset=5 (bad).
+At first, to fix this, I thought this is an "off-by-1" and when
+correcting the endOffset we really should return
+1+correct(outputEndOffset-1), which would return the correct value (4)
+here.
+But that's too naive, e.g. here's another example:
+  cccc -> cc
+If I then tokenize cccc, today we produce the correct offsets (0, 4)
+but if we do this "off-by-1" fix for endOffset, we would get the wrong
+endOffset (2).
+I'm not sure what to do here...
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Michael McCandless
+Create date:
+20/Jun/15 10:11
+Update date:
+14/Jul/15 11:28
+Resolved date:
+

@@ -1,0 +1,44 @@
+Summary:
+NPE in CqlRecordWriter: Related to AbstractCassandraStorage handling null values
+Description:
+I encountered an issue with the CqlStorage and it's handling of null values. The CqlRecordWriter throws an NPE when a value is null. I found a related ticket CASSANDRA-5885 and applied the there stated fix to the AbstractCassandraStorage.
+Instead of converting null values to ByteBuffer.wrap(new byte[0]) AbstractCassandraStorage returns (ByteBuffer)null
+This issue can be reproduced with the attached files: test_null.cql, test_null_data, null_test.pig
+A fix can be found in the attached patch.
+java.io.IOException: java.lang.NullPointerException
+ at org.apache.cassandra.hadoop.cql3.CqlRecordWriter$RangeClient.run(CqlRecordWriter.java:248)
+Caused by: java.lang.NullPointerException
+ at org.apache.thrift.protocol.TBinaryProtocol.writeBinary(TBinaryProtocol.java:194)
+ at org.apache.cassandra.thrift.Cassandra$execute_prepared_cql3_query_args.write(Cassandra.java:41253)
+ at org.apache.thrift.TServiceClient.sendBase(TServiceClient.java:63)
+ at org.apache.cassandra.thrift.Cassandra$Client.send_execute_prepared_cql3_query(Cassandra.java:1683)
+ at org.apache.cassandra.thrift.Cassandra$Client.execute_prepared_cql3_query(Cassandra.java:1673)
+ at org.apache.cassandra.hadoop.cql3.CqlRecordWriter$RangeClient.run(CqlRecordWriter.java:232)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.12, 2.0.3
+Component:
+None
+Label:
+None
+Environment:
+pig, cqlstorage
+Attachment number:
+0
+Assignee:
+Alex Liu
+Reporter:
+Henning Kropp
+Create date:
+11/Oct/13 11:56
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Oct/13 16:13

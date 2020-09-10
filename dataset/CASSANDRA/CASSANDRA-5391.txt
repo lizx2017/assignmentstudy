@@ -1,0 +1,94 @@
+Summary:
+SSL problems with inter-DC communication
+Description:
+I get SSL and snappy compression errors in multiple datacenter setup.
+The setup is simple: 3 nodes in AWS east, 3 nodes in Rackspace. I use slightly modified Ec2MultiRegionSnitch in Rackspace (I just added a regex able to parse the Rackspace/Openstack availability zone which happens to be in unusual format).
+During nodetool rebuild tests I managed to (consistently) trigger the following error:
+2013-03-19 12:42:16.059+0100 [Thread-13] [DEBUG] IncomingTcpConnection.java(79) org.apache.cassandra.net.IncomingTcpConnection: IOException reading from socket; closing
+java.io.IOException: FAILED_TO_UNCOMPRESS(5)
+ at org.xerial.snappy.SnappyNative.throw_error(SnappyNative.java:78)
+ at org.xerial.snappy.SnappyNative.rawUncompress(Native Method)
+ at org.xerial.snappy.Snappy.rawUncompress(Snappy.java:391)
+ at org.apache.cassandra.io.compress.SnappyCompressor.uncompress(SnappyCompressor.java:93)
+ at org.apache.cassandra.streaming.compress.CompressedInputStream.decompress(CompressedInputStream.java:101)
+ at org.apache.cassandra.streaming.compress.CompressedInputStream.read(CompressedInputStream.java:79)
+ at java.io.DataInputStream.readUnsignedShort(DataInputStream.java:337)
+ at org.apache.cassandra.utils.BytesReadTracker.readUnsignedShort(BytesReadTracker.java:140)
+ at org.apache.cassandra.utils.ByteBufferUtil.readShortLength(ByteBufferUtil.java:361)
+ at org.apache.cassandra.utils.ByteBufferUtil.readWithShortLength(ByteBufferUtil.java:371)
+ at org.apache.cassandra.streaming.IncomingStreamReader.streamIn(IncomingStreamReader.java:160)
+ at org.apache.cassandra.streaming.IncomingStreamReader.read(IncomingStreamReader.java:122)
+ at org.apache.cassandra.net.IncomingTcpConnection.stream(IncomingTcpConnection.java:226)
+ at org.apache.cassandra.net.IncomingTcpConnection.handleStream(IncomingTcpConnection.java:166)
+ at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:66)
+The exception is raised during DB file download. What is strange is the following:
+the exception is raised only when rebuildig from AWS into Rackspace
+the exception is raised only when all nodes are up and running in AWS (all 3). In other words, if I bootstrap from one or two nodes in AWS, the command succeeds.
+Packet-level inspection revealed malformed packets on both ends of communication (the packet is considered malformed on the machine it originates on).
+Further investigation raised two more concerns:
+We managed to get another stacktrace when testing the scenario. The exception was raised only once during the tests and was raised when I throttled the inter-datacenter bandwidth to 1Mbps.
+java.lang.RuntimeException: javax.net.ssl.SSLException: bad record MAC
+ at com.google.common.base.Throwables.propagate(Throwables.java:160)
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:32)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: javax.net.ssl.SSLException: bad record MAC
+ at com.sun.net.ssl.internal.ssl.Alerts.getSSLException(Alerts.java:190)
+ at com.sun.net.ssl.internal.ssl.SSLSocketImpl.fatal(SSLSocketImpl.java:1649)
+ at com.sun.net.ssl.internal.ssl.SSLSocketImpl.fatal(SSLSocketImpl.java:1607)
+ at com.sun.net.ssl.internal.ssl.SSLSocketImpl.readRecord(SSLSocketImpl.java:859)
+ at com.sun.net.ssl.internal.ssl.SSLSocketImpl.readDataRecord(SSLSocketImpl.java:755)
+ at com.sun.net.ssl.internal.ssl.AppInputStream.read(AppInputStream.java:75)
+ at org.apache.cassandra.streaming.compress.CompressedInputStream$Reader.runMayThrow(CompressedInputStream.java:151)
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+ ... 1 more
+This is pure SSL error with no snappy interference.
+I managed to trigger the exception during nodetool repair tests when replacing dead node with a new one on the aws side, which means the problem is not restricted to the one-way scenario only.
+2013-03-27 14:06:03.033+0100 [Thread-137] [INFO] StreamInSession.java(136) org.apache.cassandra.streaming.StreamInSession: Streaming of file /path/to/cassandra/data/ks/cf/ks-cf-ib-2-Data.db sections=3 progress=0/20513 - 0% for org.apache.cassandra.streaming.StreamInSession@14450ae7 failed: requesting a retry.
+2013-03-27 14:06:03.033+0100 [Thread-138] [DEBUG] FileUtils.java(110) org.apache.cassandra.io.util.FileUtils: Deleting ks-cf-tmp-ib-98-Data.db
+2013-03-27 14:06:03.033+0100 [Thread-138] [DEBUG] FileUtils.java(110) org.apache.cassandra.io.util.FileUtils: Deleting ks-cf-tmp-ib-98-Filter.db
+2013-03-27 14:06:03.034+0100 [Thread-138] [DEBUG] FileUtils.java(110) org.apache.cassandra.io.util.FileUtils: Deleting ks-cf-tmp-ib-98-TOC.txt
+2013-03-27 14:06:03.034+0100 [Thread-137] [DEBUG] IncomingTcpConnection.java(91) org.apache.cassandra.net.IncomingTcpConnection: IOException reading from socket; closing
+java.io.IOException: FAILED_TO_UNCOMPRESS(5)
+ at org.xerial.snappy.SnappyNative.throw_error(SnappyNative.java:78)
+ at org.xerial.snappy.SnappyNative.rawUncompress(Native Method)
+ at org.xerial.snappy.Snappy.rawUncompress(Snappy.java:391)
+ at org.apache.cassandra.io.compress.SnappyCompressor.uncompress(SnappyCompressor.java:93)
+ at org.apache.cassandra.streaming.compress.CompressedInputStream.decompress(CompressedInputStream.java:101)
+ at org.apache.cassandra.streaming.compress.CompressedInputStream.read(CompressedInputStream.java:79)
+ at java.io.DataInputStream.readUnsignedShort(DataInputStream.java:320)
+ at org.apache.cassandra.utils.BytesReadTracker.readUnsignedShort(BytesReadTracker.java:140)
+ at org.apache.cassandra.utils.ByteBufferUtil.readShortLength(ByteBufferUtil.java:361)
+ at org.apache.cassandra.utils.ByteBufferUtil.readWithShortLength(ByteBufferUtil.java:371)
+ at org.apache.cassandra.streaming.IncomingStreamReader.streamIn(IncomingStreamReader.java:160)
+ at org.apache.cassandra.streaming.IncomingStreamReader.read(IncomingStreamReader.java:122)
+ at org.apache.cassandra.net.IncomingTcpConnection.stream(IncomingTcpConnection.java:238)
+ at org.apache.cassandra.net.IncomingTcpConnection.handleStream(IncomingTcpConnection.java:178)
+ at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:78)
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Ondřej Černoš
+Create date:
+27/Mar/13 13:43
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Apr/13 00:33

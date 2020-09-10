@@ -1,0 +1,38 @@
+Summary:
+Archived hfiles and old hlogs may be deleted immediately by HFileCleaner, LogCleaner in HMaster
+Description:
+TimeToLiveHFileCleaner is configed to 'hbase.master.hfilecleaner.plugins' in hbase-default.xml. And timeToLiveHFileCleaner uses the modify time of the hfile to determine if it should be deleted. But, the modify time of the hdfs file is time when its writer is closed. The rename op will not change the modify time of the hfile. So the hfile may be deleted immediatly by HFileCleaner after it is moved to archives. See log:
+2013-05-08 08:15:46,053 DEBUG org.apache.hadoop.hbase.master.cleaner.CleanerChore: Checking directory: hdfs://hbase/.archive/table/4e48ffc1ec089082c66e6d1b5f018fb5/M/729e8bc1430540cb9b2c147c90039cdc
+2013-05-08 08:15:46,055 DEBUG org.apache.hadoop.ipc.ProtobufRpcEngine: Call: getFileInfo took 1ms
+2013-05-08 08:15:46,055 DEBUG org.apache.hadoop.hbase.master.cleaner.TimeToLiveHFileCleaner: Life:40033567, ttl:300000, current:1367972146054, from: 1367932112487
+2013-05-08 08:15:46,055 DEBUG org.apache.hadoop.hbase.master.cleaner.CleanerChore: Removing:hdfs://hbase/.archive/table/4e48ffc1ec089082c66e6d1b5f018fb5/M/729e8bc1430540cb9b2c147c90039cdc from archive
+The same to old hlogs.
+And my solution is very simple: When hfiles and hlogs are archived, we set the modify time of files after rename.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.3
+Fix_version:
+0.98.0, 0.95.1, 0.94.9
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Liu Shaohui
+Reporter:
+Liu Shaohui
+Create date:
+10/May/13 06:35
+Update date:
+04/Jul/13 22:10
+Resolved date:
+23/May/13 22:10

@@ -1,0 +1,37 @@
+Summary:
+ColumnFamilyRecordWriter fails to throw a write exception encountered after the user begins to close the writer
+Description:
+There appears to be a race condition in ColumnFamilyRecordWriter that can result in the loss of an exception. Here is how it can happen (W stands for the RangeClient's worker thread; U stands for the ColumnFamilyRecordWriter user's thread):
+W: RangeClient's run method catches an exception originating in the Thrift client/socket, but doesn't get a chance to set it on the lastException field before it the thread is preempted.
+U: The user calls close which calls stopNicely. Because the lastException field is null, stopNicely does not throw anything. close then joins on the worker thread.
+W: The RangeClient's run method sets the lastException field and exits.
+U: Although the thread in close is waiting for the worker thread to exit, it has already checked the lastException field so it doesn't detect the presence of the last exception. Instead, close returns without throwing anything.
+This race condition means that intermittently write failures will go undetected.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.7, 0.8.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+mck
+Reporter:
+Greg Katz
+Create date:
+09/Jun/11 19:40
+Update date:
+16/Apr/19 09:32
+Resolved date:
+28/Jun/11 12:27

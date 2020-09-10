@@ -1,0 +1,52 @@
+Summary:
+Leftover file in temp directory when signing
+Description:
+As reported by Damien Butaye on the mailing list:
+I'm trying to add a signature to a PDF using PDFBOX 2.0.1. During the
+process, a tmp file (e.g: tmpPDFBoxXXX.pdf) is stored inside the /tmp
+directory (RehHat server). This file is not deleted after completion.
+After some checks, it seems that the object responsible of the file
+creation is "RandomAccessBufferedFileInputStream(InputStream is)". This
+object is used by the PDFParser object which doesn't close the stream
+after
+completion.
+and his solution:
+For your information I found a workaround to avoid the problem of tmp file
+deletion. In the SignatureOptions object, I modified the method *public
+void setVisualSignature(InputStream is) *with the following content :
+RandomAccessBufferedFileInputStream tmp=new
+RandomAccessBufferedFileInputStream(is); --> NEW LINE
+PDFParser parser = new PDFParser(tmp); --> NEW LINE
+parser.parse();
+visualSignature = parser.getDocument();
+tmp.close(); --> NEW LINE
+Tmp files are well deleted and all unit tests passed without error on the
+pdfbox maven project.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.1, 2.0.2, 3.0.0 PDFBox
+Fix_version:
+2.0.2, 3.0.0 PDFBox
+Component:
+Signing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+25/May/16 17:21
+Update date:
+25/Mar/17 18:12
+Resolved date:
+25/May/16 17:37

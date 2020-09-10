@@ -1,0 +1,48 @@
+Summary:
+CatalogJanitor doesn't work properly when "fs.default.name" isn't set in config file.
+Description:
+In our system, hbase.rootdir is set to a hdfs path and hbase can figure out the FileSystem and set "fs.default.name" accordingly on the Configuration object and pass around including to RS. That is handled in HMaster.java and MasterFileSystem.java.
+CatalogJanitor uses deprecated HRegionInfo.getTableDesc. The method creates a default configuration and get FileSystem from there. That will be RawLocalFileSystem. It returns the following exception.
+java.lang.IllegalArgumentException: Wrong FS: hdfs://sea-esxi-0:54310/tmp/hbase/
+testtb/.tableinfo, expected: file:///
+at org.apache.hadoop.fs.FileSystem.checkPath(FileSystem.java:454)
+at org.apache.hadoop.fs.RawLocalFileSystem.pathToFile(RawLocalFileSystem.java:67)
+at org.apache.hadoop.fs.RawLocalFileSystem.listStatus(RawLocalFileSystem.java:307)
+at org.apache.hadoop.fs.FileSystem.listStatus(FileSystem.java:1085)
+at org.apache.hadoop.fs.FileSystem.listStatus(FileSystem.java:1110)
+at org.apache.hadoop.fs.ChecksumFileSystem.listStatus(ChecksumFileSystem.java:494)
+at org.apache.hadoop.hbase.util.FSUtils.getTableInfoModtime(FSUtils.java:833)
+at org.apache.hadoop.hbase.util.FSTableDescriptors.get(FSTableDescriptors.java:127)
+at org.apache.hadoop.hbase.util.FSTableDescriptors.get(FSTableDescriptors.java:99)
+at org.apache.hadoop.hbase.HRegionInfo.getTableDesc(HRegionInfo.java:560)
+at org.apache.hadoop.hbase.master.CatalogJanitor$1.compare(CatalogJanitor.java:118)
+at org.apache.hadoop.hbase.master.CatalogJanitor$1.compare(CatalogJanitor.java:110)
+at java.util.TreeMap.put(TreeMap.java:530) at org.apache.hadoop.hbase.master.CatalogJanitor$2.visit(CatalogJanitor.java:138)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ming Ma
+Reporter:
+Ming Ma
+Create date:
+10/Aug/11 01:45
+Update date:
+20/Nov/15 11:53
+Resolved date:
+10/Aug/11 21:37

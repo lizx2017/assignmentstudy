@@ -1,0 +1,53 @@
+Summary:
+region server stuck in waitOnAllRegionsToClose
+Description:
+The regionserver is not able to exit because the rs thread is stuck here
+"regionserver60020" prio=10 tid=0x00002ab2b039e000 nid=0x760a waiting on condition [0x000000004365e000]
+java.lang.Thread.State: TIMED_WAITING (sleeping)
+at java.lang.Thread.sleep(Native Method)
+at org.apache.hadoop.hbase.util.Threads.sleep(Threads.java:126)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.waitOnAllRegionsToClose(HRegionServer.java:736)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:689)
+at java.lang.Thread.run(Thread.java:619)
+===
+In CloseRegionHandler.process() we do not call removeFromOnlineRegions() if there is an exception. (In this case I suspect there was a log-rolling exception because of another issue)
+// Close the region
+try {
+// TODO: If we need to keep updating CLOSING stamp to prevent against
+// a timeout if this is long-running, need to spin up a thread?
+if (region.close(abort) == null)
+{ // This region got closed. Most likely due to a split. So instead // of doing the setClosedState() below, let's just ignore and continue. // The split message will clean up the master state. LOG.warn("Can't close region: was already closed during close(): " + regionInfo.getRegionNameAsString()); return; }
+} catch (IOException e)
+{ LOG.error("Unrecoverable exception while closing region " + regionInfo.getRegionNameAsString() + ", still finishing close", e); }
+this.rsServices.removeFromOnlineRegions(regionInfo.getEncodedName());
+===
+I think we set the closing flag on the region, it won't be taking any more requests, it is as good as offline.
+Either we should refine the check in waitOnAllRegionsToClose() or CloseRegionHandler.process() should remove the region from online-regions set.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Prakash Khemani
+Create date:
+26/Apr/11 18:16
+Update date:
+28/Apr/11 23:30
+Resolved date:
+28/Apr/11 23:30

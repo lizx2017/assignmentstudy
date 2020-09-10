@@ -1,0 +1,67 @@
+Summary:
+hbase shell deleteall to .META. allows insertion of malformed rowkey
+Description:
+When using the hbase shell to manipulate meta entries, one is allowed to 'delete' malformed rows (entries with less than 2 ascii 44 ',' chars). When this happens HBase servers may go down and the cluster will not be restartable without manual intervention.
+The delete results in a durable malformed rowkey in .META.'s memstore, .META.'s HLog, and eventually .META.'s HFiles. Subsequent scans to meta (such as when a HMaster starts) fail in the scanner because the comparator fails. In the case of an HMaster startup, it causes an abort that kills the HMaster process.
+12/04/18 22:07:34 FATAL master.HMaster: Unhandled exception. Starting shutdown.
+org.apache.hadoop.ipc.RemoteException: java.io.IOException: java.lang.IllegalArgumentException: No 44 in <blah,1334744821162.81f2df35c332dd2d3bb966fb5b419568.>, length=47, offset=54
+at org.apache.hadoop.hbase.regionserver.HRegionServer.convertThrowableToIOE(HRegionServer.java:990)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.convertThrowableToIOE(HRegionServer.java:979)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.next(HRegionServer.java:1894)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.next(HRegionServer.java:1834)
+at sun.reflect.GeneratedMethodAccessor31.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:570)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1039)
+Caused by: java.lang.IllegalArgumentException: No 44 in <blah,1334744821162.81f2df35c332dd2d3bb966fb5b419568.>, length=47, offset=54
+at org.apache.hadoop.hbase.KeyValue.getRequiredDelimiterInReverse(KeyValue.java:1300)
+at org.apache.hadoop.hbase.KeyValue$MetaKeyComparator.compareRows(KeyValue.java:1846)
+at org.apache.hadoop.hbase.regionserver.ScanQueryMatcher.match(ScanQueryMatcher.java:130)
+at org.apache.hadoop.hbase.regionserver.StoreScanner.next(StoreScanner.java:257)
+at org.apache.hadoop.hbase.regionserver.KeyValueHeap.next(KeyValueHeap.java:114)
+at org.apache.hadoop.hbase.regionserver.HRegion$RegionScanner.nextInternal(HRegion.java:2435)
+at org.apache.hadoop.hbase.regionserver.HRegion$RegionScanner.next(HRegion.java:2391)
+at org.apache.hadoop.hbase.regionserver.HRegion$RegionScanner.next(HRegion.java:2408)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.next(HRegionServer.java:1870)
+... 6 more
+
+at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:771)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:257)
+at $Proxy9.next(Unknown Source)
+at org.apache.hadoop.hbase.catalog.MetaReader.fullScan(MetaReader.java:264)
+at org.apache.hadoop.hbase.catalog.MetaReader.fullScan(MetaReader.java:237)
+at org.apache.hadoop.hbase.catalog.MetaReader.fullScanOfResults(MetaReader.java:220)
+at org.apache.hadoop.hbase.master.AssignmentManager.rebuildUserRegions(AssignmentManager.java:1580)
+at org.apache.hadoop.hbase.master.AssignmentManager.processFailover(AssignmentManager.java:221)
+at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:422)
+at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:295)
+12/04/18 22:07:34 INFO master.HMaster: Aborting 
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.6, 0.95.2
+Fix_version:
+0.95.0
+Component:
+master, shell
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ricky Saltzer
+Reporter:
+Jonathan Hsieh
+Create date:
+19/Apr/12 23:08
+Update date:
+23/Sep/13 18:31
+Resolved date:
+10/Oct/12 23:22

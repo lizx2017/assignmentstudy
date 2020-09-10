@@ -1,0 +1,44 @@
+Summary:
+Region in PENDING_OPEN keeps being bounced between RS and master
+Description:
+After going crazy killing region servers after HBASE-3668, most of the cluster recovered except for 3 regions that kept being refused by the region servers.
+One the master I would see:
+2011-03-17 22:23:14,828 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out:  supr_rss_items,ea0a3ac6c8779dab:872333599:ed1a7ad00f076fd98fcd3adcd98b62c6,1285707378709.f11849557c64c4efdbe0498f3fe97a21. state=PENDING_OPEN, ts=1300400554826
+2011-03-17 22:23:14,828 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_OPEN for too long, reassigning region=supr_rss_items,ea0a3ac6c8779dab:872333599:ed1a7ad00f076fd98fcd3adcd98b62c6,1285707378709.f11849557c64c4efdbe0498f3fe97a21.
+2011-03-17 22:23:14,828 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Forcing OFFLINE; was=supr_rss_items,ea0a3ac6c8779dab:872333599:ed1a7ad00f076fd98fcd3adcd98b62c6,1285707378709.f11849557c64c4efdbe0498f3fe97a21. state=PENDING_OPEN, ts=1300400554826
+2011-03-17 22:23:14,828 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan was found (or we are ignoring an existing plan) for supr_rss_items,ea0a3ac6c8779dab:872333599:ed1a7ad00f076fd98fcd3adcd98b62c6,1285707378709.f11849557c64c4efdbe0498f3fe97a21. so generated a random one; hri=supr_rss_items,ea0a3ac6c8779dab:872333599:ed1a7ad00f076fd98fcd3adcd98b62c6,1285707378709.f11849557c64c4efdbe0498f3fe97a21., src=, dest=sv2borg171,60020,1300399357135; 17 (online=17, exclude=null) available servers
+2011-03-17 22:23:14,828 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region supr_rss_items,ea0a3ac6c8779dab:872333599:ed1a7ad00f076fd98fcd3adcd98b62c6,1285707378709.f11849557c64c4efdbe0498f3fe97a21. to sv2borg171,60020,1300399357135
+Then on the region server:
+2011-03-17 22:23:14,829 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x22d627c142707d2 Attempting to transition node f11849557c64c4efdbe0498f3fe97a21 from M_ZK_REGION_OFFLINE to RS_ZK_REGION_OPENING
+2011-03-17 22:23:14,832 DEBUG org.apache.hadoop.hbase.zookeeper.ZKUtil: regionserver:60020-0x22d627c142707d2 Retrieved 166 byte(s) of data from znode /hbase/unassigned/f11849557c64c4efdbe0498f3fe97a21; data=region=supr_rss_items,ea0a3ac6c8779dab:872333599:ed1a7ad00f076fd98fcd3adcd98b62c6,1285707378709.f11849557c64c4efdbe0498f3fe97a21., server=sv2borg180,60020,1300384550966, state=RS_ZK_REGION_OPENING
+2011-03-17 22:23:14,832 WARN org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x22d627c142707d2 Attempt to transition the unassigned node for f11849557c64c4efdbe0498f3fe97a21 from M_ZK_REGION_OFFLINE to RS_ZK_REGION_OPENING failed, the node existed but was in the state RS_ZK_REGION_OPENING
+2011-03-17 22:23:14,832 WARN org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Failed transition from OFFLINE to OPENING for region=f11849557c64c4efdbe0498f3fe97a21
+I'm not sure I fully understand what was going on... the master was suppose to OFFLINE the znode but then that's not what the region server was seeing? In any case, I was able to recover by doing a force unassign for each region and then assign.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+0.90.1
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jean-Daniel Cryans
+Create date:
+17/Mar/11 22:42
+Update date:
+07/May/13 22:40
+Resolved date:
+07/May/13 22:40

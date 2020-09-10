@@ -1,0 +1,37 @@
+Summary:
+Ambiguous WriteTimeoutException while completing pending CAS commits
+Description:
+Any CAS update has a chance to trigger a pending/stalled commit of any previously agreed on CAS update. After completing the pending commit, the CAS operation will resume to execute the actual update and also possibly create a new commit. See StorageProxy.cas()
+Theres two possbile execution paths that might end up throwing a WriteTimeoutException:
+cas() -> beginAndRepairPaxos() -> commitPaxos()
+cas() -> commitPaxos()
+Unfortunatelly clients catching a WriteTimeoutException won't be able to tell at which stage the commit failed. My guess would be that most developers are not aware that the beginAndRepairPaxos() could also trigger a write and assume that write timeouts would refer to a timeout while writting the actual CAS update. Its therefor not safe to assume that successive CAS or SERIAL read operations will cause a (write-)timeouted CAS operation to get eventually applied. Although some best-practices advise claims otherwise.
+At this point the safest bet is possibly to retry the complete business transaction in case of an WriteTimeoutException. However, as theres a chance that the timeout occurred while writing the actual CAS operation, another write could potentially complete it and our CAS condition will get a different result upon retry.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15, 2.1.5
+Component:
+None
+Label:
+CAS LWT
+Environment:
+
+Attachment number:
+0
+Assignee:
+Stefan Podkowinski
+Reporter:
+Stefan Podkowinski
+Create date:
+23/Jan/15 09:45
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Apr/15 19:53

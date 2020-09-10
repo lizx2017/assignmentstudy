@@ -1,0 +1,54 @@
+Summary:
+errors in %%EOF handling (fix included)
+Description:
+The '%%EOF' handling in PDFParser has several errors. The current implementation (start from line 467):
+String eof = "";
+if(!pdfSource.isEOF())
+readLine(); // if there's more data to read, get the EOF flag
+// verify that EOF exists
+if("%%EOF".equals(eof))
+{ // PDF does not conform to spec, we should warn someone log.warn("expected='%%EOF' actual='" + eof + "'"); // if we're not at the end of a file, just put it back and move on if(!pdfSource.isEOF()) pdfSource.unread(eof.getBytes("ISO-8859-1")); }
+The problems:
+eof variable gets no value
+comparison if("%%EOF".equals(eof)) must be negated
+unreading must first add a newline or space byte because we read with readline() (like in bug PDFBOX-978)
+Corrected version:
+String eof = "";
+if(!pdfSource.isEOF())
+eof = readLine(); // if there's more data to read, get the EOF flag
+// verify that EOF exists
+if(!"%%EOF".equals(eof)) {
+// PDF does not conform to spec, we should warn someone
+log.warn("expected='%%EOF' actual='" + eof + "'");
+// if we're not at the end of a file, just put it back and move on
+if(!pdfSource.isEOF())
+{ pdfSource.unread( SPACE_BYTE ); // we read a whole line; add space as newline replacement pdfSource.unread(eof.getBytes("ISO-8859-1")); }
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.6.0
+Fix_version:
+1.6.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adam Nichols
+Reporter:
+Timo Boehme
+Create date:
+15/Mar/11 09:23
+Update date:
+02/Jul/11 16:28
+Resolved date:
+16/Mar/11 16:40

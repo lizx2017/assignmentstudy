@@ -1,0 +1,42 @@
+Summary:
+bootstrapping does not work properly using multiple key space
+Description:
+when use multiple key-spaces, and one key-space has no SSTable, then bootstrap may not work right.
+Say nodes A, B, C, D have key spaces "KS1" and "KS2", KS1 is empty, now add empty node E into cluster.
+Suppose E decide to drag data from A and B(bootstrap source), E will send range to A and B, and A, B will scan all key-spaces they got and send ack to E, which contains list of key-space name(StreamContextManager.StreamContext),
+when E get ack from A and B, it scan this list, but when encounter first empty key-space, it will stop and remove node from bootstrap sources list:
+StreamInitiateVerbHandler.doVerb:
+......
+if (streamContexts.length == 0 && StorageService.instance().isBootstrapMode())
+{ if (logger.isDebugEnabled()) logger.debug("no data needed from " + message.getFrom()); StorageService.instance().removeBootstrapSource(message.getFrom()); return; }
+......
+If list of bootstrap sources is empty, E will finish bootstrapping
+So, the result is: E get nothing from source A, B, even KS2 has lots of data.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jaakko Laine
+Reporter:
+Michael Lee
+Create date:
+06/Jan/10 03:14
+Update date:
+16/Apr/19 09:33
+Resolved date:
+18/Jan/10 18:35

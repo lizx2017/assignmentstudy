@@ -1,0 +1,103 @@
+Summary:
+PDChoiceField.setValue() does not always work when the choices are not pairs
+Description:
+I have a PDF that appears to work in Adobe Reader, but for some reason the choices include both strings and pairs. The following code change allows this mixed case to be supported, and also seems to clean up the code a bit.
+If you could apply this as a patch in the trunk I would be grateful.
+$ svn diff src/main/java/org/apache/pdfbox/pdmodel/interactive/form/PDChoiceField.java
+Index: src/main/java/org/apache/pdfbox/pdmodel/interactive/form/PDChoiceField.java
+===================================================================
+--- src/main/java/org/apache/pdfbox/pdmodel/interactive/form/PDChoiceField.java (revision 832877)
++++ src/main/java/org/apache/pdfbox/pdmodel/interactive/form/PDChoiceField.java (working copy)
+@@ -63,37 +63,34 @@
+         }
+         else
+         {
+-            COSBase option = options.getObject( 0 );
+-            if( option instanceof COSArray )
+-            {
+-                for( int i=0; i<options.size() && indexSelected == -1; i++ )
+-                {
+-                    COSArray keyValuePair = (COSArray)options.get( i );
+-                    COSString key = (COSString)keyValuePair.getObject( 0 );
+-                    COSString value = (COSString)keyValuePair.getObject( 1 );
+-                    if( optionValue.equals( key.getString() ) || optionValue.equals( value.getString() ) )
+-                    {
+-                        //have the parent draw the appearance stream with the value
+-                        super.setValue( value.getString() );
+-                        //but then use the key as the V entry
+-                        getDictionary().setItem( COSName.getPDFName( "V" ), key );
+-                        indexSelected = i;
+-                    }
+-                }
+-            }
+-            else
+-            {
+-                for( int i=0; i<options.size() && indexSelected == -1; i++ )
+-                {
+-                    COSString value = (COSString)options.get( i );
+-                    if( optionValue.equals( value.getString() ) )
+-                    {
+-                        super.setValue( optionValue );
+-                        indexSelected = i;
+-                    }
+-                }
+-            }
++               for( int i=0; i<options.size() && indexSelected == -1; i++ ) {
++                       COSBase option = options.getObject( i );
++                       if( option instanceof COSArray )
++                       {
++                               COSArray keyValuePair = (COSArray)option;
++                               COSString key = (COSString)keyValuePair.getObject( 0 );
++                               COSString value = (COSString)keyValuePair.getObject( 1 );
++                               if( optionValue.equals( key.getString() ) || optionValue.equals( value.getString() ) )
++                               {
++                                       //have the parent draw the appearance stream with the value
++                                       super.setValue( value.getString() );
++                                       //but then use the key as the V entry
++                                       getDictionary().setItem( COSName.getPDFName( "V" ), key );
++                                       indexSelected = i;
++                               }
++                       }
++                       else
++                       {
++                               COSString value = (COSString)option;
++                               if( optionValue.equals( value.getString() ) )
++                               {
++                                       super.setValue( optionValue );
++                                       indexSelected = i;
++                               }
++                       }
++               }
+         }
++
+         if( indexSelected == -1 )
+         {
+             throw new IOException( "Error: '" + optionValue + "' was not an available option.");
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+1.0.0
+Fix_version:
+None
+Component:
+AcroForm
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Yonas Jongkind
+Create date:
+11/Nov/09 22:58
+Update date:
+15/Oct/14 10:35
+Resolved date:
+15/Oct/14 10:35

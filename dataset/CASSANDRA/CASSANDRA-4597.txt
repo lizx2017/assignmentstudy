@@ -1,0 +1,100 @@
+Summary:
+Impossible to set LeveledCompactionStrategy to a column family.
+Description:
+CFPropDefs.applyToCFMetadata() does not set the compaction class on CFM
+When altering the compaction strategy of a column family to LeveledCompactionStrategy, the compaction strategy is not changed (the describe command shows that the SizeTieredCompactionStrategy is still set to the CF)
+When creating a column family WITH compaction_strategy_class='LeveledCompactionStrategy', the compaction strategy class used is SizeTieredCompactionStrategy
+Ex :
+jal@jal-VirtualBox:~/cassandra/apache-cassandra-1.1.1/bin$ ./cqlsh -3
+Connected to Test Cluster at localhost:9160.
+[cqlsh 2.2.0 | Cassandra 1.1.1 | CQL spec 3.0.0 | Thrift protocol 19.32.0]
+Use HELP for help.
+cqlsh> use test1;
+cqlsh:test1> describe table pns_credentials;
+CREATE TABLE pns_credentials (
+ise text PRIMARY KEY,
+isnew int,
+ts timestamp,
+mergestatus int,
+infranetaccount text,
+user_level int,
+msisdn bigint,
+mergeusertype int
+) WITH
+comment='' AND
+comparator=text AND
+read_repair_chance=0.100000 AND
+gc_grace_seconds=864000 AND
+default_validation=text AND
+min_compaction_threshold=4 AND
+max_compaction_threshold=32 AND
+replicate_on_write='true' AND
+compaction_strategy_class='SizeTieredCompactionStrategy' AND
+compression_parameters:sstable_compression='SnappyCompressor';
+I want to set the LeveledCompaction strategy for this table, so I execute the following ALTER TABLE :
+cqlsh:test1> alter table pns_credentials
+... WITH compaction_strategy_class='LeveledCompactionStrategy'
+... AND compaction_strategy_options:sstable_size_in_mb=10;
+In Cassandra logs, I see some informations :
+INFO 10:23:52,532 Enqueuing flush of Memtable-schema_columnfamilies@965212657(1391/1738 serialized/live bytes, 20 ops)
+INFO 10:23:52,533 Writing Memtable-schema_columnfamilies@965212657(1391/1738 serialized/live bytes, 20 ops)
+INFO 10:23:52,629 Completed flushing /var/lib/cassandra/data/system/schema_columnfamilies/system-schema_columnfamilies-hd-94-Data.db (1442 bytes) for commitlog position ReplayPosition(segmentId=3556583843054, position=1987)
+However, when I look at the description of the table, the table is still with the SizeTieredCompactionStrategy
+cqlsh:test1> describe table pns_credentials ;
+CREATE TABLE pns_credentials (
+ise text PRIMARY KEY,
+isnew int,
+ts timestamp,
+mergestatus int,
+infranetaccount text,
+user_level int,
+msisdn bigint,
+mergeusertype int
+) WITH
+comment='' AND
+comparator=text AND
+read_repair_chance=0.100000 AND
+gc_grace_seconds=864000 AND
+default_validation=text AND
+min_compaction_threshold=4 AND
+max_compaction_threshold=32 AND
+replicate_on_write='true' AND
+compaction_strategy_class='SizeTieredCompactionStrategy' AND
+compression_parameters:sstable_compression='SnappyCompressor';
+In the schema_columnfamilies table (in system keyspace), the table pns_credentials is still using the SizeTieredCompactionStrategy
+cqlsh:test1> use system;
+cqlsh:system> select * from schema_columnfamilies ;
+...
+test1 | pns_credentials | null | KEYS_ONLY | [] | | org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy | {} | org.apache.cassandra.db.marshal.UTF8Type |
+{"sstable_compression":"org.apache.cassandra.io.compress.SnappyCompressor"}
+| org.apache.cassandra.db.marshal.UTF8Type | 864000 | 1029 | ise | org.apache.cassandra.db.marshal.UTF8Type | 0 | 32 | 4 | 0.1 | True | null | Standard | null
+...
+Same behaviour using cqlsh or command-cli.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.5
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+jal
+Create date:
+31/Aug/12 07:51
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Sep/12 11:40

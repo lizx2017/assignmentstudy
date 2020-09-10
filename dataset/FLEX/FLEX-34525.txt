@@ -1,0 +1,150 @@
+Summary:
+DataGrid Events are triggered unexpectedly
+Description:
+The following events are triggered unexpectedly in Flex SDK 4.6.
+DataGrid itemEditBeginning Event
+DataGrid itemEditBegin Event
+DataGrid itemFocusIn Event
+DataGrid itemFocusOut Event
+These events are not triggered in SDK 3 with the same action.
+I test with Apache flex 4.11 and it seems that the problem is fixed and the behavior is the same with flex sdk 3. Could you please help to comment any workaround for the problem?
+STEPS TO REPRODUCE:
+===================
+1. Run following application compiled by Flex SDK 3 and Flex SDK 4.6.
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" creationComplete="start()">
+<mx:Script>
+<![CDATA[
+import mx.controls.Alert;
+import mx.events.CloseEvent;
+import mx.events.DataGridEvent;
+import mx.events.ListEvent;
+protected function start():void
+{ grid1.addEventListener(DataGridEvent.ITEM_EDIT_END, grid1_itemEditEndHandler, false, 0, true); }
+protected function grid1_mouseDownHandler(event:MouseEvent):void
+{ trace("DataGrid mouseDown Event"); }
+private function grid1_mouseUpHandler(e:Event=null):void
+{ trace("DataGrid mouseUp Event"); }
+
+protected function grid1_itemEditBeginHandler(event:DataGridEvent):void
+{ trace("DataGrid itemEditBegin Event"); }
+private var itemFocus:Object = null;
+protected function grid1_itemEditEndHandler(event:DataGridEvent):void
+{ trace("DataGrid itemEditEnd Event"); itemFocus = grid1.editedItemPosition; grid1.removeEventListener(DataGridEvent.ITEM_EDIT_END, grid1_itemEditEndHandler, false); Alert.show("error", "", Alert.OK, this, alertOkClickHandler); }
+protected function grid1_itemFocusInHandler(event:DataGridEvent):void
+{ trace("DataGrid itemFocusIn Event"); }
+protected function grid1_itemClickHandler(event:ListEvent):void
+{ trace("DataGrid itemClick Event"); }
+protected function grid1_itemFocusOutHandler(event:DataGridEvent):void
+{ trace("DataGrid itemFocusOut Event"); }
+protected function grid1_itemEditBeginningHandler(event:DataGridEvent):void
+{ trace("DataGrid itemEditBeginning Event"); }
+private function alertOkClickHandler(event:CloseEvent):void
+{ grid1.editedItemPosition = itemFocus; grid1.addEventListener(DataGridEvent.ITEM_EDIT_END, grid1_itemEditEndHandler, false, 0, true); }
+]]>
+</mx:Script>
+<mx:DataGrid id="grid1" x="0" y="63" doubleClickEnabled="true"
+draggableColumns="false" editable="true" enabled="true"
+allowMultipleSelection="true" selectable="true" allowDragSelection="false"
+mouseUp="grid1_mouseUpHandler(event)"
+mouseDown="grid1_mouseDownHandler(event)"
+itemEditBegin="grid1_itemEditBeginHandler(event)"
+itemFocusIn="grid1_itemFocusInHandler(event)"
+itemClick="grid1_itemClickHandler(event)"
+itemFocusOut="grid1_itemFocusOutHandler(event)"
+itemEditBeginning="grid1_itemEditBeginningHandler(event)"
+>
+<mx:columns>
+<mx:DataGridColumn headerText="列 1" dataField="col1"/>
+<mx:DataGridColumn headerText="列 2" dataField="col2"/>
+<mx:DataGridColumn headerText="列 3" dataField="col3"/>
+</mx:columns>
+<mx:ArrayCollection>
+<mx:Object col1="ABC" col2="123" col3="hello 123"/>
+<mx:Object col1="DEF" col2="456" col3="hello 456"/>
+<mx:Object col1="GHI" col2="789" col3="hello 789"/>
+</mx:ArrayCollection>
+</mx:DataGrid>
+</mx:Application>
+2. click cell and check the events triggered.
+[Flex SDK 3]
+DataGrid mouseDown Event
+DataGrid itemEditBeginning Event
+DataGrid mouseUp Event
+DataGrid itemClick Event
+DataGrid itemEditBegin Event
+DataGrid itemFocusIn Event
+[Flex SDK 4.6]
+DataGrid mouseDown Event
+DataGrid itemEditBeginning Event
+DataGrid mouseUp Event
+DataGrid itemClick Event
+DataGrid itemEditBegin Event
+DataGrid itemFocusIn Event
+which is okay.
+3. click in any place outside of the gird and check the events triggered.
+[Flex SDK 3]
+DataGrid itemEditEnd Event
+DataGrid itemFocusOut Event
+[Flex SDK 4.6]
+DataGrid itemEditEnd Event
+DataGrid itemFocusOut Event
+DataGrid itemEditBeginning Event ***
+DataGrid itemEditBegin Event***
+DataGrid itemFocusIn Event***
+which is NG.
+4. after the pop up showed up. click ok button and check the events triggered.
+[Flex SDK 3]
+DataGrid itemEditBegin Event
+DataGrid itemFocusIn Event
+[Flex SDK 4.6]
+DataGrid itemFocusOut Event***
+DataGrid itemEditBegin Event
+DataGrid itemFocusIn Event
+which is NG.
+5. The focus is set back to the cell. Click in any place outside of the grid again and check the events triggered.
+[Flex SDK 3]
+DataGrid itemEditEnd Event
+DataGrid itemFocusOut Event
+[Flex SDK 4.6]
+DataGrid itemEditEnd Event
+DataGrid itemFocusOut Event
+DataGrid itemEditBeginning Event***
+DataGrid itemEditBegin Event***
+DataGrid itemFocusIn Event***
+which is NG.
+6. When the pop up is showing, if you maximize other application page, DataGrid itemFocusOut Event will be triggered in SDK 4.6 and this does not happen in SDK 3.
+RESULT:
+=======
+Unexpected events are triggered after upgrading to SDK 4.6.
+EXPECTED:
+=========
+The behavior in SDK 3 and SDK 4.6 should be the same.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.6 (
+Fix_version:
+Apache Flex 4.11.0
+Component:
+mx: DataGrid
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Bi Jane Jia
+Create date:
+04/Sep/14 05:41
+Update date:
+04/Sep/14 05:41
+Resolved date:
+

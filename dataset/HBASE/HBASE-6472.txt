@@ -1,0 +1,57 @@
+Summary:
+Bulk load files can cause minor compactions with single files
+Description:
+This is visible in the logs:
+2012-07-17 00:00:29,081 INFO org.apache.hadoop.hbase.regionserver.Store: Started compaction of 1 file(s) in cf=m into hdfs://nn:9000/hbase/t1/27889b3c9257e8dff4cddae5eedfd064/.tmp, seqid=1918186410, totalSize=124.7m 
+2012-07-17 00:00:29,081 DEBUG org.apache.hadoop.hbase.regionserver.Store: Compacting hdfs://nn:9000/hbase/t1/27889b3c9257e8dff4cddae5eedfd064/m/5478928132066935241, keycount=1435991, bloomtype=NONE, size=124.7m 
+2012-07-17 00:00:34,538 INFO org.apache.hadoop.hbase.regionserver.Store: Completed major compaction of 1 file(s), new file=hdfs://nn:9000/hbase/t1/27889b3c9257e8dff4cddae5eedfd064/m/7554093203376406441, size=124.7m; total size for store is 124.7m
+I assume the reason is that the Store.java check is reversed:
+      // skip selection algorithm if we don't have enough files
+      if (compactSelection.getFilesToCompact().size() < this.minFilesToCompact) {
+        if(LOG.isDebugEnabled()) {
+          LOG.debug("Not compacting files because we only have " +
+            compactSelection.getFilesToCompact().size() +
+            " files ready for compaction.  Need " + this.minFilesToCompact + " to initiate.");
+        }
+        compactSelection.emptyFileList();
+        return compactSelection;
+      }
+
+      // remove bulk import files that request to be excluded from minors
+      compactSelection.getFilesToCompact().removeAll(Collections2.filter(
+          compactSelection.getFilesToCompact(),
+          new Predicate<StoreFile>() {
+            public boolean apply(StoreFile input) {
+              return input.excludeFromMinorCompaction();
+            }
+          }));
+The bulk files should be removed first, and then it should check if there are enough files.
+There are other places doing the same things, i.e. removing the bulk files and check what needs to be done, so this needs some extra care to get it all right.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Lars George
+Create date:
+30/Jul/12 08:40
+Update date:
+30/Jul/12 10:44
+Resolved date:
+30/Jul/12 10:44

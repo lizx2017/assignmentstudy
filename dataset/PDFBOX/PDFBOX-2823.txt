@@ -1,0 +1,54 @@
+Summary:
+StringIndexOutOfBoundsException when doing DateConverter.parseDate()
+Description:
+From Kevin J. in the user mailing list:
+We are currently using Apache Solr / Tika to index documents for searching. The exact version that is being used is version 1.8.8 of PDFBox.
+We can across a document that produced this stack trace (trimmed to the relevant part of PDFBox):
+Caused by: java.lang.StringIndexOutOfBoundsException: String index out of range: 1
+        at java.lang.String.charAt(String.java:658)
+        at org.apache.pdfbox.util.DateConverter.parseDate(DateConverter.java:679)
+        at org.apache.pdfbox.util.DateConverter.toCalendar(DateConverter.java:808)
+        at org.apache.pdfbox.util.DateConverter.toCalendar(DateConverter.java:780)
+        at org.apache.pdfbox.util.DateConverter.toCalendar(DateConverter.java:753)
+        at org.apache.pdfbox.cos.COSDictionary.getDate(COSDictionary.java:849)
+        at org.apache.pdfbox.pdmodel.PDDocumentInformation.getCreationDate(PDDocumentInformation.java:212)
+Inspection of the document's binary revealed that it contained a creationDate consisting of a single white space (ASCII 0x20), which is probably illegal. I managed to create a small reproduction of the error using like so:
+File file = new File("/path/to/document/bad.pdf");
+InputStream stream = new FileInputStream(file);
+PDFParser parser = new PDFParser(stream);
+parser.parse();
+PDDocumentInformation info = parser.getPDDocument().getDocumentInformation();
+Calendar creationDate = info.getCreationDate();
+System.out.println(creationDate.toString());
+Which produces the same stack trace. I verified this against the latest build from the site on 1.8.9, and the behavior remains. This looks very similar to PDFBOX-1803, however that issue is marked as resolved in 1.8.5. So, my questions:
+Is the exception an expected behavior? Ideally Tika would just index the document anyway, the creation date isn't important to us. Tika had an issue for this, TIKA-1233, that marks it as fixed by swallowing the exception, but looking at the comments for it, they removed the try/catch in r1593983 since it is marked as fixed here.
+Is this a regression, or slightly different somehow from 1803? Shall I create a new issue or get the existing 1803 re-opened?
+The PDF that reproduces the issue can be downloaded here: https://www.dropbox.com/s/tll5rscrlt95xuc/bad.pdf?dl=0
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.9, 1.8.10
+Fix_version:
+1.8.10
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+04/Jun/15 16:49
+Update date:
+23/Jul/15 06:35
+Resolved date:
+04/Jun/15 17:12

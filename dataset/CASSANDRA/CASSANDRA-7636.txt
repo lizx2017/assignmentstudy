@@ -1,0 +1,61 @@
+Summary:
+Data is not filtered out when using WHERE clause on cluster column on Column Family with row cache on.
+Description:
+My pretty simplified case looks like the following:
+I create a table with partition and cluster column. I set key caching to NONE and row caching to ALL.
+When I'm running some SELECTs with WHERE clause filtering on cluster columns, the rows sometimes are not getting filtered out. When? Probably when the row gets loaded to row cache (By some previous query).
+Look at this scenario:
+cqlsh:xxx> create KEYSPACE test_keyspace WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+cqlsh:xxx> use test_keyspace ;
+cqlsh:test_keyspace> CREATE TABLE test (p1 bigint, c1 int, PRIMARY KEY (p1, c1) )  WITH caching = '{"keys":"NONE", "rows_per_partition":"ALL"}';
+cqlsh:test_keyspace> insert into test (p1, c1 ) values ( 123, 10);
+
+cqlsh:test_keyspace> select * from test where p1 = 123 and c1 > 10;
+
+(0 rows)
+
+cqlsh:test_keyspace> select * from test where p1 = 123 and c1 > 9;
+
+ p1  | c1
+-----+----
+ 123 | 10
+
+(1 rows)
+
+cqlsh:test_keyspace> select * from test where p1 = 123 and c1 > 10;
+
+ p1  | c1
+-----+----
+ 123 | 10
+
+(1 rows)
+Running the same scenario, but with row cache turned OFF works fine.
+The filtering on other (partition) columns runs fine. Only the clustering column is somewhat malfunctioning.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Krzysztof Zarzycki
+Create date:
+29/Jul/14 06:24
+Update date:
+16/Apr/19 09:31
+Resolved date:
+31/Jul/14 17:39

@@ -1,0 +1,226 @@
+Summary:
+Race condition leads to FileNotFoundException on startup
+Description:
+On startup LocationInfo file is deleted then attempted to be read from.
+Steps to reproduce: Kill then quickly restart
+Switching to ParallelGC to avoid CMS/CompressedOops incompatibility
+INFO 17:05:08,680 DiskAccessMode isstandard, indexAccessMode is mmap
+INFO 17:05:08,786 Sampling index for /var/lib/cassandra/data/system/Schema-e-1-<>
+INFO 17:05:08,797 Sampling index for /var/lib/cassandra/data/system/Schema-e-2-<>
+INFO 17:05:08,807 Sampling index for /var/lib/cassandra/data/system/Migrations-e-1-<>
+INFO 17:05:08,833 Sampling index for /var/lib/cassandra/data/system/Schema-e-1-<>
+INFO 17:05:08,834 Sampling index for /var/lib/cassandra/data/system/Schema-e-2-<>
+INFO 17:05:08,839 Sampling index for /var/lib/cassandra/data/system/Migrations-e-1-<>
+INFO 17:05:08,862 Sampling index for /var/lib/cassandra/data/system/Schema-e-1-<>
+INFO 17:05:08,864 Sampling index for /var/lib/cassandra/data/system/Schema-e-2-<>
+INFO 17:05:08,876 Sampling index for /var/lib/cassandra/data/system/Migrations-e-1-<>
+INFO 17:05:08,885 Sampling index for /var/lib/cassandra/data/system/LocationInfo-e-17-<>
+INFO 17:05:08,892 Sampling index for /var/lib/cassandra/data/system/Schema-e-1-<>
+INFO 17:05:08,893 Sampling index for /var/lib/cassandra/data/system/Schema-e-2-<>
+INFO 17:05:08,897 Sampling index for /var/lib/cassandra/data/system/Migrations-e-1-<>
+INFO 17:05:08,901 Sampling index for /var/lib/cassandra/data/system/LocationInfo-e-17-<>
+INFO 17:05:08,906 Sampling index for /var/lib/cassandra/data/system/Schema-e-1-<>
+INFO 17:05:08,909 Sampling index for /var/lib/cassandra/data/system/Schema-e-2-<>
+INFO 17:05:08,918 Sampling index for /var/lib/cassandra/data/system/Migrations-e-1-<>
+INFO 17:05:08,922 Sampling index for /var/lib/cassandra/data/system/LocationInfo-e-17-<>
+INFO 17:05:08,928 Creating new commitlog segment /var/lib/cassandra/commitlog/CommitLog-1281571508928.log
+INFO 17:05:08,933 Deleted /var/lib/cassandra/data/system/LocationInfo-e-16-Data.db
+INFO 17:05:08,936 Deleted /var/lib/cassandra/data/system/LocationInfo-e-15-Data.db
+INFO 17:05:08,936 Sampling index for /var/lib/cassandra/data/system/LocationInfo-e-16-<>
+ERROR 17:05:08,937 Corrupt file /var/lib/cassandra/data/system/LocationInfo-e-16-Data.db; skipped
+java.io.FileNotFoundException: /var/lib/cassandra/data/system/LocationInfo-e-16-Index.db (No such file or directory)
+at java.io.RandomAccessFile.open(Native Method)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:212)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:98)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:142)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:137)
+at org.apache.cassandra.io.sstable.SSTableReader.load(SSTableReader.java:289)
+at org.apache.cassandra.io.sstable.SSTableReader.internalOpen(SSTableReader.java:197)
+at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:176)
+at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:208)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:342)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:308)
+at org.apache.cassandra.db.Table.<init>(Table.java:245)
+at org.apache.cassandra.db.Table.open(Table.java:102)
+at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:196)
+at org.apache.cassandra.db.StatisticsTable.deleteSSTableStatistics(StatisticsTable.java:81)
+at org.apache.cassandra.io.sstable.SSTable.deleteIfCompacted(SSTable.java:136)
+at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:202)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:342)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:308)
+at org.apache.cassandra.db.Table.<init>(Table.java:245)
+at org.apache.cassandra.db.Table.open(Table.java:102)
+at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:196)
+at org.apache.cassandra.db.StatisticsTable.deleteSSTableStatistics(StatisticsTable.java:81)
+at org.apache.cassandra.io.sstable.SSTable.deleteIfCompacted(SSTable.java:136)
+at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:202)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:342)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:308)
+at org.apache.cassandra.db.Table.<init>(Table.java:245)
+at org.apache.cassandra.db.Table.open(Table.java:102)
+at org.apache.cassandra.db.SystemTable.checkHealth(SystemTable.java:121)
+at org.apache.cassandra.thrift.CassandraDaemon.setup(CassandraDaemon.java:93)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:90)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:224)
+INFO 17:05:08,947 Deleted /var/lib/cassandra/data/system/LocationInfo-e-14-Data.db
+INFO 17:05:08,947 Sampling index for /var/lib/cassandra/data/system/LocationInfo-e-17-<>
+INFO 17:05:08,948 Sampling index for /var/lib/cassandra/data/system/LocationInfo-e-15-<>
+ERROR 17:05:08,948 Corrupt file /var/lib/cassandra/data/system/LocationInfo-e-15-Data.db; skipped
+java.io.FileNotFoundException: /var/lib/cassandra/data/system/LocationInfo-e-15-Index.db (No such file or directory)
+at java.io.RandomAccessFile.open(Native Method)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:212)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:98)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:142)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:137)
+at org.apache.cassandra.io.sstable.SSTableReader.load(SSTableReader.java:289)
+at org.apache.cassandra.io.sstable.SSTableReader.internalOpen(SSTableReader.java:197)
+at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:176)
+at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:208)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:342)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:308)
+at org.apache.cassandra.db.Table.<init>(Table.java:245)
+at org.apache.cassandra.db.Table.open(Table.java:102)
+at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:196)
+at org.apache.cassandra.db.StatisticsTable.deleteSSTableStatistics(StatisticsTable.java:81)
+at org.apache.cassandra.io.sstable.SSTable.deleteIfCompacted(SSTable.java:136)
+at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:202)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:342)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:308)
+at org.apache.cassandra.db.Table.<init>(Table.java:245)
+at org.apache.cassandra.db.Table.open(Table.java:102)
+at org.apache.cassandra.db.SystemTable.checkHealth(SystemTable.java:121)
+at org.apache.cassandra.thrift.CassandraDaemon.setup(CassandraDaemon.java:93)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:90)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:224)
+INFO 17:05:08,950 Sampling index for /var/lib/cassandra/data/system/LocationInfo-e-16-<>
+ERROR 17:05:08,951 Corrupt file /var/lib/cassandra/data/system/LocationInfo-e-16-Data.db; skipped
+java.io.FileNotFoundException: /var/lib/cassandra/data/system/LocationInfo-e-16-Index.db (No such file or directory)
+at java.io.RandomAccessFile.open(Native Method)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:212)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:98)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:142)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:137)
+at org.apache.cassandra.io.sstable.SSTableReader.load(SSTableReader.java:289)
+at org.apache.cassandra.io.sstable.SSTableReader.internalOpen(SSTableReader.java:197)
+at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:176)
+at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:208)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:342)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:308)
+at org.apache.cassandra.db.Table.<init>(Table.java:245)
+at org.apache.cassandra.db.Table.open(Table.java:102)
+at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:196)
+at org.apache.cassandra.db.StatisticsTable.deleteSSTableStatistics(StatisticsTable.java:81)
+at org.apache.cassandra.io.sstable.SSTable.deleteIfCompacted(SSTable.java:136)
+at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:202)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:342)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:308)
+at org.apache.cassandra.db.Table.<init>(Table.java:245)
+at org.apache.cassandra.db.Table.open(Table.java:102)
+at org.apache.cassandra.db.SystemTable.checkHealth(SystemTable.java:121)
+at org.apache.cassandra.thrift.CassandraDaemon.setup(CassandraDaemon.java:93)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:90)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:224)
+INFO 17:05:08,970 Deleted /var/lib/cassandra/data/system/LocationInfo-e-13-Data.db
+INFO 17:05:08,971 Sampling index for /var/lib/cassandra/data/system/LocationInfo-e-14-<>
+ERROR 17:05:08,971 Corrupt file /var/lib/cassandra/data/system/LocationInfo-e-14-Data.db; skipped
+java.io.FileNotFoundException: /var/lib/cassandra/data/system/LocationInfo-e-14-Index.db (No such file or directory)
+at java.io.RandomAccessFile.open(Native Method)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:212)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:98)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:142)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:137)
+at org.apache.cassandra.io.sstable.SSTableReader.load(SSTableReader.java:289)
+at org.apache.cassandra.io.sstable.SSTableReader.internalOpen(SSTableReader.java:197)
+at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:176)
+at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:208)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:342)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:308)
+at org.apache.cassandra.db.Table.<init>(Table.java:245)
+at org.apache.cassandra.db.Table.open(Table.java:102)
+at org.apache.cassandra.db.SystemTable.checkHealth(SystemTable.java:121)
+at org.apache.cassandra.thrift.CassandraDaemon.setup(CassandraDaemon.java:93)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:90)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:224)
+INFO 17:05:08,972 Sampling index for /var/lib/cassandra/data/system/LocationInfo-e-17-<>
+INFO 17:05:08,973 Sampling index for /var/lib/cassandra/data/system/LocationInfo-e-15-<>
+ERROR 17:05:08,973 Corrupt file /var/lib/cassandra/data/system/LocationInfo-e-15-Data.db; skipped
+java.io.FileNotFoundException: /var/lib/cassandra/data/system/LocationInfo-e-15-Index.db (No such file or directory)
+at java.io.RandomAccessFile.open(Native Method)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:212)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:98)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:142)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:137)
+at org.apache.cassandra.io.sstable.SSTableReader.load(SSTableReader.java:289)
+at org.apache.cassandra.io.sstable.SSTableReader.internalOpen(SSTableReader.java:197)
+at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:176)
+at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:208)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:342)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:308)
+at org.apache.cassandra.db.Table.<init>(Table.java:245)
+at org.apache.cassandra.db.Table.open(Table.java:102)
+at org.apache.cassandra.db.SystemTable.checkHealth(SystemTable.java:121)
+at org.apache.cassandra.thrift.CassandraDaemon.setup(CassandraDaemon.java:93)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:90)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:224)
+INFO 17:05:08,974 Sampling index for /var/lib/cassandra/data/system/LocationInfo-e-16-<>
+ERROR 17:05:08,974 Corrupt file /var/lib/cassandra/data/system/LocationInfo-e-16-Data.db; skipped
+java.io.FileNotFoundException: /var/lib/cassandra/data/system/LocationInfo-e-16-Index.db (No such file or directory)
+at java.io.RandomAccessFile.open(Native Method)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:212)
+at java.io.RandomAccessFile.<init>(RandomAccessFile.java:98)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:142)
+at org.apache.cassandra.io.util.BufferedRandomAccessFile.<init>(BufferedRandomAccessFile.java:137)
+at org.apache.cassandra.io.sstable.SSTableReader.load(SSTableReader.java:289)
+at org.apache.cassandra.io.sstable.SSTableReader.internalOpen(SSTableReader.java:197)
+at org.apache.cassandra.io.sstable.SSTableReader.open(SSTableReader.java:176)
+at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:208)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:342)
+at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:308)
+at org.apache.cassandra.db.Table.<init>(Table.java:245)
+at org.apache.cassandra.db.Table.open(Table.java:102)
+at org.apache.cassandra.db.SystemTable.checkHealth(SystemTable.java:121)
+at org.apache.cassandra.thrift.CassandraDaemon.setup(CassandraDaemon.java:93)
+at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:90)
+at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:224)
+INFO 17:05:08,996 Loading schema version acc5646a-a59d-11df-83fb-e700f669bcfc
+WARN 17:05:09,158 Schema definitions were defined both locally and in cassandra.yaml. Definitions in cassandra.yaml were ignored.
+INFO 17:05:09,164 Replaying /var/lib/cassandra/commitlog/CommitLog-1281571453475.log, /var/lib/cassandra/commitlog/CommitLog-1281571508928.log
+INFO 17:05:09,172 Finished reading /var/lib/cassandra/commitlog/CommitLog-1281571453475.log
+INFO 17:05:09,172 Finished reading /var/lib/cassandra/commitlog/CommitLog-1281571508928.log
+INFO 17:05:09,173 switching in a fresh Memtable for LocationInfo at CommitLogContext(file='/var/lib/cassandra/commitlog/CommitLog-1281571508928.log', position=592)
+INFO 17:05:09,183 Enqueuing flush of Memtable-LocationInfo@137493297(17 bytes, 1 operations)
+INFO 17:05:09,183 Writing Memtable-LocationInfo@137493297(17 bytes, 1 operations)
+INFO 17:05:09,184 switching in a fresh Memtable for Statistics at CommitLogContext(file='/var/lib/cassandra/commitlog/CommitLog-1281571508928.log', position=592)
+INFO 17:05:09,184 Enqueuing flush of Memtable-Statistics@86823325(0 bytes, 0 operations)
+INFO 17:05:09,265 Completed flushing /var/lib/cassandra/data/system/LocationInfo-e-18-Data.db
+INFO 17:05:09,273 Writing Memtable-Statistics@86823325(0 bytes, 0 operations)
+INFO 17:05:09,352 Completed flushing /var/lib/cassandra/data/system/Statistics-e-1-Data.db
+INFO 17:05:09,353 Recovery complete
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Dusbabek
+Reporter:
+Robert Zotter
+Create date:
+12/Aug/10 04:08
+Update date:
+16/Apr/19 09:33
+Resolved date:
+17/Aug/10 18:12

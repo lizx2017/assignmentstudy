@@ -1,0 +1,55 @@
+Summary:
+NullPointerException when calling get_range_slice()
+Description:
+This bug affects 0.5.0beta2.
+In the SlicePredicate struct, column_names is defined as "optional", and so can be null.
+get_range_slice() passes the "predicate.getColumn_names()" to "ThriftValidation.validateColumns()" without first checking if it's null, resulting in the following exception:
+java.lang.NullPointerException
+at org.apache.cassandra.service.ThriftValidation.validateColumns(ThriftValidation.java:162)
+at org.apache.cassandra.service.ThriftValidation.validateColumns(ThriftValidation.java:181)
+at org.apache.cassandra.service.CassandraServer.get_range_slice(CassandraServer.java:562)
+at org.apache.cassandra.service.Cassandra$Processor$get_range_slice.process(Cassandra.java:1024)
+at org.apache.cassandra.service.Cassandra$Processor.process(Cassandra.java:817)
+at org.apache.thrift.server.TThreadPoolServer$WorkerProcess.run(TThreadPoolServer.java:253)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+Strangely enough, calling it from python doesn't generate this exception, but calling it from C++ does, with the following code:
+shared_ptr<TTransport> transport(new TSocket(host, port));
+shared_ptr<TProtocol> proto(new TBinaryProtocol(transport));
+CassandraClient client(proto);
+transport->open();
+ColumnParent column_parent;
+column_parent.column_family = "Test";
+SlicePredicate slice_predicate;
+std::vector<KeySlice> keys;
+client.get_range_slice(keys, keyspace, column_parent, slice_predicate, "", "", 100, ONE);
+The fix is trivial, just check that predicate.getColumn_names() is not null in line 562 of CassandraServer.java
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.5
+Component:
+None
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jonathan Hseu
+Create date:
+18/Dec/09 09:53
+Update date:
+16/Apr/19 09:33
+Resolved date:
+21/Dec/09 17:29

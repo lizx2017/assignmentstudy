@@ -1,0 +1,50 @@
+Summary:
+Stack Size on Sun JVM 1.6.0_33 must be at least 160k
+Description:
+I started a fresh Cassandra 1.1.4 install with Sun JVM 1.6.35.
+On startup I got this in output.log
+The stack size specified is too small, Specify at least 160k
+Cannot create Java VM
+Service exit with a return value of 1
+Remembering CASSANDRA-4275 I monkeyed around and started the JVM with -Xss160k the same as Java 7. I then got
+ERROR [WRITE-/192.168.1.12] 2012-08-31 01:43:29,865 AbstractCassandraDaemon.java (line 134) Exception in thread Thread[WRITE-/192.168.1.12,5,main]
+java.lang.StackOverflowError
+ at java.net.SocketOutputStream.socketWrite0(Native Method)
+ at java.net.SocketOutputStream.socketWrite(Unknown Source)
+ at java.net.SocketOutputStream.write(Unknown Source)
+ at java.io.BufferedOutputStream.flushBuffer(Unknown Source)
+ at java.io.BufferedOutputStream.flush(Unknown Source)
+ at java.io.DataOutputStream.flush(Unknown Source)
+ at org.apache.cassandra.net.OutboundTcpConnection.writeConnected(OutboundTcpConnection.java:156)
+ at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:126)
+Same as CASSANDRA-4442
+At which point I dropped back to Java 6.33.
+CASSANDRA-4457 bumped the stack size to 180 for java 7, should we also do this for Java 6.33+ ?
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.12, 1.1.5
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+amorton
+Create date:
+02/Sep/12 23:34
+Update date:
+16/Apr/19 09:32
+Resolved date:
+24/Sep/12 19:50

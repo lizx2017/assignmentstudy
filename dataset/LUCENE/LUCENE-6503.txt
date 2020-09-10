@@ -1,0 +1,55 @@
+Summary:
+QueryWrapperFilter discards the IndexReaderContext when delegating to the wrapped query
+Description:
+Suppose I have a working Filter which depends on the context within the composite reader, e.g., one which has a global BitSet of the docs which match but needs to know the docBase and maxDoc for the individual reader in order to return the correct set to the caller.
+This is wrapped into a ConstantScoreQuery in order to become part of a BooleanQuery tree.
+At some other layer, the entire query tree is wrapped back into a QueryWrapperFilter by some other code which wants to cache the results as a Filter.
+QueryWrapperFilter has code like this:
+  @Override
+  public DocIdSet getDocIdSet(final AtomicReaderContext context, final Bits acceptDocs) throws IOException {
+    // get a private context that is used to rewrite, createWeight and score eventually
+    final AtomicReaderContext privateContext = context.reader().getContext();
+    final Weight weight = new IndexSearcher(privateContext).createNormalizedWeight(query);
+    return new DocIdSet() {
+      @Override
+      public DocIdSetIterator iterator() throws IOException {
+        return weight.scorer(privateContext, acceptDocs);
+      }
+      @Override
+      public boolean isCacheable() { return false; }
+    };
+  }
+The call to reader().getContext() returns an AtomicReaderContext whose parent is not correctly set.
+This is then passed to Weight#scorer which eventually arrives at ConstantScoreQuery#scorer, which calls Filter#getDocIdSet.
+So our innermost Filter receives an AtomicReaderContext whose top-level IndexReader is not the actual top-level reader. This was detected in our code because we use a special subclass of DirectoryReader for our top-level reader and thus the filter failed. (Had it not failed, it would have silently returned the wrong results.)
+The fix I have applied locally is to change the call to:
+        return weight.scorer(context, acceptDocs);
+This does appear to be working, but I'm not really sure if it's OK to build the IndexSearcher using one context while passing another context to the scorer.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+4.10.4
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Trejkaz
+Create date:
+27/May/15 04:44
+Update date:
+27/May/15 04:44
+Resolved date:
+

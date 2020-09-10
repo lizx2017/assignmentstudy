@@ -1,0 +1,87 @@
+Summary:
+OutOfMemoryError in GlyfCompositeDescrip
+Description:
+Hi All,
+The application I’m working on is a web service that accepts PDF documents and combines them in a single larger PDF. Client submits a bunch of PDFs and we create a single PDF out of them. In some rare cases one of the PDF documents submitted has a glitch in it that causes Adobe Reader to throw errors when viewing the final document (attached).
+When I tried to check the buggy PDF with the approach outlined here:
+https://pdfbox.apache.org/cookbook/pdfavalidation.html
+I was getting an OutOfMemoryError in the GlyfCompositeDescrip class, here is the full stack trace:
+java.lang.OutOfMemoryError: Java heap space
+at org.apache.fontbox.ttf.GlyfCompositeDescript.<init>(GlyfCompositeDescript.java:58)
+at org.apache.fontbox.ttf.GlyphData.initData(GlyphData.java:62)
+at org.apache.fontbox.ttf.GlyphTable.initData(GlyphTable.java:69)
+at org.apache.fontbox.ttf.TrueTypeFont.initializeTable(TrueTypeFont.java:280)
+at org.apache.fontbox.ttf.AbstractTTFParser.parseTables(AbstractTTFParser.java:128)
+at org.apache.fontbox.ttf.TTFParser.parseTables(TTFParser.java:80)
+at org.apache.fontbox.ttf.AbstractTTFParser.parseTTF(AbstractTTFParser.java:109)
+at org.apache.fontbox.ttf.TTFParser.parseTTF(TTFParser.java:25)
+at org.apache.fontbox.ttf.AbstractTTFParser.parseTTF(AbstractTTFParser.java:84)
+at org.apache.fontbox.ttf.TTFParser.parseTTF(TTFParser.java:25)
+at org.apache.pdfbox.preflight.font.descriptor.TrueTypeDescriptorHelper.processFontFile(TrueTypeDescriptorHelper.java:84)
+at org.apache.pdfbox.preflight.font.descriptor.FontDescriptorHelper.validate(FontDescriptorHelper.java:97)
+at org.apache.pdfbox.preflight.font.SimpleFontValidator.processFontDescriptorValidation(SimpleFontValidator.java:82)
+at org.apache.pdfbox.preflight.font.SimpleFontValidator.validate(SimpleFontValidator.java:55)
+at org.apache.pdfbox.preflight.process.reflect.FontValidationProcess.validate(FontValidationProcess.java:69)
+at org.apache.pdfbox.preflight.utils.ContextHelper.callValidation(ContextHelper.java:73)
+at org.apache.pdfbox.preflight.utils.ContextHelper.validateElement(ContextHelper.java:52)
+at org.apache.pdfbox.preflight.process.reflect.ResourcesValidationProcess.validateFonts(ResourcesValidationProcess.java:96)
+at org.apache.pdfbox.preflight.process.reflect.ResourcesValidationProcess.validate(ResourcesValidationProcess.java:74)
+at org.apache.pdfbox.preflight.utils.ContextHelper.callValidation(ContextHelper.java:73)
+at org.apache.pdfbox.preflight.utils.ContextHelper.validateElement(ContextHelper.java:52)
+at org.apache.pdfbox.preflight.xobject.XObjFormValidator.validateXObjectResources(XObjFormValidator.java:178)
+at org.apache.pdfbox.preflight.xobject.XObjFormValidator.validate(XObjFormValidator.java:75)
+at org.apache.pdfbox.preflight.process.reflect.GraphicObjectPageValidationProcess.validate(GraphicObjectPageValidationProcess.java:77)
+at org.apache.pdfbox.preflight.utils.ContextHelper.callValidation(ContextHelper.java:73)
+at org.apache.pdfbox.preflight.utils.ContextHelper.validateElement(ContextHelper.java:52)
+at org.apache.pdfbox.preflight.process.reflect.ResourcesValidationProcess.validateXObjects(ResourcesValidationProcess.java:191)
+at org.apache.pdfbox.preflight.process.reflect.ResourcesValidationProcess.validate(ResourcesValidationProcess.java:78)
+at org.apache.pdfbox.preflight.utils.ContextHelper.callValidation(ContextHelper.java:73)
+at org.apache.pdfbox.preflight.utils.ContextHelper.validateElement(ContextHelper.java:52)
+at org.apache.pdfbox.preflight.xobject.XObjFormValidator.validateXObjectResources(XObjFormValidator.java:178)
+at org.apache.pdfbox.preflight.xobject.XObjFormValidator.validate(XObjFormValidator.java:75)
+While I can’t send on the PDF in question due to the sensitivity of the contents in it, I did a bit of digging and debugging to find out why this is happening.
+In the GlyfCompositeDescrip classes constructor there is a do … while loop that is constructing GlyfCompositeComp objects and adding them to the components list of GlyfCompositeDescrip. In the constructor of the GlyfCompositeComp a signed short is read from the TTFDataStream in the flags field, that field in turn is used in the GlyfCompositeDescrip constructor to check if any more components are there to be read. Here is the code in question:
+public GlyfCompositeDescript(TTFDataStream bais, GlyphTable glyphTable) throws IOException
+{
+…
+do
+{ comp = new GlyfCompositeComp(bais); //This is where the OutOfMemoryError happens components.add(comp); }
+while ((comp.getFlags() & GlyfCompositeComp.MORE_COMPONENTS) != 0); //here the flags are used to check if more components are there
+…
+}
+protected GlyfCompositeComp(TTFDataStream bais) throws IOException
+{
+flags = bais.readSignedShort();
+…
+}
+In the case of the corrupted PDF, that we get from time to time, the bais.readSignedShort() call in GlyfCompositeComp results in a value of -1 and once it hits that value the condition in the GlyfCompositeDescript constructor’s loop will always result in 32 (!=0). Basically, it ends up in an infinite loop and keeps constructing GlyfCompositeComp objects until the memory runs out.
+The main question here is, has anyone ever encountered a PDF corruption that causes this behaviour and how would one have to go about checking the PDF document for this sort of corruptions without causing the application to run out of memory?
+We’re not required to fix the document, just check if it’s valid. If it’s not valid then we just reject the document. Ideally I’d also like to know what the corruption could be so that I can at least give a hint to the client software as to what is causing this document to be rejected (I do understand that without the actual PDF that’s causing this it might be impossible to tell that).
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.6
+Fix_version:
+1.8.7, 2.0.0
+Component:
+FontBox, (1)
+Label:
+None
+Environment:
+windows 7, java 1.6
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Valdis Andersons
+Create date:
+16/Jul/14 09:12
+Update date:
+19/Sep/14 14:40
+Resolved date:
+29/Jul/14 18:27

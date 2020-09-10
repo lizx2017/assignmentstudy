@@ -1,0 +1,42 @@
+Summary:
+PDF with JPEG2000 image can't be rendered
+Description:
+There is an EOF exception:
+    java.io.EOFException
+    at javax.imageio.stream.ImageInputStreamImpl.readBits(ImageInputStreamImpl.java:687)
+    at org.apache.pdfbox.pdmodel.graphics.image.SampledImageReader.fromAny(SampledImageReader.java:523)
+    at org.apache.pdfbox.pdmodel.graphics.image.SampledImageReader.getRGBImage(SampledImageReader.java:217)
+    at org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject.getImage(PDImageXObject.java:418)
+    at org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject.getImage(PDImageXObject.java:400)
+    at org.apache.pdfbox.rendering.PageDrawer.drawImage(PageDrawer.java:1021) 
+The EOF exception is because SampledImageReader expects a stream that is 3x longer than actually appears, because the colorspace is said to have 3 colors instead of 1. This is because the JPEG2000 plugin returns an image with IndexColorModel which references three colors.
+There are two ways to solve this and both worked: the slower is to convert to RGB which requires another change when reading the raster (because the raster is now made of integers), the faster is to force a gray colorspace. I use the later but keep the change I made in passing the integer RGB raster, we may need it some day.
+I'm making the change only for the trunk for now, and to the 2.0 branch after release of 2.0.12.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.11
+Fix_version:
+2.0.13, 3.0.0 PDFBox
+Component:
+Rendering
+Label:
+JPEG2000 JPXDecode J
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tilman Hausherr
+Create date:
+29/Sep/18 11:43
+Update date:
+02/Dec/18 17:06
+Resolved date:
+05/Oct/18 17:09

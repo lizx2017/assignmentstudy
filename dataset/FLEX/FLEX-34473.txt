@@ -1,0 +1,78 @@
+Summary:
+Horizontal FormItem breaks single row when first child has includeInLayout = false
+Description:
+I'm in the process of converting an old large Flex 2 project to compile under Flex 4.13.0. While doing so I decided to investigate an old issue that I had related to the FormItem container in horizontal direction mode.
+I have some forms where I swap out various controls by toggling their visible/includeInLayout settings. For example, I might swap a ComboBox for a read-only text component if the user can't edit that field (hide one and show the other). In some cases it worked as intended and other times it would alter the layout and force multiple rows even though the widths of the swapped components were exactly the same.
+So I dug into the FormItem source and identified the issue within the calcNumColumns function (starting line 1352). When the first child has includeInLayout = false, the function miscalculates the totalWidth by adding an additional horizontalGap, which then forces the two column (multiple row) layout. My proposed changes are below (-- remove, ++ add).
+    private function calcNumColumns(w:Number):int
+    {
+        var totalWidth:Number = 0;
+        var maxChildWidth:Number = 0;
+        var horizontalGap:Number = getStyle("horizontalGap");
+
+        if (direction != FormItemDirection.HORIZONTAL)
+            return 1;
+
+        var numChildrenWithOwnSpace:Number = numChildren;
+
+        for (var i:int = 0; i < numChildren; i++)
+        {
+            var child:IUIComponent = getLayoutChildAt(i);
+
+            if (!child.includeInLayout)
+            {
+                numChildrenWithOwnSpace--;
+                continue;
+            }
+
+            var childWidth:Number = child.getExplicitOrMeasuredWidth();
+
+            maxChildWidth = Math.max(maxChildWidth, childWidth);
+            totalWidth += childWidth;
+--          if (i > 0)
+--              totalWidth += horizontalGap;
+        }
+
+++      if (numChildrenWithOwnSpace > 1)
+++          totalWidth += (numChildrenWithOwnSpace - 1) * horizontalGap;
+
+        // See if everything can fit in a single row
+        if (isNaN(w) || totalWidth <= w)
+            return numChildrenWithOwnSpace;
+
+        // if the width is enough to contain two children use two columns
+        if (maxChildWidth*2 <= w)
+            return 2;
+
+        // Default is single column
+        return 1;
+    }
+The Flex 3.0.0 SDK seems to be where this started. The Flex 2 SDK didn't even account for child components that had includeInLayout = false.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Apache Flex 4.13.0
+Fix_version:
+None
+Component:
+mx: Form View
+Label:
+patch
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jason Roberts
+Create date:
+20/Aug/14 17:25
+Update date:
+16/Dec/14 18:37
+Resolved date:
+

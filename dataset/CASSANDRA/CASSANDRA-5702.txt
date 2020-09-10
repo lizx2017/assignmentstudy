@@ -1,0 +1,38 @@
+Summary:
+ALTER RENAME is broken in trunk
+Description:
+CASSANDRA-5125 has broken ALTER RENAME when the column is a default alias (for thrift column families where the PK columns haven't been renamed yet).
+The problem is basically that while we assign default aliases to PK columns when they don't have one, we currently "fake" those default aliases and do not persist them. Concretely, CFDefinition is aware of them, but CFMetaData is not, which break renaming post CASSANDRA-5125.
+We could fix rename punctually, but there is another related problem: for the same reason, if you try to create an index on a column that is a non-renamed default alias, this doesn't work with the arguably confusing message "No column definition found for column X". Here again, we could fix it punctually, but it starts to sound like we need a more general fix.
+So I suggest stopping to "fake" those default aliases, but instead to just create "real" aliases (that are known of CFMetaData and persisted in the schema) when there is none. After all, from a user point of view, why should a default column name be any special. And on top of fixing the issues above, this also:
+fix CASSANDRA-5489 in a somewhat simpler way
+makes it easier for clients reading the schema CFs. They won't to infer the default aliases anymore.
+The only theoretical downside is that we lose the information that a given CQL3 column name is one assigned by default versus one set up by the user, but given the user can rename those column names anyway, not sure this matters in any way.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0 beta 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+26/Jun/13 09:02
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Jul/13 13:33

@@ -1,0 +1,56 @@
+Summary:
+Document skipping on large indexes is broken
+Description:
+Large skips on large indexes fail.
+Anything that uses skips (such as a boolean query, filtered queries, faceted queries, join queries, etc) can trigger this bug on a sufficiently large index.
+The bug is a numeric overflow in MultiLevelSkipList that has been present since inception (Lucene 2.2). It may not manifest until one has a single segment with more than ~1.8B documents, and a large skip is performed on that segment.
+Typical stack trace on Lucene7-dev:
+java.lang.ArrayIndexOutOfBoundsException: 110
+ at org.apache.lucene.codecs.MultiLevelSkipListReader$SkipBuffer.readByte(MultiLevelSkipListReader.java:297)
+ at org.apache.lucene.store.DataInput.readVInt(DataInput.java:125)
+ at org.apache.lucene.codecs.lucene50.Lucene50SkipReader.readSkipData(Lucene50SkipReader.java:180)
+ at org.apache.lucene.codecs.MultiLevelSkipListReader.loadNextSkip(MultiLevelSkipListReader.java:163)
+ at org.apache.lucene.codecs.MultiLevelSkipListReader.skipTo(MultiLevelSkipListReader.java:133)
+ at org.apache.lucene.codecs.lucene50.Lucene50PostingsReader$BlockDocsEnum.advance(Lucene50PostingsReader.java:421)
+ at YCS_skip7$1.testSkip(YCS_skip7.java:307)
+Typical stack trace on Lucene4.10.3:
+6-08-31 18:57:17,460 ERROR org.apache.solr.servlet.SolrDispatchFilter: null:java.lang.ArrayIndexOutOfBoundsException: 75
+ at org.apache.lucene.codecs.MultiLevelSkipListReader$SkipBuffer.readByte(MultiLevelSkipListReader.java:301)
+ at org.apache.lucene.store.DataInput.readVInt(DataInput.java:122)
+ at org.apache.lucene.codecs.lucene41.Lucene41SkipReader.readSkipData(Lucene41SkipReader.java:194)
+ at org.apache.lucene.codecs.MultiLevelSkipListReader.loadNextSkip(MultiLevelSkipListReader.java:168)
+ at org.apache.lucene.codecs.MultiLevelSkipListReader.skipTo(MultiLevelSkipListReader.java:138)
+ at org.apache.lucene.codecs.lucene41.Lucene41PostingsReader$BlockDocsEnum.advance(Lucene41PostingsReader.java:506)
+ at org.apache.lucene.search.TermScorer.advance(TermScorer.java:85)
+[...]
+ at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:621)
+[...]
+ at org.apache.solr.core.SolrCore.execute(SolrCore.java:2004)
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+2.2
+Fix_version:
+5.5.4, (3)
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yonik Seeley
+Reporter:
+Yonik Seeley
+Create date:
+09/Sep/16 02:52
+Update date:
+08/Feb/17 10:41
+Resolved date:
+08/Feb/17 10:27

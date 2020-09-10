@@ -1,0 +1,85 @@
+Summary:
+Resize effect is sometimes not fully rendered one frame after effectEnd
+Description:
+When a Resize effect dispatches effectEnd, the width and height values of the target component are correct. Thus, I would expect that after the current frame is rendered, the target component would be rendered correctly, with that width and height. This is true most of the time. Sometimes, however, the target component is rendered 1 pixel off from the correct width and height values after we wait one frame after effectEnd.
+For reference, effectEnd is defined as the following in the ASDoc:
+effectEnd is "Dispatched after the effect has stopped playing, either when the effect finishes playing or when the effect has been interrupted by a call to the end() method. The type property of the event object for this event is set to EffectEvent.EFFECT_END."
+Steps to reproduce:
+1. Run this AIR desktop application:
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx">
+<fx:Script>
+<![CDATA[
+import mx.events.EffectEvent;
+private function effect_effectEndHandler(event:EffectEvent):void
+{ trace("effect end"); addEventListener(Event.ENTER_FRAME, enterFrameHandler); }
+private function enterFrameHandler(event:Event):void
+{
+removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
+if (currentState == "state2")
+{ // Put a breakpoint on the trace statement below and look // at whether bc2 is flush with the outer BorderContainer. // ~1/10 times on my machine, it is one pixel off from being // flush with the outer BorderContainer. trace("next frame"); currentState = "state1"; }
+}
+]]
+>
+</fx:Script>
+<s:states>
+<s:State name="state1"/>
+<s:State name="state2"/>
+</s:states>
+<s:layout>
+<s:VerticalLayout/>
+</s:layout>
+<s:transitions>
+<!-- Transitions between selected and unselected states-->
+<s:Transition fromState="state1" toState="state2" autoReverse="true">
+<s:Resize id="effect" target ="
+{bc2}
+" duration="250" effectEnd="effect_effectEndHandler(event)"/>
+</s:Transition>
+</s:transitions>
+<s:Button label="Click" click="currentState = currentState == 'state1' ? 'state2' : 'state1'"/>
+<s:BorderContainer width="200" height="200">
+<s:BorderContainer id="bc2" width.state1="150" height.state1="150" width.state2="198" height.state2="198">
+</s:BorderContainer>
+</s:BorderContainer>
+</s:WindowedApplication>
+2. Put a breakpoint on the trace statement under the comment.
+3. Click the button to resize the inner BorderContainer to be flush with the outer BorderContainer, and look at the application.
+Actual Results:
+If there is a gap (often only 1px) between the inner BorderContainer (bc2) and the outer BorderContainer, then we have a problem. The animation has not been fully rendered one frame after the effectEnd was dispatched.
+Expected Results:
+If there is no gap, then this is expected behavior. You may have to re-press the button ~0-10 times again for the aforementioned gap to appear.
+Workaround (if any):
+Wait for two frames instead of one, then everything is rendered correctly. It has not failed on the second frame yet.
+Note:
+This bug affects Accordion. Accordion would like to dispatch a CHANGE_END event after all of its AccordionContents are done animating and fully rendered. However, the bitmap at CHANGE_END is one pixel off sometimes due to this bug.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+Adobe Flex SDK Next
+Fix_version:
+None
+Component:
+Effects
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+21/Sep/11 14:29
+Update date:
+29/Sep/11 11:44
+Resolved date:
+29/Sep/11 11:44

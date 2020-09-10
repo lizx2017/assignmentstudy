@@ -1,0 +1,39 @@
+Summary:
+Backport HBASE-3890 'Scheduled tasks in distributed log splitting not in sync with ZK' to 0.94
+Description:
+HBASE-3890 was fixed in 0.96 and trunk. This issue is to backport to 0.94
+Note that there must be more slightly off here. Although the splitlogs znode is now empty the master is still stuck here:
+Doing distributed log split in hdfs://localhost:8020/hbase/.logs/10.0.0.65,60020,1305406356765 
+- Waiting for distributed tasks to finish. scheduled=2 done=1 error=0   4380s
+
+Master startup 
+- Splitting logs after master startup   4388s
+There seems to be an issue with what is in ZK and what the TaskBatch holds. In my case it could be related to the fact that the task was already in ZK after many faulty restarts because of the NPE. Maybe it was added once (since that is keyed by path, and that is unique on my machine), but the reference count upped twice? Now that the real one is done, the done counter has been increased, but will never match the scheduled.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.13
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Ted Yu
+Create date:
+24/Sep/13 23:00
+Update date:
+08/Nov/13 00:03
+Resolved date:
+20/Oct/13 21:04

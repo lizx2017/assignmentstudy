@@ -1,0 +1,81 @@
+Summary:
+NPE while loading Saved KeyCache
+Description:
+This bug occurred in the Beta version and was marked as fixed in this Jira: CASSANDRA-4553
+However it seems to have reoccurred in the production 1.2.1 release. This is the first install I have made of Cassandra (so a clean install), which I downloaded prepackaged from http://www.apache.org/dyn/closer.cgi?path=/cassandra/1.2.1/apache-cassandra-1.2.1-bin.tar.gz
+I have created a keyspace but not inserted any data, so that is not the issue either.
+Here is a sample from the logs all the way from startup
+ INFO [main] 2013-02-07 19:48:54,109 CassandraDaemon.java (line 101) Logging initialized
+ INFO [main] 2013-02-07 19:48:54,125 CassandraDaemon.java (line 123) JVM vendor/version: Java HotSpot(TM) Client VM/1.7.0_11
+ INFO [main] 2013-02-07 19:48:54,125 CassandraDaemon.java (line 124) Heap size: 1067057152/1067057152
+ INFO [main] 2013-02-07 19:48:54,126 CassandraDaemon.java (line 125) Classpath: C:\Cassandra\\conf;C:\Cassandra\\lib\antlr-3.2.jar;C:\Cassandra\\lib\apache-cassandra-1.2.1.jar;C:\Cassandra\\lib\apache-cassandra-clientutil-1.2.1.jar;C:\Cassandra\\lib\apache-cassandra-thrift-1.2.1.jar;C:\Cassandra\\lib\avro-1.4.0-fixes.jar;C:\Cassandra\\lib\avro-1.4.0-sources-fixes.jar;C:\Cassandra\\lib\commons-cli-1.1.jar;C:\Cassandra\\lib\commons-codec-1.2.jar;C:\Cassandra\\lib\commons-lang-2.6.jar;C:\Cassandra\\lib\compress-lzf-0.8.4.jar;C:\Cassandra\\lib\concurrentlinkedhashmap-lru-1.3.jar;C:\Cassandra\\lib\guava-13.0.1.jar;C:\Cassandra\\lib\high-scale-lib-1.1.2.jar;C:\Cassandra\\lib\jackson-core-asl-1.9.2.jar;C:\Cassandra\\lib\jackson-mapper-asl-1.9.2.jar;C:\Cassandra\\lib\jamm-0.2.5.jar;C:\Cassandra\\lib\jline-1.0.jar;C:\Cassandra\\lib\json-simple-1.1.jar;C:\Cassandra\\lib\libthrift-0.7.0.jar;C:\Cassandra\\lib\log4j-1.2.16.jar;C:\Cassandra\\lib\metrics-core-2.0.3.jar;C:\Cassandra\\lib\netty-3.5.9.Final.jar;C:\Cassandra\\lib\servlet-api-2.5-20081211.jar;C:\Cassandra\\lib\slf4j-api-1.7.2.jar;C:\Cassandra\\lib\slf4j-log4j12-1.7.2.jar;C:\Cassandra\\lib\snakeyaml-1.6.jar;C:\Cassandra\\lib\snappy-java-1.0.4.1.jar;C:\Cassandra\\lib\snaptree-0.1.jar;C:\Cassandra\\build\classes\main;C:\Cassandra\\build\classes\thrift;C:\Cassandra\\lib\jamm-0.2.5.jar
+ INFO [main] 2013-02-07 19:48:54,130 CLibrary.java (line 61) JNA not found. Native methods will be disabled.
+ INFO [main] 2013-02-07 19:48:54,147 DatabaseDescriptor.java (line 131) Loading settings from file:/C:/Cassandra/conf/cassandra.yaml
+ INFO [main] 2013-02-07 19:48:54,515 DatabaseDescriptor.java (line 150) 32bit JVM detected.  It is recommended to run Cassandra on a 64bit JVM for better performance.
+ INFO [main] 2013-02-07 19:48:54,516 DatabaseDescriptor.java (line 190) DiskAccessMode 'auto' determined to be standard, indexAccessMode is standard
+ INFO [main] 2013-02-07 19:48:54,516 DatabaseDescriptor.java (line 204) disk_failure_policy is stop
+ INFO [main] 2013-02-07 19:48:54,524 DatabaseDescriptor.java (line 267) Global memtable threshold is enabled at 339MB
+ INFO [main] 2013-02-07 19:48:55,099 CacheService.java (line 111) Initializing key cache with capacity of 50 MBs.
+ INFO [main] 2013-02-07 19:48:55,109 CacheService.java (line 140) Scheduling key cache save to each 14400 seconds (going to save all keys).
+ INFO [main] 2013-02-07 19:48:55,110 CacheService.java (line 154) Initializing row cache with capacity of 0 MBs and provider org.apache.cassandra.cache.SerializingCacheProvider
+ INFO [main] 2013-02-07 19:48:55,117 CacheService.java (line 166) Scheduling row cache save to each 0 seconds (going to save all keys).
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:55,452 SSTableReader.java (line 164) Opening C:\Cassandra\data\system\schema_keyspaces\system-schema_keyspaces-ib-1 (258 bytes)
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:55,484 SSTableReader.java (line 164) Opening C:\Cassandra\data\system\schema_keyspaces\system-schema_keyspaces-ib-3 (262 bytes)
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:55,489 SSTableReader.java (line 164) Opening C:\Cassandra\data\system\schema_keyspaces\system-schema_keyspaces-ib-2 (262 bytes)
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:55,517 SSTableReader.java (line 164) Opening C:\Cassandra\data\system\schema_columnfamilies\system-schema_columnfamilies-ib-1 (4420 bytes)
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:55,522 SSTableReader.java (line 164) Opening C:\Cassandra\data\system\schema_columnfamilies\system-schema_columnfamilies-ib-3 (4424 bytes)
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:55,525 SSTableReader.java (line 164) Opening C:\Cassandra\data\system\schema_columnfamilies\system-schema_columnfamilies-ib-2 (4424 bytes)
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:55,543 SSTableReader.java (line 164) Opening C:\Cassandra\data\system\schema_columns\system-schema_columns-ib-3 (3750 bytes)
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:55,548 SSTableReader.java (line 164) Opening C:\Cassandra\data\system\schema_columns\system-schema_columns-ib-1 (3747 bytes)
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:55,553 SSTableReader.java (line 164) Opening C:\Cassandra\data\system\schema_columns\system-schema_columns-ib-2 (3748 bytes)
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:55,588 SSTableReader.java (line 164) Opening C:\Cassandra\data\system\local\system-local-ib-16 (119 bytes)
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:55,594 SSTableReader.java (line 164) Opening C:\Cassandra\data\system\local\system-local-ib-18 (436 bytes)
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:55,600 SSTableReader.java (line 164) Opening C:\Cassandra\data\system\local\system-local-ib-17 (109 bytes)
+ INFO [main] 2013-02-07 19:48:55,610 AutoSavingCache.java (line 139) reading saved cache C:\Cassandra\saved_caches\system-local-KeyCache-b.db
+ WARN [main] 2013-02-07 19:48:55,614 AutoSavingCache.java (line 160) error reading saved cache C:\Cassandra\saved_caches\system-local-KeyCache-b.db
+java.io.EOFException
+ at java.io.DataInputStream.readInt(Unknown Source)
+ at org.apache.cassandra.utils.ByteBufferUtil.readWithLength(ByteBufferUtil.java:349)
+ at org.apache.cassandra.service.CacheService$KeyCacheSerializer.deserialize(CacheService.java:378)
+ at org.apache.cassandra.cache.AutoSavingCache.loadSaved(AutoSavingCache.java:144)
+ at org.apache.cassandra.db.ColumnFamilyStore.<init>(ColumnFamilyStore.java:277)
+ at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:392)
+ at org.apache.cassandra.db.ColumnFamilyStore.createColumnFamilyStore(ColumnFamilyStore.java:364)
+ at org.apache.cassandra.db.Table.initCf(Table.java:337)
+ at org.apache.cassandra.db.Table.<init>(Table.java:280)
+ at org.apache.cassandra.db.Table.open(Table.java:110)
+ at org.apache.cassandra.db.Table.open(Table.java:88)
+ at org.apache.cassandra.db.SystemTable.checkHealth(SystemTable.java:421)
+ at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:177)
+ at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:370)
+ at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:413)
+ INFO [SSTableBatchOpen:1] 2013-02-07 19:48:56,212 SSTableReader.java (line 164) Opening C:\Cassandra\data\system_auth\users\system_auth-users-ib-1 (72 bytes)
+ INFO [main] 2013-02-07 19:48:56,242 CassandraDaemon.java (line 224) completed pre-loading (3 keys) key cache.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+jvm, java 1.7
+Attachment number:
+0
+Assignee:
+Dave Brosius
+Reporter:
+Ahmed Guecioueur
+Create date:
+14/Feb/13 14:11
+Update date:
+16/Apr/19 09:32
+Resolved date:
+20/Feb/13 02:43

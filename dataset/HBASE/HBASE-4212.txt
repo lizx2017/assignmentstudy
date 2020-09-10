@@ -1,0 +1,82 @@
+Summary:
+TestMasterFailover fails occasionally
+Description:
+It seems a bug. The root in RIT can't be moved..
+In the failover process, it enforces root on-line. But not clean zk node.
+test will wait forever.
+void processFailover() throws KeeperException, IOException, InterruptedException {
+// we enforce on-line root.
+HServerInfo hsi =
+this.serverManager.getHServerInfo(this.catalogTracker.getMetaLocation());
+regionOnline(HRegionInfo.FIRST_META_REGIONINFO, hsi);
+hsi = this.serverManager.getHServerInfo(this.catalogTracker.getRootLocation());
+regionOnline(HRegionInfo.ROOT_REGIONINFO, hsi);
+It seems that we should wait finished as meta region
+int assignRootAndMeta()
+throws InterruptedException, IOException, KeeperException {
+int assigned = 0;
+long timeout = this.conf.getLong("hbase.catalog.verification.timeout", 1000);
+// Work on ROOT region. Is it in zk in transition?
+boolean rit = this.assignmentManager.
+processRegionInTransitionAndBlockUntilAssigned(HRegionInfo.ROOT_REGIONINFO);
+if (!catalogTracker.verifyRootRegionLocation(timeout))
+{ this.assignmentManager.assignRoot(); this.catalogTracker.waitForRoot(); //we need add this code and guarantee that the transition has completed this.assignmentManager.waitForAssignment(HRegionInfo.ROOT_REGIONINFO); assigned++; }
+logs:
+2011-08-16 07:45:40,715 DEBUG [RegionServer:0;C4S2.site,47710,1313495126115-EventThread] zookeeper.ZooKeeperWatcher(252): regionserver:47710-0x131d2690f780004 Received ZooKeeper Event, type=NodeDataChanged, state=SyncConnected, path=/hbase/unassigned/70236052
+2011-08-16 07:45:40,715 DEBUG [RS_OPEN_ROOT-C4S2.site,47710,1313495126115-0] zookeeper.ZKAssign(712): regionserver:47710-0x131d2690f780004 Successfully transitioned node 70236052 from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2011-08-16 07:45:40,715 DEBUG [Thread-760-EventThread] zookeeper.ZooKeeperWatcher(252): master:60701-0x131d2690f780009 Received ZooKeeper Event, type=NodeDataChanged, state=SyncConnected, path=/hbase/unassigned/70236052
+2011-08-16 07:45:40,716 INFO [PostOpenDeployTasks:70236052] catalog.RootLocationEditor(62): Setting ROOT region location in ZooKeeper as C4S2.site:47710
+2011-08-16 07:45:40,716 DEBUG [Thread-760-EventThread] zookeeper.ZKUtil(1109): master:60701-0x131d2690f780009 Retrieved 52 byte(s) of data from znode /hbase/unassigned/70236052 and set watcher; region=ROOT,,0, server=C4S2.site,47710,1313495126115, state=RS_ZK_REGION_OPENING
+2011-08-16 07:45:40,717 DEBUG [Thread-760-EventThread] master.AssignmentManager(477): Handling transition=RS_ZK_REGION_OPENING, server=C4S2.site,47710,1313495126115, region=70236052/ROOT
+2011-08-16 07:45:40,725 DEBUG [RS_OPEN_ROOT-C4S2.site,47710,1313495126115-0] zookeeper.ZKAssign(661): regionserver:47710-0x131d2690f780004 Attempting to transition node 70236052/ROOT from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENED
+2011-08-16 07:45:40,727 DEBUG [RS_OPEN_ROOT-C4S2.site,47710,1313495126115-0] zookeeper.ZKUtil(1109): regionserver:47710-0x131d2690f780004 Retrieved 52 byte(s) of data from znode /hbase/unassigned/70236052; data=region=ROOT,,0, server=C4S2.site,47710,1313495126115, state=RS_ZK_REGION_OPENING
+2011-08-16 07:45:40,740 DEBUG [RegionServer:0;C4S2.site,47710,1313495126115-EventThread] zookeeper.ZooKeeperWatcher(252): regionserver:47710-0x131d2690f780004 Received ZooKeeper Event, type=NodeDataChanged, state=SyncConnected, path=/hbase/unassigned/70236052
+2011-08-16 07:45:40,740 DEBUG [Thread-760-EventThread] zookeeper.ZooKeeperWatcher(252): master:60701-0x131d2690f780009 Received ZooKeeper Event, type=NodeDataChanged, state=SyncConnected, path=/hbase/unassigned/70236052
+2011-08-16 07:45:40,740 DEBUG [RS_OPEN_ROOT-C4S2.site,47710,1313495126115-0] zookeeper.ZKAssign(712): regionserver:47710-0x131d2690f780004 Successfully transitioned node 70236052 from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENED
+2011-08-16 07:45:40,741 DEBUG [RS_OPEN_ROOT-C4S2.site,47710,1313495126115-0] handler.OpenRegionHandler(121): Opened ROOT,,0.70236052
+2011-08-16 07:45:40,741 DEBUG [Thread-760-EventThread] zookeeper.ZKUtil(1109): master:60701-0x131d2690f780009 Retrieved 52 byte(s) of data from znode /hbase/unassigned/70236052 and set watcher; region=ROOT,,0, server=C4S2.site,47710,1313495126115, state=RS_ZK_REGION_OPENED
+2011-08-16 07:45:40,741 DEBUG [Thread-760-EventThread] master.AssignmentManager(477): Handling transition=RS_ZK_REGION_OPENED, server=C4S2.site,47710,1313495126115, region=70236052/ROOT
+//.............................................It said that zk node can't be cleaned because of we have enforced on-line the root.......................................
+// The test will wait forever.
+2011-08-16 07:45:40,741 WARN [Thread-760-EventThread] master.AssignmentManager(540): Received OPENED for region 70236052/ROOT from server C4S2.site,47710,1313495126115 but region was in the state null and not in expected PENDING_OPEN or OPENING states
+2011-08-16 07:45:41,018 DEBUG [Master:0;C4S2.site:60701] zookeeper.ZKUtil(1109): master:60701-0x131d2690f780009 Retrieved 52 byte(s) of data from znode /hbase/unassigned/70236052 and set watcher; region=ROOT,,0, server=C4S2.site,47710,1313495126115, state=RS_ZK_REGION_OPENED
+2011-08-16 07:45:41,233 DEBUG [Thread-760] zookeeper.ZKAssign(807): ZK RIT -> 70236052
+2011-08-16 07:45:41,337 DEBUG [Thread-760] zookeeper.ZKAssign(807): ZK RIT -> 70236052
+2011-08-16 07:45:41,439 DEBUG [Thread-760] zookeeper.ZKAssign(807): ZK RIT -> 70236052
+2011-08-16 07:45:41,543 DEBUG [Thread-760] zookeeper.ZKAssign(807): ZK RIT -> 70236052
+2011-08-16 07:45:41,645 DEBUG [Thread-760] zookeeper.ZKAssign(807): ZK RIT -> 70236052
+2011-08-16 07:45:41,748 DEBUG [Thread-760] zookeeper.ZKAssign(807): ZK RIT -> 70236052
+2011-08-16 07:45:41,900 DEBUG [Thread-760] zookeeper.ZKAssign(807): ZK RIT -> 70236052
+2011-08-16 07:45:42,002 DEBUG [Thread-760] zookeeper.ZKAssign(807): ZK RIT -> 70236052
+2011-08-16 07:45:42,105 DEBUG [Thread-760] zookeeper.ZKAssign(807): ZK RIT -> 70236052
+2011-08-16 07:45:42,206 DEBUG [Thread-760] zookeeper.ZKAssign(807): ZK RIT -> 70236052
+2011-08-16 07:45:42,308 DEBUG [Thread-760] zookeeper.ZKAssign(807): ZK RIT -> 70236052
+2011-08-16 07:45:42,410 DEBUG [Thread-760] zookeeper.ZKAssign(807): ZK RIT -> 70236052
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.5
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+gaojinchao
+Reporter:
+gaojinchao
+Create date:
+17/Aug/11 08:26
+Update date:
+20/Nov/15 11:54
+Resolved date:
+04/Oct/11 14:42

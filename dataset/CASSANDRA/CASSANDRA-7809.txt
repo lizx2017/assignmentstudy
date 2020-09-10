@@ -1,0 +1,38 @@
+Summary:
+UDF cleanups (#7395 follow-up)
+Description:
+The current code for UDF is largely not reusing the pre-existing mechanics/code for native/hardcoded functions. I don't see a good reason for that but I do see downsides: it's more code to maintain and makes it much easier to have inconsitent behavior between hard-coded and user-defined function. More concretely, UDFRegistery/UDFFunctionOverloads fundamentally do the same thing than Functions, we should just merge both. I'm also not sure there is a need for both UFMetadata and UDFunction since UFMetadata really only store infos on a given function (contrarly to what the javadoc pretends). I suggest we consolidate all this to cleanup the code, but also as a way to fix 2 problems that the UDF code has but that the existing code for "native" functions don't:
+if there is multiple overloads of a function, the UDF code picks the first version whose argument types are compatible with the concrete arguments provided. This is broken for bind markers: we don't know the type of markers and so the first function match may not at all be what the user want. The only sensible choice is to detect that type of ambiguity and reject the query, asking the user to explicitly type-cast their bind marker (which is what the code for hard-coded function does).
+the UDF code builds a function signature using the CQL type names of the arguments and use that to distinguish multiple overrides in the schema. This means in particular that f(v text) and f(v varchar) are considered distinct, which is wrong since CQL considers varchar as a simple alias of text. And in fact, the function resolution does consider them aliases leading to seemingly broken behavior.
+There is a few other small problems that I'm proposing to fix while doing this cleanup:
+Function creation only use the function name when checking if the function exists, which is not enough since we allow multiple over-loadings. You can bypass the check by using "OR REPLACE" but that's obviously broken.
+IF NOT EXISTS for function creation is broken.
+The code allows to replace a function (with OR REPLACE) by a new function with an incompatible return type. Imo that's dodgy and we should refuse it (users can still drop and re-create the method if they really want).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/CQL
+Label:
+cql
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+21/Aug/14 13:52
+Update date:
+16/Apr/19 09:31
+Resolved date:
+27/Aug/14 08:40

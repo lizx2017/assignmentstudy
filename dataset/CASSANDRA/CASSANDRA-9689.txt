@@ -1,0 +1,69 @@
+Summary:
+keyspace does not show in describe list, if create query times out
+Description:
+Here is the snapshot of the overall issue :
+whiterabbit@whiterabbit:~/cassandra/bin$ ccm create 'demo2' -v binary:2.1.7 -n 3 -s -d
+Current cluster is now: demo2
+whiterabbit@whiterabbit:~/cassandra/bin$ ccm list
+demo_1node
+*demo2
+whiterabbit@whiterabbit:~/cassandra/bin$ ccm status
+Cluster: 'demo2'
+----------------
+node1: UP
+node3: UP
+node2: UP
+whiterabbit@whiterabbit:~/cassandra/bin$ ccm node2 nodetool version
+ReleaseVersion: 2.1.7
+whiterabbit@whiterabbit:~/cassandra/bin$ ccm node2 stop
+whiterabbit@whiterabbit:~/cassandra/bin$ ccm status
+Cluster: 'demo2'
+----------------
+node1: UP
+node3: UP
+node2: DOWN
+whiterabbit@whiterabbit:~/cassandra/bin$ ccm node1 cqlsh
+Connected to demo2 at 127.0.0.1:9042.
+[cqlsh 5.0.1 | Cassandra 2.1.7 | CQL spec 3.2.0 | Native protocol v3]
+Use HELP for help.
+cqlsh> describe keyspaces;
+system_traces system
+cqlsh> create keyspace training with replication=
+{'class':'SimpleStrategy','replication_factor':1}
+;
+OperationTimedOut: errors={}, last_host=127.0.0.1
+cqlsh> create keyspace training with replication=
+{'class':'SimpleStrategy','replication_factor':1}
+;
+AlreadyExists: Keyspace 'training' already exists
+cqlsh> describe keyspaces;
+system_traces system
+cqlsh>
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.10, 2.2.2, 3.0.0 rc1
+Component:
+Legacy/Tools
+Label:
+cqlsh
+Environment:
+
+Attachment number:
+0
+Assignee:
+Paulo Motta
+Reporter:
+Roopesh
+Create date:
+30/Jun/15 18:15
+Update date:
+16/Apr/19 09:31
+Resolved date:
+04/Sep/15 19:42

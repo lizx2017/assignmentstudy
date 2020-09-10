@@ -1,0 +1,52 @@
+Summary:
+RangeTombstones not merging during compaction
+Description:
+When performing a compaction on two sstables that contain the same RangeTombstone with different timestamps, the tombstones are not merged in the new sstable.
+This has been tested using cassandra 2.1 with the following table:
+CREATE TABLE test(
+  key text,
+  column text,
+  data text,
+  PRIMARY KEY(key, column)
+);
+And then doing the following:
+INSERT INTO test (key, column, data) VALUES ("1", "1", "1"); // If the sstable only contains tombstones during compaction it seems that the sstable either gets removed or isn't created (but that could probably be a separate JIRA issue).
+INSERT INTO test (key, column, data) VALUES ("1", "2", "2"); // The inserts are not actually needed, since the deletes create tombstones either way.
+DELETE FROM test WHERE key="1" AND column="2";
+
+nodetool flush
+
+INSERT INTO test (key, column, data) VALUES ("1", "2", "2");
+DELETE FROM test WHERE key="1" AND column="2";
+
+nodetool flush
+nodetool compact
+When checking with the SSTableExport tool two tombstones exists in the compacted sstable. This can be repeated, resulting in more and more tombstones.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.12, 2.2.4
+Component:
+None
+Label:
+compaction deletes t
+Environment:
+
+Attachment number:
+0
+Assignee:
+Branimir Lambov
+Reporter:
+Marcus Olsson
+Create date:
+17/Sep/14 13:30
+Update date:
+16/Apr/19 09:31
+Resolved date:
+01/Dec/15 15:17

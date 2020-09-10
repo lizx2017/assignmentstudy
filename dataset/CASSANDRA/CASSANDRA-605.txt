@@ -1,0 +1,68 @@
+Summary:
+Corruption in CommitLog
+Description:
+We are seeing corruption in commit log files when cassandra gets shutdown sometimes. I can attach the commitlogs privately. Here is a stacktrace:
+INFO [main] 2009-12-05 14:59:25,946 RecoveryManager.java (line 64) Replaying /mnt/var/cassandra/commitlog/CommitLog-1259972135241.log, /mnt/var/cassandra/commitlog/CommitLog-1260050162791.log, /mnt/var/cassandra/commitlog/CommitLog-1260047770958.log, /mnt/var/cassandra/commitlog/CommitLog-1260052237605.log
+ERROR [COMPACTION-POOL:1] 2009-12-05 14:59:37,436 DebuggableThreadPoolExecutor.java (line 120) Error in executor futuretask
+java.util.concurrent.ExecutionException: java.lang.NumberFormatException: For input string: "nan"
+at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor.afterExecute(DebuggableThreadPoolExecutor.java:112)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:888)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+Caused by: java.lang.NumberFormatException: For input string: "nan"
+at sun.misc.FloatingDecimal.readJavaFormatString(FloatingDecimal.java:1224)
+at java.lang.Float.valueOf(Float.java:388)
+at java.lang.Float.<init>(Float.java:489)
+at com.digg.cassandra.db.marshal.FloatStringType.compare(FloatStringType.java:72)
+at com.digg.cassandra.db.marshal.FloatStringType.compare(FloatStringType.java:19)
+at java.util.concurrent.ConcurrentSkipListMap$ComparableUsingComparator.compareTo(ConcurrentSkipListMap.java:606)
+at java.util.concurrent.ConcurrentSkipListMap.doGet(ConcurrentSkipListMap.java:797)
+at java.util.concurrent.ConcurrentSkipListMap.get(ConcurrentSkipListMap.java:1640)
+at org.apache.cassandra.db.ColumnFamilyStore.removeDeletedStandard(ColumnFamilyStore.java:530)
+at org.apache.cassandra.db.ColumnFamilyStore.removeDeleted(ColumnFamilyStore.java:515)
+at org.apache.cassandra.io.CompactionIterator.getReduced(CompactionIterator.java:111)
+at org.apache.cassandra.io.CompactionIterator.getReduced(CompactionIterator.java:38)
+at org.apache.cassandra.utils.ReducingIterator.computeNext(ReducingIterator.java:73)
+at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:135)
+at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:130)
+at org.apache.commons.collections.iterators.FilterIterator.setNextObject(FilterIterator.java:183)
+at org.apache.commons.collections.iterators.FilterIterator.hasNext(FilterIterator.java:94)
+at org.apache.cassandra.db.ColumnFamilyStore.doFileCompaction(ColumnFamilyStore.java:919)
+at org.apache.cassandra.db.ColumnFamilyStore.doFileCompaction(ColumnFamilyStore.java:861)
+at org.apache.cassandra.db.ColumnFamilyStore.doCompaction(ColumnFamilyStore.java:663)
+at org.apache.cassandra.db.CompactionManager$1.call(CompactionManager.java:180)
+at org.apache.cassandra.db.CompactionManager$1.call(CompactionManager.java:177)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+... 2 more
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Chris Goffinet
+Create date:
+05/Dec/09 23:30
+Update date:
+16/Apr/19 09:33
+Resolved date:
+11/Dec/09 15:32

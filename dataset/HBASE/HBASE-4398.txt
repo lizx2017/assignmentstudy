@@ -1,0 +1,66 @@
+Summary:
+If HRegionPartitioner is used in MapReduce, client side configurations are overwritten by hbase-site.xml.
+Description:
+If HRegionPartitioner is used in MapReduce, client side configurations are overwritten by hbase-site.xml.
+We can reproduce the problem by the following instructions:
+- Add HRegionPartitioner.class to the 4th argument of
+
+TableMapReduceUtil#initTableReducerJob()
+
+at line around 133
+in src/test/java/org/apache/hadoop/hbase/mapreduce/TestTableMapReduce.java
+
+- Change or remove "hbase.zookeeper.property.clientPort" property
+
+in hbase-site.xml ( for example, changed to 12345 ).
+
+- run testMultiRegionTable()
+Then I got error messages as following:
+2011-09-12 22:28:51,020 DEBUG [Thread-832] zookeeper.ZKUtil(93): hconnection opening connection to ZooKeeper with ensemble (localhost:12345)
+2011-09-12 22:28:51,022 INFO  [Thread-832] zookeeper.RecoverableZooKeeper(89): The identifier of this process is 43200@imac.local
+2011-09-12 22:28:51,123 WARN  [Thread-832] zookeeper.RecoverableZooKeeper(161): Possibly transient ZooKeeper exception: org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /hbase/master
+2011-09-12 22:28:51,123 INFO  [Thread-832] zookeeper.RecoverableZooKeeper(173): The 1 times to retry ZooKeeper after sleeping 1000 ms
+
+ =====
+
+2011-09-12 22:29:02,418 ERROR [Thread-832] mapreduce.HRegionPartitioner(125): java.io.IOException: org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation@2e54e48d closed
+2011-09-12 22:29:02,422 WARN  [Thread-832] mapred.LocalJobRunner$Job(256): job_local_0001
+java.lang.NullPointerException
+       at org.apache.hadoop.hbase.mapreduce.HRegionPartitioner.setConf(HRegionPartitioner.java:128)
+       at org.apache.hadoop.util.ReflectionUtils.setConf(ReflectionUtils.java:62)
+       at org.apache.hadoop.util.ReflectionUtils.newInstance(ReflectionUtils.java:117)
+       at org.apache.hadoop.mapred.MapTask$NewOutputCollector.<init>(MapTask.java:527)
+       at org.apache.hadoop.mapred.MapTask.runNewMapper(MapTask.java:613)
+       at org.apache.hadoop.mapred.MapTask.run(MapTask.java:305)
+       at org.apache.hadoop.mapred.LocalJobRunner$Job.run(LocalJobRunner.java:177)
+I think HTable should connect to ZooKeeper at port 21818 configured at client side instead of 12345 in hbase-site.xml
+and It might be caused by "HBaseConfiguration.addHbaseResources(conf);" in HRegionPartitioner#setConf(Configuration).
+And this might mean that all of client side configurations, also configured in hbase-site.xml, are overwritten caused by this problem.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.94.0, 0.95.1
+Component:
+mapreduce
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Takuya Ueshin
+Reporter:
+Takuya Ueshin
+Create date:
+14/Sep/11 01:15
+Update date:
+03/Apr/13 05:54
+Resolved date:
+29/Mar/12 21:26

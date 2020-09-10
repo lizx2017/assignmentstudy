@@ -1,0 +1,35 @@
+Summary:
+LRU of HConnectionManager.HBASE_INSTANCES breaks if HBaseConfiguration is changed
+Description:
+HConnectionManager.getConnection(config) caches the created TableServer in HBASE_INSTANCES (a LinkedHashMap ) which is keyed by the configuration instance itself.
+Given the current implementation of hashCode() (and equals()) of HBaseConfiguration, the hash code of the configuration is changed if any of its properties are changed, which will cause the keys of HBASE_INSTANCES to be inconsistent with the hashtable that contains them, making some entries unreachable.
+In this case, when the map's LRU strategy needs to remove the oldest entry, it tries to remove it based on the oldest key, which no longer gives the original hash code, therefore the lookup in HBASE_INSTANCES.remove(oldest) doesn't actually remove anything.
+This has been observed to lead to OOM errors in long running clients.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.3, 0.90.0
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Mahfoud
+Create date:
+17/Aug/10 21:27
+Update date:
+20/Nov/15 12:42
+Resolved date:
+06/Sep/10 15:52

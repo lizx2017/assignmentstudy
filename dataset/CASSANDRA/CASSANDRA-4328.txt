@@ -1,0 +1,101 @@
+Summary:
+CQL client timeout when inserting data after creating index
+Description:
+After creating index on table inserts fails.
+steps (from cqlsh -3)
+create table myapp (pidh text, cn text, tn text, s text, m text, ts bigint, PRIMARY KEY (pidh, ts));
+INSERT INTO myapp(pidh, cn, tn, s, m, ts) VALUES ('4274@localhost','Test.tests','main','text','bzzzzz',2231897614162493);
+create index idx_cn on myapp(cn);
+Next insert from cql client time outs without showing error.
+Each insert in systemlog gives ERROR [MutationStage:xx] ....
+from log file:
+INFO [MigrationStage:1] 2012-06-11 12:28:35,715 ColumnFamilyStore.java (line 633) Enqueuing flush of Memtable-schema_columnfamilies@1502301540(1259/1573 serialized/live bytes, 20 ops)
+INFO [FlushWriter:4] 2012-06-11 12:28:35,716 Memtable.java (line 266) Writing Memtable-schema_columnfamilies@1502301540(1259/1573 serialized/live bytes, 20 ops)
+INFO [FlushWriter:4] 2012-06-11 12:28:35,868 Memtable.java (line 307) Completed flushing /var/lib/cassandra/data/system/schema_columnfamilies/system-schema_columnfamilies-hd-143-Data.db (1312 bytes) for commitlog position ReplayPosition(segmentId=2232837134267994, position=8651)
+INFO [MigrationStage:1] 2012-06-11 12:28:35,869 ColumnFamilyStore.java (line 633) Enqueuing flush of Memtable-schema_columns@1756291746(280/350 serialized/live bytes, 5 ops)
+INFO [CompactionExecutor:26] 2012-06-11 12:28:35,869 CompactionTask.java (line 109) Compacting [SSTableReader(path='/var/lib/cassandra/data/system/schema_columnfamilies/system-schema_columnfamilies-hd-141-Data.db'), SSTableReader(path='/var/lib/cassandra/data/system/schema_columnfamilies/system-schema_columnfamilies-hd-142-Data.db'), SSTableReader(path='/var/lib/cassandra/data/system/schema_columnfamilies/system-schema_columnfamilies-hd-140-Data.db'), SSTableReader(path='/var/lib/cassandra/data/system/schema_columnfamilies/system-schema_columnfamilies-hd-143-Data.db')]
+INFO [FlushWriter:4] 2012-06-11 12:28:35,869 Memtable.java (line 266) Writing Memtable-schema_columns@1756291746(280/350 serialized/live bytes, 5 ops)
+INFO [FlushWriter:4] 2012-06-11 12:28:36,104 Memtable.java (line 307) Completed flushing /var/lib/cassandra/data/system/schema_columns/system-schema_columns-hd-65-Data.db (325 bytes) for commitlog position ReplayPosition(segmentId=2232837134267994, position=8651)
+INFO [CompactionExecutor:26] 2012-06-11 12:28:36,130 CompactionTask.java (line 221) Compacted to [/var/lib/cassandra/data/system/schema_columnfamilies/system-schema_columnfamilies-hd-144-Data.db,]. 42,461 to 38,525 (~90% of original) bytes for 3 keys at 0.140767MB/s. Time: 261ms.
+INFO [MigrationStage:1] 2012-06-11 12:28:36,140 SecondaryIndexManager.java (line 208) Creating new index : ColumnDefinition
+{name=636e, validator=org.apache.cassandra.db.marshal.UTF8Type, index_type=KEYS, index_name='idx_cn', component_index=1}
+INFO [Creating index: myapp.idx_cn] 2012-06-11 12:28:36,141 ColumnFamilyStore.java (line 633) Enqueuing flush of Memtable-myapp@207814912(171/213 serialized/live bytes, 4 ops)
+INFO [FlushWriter:4] 2012-06-11 12:28:36,141 Memtable.java (line 266) Writing Memtable-myapp@207814912(171/213 serialized/live bytes, 4 ops)
+INFO [FlushWriter:4] 2012-06-11 12:28:36,255 Memtable.java (line 307) Completed flushing /var/lib/cassandra/data/Logging/myapp/Logging-myapp-hd-2-Data.db (170 bytes) for commitlog position ReplayPosition(segmentId=2232837134267994, position=8651)
+INFO [Creating index: myapp.idx_cn] 2012-06-11 12:28:36,256 SecondaryIndex.java (line 159) Submitting index build of myapp.idx_cn for data in SSTableReader(path='/var/lib/cassandra/data/Logging/myapp/Logging-myapp-hd-1-Data.db'), SSTableReader(path='/var/lib/cassandra/data/Logging/myapp/Logging-myapp-hd-2-Data.db')
+INFO [Creating index: myapp.idx_cn] 2012-06-11 12:28:36,258 ColumnFamilyStore.java (line 633) Enqueuing flush of Memtable-IndexInfo@409882274(39/48 serialized/live bytes, 1 ops)
+INFO [FlushWriter:4] 2012-06-11 12:28:36,258 Memtable.java (line 266) Writing Memtable-IndexInfo@409882274(39/48 serialized/live bytes, 1 ops)
+INFO [FlushWriter:4] 2012-06-11 12:28:36,390 Memtable.java (line 307) Completed flushing /var/lib/cassandra/data/system/IndexInfo/system-IndexInfo-hd-14-Data.db (84 bytes) for commitlog position ReplayPosition(segmentId=2232837134267994, position=8744)
+INFO [Creating index: myapp.idx_cn] 2012-06-11 12:28:36,390 SecondaryIndex.java (line 200) Index build of myapp.idx_cn complete
+ERROR [MutationStage:37] 2012-06-11 12:28:39,657 AbstractCassandraDaemon.java (line 134) Exception in thread Thread[MutationStage:37,5,main]
+java.lang.RuntimeException: java.lang.IllegalArgumentException
+at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1254)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:722)
+Caused by: java.lang.IllegalArgumentException
+at java.nio.Buffer.limit(Buffer.java:267)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.getBytes(AbstractCompositeType.java:51)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.getWithShortLength(AbstractCompositeType.java:60)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:76)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:31)
+at java.util.TreeMap.getEntryUsingComparator(TreeMap.java:369)
+at java.util.TreeMap.getEntry(TreeMap.java:340)
+at java.util.TreeMap.containsKey(TreeMap.java:227)
+at java.util.TreeMap$KeySet.contains(TreeMap.java:1045)
+at org.apache.cassandra.db.Table.apply(Table.java:415)
+at org.apache.cassandra.db.Table.apply(Table.java:380)
+at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:294)
+at org.apache.cassandra.service.StorageProxy$6.runMayThrow(StorageProxy.java:453)
+at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1250)
+... 3 more
+ERROR [MutationStage:39] 2012-06-11 12:29:39,876 AbstractCassandraDaemon.java (line 134) Exception in thread Thread[MutationStage:39,5,main]
+java.lang.RuntimeException: java.lang.IllegalArgumentException
+at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1254)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+at java.lang.Thread.run(Thread.java:722)
+Caused by: java.lang.IllegalArgumentException
+at java.nio.Buffer.limit(Buffer.java:267)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.getBytes(AbstractCompositeType.java:51)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.getWithShortLength(AbstractCompositeType.java:60)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:76)
+at org.apache.cassandra.db.marshal.AbstractCompositeType.compare(AbstractCompositeType.java:31)
+at java.util.TreeMap.getEntryUsingComparator(TreeMap.java:369)
+at java.util.TreeMap.getEntry(TreeMap.java:340)
+at java.util.TreeMap.containsKey(TreeMap.java:227)
+at java.util.TreeMap$KeySet.contains(TreeMap.java:1045)
+at org.apache.cassandra.db.Table.apply(Table.java:415)
+at org.apache.cassandra.db.Table.apply(Table.java:380)
+at org.apache.cassandra.db.RowMutation.apply(RowMutation.java:294)
+at org.apache.cassandra.service.StorageProxy$6.runMayThrow(StorageProxy.java:453)
+at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:1250)
+... 3 more
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.2
+Component:
+None
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Haralds Ulmanis
+Create date:
+11/Jun/12 11:44
+Update date:
+16/Apr/19 09:32
+Resolved date:
+12/Jun/12 13:07

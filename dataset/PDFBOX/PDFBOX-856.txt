@@ -1,0 +1,55 @@
+Summary:
+NPE from PDPageLabels with a large number PDPageLabelRanges
+Description:
+Section 3.8.6 states that number trees have either "Nums" or "Kids" entries. The current PDPageLabels does not handle Kids and fails with a NPE.
+Fix:
+public PDPageLabels(PDDocument document, COSDictionary dict) throws IOException
+{
+this(document);
+if (dict == null)
+{ return; }
+PDNumberTreeNode root = new PDNumberTreeNode(dict, COSDictionary.class);
+findLabels(root);
+}
+private void findLabels(PDNumberTreeNode node) throws IOException {
+if (node.getKids() != null) {
+@SuppressWarnings("unchecked")
+List<PDNumberTreeNode> kids = node.getKids();
+for (PDNumberTreeNode kid : kids)
+{ findLabels(kid); }
+}
+else if (node.getNumbers() != null) {
+@SuppressWarnings("unchecked")
+Map<Integer, COSDictionary> numbers = node.getNumbers();
+for (Entry<Integer, COSDictionary> i : numbers.entrySet())
+{ labels.put(i.getKey(), new PDPageLabelRange(i.getValue())); }
+}
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.2.1
+Fix_version:
+1.3.1
+Component:
+PDModel
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Kevin Jackson
+Create date:
+07/Oct/10 15:13
+Update date:
+24/Mar/13 14:44
+Resolved date:
+17/Oct/10 17:36

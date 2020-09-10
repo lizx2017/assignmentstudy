@@ -1,0 +1,98 @@
+Summary:
+Hive JDBC connections fail with InvalidUrlException when both the C* and Hive JDBC drivers are loaded
+Description:
+Hive connections fail with InvalidUrlException when both the C* and Hive JDBC drivers are loaded, and it seems the URL is being interpreted as a C* url.
+ Caused an ERROR
+    [junit] Invalid connection url:jdbc:hive://127.0.0.1:10000/default. should start with jdbc:cassandra
+    [junit] org.apache.cassandra.cql.jdbc.InvalidUrlException: Invalid connection url:jdbc:hive://127.0.0.1:10000/default. should start with jdbc:cassandra
+    [junit]  at org.apache.cassandra.cql.jdbc.CassandraDriver.connect(CassandraDriver.java:90)
+    [junit]  at java.sql.DriverManager.getConnection(DriverManager.java:582)
+    [junit]  at java.sql.DriverManager.getConnection(DriverManager.java:185)
+    [junit]  at com.datastax.bugRepros.repro_connection_error.test1_runHiveBeforeJdbc(repro_connection_error.java:34)
+Code Snippet: intended to illustrate the connection issues
+Copy file to test directory
+Change package declaration
+run: ant test -Dtest.name=repro_conn_error
+package com.datastax.bugRepros;
+
+import java.sql.DriverManager;
+import java.sql.Connection;
+import java.sql.SQLException;
+
+import java.util.Enumeration;
+
+import org.junit.Test;
+
+public class repro_conn_error
+{
+    @Test
+    public void jdbcConnectionError() throws Exception 
+    {  
+        // Create Hive JDBC Connection - will succeed if      
+        try 
+        {
+            // Uncomment loading C* driver to reproduce bug
+            Class.forName("org.apache.cassandra.cql.jdbc.CassandraDriver");
+            
+            // Load Hive driver and connect
+            Class.forName("org.apache.hadoop.hive.jdbc.HiveDriver");
+            Connection hiveConn = DriverManager.getConnection("jdbc:hive://127.0.0.1:10000/default", "", "");
+            hiveConn.close();  
+            System.out.println("successful hive connection");
+
+        } catch (SQLException e) {
+            System.out.println("unsuccessful hive connection");
+            e.printStackTrace();
+        }
+        
+        // Create C* JDBC Connection
+        try 
+        {
+            Class.forName("org.apache.cassandra.cql.jdbc.CassandraDriver");
+            Connection jdbcConn = DriverManager.getConnection("jdbc:cassandra:root/root@127.0.0.1:9160/default");     
+            jdbcConn.close();    
+            System.out.println("successful c* connection");
+
+        } catch (SQLException e) {
+            System.out.println("unsuccessful c* connection");
+
+            e.printStackTrace();
+        }
+        
+        // Print out all loaded JDBC drivers.
+        Enumeration d = java.sql.DriverManager.getDrivers();
+        
+        while (d.hasMoreElements()) {
+            Object driverAsObject = d.nextElement();
+            System.out.println("JDBC driver=" + driverAsObject);
+        }
+    }
+}
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Rick Shaw
+Reporter:
+Cathy Daw
+Create date:
+30/Jun/11 23:01
+Update date:
+16/Apr/19 09:32
+Resolved date:
+01/Jul/11 19:50

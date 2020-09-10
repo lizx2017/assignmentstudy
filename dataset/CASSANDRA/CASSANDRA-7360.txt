@@ -1,0 +1,64 @@
+Summary:
+CQLSSTableWriter consumes all memory for table with compound primary key
+Description:
+When using CQLSSTableWriter to write a table with compound primary key, if the partition key is identical for a huge amount of records, the sync() method is never called, and the memory usage keeps growing until the memory is exhausted.
+Could the code be improved to do sync() even when there is no new row created? The relevant code is in SSTableSimpleUnsortedWriter.java and AbstractSSTableSimpleWriter.java. I am new to the code and cannot produce a reasonable patch for now.
+The problem can be reproduced by the following test case:
+import org.apache.cassandra.io.sstable.CQLSSTableWriter;
+import org.apache.cassandra.exceptions.InvalidRequestException;
+
+import java.io.IOException;
+import java.util.UUID;
+
+class SS {
+    public static void main(String[] args) {
+        String schema = "create table test.t (x uuid, y uuid, primary key (x, y))";
+
+
+        String insert = "insert into test.t (x, y) values (?, ?)";
+        CQLSSTableWriter writer = CQLSSTableWriter.builder()
+            .inDirectory("/tmp/test/t")
+            .forTable(schema).withBufferSizeInMB(32)
+            .using(insert).build();
+
+        UUID id = UUID.randomUUID();
+        try {
+            for (int i = 0; i < 50000000; i++) {
+                UUID id2 = UUID.randomUUID();
+                writer.addRow(id, id2);
+            }
+
+            writer.close();
+        } catch (Exception e) {
+            System.err.println("hell");
+        }
+    }
+}
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.11
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Xu Zhongxing
+Create date:
+06/Jun/14 08:34
+Update date:
+16/Apr/19 09:31
+Resolved date:
+10/Sep/14 01:41

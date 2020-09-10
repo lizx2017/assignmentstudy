@@ -1,0 +1,35 @@
+Summary:
+Stack overflow when calling HTable.checkAndPut() when deleting a lot of values
+Description:
+We get a stackoverflow when calling HTable.checkAndPut() from a map-reduce job though the client API after doing a large number of deletes.
+Our mapred job is a periodic job (which extends TableMapper) that merges the versions for a value in a column into a new value/version and then deletes the older versions. This is because we use versions to store data so we can do append-only insertion. Our rows can have large/huge (from 1 till > 1M) numbers of columns (aka key-values).
+The problem seems to be that the org.apache.hadoop.hbase.regionserver.GetDeleteTracker.isDeleted() method is implemented with recursion but since Java has no tail recursion optimization, this fails for cases where the number of deletes that are being tracked is bigger than the stack size. I'm not sure why recursion is used here but it is not safe without tail-call optimization and it should be optimized into a simple loop.
+I'll attach the stacktrace.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.1
+Fix_version:
+0.20.2, 0.90.0
+Component:
+regionserver
+Label:
+None
+Environment:
+cloudera
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Age Mooij
+Create date:
+02/Nov/09 15:09
+Update date:
+12/Oct/12 06:13
+Resolved date:
+04/Nov/09 01:29

@@ -1,0 +1,48 @@
+Summary:
+IndexWriter#flushNextBuffer can cause NPE
+Description:
+There is a missing synchronized statment in DocumentsWriterFlushControl causing failures like this:
+04:07:06    [junit4]   2> NOTE: reproduce with: ant test  -Dtestcase=TestIndexWriterDelete -Dtests.method=testDeleteAllNoDeadLock -Dtests.seed=D43A2A18EB61840A -Dtests.slow=true -Dtests.locale=sv-SE -Dtests.timezone=Pacific/Kosrae -Dtests.asserts=true -Dtests.file.encoding=ISO-8859-1
+04:07:06    [junit4] ERROR   0.21s J1 | TestIndexWriterDelete.testDeleteAllNoDeadLock <<<
+04:07:06    [junit4]    > Throwable #1: com.carrotsearch.randomizedtesting.UncaughtExceptionError: Captured an uncaught exception in thread: Thread[id=516, name=Thread-413, state=RUNNABLE, group=TGRP-TestIndexWriterDelete]
+04:07:06    [junit4]    >  at __randomizedtesting.SeedInfo.seed([D43A2A18EB61840A:E723C5066BA23E5C]:0)
+04:07:06    [junit4]    > Caused by: java.lang.RuntimeException: java.lang.NullPointerException
+04:07:06    [junit4]    >  at __randomizedtesting.SeedInfo.seed([D43A2A18EB61840A]:0)
+04:07:06    [junit4]    >  at org.apache.lucene.index.TestIndexWriterDelete$1.run(TestIndexWriterDelete.java:332)
+04:07:06    [junit4]    > Caused by: java.lang.NullPointerException
+04:07:06    [junit4]    >  at org.apache.lucene.index.DocumentsWriterFlushControl.findLargestNonPendingWriter(DocumentsWriterFlushControl.java:730)
+04:07:06    [junit4]    >  at org.apache.lucene.index.DocumentsWriterFlushControl.checkoutLargestNonPendingWriter(DocumentsWriterFlushControl.java:750)
+04:07:06    [junit4]    >  at org.apache.lucene.index.DocumentsWriter.flushOneDWPT(DocumentsWriter.java:256)
+04:07:06    [junit4]    >  at org.apache.lucene.index.IndexWriter.flushNextBuffer(IndexWriter.java:3203)
+04:07:06    [junit4]    >  at org.apache.lucene.index.RandomIndexWriter.maybeFlushOrCommit(RandomIndexWriter.java:189)
+04:07:06    [junit4]    >  at org.apache.lucene.index.RandomIndexWriter.addDocument(RandomIndexWriter.java:174)
+04:07:06    [junit4]    >  at org.apache.lucene.index.TestIndexWriterDelete$1.run(TestIndexWriterDelete.java:326)
+04:07:06    [junit4]   2> NOTE: test params are: codec=CheapBastard, sim=RandomSimilarity(queryNorm=false): {field=DFR I(ne)1, contents=DFR G3(800.0), city=DFR G1, id=LM Jelinek-Mercer(0.100000), content=DFR I(ne)B1}, locale=sv-SE, timezone=Pacific/Kosrae
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+7.2, 7.3, 8.0
+Fix_version:
+7.2, 7.3, 8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Simon Willnauer
+Reporter:
+Simon Willnauer
+Create date:
+11/Dec/17 10:11
+Update date:
+22/Dec/17 08:31
+Resolved date:
+11/Dec/17 13:46

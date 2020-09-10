@@ -1,0 +1,35 @@
+Summary:
+improve spatial point/rect vs. polygon performance
+Description:
+Now that we can query on complex polygons without going OOM (LUCENE-7153), we should do something to address the current ? performance.
+Currently, we use a basic crossings test (O(n)) for boundary cases. We defer these expensive per-doc checks on boundary cases to a two phase iterator (LUCENE-7019, LUCENE-7109), so that it can be avoided if e.g. excluded by filters, conjunctions, deleted doc, and so on. This is currently important for performance, but basically its shoving the problem under the rug and hoping it goes away. At least for point in poly, there are a number of faster techniques described here: http://erich.realtimerendering.com/ptinpoly/
+Additionally I am not sure how costly our "tree traversal" (rectangle intersection algorithms). Maybe its nothing to be worried about, but likely it too gets bad if the thing gets complex enough. These don't need to be perfect but need to behave like java's Shape#contains (can conservatively return false), and Shape#intersects (can conservatively return true). Of course, if they are too inaccurate, then things can get slower.
+In cases of precomputed structures we should also consider memory usage: e.g. we shouldn't make a horrible tradeoff there.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+6.1, 7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+01/Apr/16 02:56
+Update date:
+17/Jun/16 13:11
+Resolved date:
+25/Apr/16 19:52

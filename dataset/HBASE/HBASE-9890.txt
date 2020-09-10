@@ -1,0 +1,52 @@
+Summary:
+MR jobs are not working if started by a delegated user
+Description:
+If Map-Reduce jobs are started with by a proxy user that has already the delegation tokens, we get an exception on "obtain token" since the proxy user doesn't have the kerberos auth.
+For example:
+If we use oozie to execute RowCounter - oozie will get the tokens required (HBASE_AUTH_TOKEN) and it will start the RowCounter. Once the RowCounter tries to obtain the token, it will get an exception.
+If we use oozie to execute LoadIncrementalHFiles - oozie will get the tokens required (HDFS_DELEGATION_TOKEN) and it will start the LoadIncrementalHFiles. Once the LoadIncrementalHFiles tries to obtain the token, it will get an exception.
+ org.apache.hadoop.hbase.security.AccessDeniedException: Token generation only allowed for Kerberos authenticated clients
+    at org.apache.hadoop.hbase.security.token.TokenProvider.getAuthenticationToken(TokenProvider.java:87)
+org.apache.hadoop.ipc.RemoteException(java.io.IOException): Delegation Token can be issued only with kerberos or web authentication
+ at org.apache.hadoop.hdfs.DFSClient.getDelegationToken(DFSClient.java:783)
+ at org.apache.hadoop.hdfs.DistributedFileSystem.getDelegationToken(DistributedFileSystem.java:868)
+ at org.apache.hadoop.fs.FileSystem.collectDelegationTokens(FileSystem.java:509)
+ at org.apache.hadoop.fs.FileSystem.addDelegationTokens(FileSystem.java:487)
+ at org.apache.hadoop.mapreduce.security.TokenCache.obtainTokensForNamenodesInternal(TokenCache.java:130)
+ at org.apache.hadoop.mapreduce.security.TokenCache.obtainTokensForNamenodesInternal(TokenCache.java:111)
+ at org.apache.hadoop.mapreduce.security.TokenCache.obtainTokensForNamenodes(TokenCache.java:85)
+ at org.apache.hadoop.filecache.TrackerDistributedCacheManager.getDelegationTokens(TrackerDistributedCacheManager.java:949)
+ at org.apache.hadoop.mapred.JobClient.copyAndConfigureFiles(JobClient.java:854)
+ at org.apache.hadoop.mapred.JobClient.copyAndConfigureFiles(JobClient.java:743)
+ at org.apache.hadoop.mapred.JobClient.submitJobInternal(JobClient.java:945)
+ at org.apache.hadoop.mapreduce.Job.submit(Job.java:566)
+ at org.apache.hadoop.mapreduce.Job.waitForCompletion(Job.java:596)
+ at org.apache.hadoop.hbase.mapreduce.RowCounter.main(RowCounter.java:173)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.94.12, 0.96.0
+Fix_version:
+0.98.0, 0.96.1, 0.94.14
+Component:
+mapreduce, security
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Matteo Bertozzi
+Reporter:
+Matteo Bertozzi
+Create date:
+05/Nov/13 00:52
+Update date:
+26/Nov/13 05:53
+Resolved date:
+09/Nov/13 01:44

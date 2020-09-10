@@ -1,0 +1,55 @@
+Summary:
+Reference Counter exception when dropping user type
+Description:
+When running the dtest user_types_test.py:TestUserTypes.test_type_keyspace_permission_isolation with the current 2.1-HEAD code, very frequently, but not always, when dropping a type, the following exception is seen:
+ERROR [MigrationStage:1] 2014-12-01 13:54:54,824 CassandraDaemon.java:170 - Exception in thread Thread[MigrationStage:1,5,main]
+java.lang.AssertionError: Reference counter -1 for /var/folders/v3/z4wf_34n1q506_xjdy49gb780000gn/T/dtest-eW2RXj/test/node2/data/system/schema_keyspaces-b0f2235744583cdb9631c43e59ce3676/system-sche
+ma_keyspaces-ka-14-Data.db
+        at org.apache.cassandra.io.sstable.SSTableReader.releaseReference(SSTableReader.java:1662) ~[main/:na]
+        at org.apache.cassandra.io.sstable.SSTableScanner.close(SSTableScanner.java:164) ~[main/:na]
+        at org.apache.cassandra.utils.MergeIterator.close(MergeIterator.java:62) ~[main/:na]
+        at org.apache.cassandra.db.ColumnFamilyStore$8.close(ColumnFamilyStore.java:1943) ~[main/:na]
+        at org.apache.cassandra.db.ColumnFamilyStore.filter(ColumnFamilyStore.java:2116) ~[main/:na]
+        at org.apache.cassandra.db.ColumnFamilyStore.getRangeSlice(ColumnFamilyStore.java:2029) ~[main/:na]
+        at org.apache.cassandra.db.ColumnFamilyStore.getRangeSlice(ColumnFamilyStore.java:1963) ~[main/:na]
+        at org.apache.cassandra.db.SystemKeyspace.serializedSchema(SystemKeyspace.java:744) ~[main/:na]
+        at org.apache.cassandra.db.SystemKeyspace.serializedSchema(SystemKeyspace.java:731) ~[main/:na]
+        at org.apache.cassandra.config.Schema.updateVersion(Schema.java:374) ~[main/:na]
+        at org.apache.cassandra.config.Schema.updateVersionAndAnnounce(Schema.java:399) ~[main/:na]
+        at org.apache.cassandra.db.DefsTables.mergeSchema(DefsTables.java:167) ~[main/:na]
+        at org.apache.cassandra.db.DefinitionsUpdateVerbHandler$1.runMayThrow(DefinitionsUpdateVerbHandler.java:49) ~[main/:na]
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28) ~[main/:na]
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471) ~[na:1.7.0_67]
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262) ~[na:1.7.0_67]
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145) ~[na:1.7.0_67]
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615) [na:1.7.0_67]
+        at java.lang.Thread.run(Thread.java:745) [na:1.7.0_67]
+Log of the node with the error is attached.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.3
+Component:
+Legacy/Local Write-Read Paths
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Joshua McKenzie
+Reporter:
+Philip Thompson
+Create date:
+01/Dec/14 18:58
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Jan/15 20:14

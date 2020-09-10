@@ -1,0 +1,95 @@
+Summary:
+TestReplicationQueueFailover* runs for a minute, spews 3/4million lines complaining 'Filesystem closed', has an NPE, and still passes?
+Description:
+I was trying to look at why the odd time Hudson OOMEs trying to make a report on 0.95 build #4 https://builds.apache.org/job/hbase-0.95/4/console:
+ERROR: Failed to archive test reports
+hudson.util.IOException2: remote file operation failed: /home/jenkins/jenkins-slave/workspace/hbase-0.95 at hudson.remoting.Channel@151a4e3e:ubuntu3
+ at hudson.FilePath.act(FilePath.java:861)
+ at hudson.FilePath.act(FilePath.java:838)
+ at hudson.tasks.junit.JUnitParser.parse(JUnitParser.java:87)
+ at 
+...
+
+Caused by: java.lang.OutOfMemoryError: Java heap space
+ at java.nio.HeapCharBuffer.<init>(HeapCharBuffer.java:57)
+ at java.nio.CharBuffer.allocate(CharBuffer.java:329)
+ at java.nio.charset.CharsetDecoder.decode(CharsetDecoder.java:792)
+ at java.nio.charset.Charset.decode(Charset.java:791)
+ at hudson.tasks.junit.SuiteResult.<init>(SuiteResult.java:215)
+...
+We are trying to allocate a big buffer and failing.
+Looking at reports being generated, we have quite a few that are > 10MB in size:
+durruti:0.95 stack$ find hbase-* -type f -size +10000k -exec ls -la {} \;
+-rw-r--r--@ 1 stack  staff  11126492 Feb 27 06:14 hbase-server/target/surefire-reports/org.apache.hadoop.hbase.backup.TestHFileArchiving-output.txt
+-rw-r--r--@ 1 stack  staff  13296009 Feb 27 05:47 hbase-server/target/surefire-reports/org.apache.hadoop.hbase.client.TestFromClientSide3-output.txt
+-rw-r--r--@ 1 stack  staff  10541898 Feb 27 05:47 hbase-server/target/surefire-reports/org.apache.hadoop.hbase.client.TestMultiParallel-output.txt
+-rw-r--r--@ 1 stack  staff  25344601 Feb 27 05:51 hbase-server/target/surefire-reports/org.apache.hadoop.hbase.client.TestRestoreSnapshotFromClient-output.txt
+-rw-r--r--@ 1 stack  staff  17966969 Feb 27 06:12 hbase-server/target/surefire-reports/org.apache.hadoop.hbase.regionserver.TestEndToEndSplitTransaction-output.txt
+-rw-r--r--@ 1 stack  staff  17699068 Feb 27 06:09 hbase-server/target/surefire-reports/org.apache.hadoop.hbase.regionserver.wal.TestHLogSplit-output.txt
+-rw-r--r--@ 1 stack  staff  17701832 Feb 27 06:07 hbase-server/target/surefire-reports/org.apache.hadoop.hbase.regionserver.wal.TestHLogSplitCompressed-output.txt
+-rw-r--r--@ 1 stack  staff  717853709 Feb 27 06:17 hbase-server/target/surefire-reports/org.apache.hadoop.hbase.replication.TestReplicationQueueFailover-output.txt
+-rw-r--r--@ 1 stack  staff  563616793 Feb 27 06:17 hbase-server/target/surefire-reports/org.apache.hadoop.hbase.replication.TestReplicationQueueFailoverCompressed-output.txt
+... with TestReplicationQueueFailover* being order of magnitude bigger than the others.
+Looking in the test I see both spewing between 800 and 900 thousand lines in about a minute. Here is their fixation:
+8908998 2013-02-27 06:17:48,176 ERROR [RegionServer:1;hemera.apache.org,35712,1361945801803.logSyncer] wal.FSHLog$LogSyncer(1012): Error while syncing, requesting close of hlog.
+8908999 java.io.IOException: Filesystem closed
+8909000 ,...at org.apache.hadoop.hdfs.DFSClient.checkOpen(DFSClient.java:319)
+8909001 ,...at org.apache.hadoop.hdfs.DFSClient.access$1200(DFSClient.java:78)
+8909002 ,...at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.sync(DFSClient.java:3843)
+8909003 ,...at org.apache.hadoop.fs.FSDataOutputStream.sync(FSDataOutputStream.java:97)
+8909004 ,...at org.apache.hadoop.io.SequenceFile$Writer.syncFs(SequenceFile.java:999)
+8909005 ,...at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogWriter.sync(SequenceFileLogWriter.java:248)
+8909006 ,...at org.apache.hadoop.hbase.regionserver.wal.FSHLog.syncer(FSHLog.java:1120)
+8909007 ,...at org.apache.hadoop.hbase.regionserver.wal.FSHLog.syncer(FSHLog.java:1058)
+8909008 ,...at org.apache.hadoop.hbase.regionserver.wal.FSHLog.sync(FSHLog.java:1228)
+8909009 ,...at org.apache.hadoop.hbase.regionserver.wal.FSHLog$LogSyncer.run(FSHLog.java:1010)
+8909010 ,...at java.lang.Thread.run(Thread.java:722)
+8909011 2013-02-27 06:17:48,176 FATAL [RegionServer:1;hemera.apache.org,35712,1361945801803.logSyncer] wal.FSHLog(1140): Could not sync. Requesting close of hlog
+8909012 java.io.IOException: Filesystem closed
+8909013 ,...at org.apache.hadoop.hdfs.DFSClient.checkOpen(DFSClient.java:319)
+8909014 ,...at org.apache.hadoop.hdfs.DFSClient.access$1200(DFSClient.java:78)
+8909015 ,...at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.sync(DFSClient.java:3843)
+8909016 ,...at org.apache.hadoop.fs.FSDataOutputStream.sync(FSDataOutputStream.java:97)
+8909017 ,...at org.apache.hadoop.io.SequenceFile$Writer.syncFs(SequenceFile.java:999)
+8909018 ,...at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogWriter.sync(SequenceFileLogWriter.java:248)
+8909019 ,...at org.apache.hadoop.hbase.regionserver.wal.FSHLog.syncer(FSHLog.java:1120)
+8909020 ,...at org.apache.hadoop.hbase.regionserver.wal.FSHLog.syncer(FSHLog.java:1058)
+8909021 ,...at org.apache.hadoop.hbase.regionserver.wal.FSHLog.sync(FSHLog.java:1228)
+8909022 ,...at org.apache.hadoop.hbase.regionserver.wal.FSHLog$LogSyncer.run(FSHLog.java:1010)
+8909023 ,...at java.lang.Thread.run(Thread.java:722)
+...
+These tests are 'succeeding'?
+I also see in both:
+   3891 java.lang.NullPointerException
+   3892 ,...at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.seek(SequenceFileLogReader.java:261)
+   3893 ,...at org.apache.hadoop.hbase.replication.regionserver.ReplicationHLogReaderManager.seek(ReplicationHLogReaderManager.java:103)
+   3894 ,...at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.readAllEntriesToReplicateOrNextFile(ReplicationSource.java:415)
+   3895 ,...at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.run(ReplicationSource.java:333)
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.0
+Component:
+build
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeffrey Zhong
+Reporter:
+stack
+Create date:
+02/Mar/13 22:47
+Update date:
+23/Sep/13 18:31
+Resolved date:
+07/Mar/13 07:03

@@ -1,0 +1,60 @@
+Summary:
+Contention getting the current user in RpcClient$Connection.writeRequest
+Description:
+I've been running tests on clusters with "lots" of regions, about 400, and I'm seeing weird contention in the client.
+This one I see a lot, hundreds and sometimes thousands of threads are blocked like this:
+"htable-pool4-t74" daemon prio=10 tid=0x00007f2254114000 nid=0x2a99 waiting for monitor entry [0x00007f21f9e94000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+ at org.apache.hadoop.security.UserGroupInformation.getCurrentUser(UserGroupInformation.java:466)
+ - waiting to lock <0x00000000fb5ad000> (a java.lang.Class for org.apache.hadoop.security.UserGroupInformation)
+ at org.apache.hadoop.hbase.ipc.RpcClient$Connection.writeRequest(RpcClient.java:1013)
+ at org.apache.hadoop.hbase.ipc.RpcClient.call(RpcClient.java:1407)
+ at org.apache.hadoop.hbase.ipc.RpcClient.callBlockingMethod(RpcClient.java:1634)
+ at org.apache.hadoop.hbase.ipc.RpcClient$BlockingRpcChannelImplementation.callBlockingMethod(RpcClient.java:1691)
+ at org.apache.hadoop.hbase.protobuf.generated.ClientProtos$ClientService$BlockingStub.multi(ClientProtos.java:27339)
+ at org.apache.hadoop.hbase.client.MultiServerCallable.call(MultiServerCallable.java:105)
+ at org.apache.hadoop.hbase.client.MultiServerCallable.call(MultiServerCallable.java:43)
+ at org.apache.hadoop.hbase.client.RpcRetryingCaller.callWithoutRetries(RpcRetryingCaller.java:183)
+While the holder is doing this:
+"htable-pool17-t55" daemon prio=10 tid=0x00007f2244408000 nid=0x2a98 runnable [0x00007f21f9f95000]
+   java.lang.Thread.State: RUNNABLE
+ at java.security.AccessController.getStackAccessControlContext(Native Method)
+ at java.security.AccessController.getContext(AccessController.java:487)
+ at org.apache.hadoop.security.UserGroupInformation.getCurrentUser(UserGroupInformation.java:466)
+ - locked <0x00000000fb5ad000> (a java.lang.Class for org.apache.hadoop.security.UserGroupInformation)
+ at org.apache.hadoop.hbase.ipc.RpcClient$Connection.writeRequest(RpcClient.java:1013)
+ at org.apache.hadoop.hbase.ipc.RpcClient.call(RpcClient.java:1407)
+ at org.apache.hadoop.hbase.ipc.RpcClient.callBlockingMethod(RpcClient.java:1634)
+ at org.apache.hadoop.hbase.ipc.RpcClient$BlockingRpcChannelImplementation.callBlockingMethod(RpcClient.java:1691)
+ at org.apache.hadoop.hbase.protobuf.generated.ClientProtos$ClientService$BlockingStub.multi(ClientProtos.java:27339)
+ at org.apache.hadoop.hbase.client.MultiServerCallable.call(MultiServerCallable.java:105)
+ at org.apache.hadoop.hbase.client.MultiServerCallable.call(MultiServerCallable.java:43)
+ at org.apache.hadoop.hbase.client.RpcRetryingCaller.callWithoutRetries(RpcRetryingCaller.java:183)
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.98.0, 0.96.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Jean-Daniel Cryans
+Create date:
+23/Aug/13 17:48
+Update date:
+20/Nov/15 11:52
+Resolved date:
+29/Aug/13 16:43

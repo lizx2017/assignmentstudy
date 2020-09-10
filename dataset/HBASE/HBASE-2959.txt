@@ -1,0 +1,57 @@
+Summary:
+Scanning always starts at the beginning of a row
+Description:
+In HBASE-2248, the code in HRegion#get was changed like so:
+-  private void get(final Store store, final Get get,
+-    final NavigableSet<byte []> qualifiers, List<KeyValue> result)
+-  throws IOException {
+-    store.get(get, qualifiers, result);
++  /*
++   * Do a get based on the get parameter.
++   */
++  private List<KeyValue> get(final Get get) throws IOException {
++    Scan scan = new Scan(get);
++
++    List<KeyValue> results = new ArrayList<KeyValue>();
++
++    InternalScanner scanner = null;
++    try {
++      scanner = getScanner(scan);
++      scanner.next(results);
++    } finally {
++      if (scanner != null)
++        scanner.close();
++    }
++    return results;
+   }
+So instead of doing a get straight on the Store, we now open a scanner. The problem is that we eventually end up in ScanQueryMatcher where the constructor does: this.startKey = KeyValue.createFirstOnRow(scan.getStartRow());. This entails that if we have a very wide row (thousands of columns), the scanner will need to go through thousands of KeyValue's before finding the right entry, because it always starts from the beginning of the row, whereas before it was much more straightforward.
+This problem was under the radar for a while because the overhead isn't too unreasonable, but later on, incrementColumnValue was changed to do a get under the hood. At StumbleUpon we do thousands of ICV per second, so thousand of times per second we're scanning some really wide rows. When a row is contented, this results in all the IPC threads being stuck on acquiring a row lock, while one thread is doing the ICV (albeit slowly due to the excessive scanning). When all IPC threads are stuck, the region server is unable to serve more requests.
+As a nice side effect, fixing this bug will make get and incrementColumnValue faster, as well as the first call to next on a scanner.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+0.20.4, (3)
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Benoit Sigoure
+Create date:
+03/Sep/10 17:59
+Update date:
+16/Jul/14 23:14
+Resolved date:
+16/Jul/14 23:14

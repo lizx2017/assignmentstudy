@@ -1,0 +1,64 @@
+Summary:
+NullPointerException when constructing a PDJPeg using a BufferedImage
+Description:
+In pdfbox 1.8.2 and 1.8.3, the constructor of PDJPeg class that takes a BufferedImage throws java.lang.NullPointerException:
+BufferedImage bi = ImageIO.read(this.getClass().getClassLoader().getResourceAsStream("images/icon.png"));
+PDJpeg icon = new PDJpeg(pdf, bi);
+The stack trace is:
+java.lang.NullPointerException
+at org.apache.pdfbox.util.ImageIOUtil.addResolution(ImageIOUtil.java:211)
+at org.apache.pdfbox.util.ImageIOUtil.createMetadata(ImageIOUtil.java:204)
+at org.apache.pdfbox.util.ImageIOUtil.writeImage(ImageIOUtil.java:158)
+at org.apache.pdfbox.pdmodel.graphics.xobject.PDJpeg.createImageStream(PDJpeg.java:171)
+at org.apache.pdfbox.pdmodel.graphics.xobject.PDJpeg.<init>(PDJpeg.java:133)
+The culprit is in this method in the ImageIOUtil:
+private static IIOMetadata createMetadata(RenderedImage image, ImageWriter imageWriter,
+ImageWriteParam writerParams, int resolution)
+{ ..... IIOMetadata meta = imageWriter.getDefaultImageMetadata( type, writerParams ); return (addResolution(meta, resolution) ? meta : null); }
+One of the JPG image writer in our environment is com.sun.media.imageioimpl.plugins.jpeg.CLibJPEGImageWriter, its implementation of getDefaultImageMetadata() returns null:
+public IIOMetadata getDefaultImageMetadata(ImageTypeSpecifier imageType, ImageWriteParam param)
+{ return null; }
+this causes the NullPointerException at the first line of the addResolution() method:
+if (!meta.isReadOnly() && meta.isStandardMetadataFormatSupported())
+I suggest that null checks be added at the following places:
+1. ImageIOUtil.addResolution():
+if (!meta.isReadOnly() && meta.isStandardMetadataFormatSupported())
+==>
+if (meta != null && meta.isReadOnly() && meta.isStandardMetadataFormatSupported())
+2. ImageIOUtil.writeImage():
+IIOMetadata meta = createMetadata( image, imageWriter, writerParams, resolution);
+imageWriter.setOutput( output );
+imageWriter.write( null, new IIOImage( image, null, meta ), writerParams );
+foundWriter = true;
+==>
+IIOMetadata meta = createMetadata( image, imageWriter, writerParams, resolution);
+if (meta != null)
+{ imageWriter.setOutput( output ); imageWriter.write( null, new IIOImage( image, null, meta ), writerParams ); foundWriter = true; }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.8.3
+Fix_version:
+1.8.4, 2.0.0
+Component:
+Utilities
+Label:
+None
+Environment:
+windows
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Puhong You
+Create date:
+06/Dec/13 20:42
+Update date:
+31/Jan/14 06:46
+Resolved date:
+13/Jan/14 18:12

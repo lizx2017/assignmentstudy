@@ -1,0 +1,68 @@
+Summary:
+ProcessServerShutdown throws NullPointerException for offline regions
+Description:
+When a regionsserver dies the master can run into the following bug.
+2010-04-27 17:20:37,303 DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: ProcessServerShutdown of dell106.cluster,60020,1272377612991
+2010-04-27 17:20:37,303 INFO org.apache.hadoop.hbase.master.RegionServerOperation: process shutdown of server dell106.cluster,60020,1272377612991: logSplit: true, rootRescanned: true, numberOfMetaRegions: 1, onlineMetaRegions.size(): 1
+2010-04-27 17:20:01,637 INFO org.apache.hadoop.hbase.master.RegionServerOperation: Log split complete, meta reassignment and scanning:
+2010-04-27 17:20:01,653 DEBUG org.apache.hadoop.hbase.master.ProcessServerShutdown$ScanRootRegion: process server shutdown scanning root region on 10.1.3.124
+2010-04-27 17:20:01,664 DEBUG org.apache.hadoop.hbase.master.RegionServerOperation: process server shutdown scanning root region on 10.1.3.124 finished master
+2010-04-27 17:20:01,683 DEBUG org.apache.hadoop.hbase.master.ProcessServerShutdown$ScanMetaRegions: process server shutdown scanning .META.,,1 on 10.1.3.104:60020
+2010-04-27 17:20:18,087 DEBUG org.apache.hadoop.hbase.master.ProcessServerShutdown$ScanMetaRegions: Exception in RetryableMetaOperation:
+2010-04-27 17:20:18,118 WARN org.apache.hadoop.hbase.master.HMaster: Adding to delayed queue: ProcessServerShutdown of dell106.cluster,60020,1272377612991
+java.lang.RuntimeException: java.lang.NullPointerException
+at org.apache.hadoop.hbase.master.RetryableMetaOperation.doWithRetries(RetryableMetaOperation.java:100)
+at org.apache.hadoop.hbase.master.ProcessServerShutdown.process(ProcessServerShutdown.java:345)
+at org.apache.hadoop.hbase.master.HMaster.processToDoQueue(HMaster.java:509)
+at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:448)
+Caused by: java.lang.NullPointerException
+at org.apache.hadoop.hbase.util.Bytes.toLong(Bytes.java:487)
+at org.apache.hadoop.hbase.util.Bytes.toLong(Bytes.java:461)
+at org.apache.hadoop.hbase.master.ProcessServerShutdown.scanMetaRegion(ProcessServerShutdown.java:147)
+at org.apache.hadoop.hbase.master.ProcessServerShutdown$ScanMetaRegions.call(ProcessServerShutdown.java:264)
+at org.apache.hadoop.hbase.master.ProcessServerShutdown$ScanMetaRegions.call(ProcessServerShutdown.java:250)
+at org.apache.hadoop.hbase.master.RetryableMetaOperation.doWithRetries(RetryableMetaOperation.java:69)
+... 3 more
+The problem is in ProcessServerShutdown.java at line 148-149:
+146 String serverAddress =
+147 Bytes.toString(values.getValue(CATALOG_FAMILY, SERVER_QUALIFIER));
+148 long startCode =
+149 Bytes.toLong(values.getValue(CATALOG_FAMILY, STARTCODE_QUALIFIER));
+150 String serverName = null;
+151 if (serverAddress != null && serverAddress.length() > 0)
+{ 152 serverName = HServerInfo.getServerName(serverAddress, startCode); 153 }
+It should be modified to:
+146 String serverAddress =
+147 Bytes.toString(values.getValue(CATALOG_FAMILY, SERVER_QUALIFIER));
+150 String serverName = null;
+151 if (serverAddress != null && serverAddress.length() > 0)
+{ 148 long startCode = 149 Bytes.toLong(values.getValue(CATALOG_FAMILY, STARTCODE_QUALIFIER)); 152 serverName = HServerInfo.getServerName(serverAddress, startCode); 153 }
+As Bytes.toLong cannot handle the null pointer returned by getValue for missing STARTCODE_QUALIFIER of offline regions in META.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.20.3
+Fix_version:
+0.90.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Miklos Kurucz
+Reporter:
+Miklos Kurucz
+Create date:
+28/Apr/10 13:16
+Update date:
+20/Nov/15 12:43
+Resolved date:
+28/Apr/10 22:47

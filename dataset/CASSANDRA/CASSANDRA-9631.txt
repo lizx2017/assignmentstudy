@@ -1,0 +1,74 @@
+Summary:
+Unnecessary required filtering for query on indexed clustering key
+Description:
+Let's create and populate a simple table composed of one partition key a, two clustering keys b & c, and one secondary index on a standard column e:
+$ cqlsh 127.0.0.1
+Connected to test21 at 127.0.0.1:9160.
+[cqlsh 4.1.1 | Cassandra 2.1.6-SNAPSHOT | CQL spec 3.1.1 | Thrift protocol 19.39.0]
+Use HELP for help.
+cqlsh> CREATE KEYSPACE test WITH REPLICATION={'class': 'SimpleStrategy', 'replication_factor': 3};
+cqlsh> CREATE TABLE test.table1 (
+   ...     a int,
+   ...     b int,
+   ...     c int,
+   ...     d int,
+   ...     e int,
+   ...     PRIMARY KEY (a, b, c)
+   ... );
+cqlsh> CREATE INDEX table1_e ON test.table1 (e);
+cqlsh> INSERT INTO test.table1 (a, b, c, d, e) VALUES (1, 1, 1, 1, 1);
+(...)
+cqlsh> SELECT * FROM test.table1;
+
+ a | b | c | d | e
+---+---+---+---+---
+ 1 | 1 | 1 | 1 | 1
+ 1 | 1 | 2 | 2 | 2
+ 1 | 1 | 3 | 3 | 3
+ 1 | 2 | 1 | 1 | 3
+ 1 | 3 | 1 | 1 | 1
+ 2 | 4 | 1 | 1 | 1
+
+(6 rows)
+With such a schema, I am allowed to query on the indexed column without filtering by providing the first two elements of the primary key:
+cqlsh> SELECT * FROM test.table1 WHERE a=1 AND b=1 AND e=3;
+
+ a | b | c | d | e
+---+---+---+---+---
+ 1 | 1 | 3 | 3 | 3
+
+(1 rows)
+Let's now introduce an index on the first clustering key:
+cqlsh> CREATE INDEX table1_b ON test.table1 (b);
+Now, I expect the same query as above to work without filtering, but it's not:
+cqlsh> SELECT * FROM test.table1 WHERE a=1 AND b=1 AND e=3;
+Bad Request: Cannot execute this query as it might involve data filtering and thus may have unpredictable performance. If you want to execute this query despite the performance unpredictability, use ALLOW FILTERING
+I think this is a bug on the way secondary indexes are accounted for when checking for unfiltered queries.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.17, 2.1.8, 2.2.0 rc2
+Component:
+Legacy/CQL
+Label:
+CQL query secondaryI
+Environment:
+mac os x, ccm
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Kevin Deldycke
+Create date:
+22/Jun/15 12:32
+Update date:
+16/Apr/19 09:31
+Resolved date:
+26/Jun/15 19:59

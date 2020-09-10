@@ -1,0 +1,70 @@
+Summary:
+Broken master failover
+Description:
+Master crashed, SIGSEGV (0xb) at pc=0x00000031a40fea07, pid=14689, tid=1133910336. Four other masters running ready to take the failover. I see where we move to new master but there is an error:
+2009-09-13 22:07:02,061 DEBUG org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper: Wrote master address XX.XX.XX.251:20000 to ZooKeeper
+2009-09-13 22:07:02,064 WARN org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper: Failed to set state node in ZooKeeper
+org.apache.zookeeper.KeeperException$NodeExistsException: KeeperErrorCode = NodeExists for /hbase/shutdown
+        at org.apache.zookeeper.KeeperException.create(KeeperException.java:110)
+        at org.apache.zookeeper.KeeperException.create(KeeperException.java:42)
+        at org.apache.zookeeper.ZooKeeper.create(ZooKeeper.java:522)
+        at org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper.setClusterState(ZooKeeperWrapper.java:279)
+        at org.apache.hadoop.hbase.master.HMaster.writeAddressToZooKeeper(HMaster.java:270)
+        at org.apache.hadoop.hbase.master.HMaster.<init>(HMaster.java:255)
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance(Unknown Source)
+        at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(Unknown Source)
+        at java.lang.reflect.Constructor.newInstance(Unknown Source)
+        at org.apache.hadoop.hbase.master.HMaster.doMain(HMaster.java:1200)
+        at org.apache.hadoop.hbase.master.HMaster.main(HMaster.java:1241)
+Is /hbase/shutdown now ephemeral?
+Otherwise, the transition went off well it seems.
+Except, if I look in zk – this is a good while after teh event – I do not see a master.. its empty. Do we not record in zk on failover?
+But then a split comes in:
+2009-09-17 05:50:05,070 INFO org.apache.hadoop.hbase.master.BaseScanner: All 1 .META. region(s) scanned
+2009-09-17 05:50:30,745 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_SPLIT: enwikibase_dumpurls,,1253145470066: Daughters; enwikibase_dum
+purls,,1253166628107, enwikibase_dumpurls,EzAdzwPBtG_o9BLsEqu4bV\x3D\x3D,1253166628107 from aa0-018-6.u.powerset.com,20020,1251458355425; 1 of 3
+2009-09-17 05:50:30,745 DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.44.91:20020, startcode: 1251458355425, load: (requests=0, r
+egions=3, usedHeap=490, maxHeap=2031): total nregions to assign=2, nregions to reach balance=4, isMetaAssign=false
+2009-09-17 05:50:30,838 DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.44.49:20020, startcode: 1250638276455, load: (requests=3, r
+egions=4, usedHeap=134, maxHeap=2031): total nregions to assign=2, nregions to reach balance=4, isMetaAssign=false
+2009-09-17 05:50:31,117 DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.45.128:20020, startcode: 1250638269214, load: (requests=5,
+regions=4, usedHeap=130, maxHeap=2031): total nregions to assign=2, nregions to reach balance=4, isMetaAssign=false
+2009-09-17 05:50:31,119 DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.45.221:20020, startcode: 1250638268709, load: (requests=5,
+regions=4, usedHeap=82, maxHeap=2031): total nregions to assign=2, nregions to reach balance=4, isMetaAssign=false
+2009-09-17 05:50:31,150 DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.44.75:20020, startcode: 1250638276632, load: (requests=9, r
+egions=4, usedHeap=284, maxHeap=2031): total nregions to assign=2, nregions to reach balance=4, isMetaAssign=false
+2009-09-17 05:50:31,215 DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.45.180:20020, startcode: 1250638269143, load: (requests=11,
+regions=4, usedHeap=132, maxHeap=2031): total nregions to assign=2, nregions to reach balance=4, isMetaAssign=false
+2009-09-17 05:50:31,265 DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.45.121:20020, startcode: 1250638269297, load: (requests=5,
+regions=4, usedHeap=54, maxHeap=2031): total nregions to assign=2, nregions to reach balance=4, isMetaAssign=false
+...
+And we never recover from the above (12 hours and still at it).
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+stack
+Create date:
+17/Sep/09 19:38
+Update date:
+02/Dec/10 03:52
+Resolved date:
+02/Dec/10 03:52

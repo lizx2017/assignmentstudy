@@ -1,0 +1,153 @@
+Summary:
+java.io.IOError: java.io.EOFException with version 0.7.6
+Description:
+I use the following data-model
+column_metadata: []
+name: Customers
+column_type: Super
+gc_grace_seconds: 60
+I have a super-column-family with a single row.
+Within this row I have a single super-column.
+Within this super-column, I concurrently create, read and delete columns.
+I have three threads:
+Do in a loop: add a column to the super-column.
+Do in a loop: delete a random column from the super-column.
+Do in a loop: read the super-column (with all columns).
+After running the above threads concurrently, I always receive one of the following errors:
+ERROR 17:09:57,036 Fatal exception in thread Thread[ReadStage:81,5,main]
+java.io.IOError: java.io.EOFException
+at org.apache.cassandra.io.util.ColumnIterator.deserializeNext(ColumnSortedMap.java:252)
+at org.apache.cassandra.io.util.ColumnIterator.next(ColumnSortedMap.java:268)
+at org.apache.cassandra.io.util.ColumnIterator.next(ColumnSortedMap.java:227)
+at java.util.concurrent.ConcurrentSkipListMap.buildFromSorted(Unknown Source)
+at java.util.concurrent.ConcurrentSkipListMap.<init>(Unknown Source)
+at org.apache.cassandra.db.SuperColumnSerializer.deserialize(SuperColumn.java:379)
+at org.apache.cassandra.db.SuperColumnSerializer.deserialize(SuperColumn.java:362)
+at org.apache.cassandra.db.SuperColumnSerializer.deserialize(SuperColumn.java:322)
+at org.apache.cassandra.db.columniterator.SimpleSliceReader.computeNext(SimpleSliceReader.java:79)
+at org.apache.cassandra.db.columniterator.SimpleSliceReader.computeNext(SimpleSliceReader.java:40)
+at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:136)
+at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:131)
+at org.apache.cassandra.db.columniterator.SSTableSliceIterator.hasNext(SSTableSliceIterator.java:108)
+at org.apache.commons.collections.iterators.CollatingIterator.set(CollatingIterator.java:283)
+at org.apache.commons.collections.iterators.CollatingIterator.least(CollatingIterator.java:326)
+at org.apache.commons.collections.iterators.CollatingIterator.next(CollatingIterator.java:230)
+at org.apache.cassandra.utils.ReducingIterator.computeNext(ReducingIterator.java:69)
+at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:136)
+at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:131)
+at org.apache.cassandra.db.filter.SliceQueryFilter.collectReducedColumns(SliceQueryFilter.java:116)
+at org.apache.cassandra.db.filter.QueryFilter.collectCollatedColumns(QueryFilter.java:130)
+at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1390)
+at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1267)
+at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1195)
+at org.apache.cassandra.db.Table.getRow(Table.java:324)
+at org.apache.cassandra.db.SliceFromReadCommand.getRow(SliceFromReadCommand.java:63)
+at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:451)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Unknown Source)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+at java.lang.Thread.run(Unknown Source)
+Caused by: java.io.EOFException
+at java.io.RandomAccessFile.readByte(Unknown Source)
+at org.apache.cassandra.utils.ByteBufferUtil.readShortLength(ByteBufferUtil.java:324)
+at org.apache.cassandra.utils.ByteBufferUtil.readWithShortLength(ByteBufferUtil.java:335)
+at org.apache.cassandra.db.ColumnSerializer.deserialize(ColumnSerializer.java:71)
+at org.apache.cassandra.io.util.ColumnIterator.deserializeNext(ColumnSortedMap.java:248)
+... 30 more
+java.io.IOError: org.apache.cassandra.db.ColumnSerializer$CorruptColumnException: invalid column name length 0
+at org.apache.cassandra.io.util.ColumnIterator.deserializeNext(ColumnSortedMap.java:252)
+at org.apache.cassandra.io.util.ColumnIterator.next(ColumnSortedMap.java:268)
+at org.apache.cassandra.io.util.ColumnIterator.next(ColumnSortedMap.java:227)
+at java.util.concurrent.ConcurrentSkipListMap.buildFromSorted(Unknown Source)
+at java.util.concurrent.ConcurrentSkipListMap.<init>(Unknown Source)
+at org.apache.cassandra.db.SuperColumnSerializer.deserialize(SuperColumn.java:379)
+at org.apache.cassandra.db.SuperColumnSerializer.deserialize(SuperColumn.java:362)
+at org.apache.cassandra.db.SuperColumnSerializer.deserialize(SuperColumn.java:322)
+at org.apache.cassandra.db.columniterator.SimpleSliceReader.computeNext(SimpleSliceReader.java:79)
+at org.apache.cassandra.db.columniterator.SimpleSliceReader.computeNext(SimpleSliceReader.java:40)
+at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:136)
+at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:131)
+at org.apache.cassandra.db.columniterator.SSTableSliceIterator.hasNext(SSTableSliceIterator.java:108)
+at org.apache.commons.collections.iterators.CollatingIterator.set(CollatingIterator.java:283)
+at org.apache.commons.collections.iterators.CollatingIterator.least(CollatingIterator.java:326)
+at org.apache.commons.collections.iterators.CollatingIterator.next(CollatingIterator.java:230)
+at org.apache.cassandra.utils.ReducingIterator.computeNext(ReducingIterator.java:69)
+at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:136)
+at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:131)
+at org.apache.cassandra.db.filter.SliceQueryFilter.collectReducedColumns(SliceQueryFilter.java:116)
+at org.apache.cassandra.db.filter.QueryFilter.collectCollatedColumns(QueryFilter.java:130)
+at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1385)
+at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1262)
+at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1190)
+at org.apache.cassandra.db.Table.getRow(Table.java:324)
+at org.apache.cassandra.db.SliceFromReadCommand.getRow(SliceFromReadCommand.java:63)
+at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:451)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Unknown Source)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+at java.lang.Thread.run(Unknown Source)
+Caused by: org.apache.cassandra.db.ColumnSerializer$CorruptColumnException: invalid column name length 0
+at org.apache.cassandra.db.ColumnSerializer.deserialize(ColumnSerializer.java:73)
+at org.apache.cassandra.io.util.ColumnIterator.deserializeNext(ColumnSortedMap.java:248)
+... 30 more
+ERROR 11:02:19,824 Fatal exception in thread Thread[ReadStage:3404,5,main]
+java.io.IOError: java.io.IOException: mmap segment underflow; remaining is 660267 but 758592100 requested
+at org.apache.cassandra.io.util.ColumnIterator.deserializeNext(ColumnSortedMap.java:252)
+at org.apache.cassandra.io.util.ColumnIterator.next(ColumnSortedMap.java:268)
+at org.apache.cassandra.io.util.ColumnIterator.next(ColumnSortedMap.java:227)
+at java.util.concurrent.ConcurrentSkipListMap.buildFromSorted(Unknown Source)
+at java.util.concurrent.ConcurrentSkipListMap.<init>(Unknown Source)
+at org.apache.cassandra.db.SuperColumnSerializer.deserialize(SuperColumn.java:379)
+at org.apache.cassandra.db.SuperColumnSerializer.deserialize(SuperColumn.java:362)
+at org.apache.cassandra.db.SuperColumnSerializer.deserialize(SuperColumn.java:322)
+at org.apache.cassandra.db.columniterator.SimpleSliceReader.computeNext(SimpleSliceReader.java:79)
+at org.apache.cassandra.db.columniterator.SimpleSliceReader.computeNext(SimpleSliceReader.java:40)
+at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:136)
+at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:131)
+at org.apache.cassandra.db.columniterator.SSTableSliceIterator.hasNext(SSTableSliceIterator.java:108)
+at org.apache.commons.collections.iterators.CollatingIterator.set(CollatingIterator.java:283)
+at org.apache.commons.collections.iterators.CollatingIterator.least(CollatingIterator.java:326)
+at org.apache.commons.collections.iterators.CollatingIterator.next(CollatingIterator.java:230)
+at org.apache.cassandra.utils.ReducingIterator.computeNext(ReducingIterator.java:69)
+at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:136)
+at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:131)
+at org.apache.cassandra.db.filter.SliceQueryFilter.collectReducedColumns(SliceQueryFilter.java:116)
+at org.apache.cassandra.db.filter.QueryFilter.collectCollatedColumns(QueryFilter.java:130)
+at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1390)
+at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1267)
+at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1195)
+at org.apache.cassandra.db.Table.getRow(Table.java:324)
+at org.apache.cassandra.db.SliceFromReadCommand.getRow(SliceFromReadCommand.java:63)
+at org.apache.cassandra.service.StorageProxy$LocalReadRunnable.runMayThrow(StorageProxy.java:451)
+at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Unknown Source)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+at java.lang.Thread.run(Unknown Source)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.7, 0.8.1
+Component:
+None
+Label:
+None
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+rene kochen
+Create date:
+20/May/11 09:09
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/May/11 15:43

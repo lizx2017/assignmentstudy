@@ -1,0 +1,72 @@
+Summary:
+BubbleSeries custom item renderer (imported from Flex Component Kit) throws runtime error (RTE) because invalidateDisplayList method is not found.
+Description:
+Steps to reproduce:
+1. Develop a Flex component using Flex Component Kit using CS3.
+2. Export the symbol component to a SWC file, then import it to a Flex project.
+3. Extend the imported symbol component with IDataRenderer implemented so that it can be used as a chart item renderer.
+Here is the hierarchy of the classes:
+public class RunwayBubble extends UIMovieClip {} // authored in CS3
+public class FlexBubble extends RunwayBubble implements IDataRenderer {} // authored in Flex
+4. Use the extended class as a custom item renderer in a bubble series chart.
+Here is a code fragment that shows the usage of it:
+</mx:BubbleChart>
+.....
+<mx:series>
+<mx:BubbleSeries id="bubbleSeries" dataProvider=" {chartData}
+" xField="x" yField="y" radiusField="z">
+<mx:itemRenderer>
+<mx:Component>
+<ms:FlexBubble visualType="
+{outerDocument.bubbleVisual}
+" click="outerDocument.onItemClick(this);"/>
+</mx:Component>
+</mx:itemRenderer>
+</mx:BubbleSeries>
+</mx:series>
+</mx:BubbleChart>
+Actual Results:
+RTE with the stack trace:
+ReferenceError: Error #1069: Property invalidateDisplayList not found on com.dv.multiStudy.view.RunwayCurve_inlineComponent1 and there is no default value.
+at mx.charts.series::BubbleSeries/updateDisplayList()[C:\Work\flex\dmv_automation\projects\datavisualisation\src\mx\charts\series\BubbleSeries.as:790]
+at mx.core::UIComponent/validateDisplayList()[E:\dev\flex_3_beta3\sdk\frameworks\projects\framework\src\mx\core\UIComponent.as:6204]
+Expected Results:
+It should not throw an error. It worked fine with the previous release beta2. (Regression).
+Workaround (if any):
+Add a bogus method as follows to FlexBubble class:
+public function invalidateDisplayList():void
+{ // bogus trace("bogus invalidateDisplayList"); }
+Observation:
+I have looked at the code that is troublesome (mx.charts.series.BubbleSeries, line 790):
+if(v.itemRenderer is IProgrammaticSkin || v.itemRenderer is IUIComponent)
+(v.itemRenderer as Object).invalidateDisplayList();
+If you look at IProgrammaticSkin or IUIComponent, they do not define invalidateDisplayList().
+My guess is that if the itemRenderer is IProgrammaticSkin or IUIComponent, then the chances are that they somehow must implement invalidateDisplayList(), but the assumption must have failed in this case.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Duplicate
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+27/Dec/07 13:29
+Update date:
+29/Apr/11 10:17
+Resolved date:
+02/Jan/08 02:02

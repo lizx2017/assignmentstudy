@@ -1,0 +1,34 @@
+Summary:
+If sstable flushes complete out of order, on restart we can fail to replay necessary commit log records
+Description:
+While postFlushExecutor ensures it never expires CL entries out-of-order, on restart we simply take the maximum replay position of any sstable on disk, and ignore anything prior.
+It is quite possible for there to be two flushes triggered for a given table, and for the second to finish first by virtue of containing a much smaller quantity of live data (or perhaps the disk is just under less pressure). If we crash before the first sstable has been written, then on restart the data it would have represented will disappear, since we will not replay the CL records.
+This looks to be a bug present since time immemorial, and also seems pretty serious.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.7, 3.0.7, 3.7
+Component:
+Legacy/Local Write-Read Paths
+Label:
+correctness
+Environment:
+
+Attachment number:
+0
+Assignee:
+Branimir Lambov
+Reporter:
+Benedict
+Create date:
+28/Jun/15 13:11
+Update date:
+16/Apr/19 09:31
+Resolved date:
+31/May/16 08:47

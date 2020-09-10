@@ -1,0 +1,75 @@
+Summary:
+TestByteBuffersDirectory.testSeekPastEOF() failures with ByteArrayIndexInput
+Description:
+Two reproducing seeds below. In both cases:
+the IndexInput implementation is ByteArrayIndexInput
+seeking to exactly EOF does not throw an exception
+ByteArrayIndexInput.readByte() throws AIOOBE instead of the expected EOFException
+From https://jenkins.thetaphi.de/job/Lucene-Solr-master-MacOSX/4903:
+Checking out Revision 856e28d8cf07cc34bc1361784bf00e7aceb3af97 (refs/remotes/origin/master)
+[...]
+   [junit4]   2> NOTE: reproduce with: ant test  -Dtestcase=TestByteBuffersDirectory -Dtests.method=testSeekPastEOF -Dtests.seed=BDFA8CEDB7C93AC1 -Dtests.slow=true -Dtests.locale=sr-RS -Dtests.timezone=Europe/Astrakhan -Dtests.asserts=true -Dtests.file.encoding=US-ASCII
+   [junit4] FAILURE 0.00s J0 | TestByteBuffersDirectory.testSeekPastEOF {impl=byte array (heap)} <<<
+   [junit4]    > Throwable #1: junit.framework.AssertionFailedError: Unexpected exception type, expected EOFException but got java.lang.ArrayIndexOutOfBoundsException: 1770
+   [junit4]    >  at __randomizedtesting.SeedInfo.seed([BDFA8CEDB7C93AC1:5DBC4714B74C4450]:0)
+   [junit4]    >  at org.apache.lucene.util.LuceneTestCase.expectThrows(LuceneTestCase.java:2680)
+   [junit4]    >  at org.apache.lucene.util.LuceneTestCase.expectThrows(LuceneTestCase.java:2669)
+   [junit4]    >  at org.apache.lucene.store.BaseDirectoryTestCase.testSeekPastEOF(BaseDirectoryTestCase.java:516)
+   [junit4]    >  at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+   [junit4]    >  at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+   [junit4]    >  at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+   [junit4]    >  at java.base/java.lang.reflect.Method.invoke(Method.java:564)
+   [junit4]    >  at java.base/java.lang.Thread.run(Thread.java:844)
+   [junit4]    > Caused by: java.lang.ArrayIndexOutOfBoundsException: 1770
+   [junit4]    >  at org.apache.lucene.store.ByteArrayIndexInput.readByte(ByteArrayIndexInput.java:145)
+   [junit4]    >  at org.apache.lucene.store.BaseDirectoryTestCase.lambda$testSeekPastEOF$12(BaseDirectoryTestCase.java:518)
+   [junit4]    >  at org.apache.lucene.util.LuceneTestCase.expectThrows(LuceneTestCase.java:2675)
+   [junit4]    >  ... 37 more
+[...]
+   [junit4]   2> NOTE: test params are: codec=Lucene80, sim=Asserting(org.apache.lucene.search.similarities.AssertingSimilarity@2c972cf9), locale=sr-RS, timezone=Europe/Astrakhan
+   [junit4]   2> NOTE: Mac OS X 10.11.6 x86_64/Oracle Corporation 9 (64-bit)/cpus=3,threads=1,free=157933784,total=235929600
+Also (older) from https://builds.apache.org/job/Lucene-Solr-NightlyTests-master/1645:
+  [junit4]   2> NOTE: reproduce with: ant test  -Dtestcase=TestByteBuffersDirectory -Dtests.method=testSeekPastEOF -Dtests.seed=90B07B6267E63464 -Dtests.multiplier=2 -Dtests.nightly=true -Dtests.slow=true -Dtests.linedocsfile=/home/jenkins/jenkins-slave/workspace/Lucene-Solr-NightlyTests-master/test-data/enwiki.random.lines.txt -Dtests.locale=es-PR -Dtests.timezone=Australia/Currie -Dtests.asserts=true -Dtests.file.encoding=UTF-8
+  [junit4] FAILURE 0.01s J1 | TestByteBuffersDirectory.testSeekPastEOF {impl=byte array (heap)} <<<
+  [junit4]    > Throwable #1: junit.framework.AssertionFailedError: Unexpected exception type, expected EOFException but got java.lang.ArrayIndexOutOfBoundsException: 1881
+  [junit4]    >  at __randomizedtesting.SeedInfo.seed([90B07B6267E63464:70F6B09B67634AF5]:0)
+  [junit4]    >  at org.apache.lucene.util.LuceneTestCase.expectThrows(LuceneTestCase.java:2683)
+  [junit4]    >  at org.apache.lucene.util.LuceneTestCase.expectThrows(LuceneTestCase.java:2672)
+  [junit4]    >  at org.apache.lucene.store.BaseDirectoryTestCase.testSeekPastEOF(BaseDirectoryTestCase.java:516)
+  [junit4]    >  at java.lang.Thread.run(Thread.java:748)
+  [junit4]    > Caused by: java.lang.ArrayIndexOutOfBoundsException: 1881
+  [junit4]    >  at org.apache.lucene.store.ByteArrayIndexInput.readByte(ByteArrayIndexInput.java:145)
+  [junit4]    >  at org.apache.lucene.store.BaseDirectoryTestCase.lambda$testSeekPastEOF$12(BaseDirectoryTestCase.java:518)
+  [junit4]    >  at org.apache.lucene.util.LuceneTestCase.expectThrows(LuceneTestCase.java:2678)
+  [junit4]    >  ... 38 more
+[...]
+  [junit4]   2> NOTE: test params are: codec=Asserting(Lucene80): {content=PostingsFormat(name=MockRandom)}, docValues:{}, maxPointsInLeafNode=118, maxMBSortInHeap=7.2252603736984025, sim=Asserting(org.apache.lucene.search.similarities.AssertingSimilarity@213e9607), locale=es-PR, timezone=Australia/Currie
+  [junit4]   2> NOTE: Linux 4.4.0-130-generic amd64/Oracle Corporation 1.8.0_172 (64-bit)/cpus=4,threads=1,free=165931680,total=326631424
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+8.0
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Dawid Weiss
+Reporter:
+Steve Rowe
+Create date:
+08/Nov/18 23:47
+Update date:
+14/Nov/18 07:22
+Resolved date:
+14/Nov/18 07:22

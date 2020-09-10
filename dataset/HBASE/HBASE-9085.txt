@@ -1,0 +1,45 @@
+Summary:
+Integration Tests fails because of bug in teardown phase where the cluster state is not being restored properly.
+Description:
+I was running the following test over a Distributed Cluster:
+bin/hbase org.apache.hadoop.hbase.IntegrationTestsDriver IntegrationTestDataIngestSlowDeterministic
+The IntegrationTestingUtility.restoreCluster() is called in the teardown phase of the test.
+For a distributed cluster, it ends up calling DistributedHBaseCluster.restoreClusterStatus, which does the task
+of restoring the cluster back to original state.
+The restore steps done here, does not solve one specific case:
+When the initial HBase Master is currently down, and the current HBase Master is different from the initial one.
+You get into this flow:
+//check whether current master has changed
+if (!ServerName.isSameHostnameAndPort(initial.getMaster(), current.getMaster()))
+{ ............. }
+In the above code path, the current backup masters are stopped, and the current active master is also stopped.
+At this point, for the aforementioned usecase, none of the Hbase Masters would be available, hence the subsequent
+attempts to do any operation over the cluster would fail, resulting in Test Failure.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.0, 0.94.9, 0.94.10
+Fix_version:
+0.98.0, 0.95.2, 0.94.11
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+gautam
+Reporter:
+gautam
+Create date:
+30/Jul/13 09:49
+Update date:
+21/Aug/13 00:08
+Resolved date:
+02/Aug/13 04:44

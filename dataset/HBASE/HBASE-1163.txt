@@ -1,0 +1,50 @@
+Summary:
+Master root scanner hung, clients blocked indefinitely waiting for getStartKeys()
+Description:
+Mapreduce tasks based on TIF won't start. Clients trying to find regions by start key block indefinitely (Heritrix hbase writer eventually times out archiver).
+Master seems hung in root scan. I've dumped thread stacks 10 times in 10 minutes and the same HBaseClient$Call object appears in the trace. See below:
+Thread 21 (RegionManager.rootScanner):
+State: WAITING
+Blocked count: 500
+Waited count: 621
+Waiting on org.apache.hadoop.hbase.ipc.HBaseClient$Call@55a2896d
+Stack:
+java.lang.Object.wait(Native Method)
+java.lang.Object.wait(Object.java:485)
+org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:695)
+org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:321)
+$Proxy2.next(Unknown Source)
+org.apache.hadoop.hbase.master.BaseScanner.scanRegion(BaseScanner.java:161)
+org.apache.hadoop.hbase.master.RootScanner.scanRoot(RootScanner.java:55)
+org.apache.hadoop.hbase.master.RootScanner.maintenanceScan(RootScanner.java:80)
+org.apache.hadoop.hbase.master.BaseScanner.chore(BaseScanner.java:137)
+org.apache.hadoop.hbase.Chore.run(Chore.java:65)
+I only see messages from the MetaScanner scanner in the master log, nothing from RootScanner.
+Status:
+RESOLVED
+Priority:
+Critical
+Resolution:
+Invalid
+Affects_version:
+0.19.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Andrew Purtell
+Create date:
+30/Jan/09 01:51
+Update date:
+07/Dec/10 20:51
+Resolved date:
+07/Dec/10 20:51

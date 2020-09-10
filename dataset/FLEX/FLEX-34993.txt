@@ -1,0 +1,65 @@
+Summary:
+implicit super() constructor call receives subclass constructor params
+Description:
+AS input (2 files):
+package foo.bar {
+ public class MySuperClass {
+  public function MySuperClass(superParam1:String = "Hello", superParam2:String = "World")
+  {
+   this.superString = superParam1 + superParam2;
+  }
+  public var superString:String;
+ }
+}
+
+package foo.bar {
+ public class MyExtendingClass extends MySuperClass {
+  public function MyExtendingClass(extendingParam:String)
+  {
+   this.myExtendingString = extendingParam;
+  }
+  public var myExtendingString:String;
+ }
+}
+JS output (relevant part only):
+/**
+ * @constructor
+ * @extends {foo.bar.MySuperClass}
+ * @param {string} extendingParam
+ */
+foo.bar.MyExtendingClass = function(extendingParam) {
+  foo.bar.MyExtendingClass.base(this, 'constructor', extendingParam);
+  this.myExtendingString = extendingParam;
+};
+goog.inherits(foo.bar.MyExtendingClass, foo.bar.MySuperClass);
+The correct behavior would be to implicitly call the default constructor (no params):
+  foo.bar.MyExtendingClass.base(this, 'constructor');
+The current workaround is to explicitly call super() with no params in the subclass.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Apache FlexJS 0.5.0
+Fix_version:
+Apache FalconJX 0.6.
+Component:
+Falcon, FlexJS
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Harui
+Reporter:
+Andy Dufilie
+Create date:
+11/Dec/15 21:57
+Update date:
+23/Dec/15 18:23
+Resolved date:
+23/Dec/15 18:23

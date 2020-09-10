@@ -1,0 +1,54 @@
+Summary:
+tracing does not log commitlog/memtable ops when the coordinator is a replica
+Description:
+For instance:
+ session_id                           | event_id                             | activity                                                          | source        | source_elapsed | thread
+--------------------------------------+--------------------------------------+-------------------------------------------------------------------+---------------+----------------+-------------------------
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1c4bc1-176f-11e4-8893-4b4842ed69b9 | Parsing insert into "Standard1" (key, "C0") VALUES ( 0xff, 0xff); |  10.208.8.123 |             86 |     SharedPool-Worker-5
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1c72d0-176f-11e4-8893-4b4842ed69b9 |                                               Preparing statement |  10.208.8.123 |            434 |     SharedPool-Worker-5
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1c72d1-176f-11e4-8893-4b4842ed69b9 |                                 Determining replicas for mutation |  10.208.8.123 |            534 |     SharedPool-Worker-5
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1c72d2-176f-11e4-8893-4b4842ed69b9 |                                   Sending message to /10.208.8.63 |  10.208.8.123 |           1157 |      WRITE-/10.208.8.63
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1c99e0-176f-11e4-8893-4b4842ed69b9 |                                 Sending message to /10.208.35.225 |  10.208.8.123 |           1975 |    WRITE-/10.208.35.225
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d0f10-176f-11e4-8893-4b4842ed69b9 |                                Message received from /10.208.8.63 |  10.208.8.123 |           4732 |                Thread-5
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d0f11-176f-11e4-8893-4b4842ed69b9 |                              Message received from /10.208.35.225 |  10.208.8.123 |           5086 |                Thread-4
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d3620-176f-11e4-8893-4b4842ed69b9 |                             Processing response from /10.208.8.63 |  10.208.8.123 |           5288 |     SharedPool-Worker-7
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d3620-176f-11e4-93e6-517bcdb23258 |                               Message received from /10.208.8.123 | 10.208.35.225 |             76 |                Thread-4
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d3620-176f-11e4-9b20-3b546d897db7 |                               Message received from /10.208.8.123 |   10.208.8.63 |            317 |                Thread-4
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d3621-176f-11e4-8893-4b4842ed69b9 |                           Processing response from /10.208.35.225 |  10.208.8.123 |           5332 |     SharedPool-Worker-7
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d3621-176f-11e4-93e6-517bcdb23258 |                                            Appending to commitlog | 10.208.35.225 |            322 |     SharedPool-Worker-4
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d3622-176f-11e4-93e6-517bcdb23258 |                                      Adding to Standard1 memtable | 10.208.35.225 |            386 |     SharedPool-Worker-4
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d3623-176f-11e4-93e6-517bcdb23258 |                               Enqueuing response to /10.208.8.123 | 10.208.35.225 |            451 |     SharedPool-Worker-4
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d5d30-176f-11e4-93e6-517bcdb23258 |                              Sending message to bw-1/10.208.8.123 | 10.208.35.225 |           1538 | WRITE-bw-1/10.208.8.123
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d5d30-176f-11e4-9b20-3b546d897db7 |                                            Appending to commitlog |   10.208.8.63 |           1191 |     SharedPool-Worker-7
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d5d31-176f-11e4-9b20-3b546d897db7 |                                      Adding to Standard1 memtable |   10.208.8.63 |           1226 |     SharedPool-Worker-7
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d5d32-176f-11e4-9b20-3b546d897db7 |                               Enqueuing response to /10.208.8.123 |   10.208.8.63 |           1277 |     SharedPool-Worker-7
+ bb1c4bc0-176f-11e4-8893-4b4842ed69b9 | bb1d5d33-176f-11e4-9b20-3b546d897db7 |                              Sending message to bw-1/10.208.8.123 |   10.208.8.63 |           1450 | WRITE-bw-1/10.208.8.123
+All nodes are replicas, but the coordinator (123) never logged anything about adding to its commitlog/memtable, though the other replicas did.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Brandon Williams
+Create date:
+29/Jul/14 23:03
+Update date:
+16/Apr/19 09:31
+Resolved date:
+31/Jul/14 17:11

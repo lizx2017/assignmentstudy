@@ -1,0 +1,49 @@
+Summary:
+Cassandra can't find jamm on startup
+Description:
+I installed the Debian package (from http://www.apache.org/dist/cassandra/debian unstable) of Cassandra 0.8beta2 on Ubuntu 10.04 with the sun jdk over a working copy of 0.7.2. It broke on restart.
+On startup it gives this:
+Error occurred during initialization of VM
+agent library failed to init: instrument
+Error opening zip file or JAR manifest missing : /lib/jamm-0.2.2.jar
+/etc/cassandra/cassandra-env.sh contains this:
+# add the jamm javaagent
+check_openjdk=$(java -version 2>&1 | awk '{if (NR == 2) {print $1}}')
+if [ "$check_openjdk" != "OpenJDK" ]
+then
+    JVM_OPTS="$JVM_OPTS -javaagent:$CASSANDRA_HOME/lib/jamm-0.2.2.jar"
+fi
+By default, CASSANDRA_HOME is not set, so it's looking in /lib for this jar. It seems CASSANDRA_HOME should be set to /usr/share/cassandra, since that's where jamm-0.2.2.jar is installed, but that means the path is still wrong.
+I set CASSANDRA_HOME to /usr/share/cassandra and changed the JVM_OPTS line to this:
+    JVM_OPTS="$JVM_OPTS -javaagent:$CASSANDRA_HOME/jamm-0.2.2.jar"
+and then cassandra started ok.
+Is this a bug or did I miss something?
+I also noticed that this line appears to be the only use of CASSANDRA_HOME.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.0
+Component:
+Packaging
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Eric Evans
+Reporter:
+Marcus Bointon
+Create date:
+13/May/11 16:47
+Update date:
+16/Apr/19 09:32
+Resolved date:
+19/May/11 18:21

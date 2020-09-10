@@ -1,0 +1,59 @@
+Summary:
+Token re-use API breaks back compatibility in certain TokenStream chains
+Description:
+In scrutinizing the new Token re-use API during this thread:
+http://www.gossamer-threads.com/lists/lucene/java-dev/54708
+I realized we now have a non-back-compatibility when mixing re-use and
+non-re-use TokenStreams.
+The new "reuse" next(Token) API actually allows two different aspects
+of re-use:
+1) "Backwards re-use": the subsequent call to next(Token) is allowed
+to change all aspects of the provided Token, meaning the caller
+must do all persisting of Token that it needs before calling
+next(Token) again.
+2) "Forwards re-use": the caller is allowed to modify the returned
+Token however it wants. Eg the LowerCaseFilter is allowed to
+downcase the characters in-place in the char[] termBuffer.
+The forwards re-use case can break backwards compatibility now. EG:
+if a TokenStream X providing only the "non-reuse" next() API is
+followed by a TokenFilter Y using the "reuse" next(Token) API to pull
+the tokens, then the default implementation in TokenStream.java for
+next(Token) will kick in.
+That default implementation just returns the provided "private copy"
+Token returned by next(). But, because of 2) above, this is not
+legal: if the TokenFilter Y modifies the char[] termBuffer (say), that
+is actually modifying the cached copy being potentially stored by X.
+I think the opposite case is handled correctly.
+A simple way to fix this is to make a full copy of the Token in the
+next(Token) call in TokenStream, just like we do in the next() method
+in TokenStream. The downside is this is a small performance hit. However
+that hit only happens at the boundary between a non-reuse and a re-use
+tokenizer.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+2.3
+Fix_version:
+2.3
+Component:
+modules/analysis
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+20/Nov/07 14:47
+Update date:
+10/May/13 10:44
+Resolved date:
+20/Nov/07 22:41

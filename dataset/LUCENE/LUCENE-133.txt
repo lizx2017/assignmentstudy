@@ -1,0 +1,55 @@
+Summary:
+[PATCH] QueryParser assumes getPositionIncrement() == 1
+Description:
+I've written an analyzer that can output several tokens when just one is input.
+Say : "language" is analyzed as "C", "C++", "Java".
+As stated by the docs, the first token (i.e. "C") is given a PositionIncrement
+of 1 while the other ones have a PositionIncrement of 0. All share the same
+positions as well.
+When parsed by the QueryParser, the query :
+language
+...is interpreted as the PhraseQuery :
+C C++ Java
+...which is obviously not what I want.
+I think the condition that triggers a PhraseQuery (vector's size > 1) is
+over-simplistic. My tokens should feed a BooleanQuery with 3 clauses :
+C || C++ || Java
+However, if I input a 2 tokens query, I surely want (at least) a PhraseQuery.
+Say now that "OS" is analyzed as "Windows", "Unix", "MacOS" (with
+PositionIncrements set to 1-0-0 and same positions).
+The query "language OS" should be parsed as :
+"C Windows" || "C++ Windows" || "Java Windows" || C Unix" || "C++ Unix"
+"Java Unix" "C MacOS" "C++ MacOS" "Java MacOS".
+Well... there may be a better optimization for that but in any case, I think
+that QueryParser.getFieldQuery(String field, Analyzer analyzer, String
+queryText) can not afford to lose the Tokens.getPositionIncrement as it
+acutally does.
+p.b.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/queryparser
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Pierrick Brihaye
+Create date:
+22/Sep/03 01:21
+Update date:
+02/Jun/11 22:05
+Resolved date:
+27/May/06 01:36

@@ -1,0 +1,70 @@
+Summary:
+Improve error message when using STARTROW for meta scans.
+Description:
+While in shell, when doing one of these:
+get '.META.','table,d110818d237e63f-b236-4c89-a2c7-5f6342110818'
+scan '.META.', {LIMIT => 10 , STARTROW=>'table,d110818d3f72650-4a61-4352-ab49-707b42110818'}
+The call fails with a cryptic message:
+ERROR: org.apache.hadoop.hbase.client.RetriesExhaustedException: Trying to contact region server hp-node02.phx1.mozilla.com:60020 for region .META.,,1, row 'crash_reports,d110818d237e63f-b236-4c89-a2c7-5f6342110818', but failed after 7 attempts.
+Exceptions:
+java.io.IOException: java.io.IOException: java.lang.IllegalArgumentException: No 44 in <E9table,d110818d237e63f-b236-4c89-a2c7-5f6342110818��������>, length=43, offset=24
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.convertThrowableToIOE(HRegionServer.java:987)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.convertThrowableToIOE(HRegionServer.java:976)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.get(HRegionServer.java:1632)
+ at sun.reflect.GeneratedMethodAccessor30.invoke(Unknown Source)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:570)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1039)
+Caused by: java.lang.IllegalArgumentException: No 44 in <E9table,d110818d237e63f-b236-4c89-a2c7-5f6342110818��������>, length=43, offset=24
+ at org.apache.hadoop.hbase.KeyValue.getRequiredDelimiterInReverse(KeyValue.java:1281)
+ at org.apache.hadoop.hbase.KeyValue$MetaKeyComparator.compareRows(KeyValue.java:1827)
+ at org.apache.hadoop.hbase.KeyValue$KeyComparator.compare(KeyValue.java:1866)
+ at org.apache.hadoop.hbase.util.Bytes.binarySearch(Bytes.java:1159)
+ at org.apache.hadoop.hbase.io.hfile.HFile$BlockIndex.blockContainingKey(HFile.java:1622)
+ at org.apache.hadoop.hbase.io.hfile.HFile$Reader.blockContainingKey(HFile.java:918)
+ at org.apache.hadoop.hbase.io.hfile.HFile$Reader$Scanner.seekTo(HFile.java:1300)
+ at org.apache.hadoop.hbase.regionserver.StoreFileScanner.seekAtOrAfter(StoreFileScanner.java:136)
+ at org.apache.hadoop.hbase.regionserver.StoreFileScanner.seek(StoreFileScanner.java:96)
+ at org.apache.hadoop.hbase.regionserver.StoreScanner.<init>(StoreScanner.java:77)
+ at org.apache.hadoop.hbase.regionserver.Store.getScanner(Store.java:1345)
+ at org.apache.hadoop.hbase.regionserver.HRegion$RegionScanner.<init>(HRegion.java:2276)
+ at org.apache.hadoop.hbase.regionserver.HRegion.instantiateInternalScanner(HRegion.java:1131)
+ at org.apache.hadoop.hbase.regionserver.HRegion.getScanner(HRegion.java:1123)
+ at org.apache.hadoop.hbase.regionserver.HRegion.getScanner(HRegion.java:1107)
+ at org.apache.hadoop.hbase.regionserver.HRegion.get(HRegion.java:2998)
+ at org.apache.hadoop.hbase.regionserver.HRegion.get(HRegion.java:2900)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.get(HRegionServer.java:1630)
+ ... 5 more
+Apparently the solution is to have the proper number of commas in the query.
+get '.META.','table,d110818d237e63f-b236-4c89-a2c7-5f6342110818,'
+scan '.META.', {LIMIT => 10 , STARTROW=>'table,d110818d3f72650-4a61-4352-ab49-707b42110818,'}
+A better actionable error message should be reported.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.5
+Component:
+shell
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Hsieh
+Reporter:
+Jonathan Hsieh
+Create date:
+02/Sep/11 01:49
+Update date:
+20/Nov/15 11:52
+Resolved date:
+12/Sep/11 20:42

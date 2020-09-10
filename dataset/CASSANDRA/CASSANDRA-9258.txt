@@ -1,0 +1,57 @@
+Summary:
+Range movement causes CPU & performance impact
+Description:
+Observing big CPU & latency regressions when doing range movements on clusters with many tens of thousands of vnodes. See CPU usage increase by ~80% when a single node is being replaced.
+Top methods are:
+1) Ljava/math/BigInteger;.compareTo in Lorg/apache/cassandra/dht/ComparableObjectToken;.compareTo
+2) Lcom/google/common/collect/AbstractMapBasedMultimap;.wrapCollection in Lcom/google/common/collect/AbstractMapBasedMultimap$AsMap$AsMapIterator;.next
+3) Lorg/apache/cassandra/db/DecoratedKey;.compareTo in Lorg/apache/cassandra/dht/Range;.contains
+Here's a sample stack from a thread dump:
+"Thrift:50673" daemon prio=10 tid=0x00007f2f20164800 nid=0x3a04af runnable [0x00007f2d878d0000]
+   java.lang.Thread.State: RUNNABLE
+      at org.apache.cassandra.dht.Range.isWrapAround(Range.java:260)
+      at org.apache.cassandra.dht.Range.contains(Range.java:51)
+      at org.apache.cassandra.dht.Range.contains(Range.java:110)
+      at org.apache.cassandra.locator.TokenMetadata.pendingEndpointsFor(TokenMetadata.java:916)
+      at org.apache.cassandra.service.StorageProxy.performWrite(StorageProxy.java:775)
+      at org.apache.cassandra.service.StorageProxy.mutate(StorageProxy.java:541)
+      at org.apache.cassandra.service.StorageProxy.mutateWithTriggers(StorageProxy.java:616)
+      at org.apache.cassandra.thrift.CassandraServer.doInsert(CassandraServer.java:1101)
+      at org.apache.cassandra.thrift.CassandraServer.doInsert(CassandraServer.java:1083)
+      at org.apache.cassandra.thrift.CassandraServer.batch_mutate(CassandraServer.java:976)
+      at org.apache.cassandra.thrift.Cassandra$Processor$batch_mutate.getResult(Cassandra.java:3996)
+      at org.apache.cassandra.thrift.Cassandra$Processor$batch_mutate.getResult(Cassandra.java:3980)
+      at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:39)
+      at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:39)
+      at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:205)
+      at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+      at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+      at java.lang.Thread.run(Thread.java:745)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.5, 3.0.3, 3.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Dikang Gu
+Reporter:
+Rick Branson
+Create date:
+28/Apr/15 21:33
+Update date:
+16/Apr/19 09:31
+Resolved date:
+05/Jan/16 14:29

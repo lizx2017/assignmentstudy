@@ -1,0 +1,49 @@
+Summary:
+ant prepare-release-no-sign fails intermittently
+Description:
+Mike reported this on the mailing list. This is fully reproducible, you just need to run it twice:
+cd lucene
+# succeeds
+ant prepare-release-no-sign
+# fails
+ant prepare-release-no-sign
+The problem is with this target that runs conditionally:
+  <target name="-unpack-lucene-tgz" unless="lucene.tgz.unpack.dir.exists">
+    <antcall target="-ensure-lucene-tgz-exists" inheritall="false">
+      <propertyset refid="uptodate.and.compiled.properties"/>
+    </antcall>
+    <mkdir dir="${lucene.tgz.unpack.dir}"/>
+    <untar compression="gzip" src="${lucene.tgz.file}" dest="${lucene.tgz.unpack.dir}">
+      <patternset refid="patternset.lucene.solr.jars"/>
+    </untar>
+  </target>
+I attach a diff from the two runs – you can see the second one skipped this task and then cleaned the output folder, which doesn't make sense.
+I don't know how to fix, but I think it's this.
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Dawid Weiss
+Create date:
+17/Feb/16 15:41
+Update date:
+20/Feb/16 11:30
+Resolved date:
+

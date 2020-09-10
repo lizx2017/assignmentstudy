@@ -1,0 +1,50 @@
+Summary:
+TestLoadIncrementalHFiles fails on TRUNK
+Description:
+Its writing KVs w/ LATEST_TIMESTAMP. Here's fix:
+pynchon-56:hbase stack$ git diff
+diff --git a/src/test/java/org/apache/hadoop/hbase/mapreduce/TestLoadIncrementalHFiles.java b/src/test/java/org/apache/hadoop/hbase/mapreduce/TestLoadIncrementalHFiles.java
+index d5374d2..e02d11a 100644
+--- a/src/test/java/org/apache/hadoop/hbase/mapreduce/TestLoadIncrementalHFiles.java
++++ b/src/test/java/org/apache/hadoop/hbase/mapreduce/TestLoadIncrementalHFiles.java
+@@ -175,10 +175,11 @@ public class TestLoadIncrementalHFiles {
+   {
+     HFile.Writer writer = new HFile.Writer(fs, path, BLOCKSIZE, COMPRESSION,
+         KeyValue.KEY_COMPARATOR);
++    long now = System.currentTimeMillis();
+     try {
+       // subtract 2 since iterateOnSplits doesn't include boundary keys
+       for (byte[] key : Bytes.iterateOnSplits(startKey, endKey, numRows-2)) {
+-        KeyValue kv = new KeyValue(key, family, qualifier, key);
++        KeyValue kv = new KeyValue(key, family, qualifier, now, key);
+         writer.append(kv);
+       }
+     } finally {
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+20/Jul/10 05:30
+Update date:
+20/Nov/15 12:41
+Resolved date:
+20/Jul/10 05:32

@@ -1,0 +1,113 @@
+Summary:
+AIOOB during bootstrap causes insta-join as Normal in ring, serving bad reads
+Description:
+The reason I realized there was something still fishy in CASSANDRA-3832 was that I thought I had seen nodes just join instantly into Normal state earlier on trunk. When I tried to re-produce that I got what I'm mentioning in CASSANDRA-3832. While investigating THAT I now triggered what I believe to be insta-join again. The node that was bootstrapping died with the below exception during start-up, automatically re-started (due to monit in this case) and then joined the ring. I'm pretty sure it didn't go into Joining first, I just managed to catch the "watch" I had going on a nodetool | grep on another node. Additionally, looking at the log below I see no evidence of waiting for ring delay which is should as part of boot-strap, nor do I see "Starting to bootstrap ... " logged.
+A quick look at the code makes me confused how this is possible given that the bootstrap flag is set after the point int he code where we bailed with the exception.
+As for the exception, I've seen something like this when investigating CASSANDRA-3831 and CASSANDRA-3417, but I never got to the bottom of it believing it had to do with the lack of synchronization. I look back now and it seems my trunk is one that doesn't have the latest patch that I submitted to CASSANDRA-3417, but I haven't looked at it in detail to determine whether it fixes it. In any case, the insta-join is a problem.
+ INFO [main] 2012-02-06 03:59:34,059 StorageService.java (line 728) JOINING: schema complete, ready to bootstrap
+ INFO [main] 2012-02-06 03:59:34,059 StorageService.java (line 728) JOINING: getting bootstrap token
+ERROR [main] 2012-02-06 03:59:34,062 AbstractCassandraDaemon.java (line 370) Exception encountered during startup
+java.lang.ArrayIndexOutOfBoundsException: -2
+        at java.util.ArrayList.get(ArrayList.java:324)
+        at org.apache.cassandra.locator.TokenMetadata.getPredecessor(TokenMetadata.java:521)
+        at org.apache.cassandra.locator.TokenMetadata.getPrimaryRangeFor(TokenMetadata.java:463)
+        at org.apache.cassandra.locator.TokenMetadata.pendingRangeChanges(TokenMetadata.java:111)
+        at org.apache.cassandra.dht.BootStrapper$1.compare(BootStrapper.java:144)
+        at org.apache.cassandra.dht.BootStrapper$1.compare(BootStrapper.java:141)
+        at java.util.Arrays.mergeSort(Arrays.java:1270)
+        at java.util.Arrays.mergeSort(Arrays.java:1281)
+        at java.util.Arrays.mergeSort(Arrays.java:1281)
+        at java.util.Arrays.mergeSort(Arrays.java:1281)
+        at java.util.Arrays.mergeSort(Arrays.java:1281)
+        at java.util.Arrays.mergeSort(Arrays.java:1281)
+        at java.util.Arrays.sort(Arrays.java:1210)
+        at java.util.Collections.sort(Collections.java:159)
+        at org.apache.cassandra.dht.BootStrapper.getBootstrapSource(BootStrapper.java:140)
+        at org.apache.cassandra.dht.BootStrapper.getBalancedToken(BootStrapper.java:116)
+        at org.apache.cassandra.dht.BootStrapper.getBootstrapToken(BootStrapper.java:111)
+        at org.apache.cassandra.service.StorageService.joinTokenRing(StorageService.java:585)
+        at org.apache.cassandra.service.StorageService.initServer(StorageService.java:502)
+        at org.apache.cassandra.service.StorageService.initServer(StorageService.java:411)
+        at org.apache.cassandra.service.AbstractCassandraDaemon.setup(AbstractCassandraDaemon.java:231)
+        at org.apache.cassandra.service.AbstractCassandraDaemon.activate(AbstractCassandraDaemon.java:353)
+        at org.apache.cassandra.thrift.CassandraDaemon.main(CassandraDaemon.java:107)
+ INFO [StorageServiceShutdownHook] 2012-02-06 03:59:34,065 MessagingService.java (line 541) Waiting for messaging service to quiesce
+ INFO [ACCEPT-/10.40.33.128] 2012-02-06 03:59:34,065 MessagingService.java (line 697) MessagingService shutting down server thread.
+ INFO [main] 2012-02-06 03:59:39,760 AbstractCassandraDaemon.java (line 100) Logging initialized
+ INFO [main] 2012-02-06 03:59:39,763 AbstractCassandraDaemon.java (line 121) JVM vendor/version: Java HotSpot(TM) 64-Bit Server VM/1.6.0_24
+ INFO [main] 2012-02-06 03:59:39,764 AbstractCassandraDaemon.java (line 122) Heap size: 12845645824/12845645824
+ INFO [main] 2012-02-06 03:59:39,764 AbstractCassandraDaemon.java (line 123) Classpath: /usr/local/cassandra/current/conf/atla/cassandra.prod.cuckoo:/usr/local/cassandra/current/vendor/cassandra/build/classes:/usr/local/cassandra/current/vendor/cassandra/lib/antlr-3.2.jar:/usr/local/cassandra/current/vendor/cassandra/lib/apache-cassandra-clientutil-twttr-cassandra-trunk-upstream-but-buildable-log-calc-pending-6.jar:/usr/local/cassandra/current/vendor/cassandra/lib/apache-cassandra-thrift-twttr-cassandra-trunk-upstream-but-buildable-log-calc-pending-6.jar:/usr/local/cassandra/current/vendor/cassandra/lib/apache-cassandra-twttr-cassandra-trunk-upstream-but-buildable-log-calc-pending-6.jar:/usr/local/cassandra/current/vendor/cassandra/lib/avro-1.4.0-fixes.jar:/usr/local/cassandra/current/vendor/cassandra/lib/avro-1.4.0-sources-fixes.jar:/usr/local/cassandra/current/vendor/cassandra/lib/commons-cli-1.1.jar:/usr/local/cassandra/current/vendor/cassandra/lib/commons-codec-1.2.jar:/usr/local/cassandra/current/vendor/cassandra/lib/commons-lang-2.4.jar:/usr/local/cassandra/current/vendor/cassandra/lib/compress-lzf-0.8.4.jar:/usr/local/cassandra/current/vendor/cassandra/lib/concurrentlinkedhashmap-lru-1.2.jar:/usr/local/cassandra/current/vendor/cassandra/lib/guava-r08.jar:/usr/local/cassandra/current/vendor/cassandra/lib/high-scale-lib-1.1.2.jar:/usr/local/cassandra/current/vendor/cassandra/lib/jackson-core-asl-1.9.2.jar:/usr/local/cassandra/current/vendor/cassandra/lib/jackson-mapper-asl-1.9.2.jar:/usr/local/cassandra/current/vendor/cassandra/lib/jamm-0.2.5.jar:/usr/local/cassandra/current/vendor/cassandra/lib/jline-0.9.94.jar:/usr/local/cassandra/current/vendor/cassandra/lib/json-simple-1.1.jar:/usr/local/cassandra/current/vendor/cassandra/lib/libthrift-0.7.0.jar:/usr/local/cassandra/current/vendor/cassandra/lib/log4j-1.2.16.jar:/usr/local/cassandra/current/vendor/cassandra/lib/servlet-api-2.5-20081211.jar:/usr/local/cassandra/current/vendor/cassandra/lib/slf4j-api-1.6.1.jar:/usr/local/cassandra/current/vendor/cassandra/lib/slf4j-log4j12-1.6.1.jar:/usr/local/cassandra/current/vendor/cassandra/lib/snakeyaml-1.6.jar:/usr/local/cassandra/current/vendor/cassandra/lib/snappy-java-1.0.4.1.jar:/usr/local/cassandra/current/vendor/cassandra/lib/snaptree-0.1-SNAPSHOT.jar:/usr/local/cassandra/current/vendor/cassandra/build/lib/jars/*.jar:/usr/local/cassandra/current/vendor/cassandra/build/lib/twitter-jars/*.jar:/usr/local/cassandra/current/vendor/cassandra/lib/twitter-jars/*.jar
+ INFO [main] 2012-02-06 03:59:39,765 CLibrary.java (line 66) JNA not found. Native methods will be disabled.
+ INFO [main] 2012-02-06 03:59:39,772 DatabaseDescriptor.java (line 127) Loading settings from file:/usr/local/cassandra/releases/20120206035358/conf/atla/cassandra.prod.cuckoo-upstream-trunk/cassandra.yaml
+ INFO [main] 2012-02-06 03:59:39,874 DatabaseDescriptor.java (line 181) DiskAccessMode 'auto' determined to be mmap, indexAccessMode is mmap
+ INFO [main] 2012-02-06 03:59:39,884 DatabaseDescriptor.java (line 246) Global memtable threshold is enabled at 4083MB
+ INFO [main] 2012-02-06 03:59:39,992 CacheService.java (line 100) Initializing key cache with capacity of 2 MBs.
+ INFO [main] 2012-02-06 03:59:40,003 CacheService.java (line 111) Scheduling key cache save to each 14400 seconds (going to save all keys).
+ INFO [main] 2012-02-06 03:59:40,004 CacheService.java (line 125) Initializing row cache with capacity of 0 MBs and provider org.apache.cassandra.cache.ConcurrentLinkedHashCacheProvider
+ INFO [main] 2012-02-06 03:59:40,006 CacheService.java (line 137) Scheduling row cache save to each 0 seconds (going to save all keys).
+ INFO [SSTableBatchOpen:1] 2012-02-06 03:59:40,070 SSTableReader.java (line 156) Opening /data/diskarray/tables/system/schema_columnfamilies/system-schema_columnfamilies-hc-30 (1399 bytes)
+ INFO [SSTableBatchOpen:2] 2012-02-06 03:59:40,071 SSTableReader.java (line 156) Opening /data/diskarray/tables/system/schema_columnfamilies/system-schema_columnfamilies-hc-29 (1399 bytes)
+ INFO [SSTableBatchOpen:3] 2012-02-06 03:59:40,071 SSTableReader.java (line 156) Opening /data/diskarray/tables/system/schema_columnfamilies/system-schema_columnfamilies-hc-31 (1399 bytes)
+ INFO [SSTableBatchOpen:1] 2012-02-06 03:59:40,106 SSTableReader.java (line 156) Opening /data/diskarray/tables/system/schema_keyspaces/system-schema_keyspaces-hc-30 (255 bytes)
+ INFO [SSTableBatchOpen:3] 2012-02-06 03:59:40,107 SSTableReader.java (line 156) Opening /data/diskarray/tables/system/schema_keyspaces/system-schema_keyspaces-hc-29 (255 bytes)
+ INFO [SSTableBatchOpen:2] 2012-02-06 03:59:40,107 SSTableReader.java (line 156) Opening /data/diskarray/tables/system/schema_keyspaces/system-schema_keyspaces-hc-31 (255 bytes)
+ INFO [SSTableBatchOpen:1] 2012-02-06 03:59:40,116 SSTableReader.java (line 156) Opening /data/diskarray/tables/system/LocationInfo/system-LocationInfo-hc-245 (6775 bytes)
+ INFO [main] 2012-02-06 03:59:40,391 AbstractCassandraDaemon.java (line 208) completed pre-loading (4 keys) key cache.
+ INFO [main] 2012-02-06 03:59:40,504 CommitLog.java (line 142) Replaying /data/disk1/commitlog/CommitLog-650613166587178.log, /data/disk1/commitlog/CommitLog-650613060900385.log
+ INFO [main] 2012-02-06 03:59:40,508 CommitLog.java (line 185) Replaying /data/disk1/commitlog/CommitLog-650613166587178.log
+ INFO [main] 2012-02-06 03:59:40,509 CommitLog.java (line 339) Finished reading /data/disk1/commitlog/CommitLog-650613166587178.log
+ INFO [main] 2012-02-06 03:59:40,509 CommitLog.java (line 185) Replaying /data/disk1/commitlog/CommitLog-650613060900385.log
+ INFO [main] 2012-02-06 03:59:40,584 CommitLog.java (line 339) Finished reading /data/disk1/commitlog/CommitLog-650613060900385.log
+ INFO [main] 2012-02-06 03:59:40,588 ColumnFamilyStore.java (line 590) Enqueuing flush of Memtable-Versions@275980095(141/176 serialized/live bytes, 3 ops)
+ INFO [FlushWriter:1] 2012-02-06 03:59:40,600 Memtable.java (line 252) Writing Memtable-Versions@275980095(141/176 serialized/live bytes, 3 ops)
+ INFO [FlushWriter:1] 2012-02-06 03:59:40,618 Memtable.java (line 293) Completed flushing /data/diskarray/tables/system/Versions/system-Versions-hc-1-Data.db (305 bytes)
+ INFO [main] 2012-02-06 03:59:40,625 CommitLog.java (line 144) Log replay complete, 3 replayed mutations
+ INFO [main] 2012-02-06 03:59:40,637 StorageService.java (line 416) Cassandra version: twttr-cassandra-trunk-upstream-but-buildable-log-calc-pending-6
+ INFO [main] 2012-02-06 03:59:40,638 StorageService.java (line 417) Thrift API version: 19.28.0
+ INFO [main] 2012-02-06 03:59:40,639 StorageService.java (line 418) CQL supported versions: 2.0.0,3.0.0-beta1 (default: 2.0.0)
+ INFO [main] 2012-02-06 03:59:40,639 StorageService.java (line 431) Loading persisted ring state
+ INFO [main] 2012-02-06 03:59:40,670 StorageService.java (line 512) Starting up server gossip
+ INFO [main] 2012-02-06 03:59:40,676 ColumnFamilyStore.java (line 590) Enqueuing flush of Memtable-LocationInfo@1983702821(29/36 serialized/live bytes, 1 ops)
+ INFO [FlushWriter:1] 2012-02-06 03:59:40,676 Memtable.java (line 252) Writing Memtable-LocationInfo@1983702821(29/36 serialized/live bytes, 1 ops)
+ INFO [FlushWriter:1] 2012-02-06 03:59:40,683 Memtable.java (line 293) Completed flushing /data/diskarray/tables/system/LocationInfo/system-LocationInfo-hc-246-Data.db (80 bytes)
+ INFO [main] 2012-02-06 03:59:40,689 MessagingService.java (line 286) Starting Messaging Service on port 7000
+ WARN [main] 2012-02-06 03:59:40,697 StorageService.java (line 619) Generated random token 100588447224685279983438741296967523984. Random tokens will result in an unbalanced ring; see http://wiki.apache.org/cassandra/Operations
+ INFO [main] 2012-02-06 03:59:40,697 ColumnFamilyStore.java (line 590) Enqueuing flush of Memtable-LocationInfo@44130647(53/66 serialized/live bytes, 2 ops)
+ INFO [FlushWriter:1] 2012-02-06 03:59:40,698 Memtable.java (line 252) Writing Memtable-LocationInfo@44130647(53/66 serialized/live bytes, 2 ops)
+ INFO [FlushWriter:1] 2012-02-06 03:59:40,703 Memtable.java (line 293) Completed flushing /data/diskarray/tables/system/LocationInfo/system-LocationInfo-hc-247-Data.db (163 bytes)
+ INFO [main] 2012-02-06 03:59:40,705 StorageService.java (line 1049) Node /10.40.33.128 state jump to normal
+ INFO [main] 2012-02-06 03:59:40,711 StorageService.java (line 1275) calculate pending ranges called, took 6 ms
+ INFO [main] 2012-02-06 03:59:40,711 StorageService.java (line 641) Bootstrap/Replace/Move completed! Now serving reads.
+ INFO [main] 2012-02-06 03:59:40,712 Mx4jTool.java (line 72) Will not load MX4J, mx4j-tools.jar is not in the classpath
+ INFO [main] 2012-02-06 03:59:40,736 CassandraDaemon.java (line 125) Binding thrift service to localhost/127.0.0.1:9160
+ INFO [main] 2012-02-06 03:59:40,738 CassandraDaemon.java (line 134) Using TFastFramedTransport with a max frame size of 15728640 bytes.
+ INFO [main] 2012-02-06 03:59:40,740 CassandraDaemon.java (line 161) Using synchronous/threadpool thrift server on localhost/127.0.0.1 : 9160
+ INFO [Thread-2] 2012-02-06 03:59:40,741 CassandraDaemon.java (line 213) Listening for thrift clients...
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Peter Schuller
+Reporter:
+Peter Schuller
+Create date:
+06/Feb/12 04:13
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Jan/13 23:23

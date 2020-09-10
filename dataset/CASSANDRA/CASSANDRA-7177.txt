@@ -1,0 +1,53 @@
+Summary:
+Starting threads in the OutboundTcpConnectionPool constructor causes race conditions
+Description:
+The OutboundTcpConnectionPool starts connection threads in its constructor, causing race conditions when MessagingService#getConnectionPool is concurrently called for the first time for a given address.
+I.e., here's one of the races:
+ WARN 12:49:03,182 Error processing org.apache.cassandra.metrics:type=Connection,scope=127.0.0.1,name=CommandPendingTasks
+javax.management.InstanceAlreadyExistsException: org.apache.cassandra.metrics:type=Connection,scope=127.0.0.1,name=CommandPendingTasks
+ at com.sun.jmx.mbeanserver.Repository.addMBean(Repository.java:437)
+ at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.registerWithRepository(DefaultMBeanServerInterceptor.java:1898)
+ at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.registerDynamicMBean(DefaultMBeanServerInterceptor.java:966)
+ at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.registerObject(DefaultMBeanServerInterceptor.java:900)
+ at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.registerMBean(DefaultMBeanServerInterceptor.java:324)
+ at com.sun.jmx.mbeanserver.JmxMBeanServer.registerMBean(JmxMBeanServer.java:522)
+ at com.yammer.metrics.reporting.JmxReporter.registerBean(JmxReporter.java:464)
+ at com.yammer.metrics.reporting.JmxReporter.processGauge(JmxReporter.java:438)
+ at com.yammer.metrics.reporting.JmxReporter.processGauge(JmxReporter.java:16)
+ at com.yammer.metrics.core.Gauge.processWith(Gauge.java:28)
+ at com.yammer.metrics.reporting.JmxReporter.onMetricAdded(JmxReporter.java:395)
+ at com.yammer.metrics.core.MetricsRegistry.notifyMetricAdded(MetricsRegistry.java:516)
+ at com.yammer.metrics.core.MetricsRegistry.getOrAdd(MetricsRegistry.java:491)
+ at com.yammer.metrics.core.MetricsRegistry.newGauge(MetricsRegistry.java:79)
+ at com.yammer.metrics.Metrics.newGauge(Metrics.java:70)
+ at org.apache.cassandra.metrics.ConnectionMetrics.<init>(ConnectionMetrics.java:71)
+ at org.apache.cassandra.net.OutboundTcpConnectionPool.<init>(OutboundTcpConnectionPool.java:55)
+ at org.apache.cassandra.net.MessagingService.getConnectionPool(MessagingService.java:498)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.8, 2.1 rc2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergio Bossa
+Reporter:
+Sergio Bossa
+Create date:
+06/May/14 15:24
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/May/14 19:10

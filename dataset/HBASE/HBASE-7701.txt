@@ -1,0 +1,42 @@
+Summary:
+Opening regions on dead server are not reassigned quickly
+Description:
+Closed regions are not removed from assignments. I am not sure if it's a general state problem, or just a small bug; for now, one manifestation is that moved region is ignored by SSH of the target server if target server dies before updating ZK.
+2013-01-22 17:59:00,524 DEBUG [IPC Server handler 3 on 50658] master.AssignmentManager(1475): Sent CLOSE to 10.11.2.92,51231,1358906285048 for region IntegrationTestRebalanceAndKillServersTargeted,66666660,1358906196709.0200b366bc37c5afd1185f7d487c7dfb.
+2013-01-22 17:59:00,997 DEBUG [RS_CLOSE_REGION-10.11.2.92,51231,1358906285048-1] handler.CloseRegionHandler(167): set region closed state in zk successfully for region IntegrationTestRebalanceAndKillServersTargeted,66666660,1358906196709.0200b366bc37c5afd1185f7d487c7dfb. sn name: 10.11.2.92,51231,1358906285048
+2013-01-22 17:59:01,088 INFO  [MASTER_CLOSE_REGION-10.11.2.92,50658,1358906192673-0] master.RegionStates(242): Region {NAME =&gt; &apos;IntegrationTestRebalanceAndKillServersTargeted,66666660,1358906196709.0200b366bc37c5afd1185f7d487c7dfb.&apos;, STARTKEY =&gt; &apos;66666660&apos;, ENDKEY =&gt; &apos;7333332c&apos;, ENCODED =&gt; 0200b366bc37c5afd1185f7d487c7dfb,} transitioned from {IntegrationTestRebalanceAndKillServersTargeted,66666660,1358906196709.0200b366bc37c5afd1185f7d487c7dfb. state=CLOSED, ts=1358906341087, server=null} to {IntegrationTestRebalanceAndKillServersTargeted,66666660,1358906196709.0200b366bc37c5afd1185f7d487c7dfb. state=OFFLINE, ts=1358906341088, server=null}
+2013-01-22 17:59:01,128 INFO  [MASTER_CLOSE_REGION-10.11.2.92,50658,1358906192673-0] master.AssignmentManager(1596): Assigning region IntegrationTestRebalanceAndKillServersTargeted,66666660,1358906196709.0200b366bc37c5afd1185f7d487c7dfb. to 10.11.2.92,50661,1358906192942
+
+... (50661 didn't update ZK to OPEN, only OPENING)
+
+2013-01-22 17:59:06,605 INFO  [MASTER_SERVER_OPERATIONS-10.11.2.92,50658,1358906192673-2] handler.ServerShutdownHandler(202): Reassigning 7 region(s) that 10.11.2.92,50661,1358906192942 was carrying (skipping 0 regions(s) that are already in transition)
+2013-01-22 17:59:06,605 DEBUG [MASTER_SERVER_OPERATIONS-10.11.2.92,50658,1358906192673-2] handler.ServerShutdownHandler(219): Skip assigning region IntegrationTestRebalanceAndKillServersTargeted,66666660,1358906196709.0200b366bc37c5afd1185f7d487c7dfb. because it has been opened in 10.11.2.92,51231,1358906285048
+Note the server in the last line - the one that has long closed the region.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Sergey Shelukhin
+Create date:
+28/Jan/13 23:45
+Update date:
+23/Sep/13 18:31
+Resolved date:
+01/Feb/13 18:17

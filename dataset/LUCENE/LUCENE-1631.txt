@@ -1,0 +1,58 @@
+Summary:
+CLONE -You cannot sort on fields that don't exist
+Description:
+I still get this error in 2.4.1 - if field does not exist in index, there is nullPointException if it search over multiple index. In following test code, there is runtime error, here is part of test code.
+indexSingleFieldDocs(new Field[]
+{new Field("ds", "xyz", Field.Store.YES, Field.Index.NOT_ANALYZED) , new Field("dsc", "hello", Field.Store.NO, Field.Index.ANALYZED)}
+);
+indexSingleFieldDocs(new Field[]
+{new Field("ds", "def", Field.Store.YES, Field.Index.NOT_ANALYZED) , new Field("dsc", "hello", Field.Store.NO, Field.Index.ANALYZED)}
+);
+...
+QueryParser p = new QueryParser("dsc", new StandardAnalyzer());
+Query q = p.parse("hello");
+Hits hits = searcher.search(q,new Sort("ds"));
+If change "ds" to some others, got this exception:
+java.lang.RuntimeException: field "ds" does not appear to be indexed
+at org.apache.lucene.search.ExtendedFieldCacheImpl$5.createValue(ExtendedFieldCacheImpl.java:173)
+at org.apache.lucene.search.FieldCacheImpl$Cache.get(FieldCacheImpl.java:71)
+at org.apache.lucene.search.ExtendedFieldCacheImpl.getAuto(ExtendedFieldCacheImpl.java:127)
+at org.apache.lucene.search.FieldSortedHitQueue.comparatorAuto(FieldSortedHitQueue.java:487)
+at org.apache.lucene.search.FieldSortedHitQueue$1.createValue(FieldSortedHitQueue.java:184)
+at org.apache.lucene.search.FieldCacheImpl$Cache.get(FieldCacheImpl.java:71)
+at org.apache.lucene.search.FieldSortedHitQueue.getCachedComparator(FieldSortedHitQueue.java:167)
+at org.apache.lucene.search.FieldSortedHitQueue.<init>(FieldSortedHitQueue.java:55)
+at org.apache.lucene.search.TopFieldDocCollector.<init>(TopFieldDocCollector.java:43)
+at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:121)
+at org.apache.lucene.search.Hits.getMoreDocs(Hits.java:113)
+at org.apache.lucene.search.Hits.<init>(Hits.java:90)
+at org.apache.lucene.search.Searcher.search(Searcher.java:61)
+at com.edgenius.test.lucene.TestLucene.testSort(TestLucene.java:207)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+2.4.1
+Fix_version:
+1.9
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yonik Seeley
+Reporter:
+steve neo
+Create date:
+08/May/09 15:18
+Update date:
+10/May/13 10:44
+Resolved date:
+02/Jun/09 19:49

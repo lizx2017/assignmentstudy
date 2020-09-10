@@ -1,0 +1,48 @@
+Summary:
+Distributed log splitting deleteNode races against splitLog retry
+Description:
+Recently, during 0.92 rc testing, we found distributed log splitting hangs there forever. Please see attached screen shot.
+I looked into it and here is what happened I think:
+1. One rs died, the servershutdownhandler found it out and started the distributed log splitting;
+2. All three tasks failed, so the three tasks were deleted, asynchronously;
+3. Servershutdownhandler retried the log splitting;
+4. During the retrial, it created these three tasks again, and put them in a hashmap (tasks);
+5. The asynchronously deletion in step 2 finally happened for one task, in the callback, it removed one
+task in the hashmap;
+6. One of the newly submitted tasks' zookeeper watcher found out that task is unassigned, and it is not
+in the hashmap, so it created a new orphan task.
+7. All three tasks failed, but that task created in step 6 is an orphan so the batch.err counter was one short,
+so the log splitting hangs there and keeps waiting for the last task to finish which is never going to happen.
+So I think the problem is step 2. The fix is to make deletion sync, instead of async, so that the retry will have
+a clean start.
+Async deleteNode will mess up with split log retrial. In extreme situation, if async deleteNode doesn't happen
+soon enough, some node created during the retrial could be deleted.
+deleteNode should be sync.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0, 0.94.0
+Fix_version:
+0.92.0
+Component:
+wal
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Prakash Khemani
+Reporter:
+Jimmy Xiang
+Create date:
+21/Dec/11 03:50
+Update date:
+20/Nov/15 11:55
+Resolved date:
+06/Jan/12 19:39

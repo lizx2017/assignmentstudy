@@ -1,0 +1,67 @@
+Summary:
+NPE when you mistakenly set listen_address to 0.0.0.0
+Description:
+It's clearly stated that setting listen_address to 0.0.0.0 is always wrong. But if you mistakenly do it anyway you end up with an NPE on 1.2.8 while it's not the case on 2.0.0-rc1. See bellow:
+ INFO 16:34:43,598 JOINING: waiting for ring information
+ INFO 16:34:44,505 Handshaking version with /127.0.0.1
+ INFO 16:34:44,533 Handshaking version with /0.0.0.0
+ INFO 16:35:13,626 JOINING: schema complete, ready to bootstrap
+ INFO 16:35:13,631 JOINING: getting bootstrap token
+ERROR 16:35:13,633 Exception encountered during startup
+java.lang.RuntimeException: No other nodes seen!  Unable to bootstrap.If you intended to start a single-node cluster, you should make sure your broadcast_address (or listen_address) is listed as a seed.  Otherwise, you need to determine why the seed being contacted has no knowledge of the rest of the cluster.  Usually, this can be solved by giving all nodes the same seed list.
+ at org.apache.cassandra.dht.BootStrapper.getBootstrapSource(BootStrapper.java:154)
+ at org.apache.cassandra.dht.BootStrapper.getBalancedToken(BootStrapper.java:135)
+ at org.apache.cassandra.dht.BootStrapper.getBootstrapTokens(BootStrapper.java:115)
+ at org.apache.cassandra.service.StorageService.joinTokenRing(StorageService.java:666)
+ at org.apache.cassandra.service.StorageService.initServer(StorageService.java:554)
+ at org.apache.cassandra.service.StorageService.initServer(StorageService.java:451)
+ at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:348)
+ at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:447)
+ at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:490)
+java.lang.RuntimeException: No other nodes seen!  Unable to bootstrap.If you intended to start a single-node cluster, you should make sure your broadcast_address (or listen_address) is listed as a seed.  Otherwise, you need to determine why the seed being contacted has no knowledge of the rest of the cluster.  Usually, this can be solved by giving all nodes the same seed list.
+ at org.apache.cassandra.dht.BootStrapper.getBootstrapSource(BootStrapper.java:154)
+ at org.apache.cassandra.dht.BootStrapper.getBalancedToken(BootStrapper.java:135)
+ at org.apache.cassandra.dht.BootStrapper.getBootstrapTokens(BootStrapper.java:115)
+ at org.apache.cassandra.service.StorageService.joinTokenRing(StorageService.java:666)
+ at org.apache.cassandra.service.StorageService.initServer(StorageService.java:554)
+ at org.apache.cassandra.service.StorageService.initServer(StorageService.java:451)
+ at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:348)
+ at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:447)
+ at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:490)
+Exception encountered during startup: No other nodes seen!  Unable to bootstrap.If you intended to start a single-node cluster, you should make sure your broadcast_address (or listen_address) is listed as a seed.  Otherwise, you need to determine why the seed being contacted has no knowledge of the rest of the cluster.  Usually, this can be solved by giving all nodes the same seed list.
+ERROR 16:35:13,668 Exception in thread Thread[StorageServiceShutdownHook,5,main]
+java.lang.NullPointerException
+ at org.apache.cassandra.service.StorageService.stopRPCServer(StorageService.java:321)
+ at org.apache.cassandra.service.StorageService.shutdownClientServers(StorageService.java:370)
+ at org.apache.cassandra.service.StorageService.access$000(StorageService.java:88)
+ at org.apache.cassandra.service.StorageService$1.runMayThrow(StorageService.java:519)
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28)
+ at java.lang.Thread.run(Thread.java:724)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.11
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Michaël Figuière
+Create date:
+08/Aug/13 23:41
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Sep/13 15:10

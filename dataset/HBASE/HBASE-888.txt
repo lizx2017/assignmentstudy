@@ -1,0 +1,166 @@
+Summary:
+NPE in HLog.append -> DroppedSnapshotException causes hosed regionserver
+Description:
+Might be related to HBASE-644?
+In my regionserver log I see this:
+2008-09-17 21:36:06,335 INFO org.apache.hadoop.ipc.Server: IPC Server handler 3 on 60020, call batchUpdate([B@ff0be7b, row => Sn5MiT-wIYUoud4gqyj0r-==,
+{column => anchor:anchor_text, value => '...'}
+) f
+rom 208.76.44.97:41671: error: java.io.IOException: java.lang.NullPointerException
+java.io.IOException: java.lang.NullPointerException
+at org.apache.hadoop.io.SequenceFile$Writer.checkAndWriteSync(SequenceFile.java:970)
+at org.apache.hadoop.io.SequenceFile$Writer.append(SequenceFile.java:1012)
+at org.apache.hadoop.io.SequenceFile$Writer.append(SequenceFile.java:979)
+at org.apache.hadoop.hbase.regionserver.HLog.append(HLog.java:395)
+at org.apache.hadoop.hbase.regionserver.HRegion.update(HRegion.java:1631)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1417)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1145)
+at sun.reflect.GeneratedMethodAccessor24.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+at java.lang.reflect.Method.invoke(Unknown Source)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:473)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-09-17 21:36:06,336 WARN org.apache.hadoop.ipc.Server: IPC Server Responder, call batchUpdate([B@ff0be7b, row => Sn5MiT-wIYUoud4gqyj0r-==,
+{column => anchor:anchor_text, value => '...'}
+) from x.x.44.97:41671: output error
+2008-09-17 21:36:06,336 INFO org.apache.hadoop.ipc.Server: IPC Server handler 3 on 60020 caught: java.nio.channels.ClosedChannelException
+at sun.nio.ch.SocketChannelImpl.ensureWriteOpen(Unknown Source)
+at sun.nio.ch.SocketChannelImpl.write(Unknown Source)
+at org.apache.hadoop.ipc.Server$Responder.processResponse(Server.java:587)
+at org.apache.hadoop.ipc.Server$Responder.doRespond(Server.java:651)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:909)
+2008-09-17 21:36:06,336 INFO org.apache.hadoop.ipc.Server: IPC Server handler 3 on 60020: exiting
+2008-09-17 21:37:06,312 FATAL org.apache.hadoop.hbase.regionserver.Flusher: Replay of hlog required. Forcing server restart
+org.apache.hadoop.hbase.DroppedSnapshotException: region: enwiki3,4m7aFqMi8ijHEpBxTuzP3k==,1221687099180
+at org.apache.hadoop.hbase.regionserver.HRegion.internalFlushcache(HRegion.java:1079)
+at org.apache.hadoop.hbase.regionserver.HRegion.flushcache(HRegion.java:977)
+at org.apache.hadoop.hbase.regionserver.Flusher.flushRegion(Flusher.java:174)
+at org.apache.hadoop.hbase.regionserver.Flusher.flushSomeRegions(Flusher.java:268)
+at org.apache.hadoop.hbase.regionserver.Flusher.reclaimMemcacheMemory(Flusher.java:253)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1144)
+at sun.reflect.GeneratedMethodAccessor24.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+at java.lang.reflect.Method.invoke(Unknown Source)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:473)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+Caused by: java.io.IOException: Call failed on local exception
+at org.apache.hadoop.ipc.Client.call(Client.java:718)
+at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:216)
+at org.apache.hadoop.dfs.$Proxy1.getFileInfo(Unknown Source)
+at sun.reflect.GeneratedMethodAccessor2.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+at java.lang.reflect.Method.invoke(Unknown Source)
+at org.apache.hadoop.io.retry.RetryInvocationHandler.invokeMethod(RetryInvocationHandler.java:82)
+at org.apache.hadoop.io.retry.RetryInvocationHandler.invoke(RetryInvocationHandler.java:59)
+at org.apache.hadoop.dfs.$Proxy1.getFileInfo(Unknown Source)
+at org.apache.hadoop.dfs.DFSClient.getFileInfo(DFSClient.java:566)
+at org.apache.hadoop.dfs.DistributedFileSystem.getFileStatus(DistributedFileSystem.java:390)
+at org.apache.hadoop.fs.FileSystem.exists(FileSystem.java:667)
+at org.apache.hadoop.hbase.regionserver.HStoreFile.<init>(HStoreFile.java:149)
+at org.apache.hadoop.hbase.regionserver.HStore.internalFlushCache(HStore.java:591)
+at org.apache.hadoop.hbase.regionserver.HStore.flushCache(HStore.java:569)
+at org.apache.hadoop.hbase.regionserver.HRegion.internalFlushcache(HRegion.java:1066)
+... 10 more
+Caused by: java.nio.channels.ClosedByInterruptException
+at java.nio.channels.spi.AbstractInterruptibleChannel.end(Unknown Source)
+at sun.nio.ch.SocketChannelImpl.write(Unknown Source)
+at org.apache.hadoop.net.SocketOutputStream$Writer.performIO(SocketOutputStream.java:55)
+at org.apache.hadoop.net.SocketIOWithTimeout.doIO(SocketIOWithTimeout.java:140)
+at org.apache.hadoop.net.SocketOutputStream.write(SocketOutputStream.java:146)
+at org.apache.hadoop.net.SocketOutputStream.write(SocketOutputStream.java:107)
+at java.io.BufferedOutputStream.flushBuffer(Unknown Source)
+at java.io.BufferedOutputStream.flush(Unknown Source)
+at java.io.DataOutputStream.flush(Unknown Source)
+at org.apache.hadoop.ipc.Client$Connection.sendParam(Client.java:478)
+at org.apache.hadoop.ipc.Client.call(Client.java:705)
+... 25 more
+2008-09-17 21:37:06,339 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: coral-dfs.cluster.powerset.com/208.76.44.135:10000. Already tried 0 time(s).
+2008-09-17 21:37:06,346 INFO org.apache.hadoop.ipc.Server: IPC Server handler 2 on 60020, call batchUpdate([B@52fac63b, row => 6PceOtjHe-VpiGbS5DZgMV==,
+{column => [..], value => '...'}
+) from x.x.44.96:44885: error: java.io.IOException: Cannot append; log is closed
+java.io.IOException: Cannot append; log is closed
+at org.apache.hadoop.hbase.regionserver.HLog.append(HLog.java:376)
+at org.apache.hadoop.hbase.regionserver.HRegion.update(HRegion.java:1631)
+at org.apache.hadoop.hbase.regionserver.HRegion.batchUpdate(HRegion.java:1417)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1145)
+at sun.reflect.GeneratedMethodAccessor24.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+at java.lang.reflect.Method.invoke(Unknown Source)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:473)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+2008-09-17 21:37:06,346 WARN org.apache.hadoop.ipc.Server: IPC Server Responder, call batchUpdate([B@52fac63b, row => 6PceOtjHe-VpiGbS5DZgMV==,
+{column => [...], value => '...'}
+) from 208.76.44.96:44885: output error
+2008-09-17 21:37:06,346 INFO org.apache.hadoop.ipc.Server: IPC Server handler 2 on 60020 caught: java.nio.channels.ClosedChannelException
+at sun.nio.ch.SocketChannelImpl.ensureWriteOpen(Unknown Source)
+at sun.nio.ch.SocketChannelImpl.write(Unknown Source)
+at org.apache.hadoop.ipc.Server$Responder.processResponse(Server.java:587)
+at org.apache.hadoop.ipc.Server$Responder.doRespond(Server.java:651)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:909)
+2008-09-17 21:37:06,346 INFO org.apache.hadoop.ipc.Server: IPC Server handler 2 on 60020: exiting
+2008-09-17 21:37:54,491 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Scanner 3236781325465377548 lease expired
+2008-09-17 21:37:54,492 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: No more active scanners for region enwiki,MHw740LAdNxzM68Dn7LXs-==,1220059653599
+2008-09-17 21:37:54,492 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Updates disabled for region enwiki,MHw740LAdNxzM68Dn7LXs-==,1220059653599
+2008-09-17 21:37:54,492 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: No more row locks outstanding on region enwiki,MHw740LAdNxzM68Dn7LXs-==,1220059653599
+2008-09-17 21:37:54,492 DEBUG org.apache.hadoop.hbase.regionserver.HStore: closed 370784783/anchor
+2008-09-17 21:37:54,493 DEBUG org.apache.hadoop.hbase.regionserver.HStore: closed 370784783/misc
+2008-09-17 21:37:54,493 DEBUG org.apache.hadoop.hbase.regionserver.HStore: closed 370784783/alternate_title
+2008-09-17 21:37:54,493 DEBUG org.apache.hadoop.hbase.regionserver.HStore: closed 370784783/page
+2008-09-17 21:37:54,493 DEBUG org.apache.hadoop.hbase.regionserver.HStore: closed 370784783/alternate_url
+2008-09-17 21:37:54,493 INFO org.apache.hadoop.hbase.regionserver.HRegion: closed enwiki,MHw740LAdNxzM68Dn7LXs-==,1220059653599
+2008-09-17 21:37:54,493 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: worker thread exiting
+2008-09-17 21:38:07,581 FATAL org.apache.hadoop.hbase.regionserver.HRegionServer: Shutting down HRegionServer: file system not available
+java.io.IOException: File system is not available
+at org.apache.hadoop.hbase.util.FSUtils.checkFileSystemAvailable(FSUtils.java:82)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.checkFileSystem(HRegionServer.java:1484)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.batchUpdate(HRegionServer.java:1150)
+at sun.reflect.GeneratedMethodAccessor24.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+at java.lang.reflect.Method.invoke(Unknown Source)
+at org.apache.hadoop.hbase.ipc.HbaseRPC$Server.call(HbaseRPC.java:473)
+at org.apache.hadoop.ipc.Server$Handler.run(Server.java:888)
+Caused by: java.io.IOException: Call failed on local exception
+at org.apache.hadoop.ipc.Client.call(Client.java:718)
+at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:216)
+at org.apache.hadoop.dfs.$Proxy1.getFileInfo(Unknown Source)
+at sun.reflect.GeneratedMethodAccessor2.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+at java.lang.reflect.Method.invoke(Unknown Source)
+at org.apache.hadoop.io.retry.RetryInvocationHandler.invokeMethod(RetryInvocationHandler.java:82)
+at org.apache.hadoop.io.retry.RetryInvocationHandler.invoke(RetryInvocationHandler.java:59)
+at org.apache.hadoop.dfs.$Proxy1.getFileInfo(Unknown Source)
+at org.apache.hadoop.dfs.DFSClient.getFileInfo(DFSClient.java:566)
+at org.apache.hadoop.dfs.DistributedFileSystem.getFileStatus(DistributedFileSystem.java:390)
+at org.apache.hadoop.fs.FileSystem.exists(FileSystem.java:667)
+at org.apache.hadoop.hbase.util.FSUtils.checkFileSystemAvailable(FSUtils.java:69)
+... 7 more
+:
+The result is that every call to the regionserver hangs because the regionserver can't touch the DFS, because the DFSClient is closed. The regionserver won't restart either.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.2.1
+Fix_version:
+None
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jim Kellerman
+Reporter:
+Michael Bieniosek
+Create date:
+17/Sep/08 21:45
+Update date:
+07/Mar/09 18:09
+Resolved date:
+07/Mar/09 18:09

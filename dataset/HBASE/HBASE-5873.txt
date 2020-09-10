@@ -1,0 +1,48 @@
+Summary:
+TimeOut Monitor thread should be started after atleast one region server registers.
+Description:
+Currently timeout monitor thread is started even before the region server has registered with the master.
+In timeout monitor we depend on the region server to be online
+boolean allRSsOffline = this.serverManager.getOnlineServersList().
+        isEmpty();
+Now when the master starts up it sees there are no online servers and hence sets
+allRSsOffline to true.
+setAllRegionServersOffline(allRSsOffline);
+So this.allRegionServersOffline is also true.
+By this time an RS has come up,
+Now timeout comes up again (after 10secs) in the next cycle he sees allRSsOffline as false.
+Hence
+else if (this.allRegionServersOffline && !allRSsOffline) {
+            // if some RSs just came back online, we can start the
+            // the assignment right away
+            actOnTimeOut(regionState);
+This condition makes him to take action based on timeout.
+Because of this even if one Region assignment of ROOT is going on, this piece of code triggers another assignment and thus we get RegionAlreadyinTransition Exception. Later we need to wait for 30 mins for assigning ROOT itself.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.90.6
+Fix_version:
+0.94.0, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+25/Apr/12 08:17
+Update date:
+26/Feb/13 08:12
+Resolved date:
+25/Apr/12 20:58

@@ -1,0 +1,56 @@
+Summary:
+CQL Not Handling Descending Clustering Order On A timeuuid Correctly
+Description:
+I raised this issue as a question in the mailing list:
+http://www.mail-archive.com/user@cassandra.apache.org/msg28787.html
+If I create a table (cqlsh) with the following schema:
+CREATE TABLE mytable ( column1 text,
+column2 text,
+messageId timeuuid,
+message blob,
+PRIMARY KEY ((column1, column2), messageId));
+I can quite happily add rows to this table:
+insert into client_queue (column1,column2,messageId,message) VALUES
+('string1','string2',now(),'ABCCDCC123');
+If I however create a table with a desc clustering order on messageid:
+CREATE TABLE mytable ( column1 text,
+column2 text,
+messageId timeuuid,
+message blob,
+PRIMARY KEY ((column1, column2), messageId)) WITH CLUSTERING
+ORDER BY (messageId DESC);
+Inserts are failing. I am getting the following error:
+insert into client_queue2 (column1,column2,messageId,message) VALUES
+('string1','string2',now(),'ABCCDCC123');
+I get the following error:
+Bad Request: Type error: cannot assign result of function now (type
+timeuuid) to messageid (type
+'org.apache.cassandra.db.marshal.ReversedType(org.apache.cassandra.db.marshal.TimeUUIDType)')
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.4
+Component:
+None
+Label:
+None
+Environment:
+mac os x, cqlsh
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Gareth Collins
+Create date:
+26/Mar/13 19:29
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Mar/13 15:18

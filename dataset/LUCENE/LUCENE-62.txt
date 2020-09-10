@@ -1,0 +1,46 @@
+Summary:
+null pointer exception in termCompare
+Description:
+WildcardTermEnum or FuzzyTermQueryEnum both call setEnum in their constructors.
+Inside the superclass, FilteredTermEnum, I find:
+protected void setEnum(TermEnum actualEnum) throws IOException
+{ this.actualEnum = actualEnum; // Find the first term that matches Term term = actualEnum.term(); if (termCompare(term)) currentTerm = term; else next(); }
+Because setEnum is actually called with parameter reader.terms(<some term>),
+the expression 'actualEnum.term()' could return null. None of the termCompare
+methods check for a null parameter, and they will throw a null pointer
+exception in that case. I ran into the situation that a wildcard or fuzzy
+search in the nonexistent field 'm' would correctly return 0 results, but the
+same search in the non-existent field 'x' would throw a null pointer exception
+in the correctsponding termCompare method.
+The following temporary fix in abstract class FilteredTermEnum solved the
+problem:
+protected void setEnum(TermEnum actualEnum) throws IOException
+{ this.actualEnum = actualEnum; // Find the first term that matches Term term = actualEnum.term(); if(term == null) return; // temporary fix -sjb if (termCompare(term)) currentTerm = term; else next(); }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.2
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Sander
+Create date:
+28/Sep/02 05:09
+Update date:
+27/May/06 01:35
+Resolved date:
+27/May/06 01:35

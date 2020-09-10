@@ -1,0 +1,43 @@
+Summary:
+TestMultiSlaveReplication#testMultiSlaveReplication may fail
+Description:
+java.lang.AssertionError: expected:<1> but was:<0>
+at org.junit.Assert.fail(Assert.java:93)
+at org.junit.Assert.failNotEquals(Assert.java:647)
+at org.junit.Assert.assertEquals(Assert.java:128)
+at org.junit.Assert.assertEquals(Assert.java:472)
+at org.junit.Assert.assertEquals(Assert.java:456)
+at org.apache.hadoop.hbase.replication.TestMultiSlaveReplication.checkRow(TestMultiSlaveReplication.java:203)
+at org.apache.hadoop.hbase.replication.TestMultiSlaveReplication.testMultiSlaveReplication(TestMultiSlaveReplication.java:188)
+at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+TestMultiSlaveReplication->testMultiSlaveReplication failed in our local build citing that "row" was not replicated to second peer. This is because after inserting "row", log is rolled and we look for "row2" in both the clusters and then we check for existence of "row" in both clusters. Meanwhile, Replication thread was sleeping for the second cluster and Row "row2" is not present in the second cluster from the very beginning. So, the "row2" existence check succeeds and control move on to find "row" in both clusters where it fails for the second cluster.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.92.0, 0.94.0
+Fix_version:
+0.94.2
+Component:
+Replication, test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Himanshu Vashishtha
+Reporter:
+Himanshu Vashishtha
+Create date:
+04/Sep/12 17:18
+Update date:
+07/Apr/13 04:57
+Resolved date:
+21/Sep/12 19:02

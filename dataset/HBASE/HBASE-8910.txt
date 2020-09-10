@@ -1,0 +1,38 @@
+Summary:
+HMaster.abortNow shouldn't try to become a master again if it was stopped
+Description:
+Here's a case where TestReplicationDisableInactivePeer fails while re-starting the second master:
+http://54.241.6.143/job/HBase-0.95-Hadoop-2/574/org.apache.hbase$hbase-server/testReport/junit/org.apache.hadoop.hbase.replication/TestReplicationDisableInactivePeer/testDisableInactivePeer/
+The reason is that when we first shutdown the master, it comes back to life thinking it just lost its session:
+2013-07-07 04:27:03,989 FATAL [pool-1-thread-1-EventThread] master.HMaster(2062): Master server abort: loaded coprocessors are: [org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint]
+2013-07-07 04:27:03,989 INFO  [pool-1-thread-1-EventThread] master.HMaster(2155): Primary Master trying to recover from ZooKeeper session expiry.
+And after that it tries to assign .META. fails since the RS are down.
+One way I think we can prevent this is by skipping recovering the session if we are stopping.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.2, 0.94.10
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+10/Jul/13 00:37
+Update date:
+24/Jul/13 19:08
+Resolved date:
+10/Jul/13 17:35

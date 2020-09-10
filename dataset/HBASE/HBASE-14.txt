@@ -1,0 +1,109 @@
+Summary:
+[hbase] Hung MR job writing hbase
+Description:
+Running a simple, fairly large job on the cluster, a few of the reduce steps failed; all that did are effectively hung. Looking at failures, I see this strange output:
+2007-11-13 02:09:09,606 DEBUG org.apache.hadoop.hbase.HTable: reloading table servers because: java.io.IOException: Region triples,http://purl.org/dc/terms/bibliographicCitation,1194919500610 closed
+ at org.apache.hadoop.hbase.HRegion.startUpdate(HRegion.java:1142)
+ at org.apache.hadoop.hbase.HRegionServer.startUpdate(HRegionServer.java:1239)
+ at org.apache.hadoop.hbase.HRegionServer.batchUpdate(HRegionServer.java:1113)
+ at sun.reflect.GeneratedMethodAccessor3.invoke(Unknown Source)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:379)
+ at org.apache.hadoop.ipc.Server$Handler.run(Server.java:596)
+
+2007-11-13 02:09:19,778 DEBUG org.apache.hadoop.hbase.HTable: reloading table servers because: org.apache.hadoop.hbase.NotServingRegionException: triples,http://purl.org/dc/terms/bibliographicCitation,1194919500610
+ at org.apache.hadoop.hbase.HRegionServer.getRegion(HRegionServer.java:1325)
+ at org.apache.hadoop.hbase.HRegionServer.getRegion(HRegionServer.java:1297)
+ at org.apache.hadoop.hbase.HRegionServer.startUpdate(HRegionServer.java:1238)
+ at org.apache.hadoop.hbase.HRegionServer.batchUpdate(HRegionServer.java:1113)
+ at sun.reflect.GeneratedMethodAccessor3.invoke(Unknown Source)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:379)
+ at org.apache.hadoop.ipc.Server$Handler.run(Server.java:596)
+
+2007-11-13 02:09:30,039 DEBUG org.apache.hadoop.hbase.HTable: reloading table servers because: org.apache.hadoop.hbase.NotServingRegionException: triples,http://purl.org/dc/terms/bibliographicCitation,1194919500610
+ at org.apache.hadoop.hbase.HRegionServer.getRegion(HRegionServer.java:1325)
+ at org.apache.hadoop.hbase.HRegionServer.getRegion(HRegionServer.java:1297)
+ at org.apache.hadoop.hbase.HRegionServer.startUpdate(HRegionServer.java:1238)
+ at org.apache.hadoop.hbase.HRegionServer.batchUpdate(HRegionServer.java:1113)
+ at sun.reflect.GeneratedMethodAccessor3.invoke(Unknown Source)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:379)
+ at org.apache.hadoop.ipc.Server$Handler.run(Server.java:596)
+
+2007-11-13 02:09:40,275 DEBUG org.apache.hadoop.hbase.HTable: reloading table servers because: org.apache.hadoop.hbase.NotServingRegionException: triples,http://purl.org/dc/terms/bibliographicCitation,1194919500610
+ at org.apache.hadoop.hbase.HRegionServer.getRegion(HRegionServer.java:1325)
+ at org.apache.hadoop.hbase.HRegionServer.getRegion(HRegionServer.java:1297)
+ at org.apache.hadoop.hbase.HRegionServer.startUpdate(HRegionServer.java:1238)
+ at org.apache.hadoop.hbase.HRegionServer.batchUpdate(HRegionServer.java:1113)
+ at sun.reflect.GeneratedMethodAccessor3.invoke(Unknown Source)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:379)
+ at org.apache.hadoop.ipc.Server$Handler.run(Server.java:596)
+
+2007-11-13 02:09:55,379 WARN org.apache.hadoop.mapred.TaskTracker: Error running child
+org.apache.hadoop.hbase.NotServingRegionException: org.apache.hadoop.hbase.NotServingRegionException: triples,http://purl.org/dc/terms/bibliographicCitation,1194919500610
+ at org.apache.hadoop.hbase.HRegionServer.getRegion(HRegionServer.java:1325)
+ at org.apache.hadoop.hbase.HRegionServer.getRegion(HRegionServer.java:1297)
+ at org.apache.hadoop.hbase.HRegionServer.startUpdate(HRegionServer.java:1238)
+ at org.apache.hadoop.hbase.HRegionServer.batchUpdate(HRegionServer.java:1113)
+ at sun.reflect.GeneratedMethodAccessor3.invoke(Unknown Source)
+ at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+ at java.lang.reflect.Method.invoke(Method.java:597)
+ at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:379)
+ at org.apache.hadoop.ipc.Server$Handler.run(Server.java:596)
+
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+ at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:39)
+ at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:27)
+ at java.lang.reflect.Constructor.newInstance(Constructor.java:513)
+ at org.apache.hadoop.hbase.RemoteExceptionHandler.decodeRemoteException(RemoteExceptionHandler.java:82)
+ at org.apache.hadoop.hbase.HTable.commit(HTable.java:734)
+ at org.apache.hadoop.hbase.HTable.commit(HTable.java:706)
+ at org.apache.hadoop.hbase.mapred.TableOutputFormat$TableRecordWriter.write(TableOutputFormat.java:89)
+ at org.apache.hadoop.hbase.mapred.TableOutputFormat$TableRecordWriter.write(TableOutputFormat.java:63)
+ at org.apache.hadoop.mapred.ReduceTask$2.collect(ReduceTask.java:308)
+ at TriplesTest$TestReducer.reduce(TriplesTest.java:66)
+ at TriplesTest$TestReducer.reduce(TriplesTest.java:51)
+ at org.apache.hadoop.mapred.ReduceTask.run(ReduceTask.java:326)
+ at org.apache.hadoop.mapred.TaskTracker$Child.main(TaskTracker.java:1935)
+Why is the reducer client being pig-headed trying to go against a region that has been closed? Why not recalibrate?
+Here is master log from around same time on the problem region:
+...
+2007-11-13 02:10:17,867 INFO org.apache.hadoop.hbase.HMaster: region triples,http://purl.org/dc/terms/bibliographicCitation,1194919500610 split. New regions are: triples,http://purl.org/dc/terms/bibliographicCitation,1194919707661, triples,http://purl.org/dc/terms/references,1194919707661
+...
+2007-11-13 02:11:47,313 DEBUG org.apache.hadoop.hbase.HMaster: HMaster.metaScanner scanner: -3075797136896920808 regioninfo: {regionname: triples,http://purl.org/dc/terms/bibliographicCitation,1194919500610, startKey: <http://purl.org/dc/terms/bibliographicCitation>, offline: true, split: true, tableDesc: {name: triples, families: {triples:={name: triples, max versions: 3, compression: NONE, in memory: false, max length: 2147483647, bloom filter: none}}}}, server: 208.76.44.140:60010, startCode: -647590197693256616
+...
+2007-11-13 02:11:47,317 INFO org.apache.hadoop.hbase.HMaster: Deleting region triples,http://purl.org/dc/terms/bibliographicCitation,1194919500610 because daughter splits no longer hold references
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+14/Nov/07 01:21
+Update date:
+20/Sep/12 22:10
+Resolved date:
+15/May/08 19:37

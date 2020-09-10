@@ -1,0 +1,101 @@
+Summary:
+Region server left in online servers list forever if it went down after registering to master and before creating ephemeral node
+Description:
+In some of our tests we found that regionserer always showing online in master UI but its actually dead.
+If region server went down in the middle following steps then the region server always showing in master online servers list.
+1) register to master
+2) create ephemeral znode
+Since no notification from zookeeper, master is not removing the expired server from online servers list.
+Assignments will fail if the RS is selected as destination server.
+Some cases ROOT or META also wont be assigned if the RS is randomly selected every time need to wait for timeout.
+Here are the logs:
+1) HOST-10-18-40-153 is registered to master
+2013-09-19 19:47:41,123 DEBUG org.apache.hadoop.hbase.master.ServerManager: STARTUP: Server HOST-10-18-40-153,61020,1379600260255 came back up, removed it from the dead servers list
+2013-09-19 19:47:41,123 INFO org.apache.hadoop.hbase.master.ServerManager: Registering server=HOST-10-18-40-153,61020,1379600260255
+2013-09-19 19:47:41,119 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Connected to master at HOST-10-18-40-153/10.18.40.153:61000
+2013-09-19 19:47:41,119 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Telling master at HOST-10-18-40-153,61000,1379600055284 that we are up with port=61020, startcode=1379600260255
+2) Terminated before creating ephemeral node.
+Thu Sep 19 19:47:41 IST 2013 Terminating regionserver
+3) The RS can be selected for assignment and they will fail.
+2013-09-19 19:47:54,049 WARN org.apache.hadoop.hbase.master.AssignmentManager: Failed assignment of -ROOT-,,0.70236052 to HOST-10-18-40-153,61020,1379600260255, trying to assign elsewhere instead; retry=0
+java.net.ConnectException: Connection refused
+ at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+ at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:567)
+ at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:206)
+ at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:529)
+ at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:493)
+ at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.setupConnection(HBaseClient.java:390)
+ at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.setupIOstreams(HBaseClient.java:436)
+ at org.apache.hadoop.hbase.ipc.HBaseClient.getConnection(HBaseClient.java:1127)
+ at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:974)
+ at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Invoker.invoke(WritableRpcEngine.java:86)
+ at $Proxy15.openRegion(Unknown Source)
+ at org.apache.hadoop.hbase.master.ServerManager.sendRegionOpen(ServerManager.java:533)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1734)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1431)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1406)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1401)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assignRoot(AssignmentManager.java:2374)
+ at org.apache.hadoop.hbase.master.handler.MetaServerShutdownHandler.verifyAndAssignRoot(MetaServerShutdownHandler.java:136)
+ at org.apache.hadoop.hbase.master.handler.MetaServerShutdownHandler.verifyAndAssignRootWithRetries(MetaServerShutdownHandler.java:160)
+ at org.apache.hadoop.hbase.master.handler.MetaServerShutdownHandler.process(MetaServerShutdownHandler.java:82)
+ at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:175)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+2013-09-19 19:47:54,050 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Found an existing plan for -ROOT-,,0.70236052 destination server is HOST-10-18-40-153,61020,1379600260255
+2013-09-19 19:47:54,050 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan was found (or we are ignoring an existing plan) for -ROOT-,,0.70236052 so generated a random one; hri=-ROOT-,,0.70236052, src=, dest=HOST-10-18-40-153,61020,1379600260255; 1 (online=1, available=1) available servers
+2013-09-19 19:47:54,050 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:61000-0x14135a277ff017d Creating (or updating) unassigned node for 70236052 with OFFLINE state
+2013-09-19 19:47:54,070 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=M_ZK_REGION_OFFLINE, server=HOST-10-18-40-153,61000,1379600055284, region=70236052/-ROOT-
+2013-09-19 19:47:54,071 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Found an existing plan for -ROOT-,,0.70236052 destination server is HOST-10-18-40-153,61020,1379600260255
+2013-09-19 19:47:54,071 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Using pre-existing plan for region -ROOT-,,0.70236052; plan=hri=-ROOT-,,0.70236052, src=, dest=HOST-10-18-40-153,61020,1379600260255
+2013-09-19 19:47:54,071 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region -ROOT-,,0.70236052 to HOST-10-18-40-153,61020,1379600260255
+2013-09-19 19:47:54,072 WARN org.apache.hadoop.hbase.master.AssignmentManager: Failed assignment of -ROOT-,,0.70236052 to HOST-10-18-40-153,61020,1379600260255, trying to assign elsewhere instead; retry=1
+org.apache.hadoop.hbase.ipc.HBaseClient$FailedServerException: This server is in the failed servers list: HOST-10-18-40-153/10.18.40.153:61020
+ at org.apache.hadoop.hbase.ipc.HBaseClient$Connection.setupIOstreams(HBaseClient.java:425)
+ at org.apache.hadoop.hbase.ipc.HBaseClient.getConnection(HBaseClient.java:1127)
+ at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:974)
+ at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Invoker.invoke(WritableRpcEngine.java:86)
+ at $Proxy15.openRegion(Unknown Source)
+ at org.apache.hadoop.hbase.master.ServerManager.sendRegionOpen(ServerManager.java:533)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1734)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1431)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1406)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1401)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assignRoot(AssignmentManager.java:2374)
+ at org.apache.hadoop.hbase.master.handler.MetaServerShutdownHandler.verifyAndAssignRoot(MetaServerShutdownHandler.java:136)
+ at org.apache.hadoop.hbase.master.handler.MetaServerShutdownHandler.verifyAndAssignRootWithRetries(MetaServerShutdownHandler.java:160)
+ at org.apache.hadoop.hbase.master.handler.MetaServerShutdownHandler.process(MetaServerShutdownHandler.java:82)
+ at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:175)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+2013-09-19 19:47:54,072 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Found an existing plan for -ROOT-,,0.70236052 destination server is HOST-10-18-40-153,61020,1379600260255
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.11
+Fix_version:
+0.96.1
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+rajeshbabu
+Create date:
+20/Sep/13 06:37
+Update date:
+02/Mar/17 07:20
+Resolved date:
+25/Oct/13 16:53

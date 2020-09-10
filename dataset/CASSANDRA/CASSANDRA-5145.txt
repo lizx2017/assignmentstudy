@@ -1,0 +1,56 @@
+Summary:
+CQL3 BATCH authorization caching bug
+Description:
+cql3.BatchStatement:
+    public void checkAccess(ClientState state) throws InvalidRequestException
+    {
+        Set<String> cfamsSeen = new HashSet<String>();
+        for (ModificationStatement statement : statements)
+        {
+            // Avoid unnecessary authorizations.
+            if (!(cfamsSeen.contains(statement.columnFamily())))
+            {
+                state.hasColumnFamilyAccess(statement.keyspace(), statement.columnFamily(), Permission.MODIFY);
+                cfamsSeen.add(statement.columnFamily());
+            }
+        }
+    }
+In CQL3 we can use fully-qualified name of the cf and so a batch can contain mutations for different keyspaces. And when caching cfamsSeen, we ignore the keyspace. This can be exploited to modify any CF in any keyspace so long as the malicious user has CREATE+MODIFY permissions on some keyspace (any keyspace). All you need is to create a table in your ks with the same name as the table you want to modify and perform a batch update.
+Example: an attacker doesn't have permissions, but wants to modify k1.demo table. The attacker controls k2 keyspace. The attacker creates k2.demo table and then does the following request:
+cqlsh:k2> begin batch
+      ... insert into k2.demo ..
+      ... insert into k1.demo ..
+      ... apply batch;
+cqlsh:k2>
+.. and successfully modifies k1.demo table since 'demo' cfname will be cached.
+Thrift's batch_mutate and atomic_batch_mutate are not affected since the only allow mutations to a single ks. CQL2 batches are not affected since they don't do any caching.
+We should either get rid of caching here or switch cfamsSeen to a Map<String, Set<String>>.
+Personally, I'd rather do the latter now, and get rid of caching here completely once CASSANDRA-4295 is resolved.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.9, 1.2.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Aleksey Yeschenko
+Reporter:
+Aleksey Yeschenko
+Create date:
+11/Jan/13 02:04
+Update date:
+16/Apr/19 09:32
+Resolved date:
+11/Jan/13 16:43

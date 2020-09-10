@@ -1,0 +1,62 @@
+Summary:
+Coordinator's "java.lang.ArrayIndexOutOfBoundsException: -1" with CL > 1
+Description:
+I've got this error in system.log on all coordinators
+ERROR [Thrift:37555] 2014-01-28 19:53:51,547 CustomTThreadPoolServer.java (line 212) Error occurred during processing of message.
+java.lang.ArrayIndexOutOfBoundsException: -1
+        at java.util.ArrayList.elementData(ArrayList.java:400)
+        at java.util.ArrayList.remove(ArrayList.java:477)
+        at org.apache.cassandra.db.ArrayBackedSortedColumns$ReverseSortedCollection$1.remove(ArrayBackedSortedColumns.java:373)
+        at org.apache.cassandra.db.filter.SliceQueryFilter.trim(SliceQueryFilter.java:249)
+        at org.apache.cassandra.db.SliceFromReadCommand.maybeTrim(SliceFromReadCommand.java:101)
+        at org.apache.cassandra.service.StorageProxy.fetchRows(StorageProxy.java:1370)
+        at org.apache.cassandra.service.StorageProxy.read(StorageProxy.java:1189)
+        at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:188)
+        at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:163)
+        at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:58)
+        at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:188)
+        at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:222)
+        at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:212)
+        at org.apache.cassandra.thrift.CassandraServer.execute_cql3_query(CassandraServer.java:1958)
+        at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4486)
+        at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4470)
+        at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:39)
+        at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:39)
+        at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:194)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:744)
+It's occurred on coordinator (not always primary or secondary of this uid-PK) when I execute query (PHP or Python client got "TSocket read 0 bytes" exception):
+SELECT * FROM home_timeline WHERE uid = 0x52dcbc794989a6ea2c8b4569 ORDER BY tuuid DESC LIMIT 32
+If limit < 32, then its ok. When ORDER ... ASC its ok. When ConsistencyLevel 1 its ok.
+On one node data is inconsistent with two others, and read repair won't work (32-nd element is odd).
+Our RF = 3
+Cassandra version 2.0.4
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.14, 2.0.5
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mikhail Stepura
+Reporter:
+Roman Skvazh
+Create date:
+28/Jan/14 20:28
+Update date:
+16/Apr/19 09:31
+Resolved date:
+29/Jan/14 06:21

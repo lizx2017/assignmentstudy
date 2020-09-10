@@ -1,0 +1,59 @@
+Summary:
+TestAssignmentManager sometimes fails
+Description:
+From https://builds.apache.org/job/HBase-TRUNK/3432/testReport/junit/org.apache.hadoop.hbase.master/TestAssignmentManager/testBalanceOnMasterFailoverScenarioWithOpenedNode/ :
+Stacktrace
+
+java.lang.Exception: test timed out after 5000 milliseconds
+ at java.lang.System.arraycopy(Native Method)
+ at java.lang.ThreadGroup.remove(ThreadGroup.java:969)
+ at java.lang.ThreadGroup.threadTerminated(ThreadGroup.java:942)
+ at java.lang.Thread.exit(Thread.java:732)
+...
+2012-10-06 00:46:12,521 DEBUG [MASTER_CLOSE_REGION-mockedAMExecutor-0] zookeeper.ZKUtil(1141): mockedServer-0x13a33892de7000e Retrieved 81 byte(s) of data from znode /hbase/unassigned/dc01abf9cd7fd0ea256af4df02811640 and set watcher; region=t,,1349484359011.dc01abf9cd7fd0ea256af4df02811640., state=M_ZK_REGION_OFFLINE, servername=master,1,1, createTime=1349484372509, payload.length=0
+2012-10-06 00:46:12,522 ERROR [MASTER_CLOSE_REGION-mockedAMExecutor-0] executor.EventHandler(205): Caught throwable while processing event RS_ZK_REGION_CLOSED
+java.lang.NullPointerException
+ at org.apache.hadoop.hbase.master.TestAssignmentManager$MockedLoadBalancer.randomAssignment(TestAssignmentManager.java:773)
+ at org.apache.hadoop.hbase.master.AssignmentManager.getRegionPlan(AssignmentManager.java:1709)
+ at org.apache.hadoop.hbase.master.AssignmentManager.getRegionPlan(AssignmentManager.java:1666)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1435)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1155)
+ at org.apache.hadoop.hbase.master.TestAssignmentManager$AssignmentManagerWithExtrasForTesting.assign(TestAssignmentManager.java:1035)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1130)
+ at org.apache.hadoop.hbase.master.AssignmentManager.assign(AssignmentManager.java:1125)
+ at org.apache.hadoop.hbase.master.handler.ClosedRegionHandler.process(ClosedRegionHandler.java:106)
+ at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:202)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1110)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:603)
+ at java.lang.Thread.run(Thread.java:722)
+2012-10-06 00:46:12,522 DEBUG [pool-1-thread-1-EventThread] master.AssignmentManager(670): Handling transition=M_ZK_REGION_OFFLINE, server=master,1,1, region=dc01abf9cd7fd0ea256af4df02811640, current state from region state map ={t,,1349484359011.dc01abf9cd7fd0ea256af4df02811640. state=OFFLINE, ts=1349484372508, server=null}
+Looks like NPE happened on this line:
+      this.gate.set(true);
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.3, 0.95.0
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jimmy Xiang
+Reporter:
+Ted Yu
+Create date:
+06/Oct/12 02:08
+Update date:
+26/Feb/13 16:36
+Resolved date:
+07/Nov/12 16:23

@@ -1,0 +1,60 @@
+Summary:
+Reusing Keyspace and CF names raises assertion errors
+Description:
+The dtest I introduced to test CASSANDRA-6924 introduces some log errors which I think may be related to CASSANDRA-5202.
+On 2.1 :
+ERROR [MigrationStage:1] 2014-03-31 14:36:43,463 CommitLogSegmentManager.java:306 - Failed waiting for a forced recycle of in-use commit log segments
+java.lang.AssertionError: null
+        at org.apache.cassandra.db.commitlog.CommitLogSegmentManager.forceRecycleAll(CommitLogSegmentManager.java:301) ~[main/:na]
+        at org.apache.cassandra.db.commitlog.CommitLog.forceRecycleAllSegments(CommitLog.java:160) [main/:na]
+        at org.apache.cassandra.db.DefsTables.dropColumnFamily(DefsTables.java:497) [main/:na]
+        at org.apache.cassandra.db.DefsTables.mergeColumnFamilies(DefsTables.java:296) [main/:na]
+        at org.apache.cassandra.db.DefsTables.mergeSchema(DefsTables.java:181) [main/:na]
+        at org.apache.cassandra.db.DefinitionsUpdateVerbHandler$1.runMayThrow(DefinitionsUpdateVerbHandler.java:49) [main/:na]
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:28) [main/:na]
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471) [na:1.7.0_51]
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262) [na:1.7.0_51]
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145) [na:1.7.0_51]
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615) [na:1.7.0_51]
+        at java.lang.Thread.run(Thread.java:744) [na:1.7.0_51]
+On 2.0:
+ERROR [ReadStage:3] 2014-03-31 13:28:11,014 CassandraDaemon.java (line 198) Exception in thread Thread[ReadStage:3,5,main]
+java.lang.AssertionError
+        at org.apache.cassandra.db.filter.ExtendedFilter$WithClauses.getExtraFilter(ExtendedFilter.java:258)
+        at org.apache.cassandra.db.ColumnFamilyStore.filter(ColumnFamilyStore.java:1744)
+        at org.apache.cassandra.db.ColumnFamilyStore.getRangeSlice(ColumnFamilyStore.java:1699)
+        at org.apache.cassandra.db.PagedRangeCommand.executeLocally(PagedRangeCommand.java:119)
+        at org.apache.cassandra.service.RangeSliceVerbHandler.doVerb(RangeSliceVerbHandler.java:39)
+        at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:60)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:744)
+To reproduce, you many need to comment out the assertion in that test, as it is not 100% reproducible on the first try.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benedict
+Reporter:
+Ryan McGuire
+Create date:
+31/Mar/14 18:44
+Update date:
+16/Apr/19 09:31
+Resolved date:
+08/May/14 15:52

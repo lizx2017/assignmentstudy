@@ -1,0 +1,67 @@
+Summary:
+Lucene highlighter doesn't honor hl.fragsize; it appends all text for last fragment
+Description:
+Recently, we hit a problem related with highlighter: I set hl.fragsize = 300, but the highlight section for one document outputs more than 2000 characters.
+Look into the code, in org.apache.lucene.search.highlight.Highlighter.getBestTextFragments(TokenStream, String, boolean, int), after the for loop, it appends whole remaining text into last fragment.
+if (
+// if there is text beyond the last token considered..
+(lastEndOffset < text.length())
+&&
+// and that text is not too large...
+(text.length()<= maxDocCharsToAnalyze)
+)
+{
+//append it to the last fragment
+newText.append(encoder.encodeText(text.substring(lastEndOffset)));
+}
+currentFrag.textEndPos = newText.length();
+This code is problematical, as in some cases, the last fragment is the most relevant section and will be selected to return to client.
+I made some change to the code like below: Now it works.
+//Test what remains of the original text beyond the point where we stopped analyzing
+if(lastEndOffset < text.length())
+{
+if(textFragmenter instanceof SimpleFragmenter)
+{
+SimpleFragmenter simpleFragmenter = (SimpleFragmenter) textFragmenter;
+int remain =simpleFragmenter.getFragmentSize() -(newText.length() - currentFrag.textStartPos);
+if(remain > 0 )
+{
+int endIndex = lastEndOffset + remain;
+if (endIndex > text.length())
+{ endIndex = text.length(); }
+newText.append(encoder.encodeText(text.substring(lastEndOffset,
+endIndex)));
+}
+}
+else
+{ newText.append(encoder.encodeText(text.substring(lastEndOffset))); }
+}
+currentFrag.textEndPos = newText.length();
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+4.0, 4.6
+Fix_version:
+4.9, 6.0
+Component:
+modules/highlighter
+Label:
+highlighter lucene
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+jefferyyuan
+Create date:
+01/Jan/14 15:21
+Update date:
+09/May/16 18:34
+Resolved date:
+

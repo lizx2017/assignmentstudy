@@ -1,0 +1,57 @@
+Summary:
+CQL3 column value validation bug
+Description:
+cqlsh> create keyspace test with strategy_class = 'SimpleStrategy' and strategy_options:replication_factor = 1;
+cqlsh> use test;
+cqlsh:test> CREATE TABLE stats (
+        ...   gid          blob,
+        ...   period     int,
+        ...   tid          blob, 
+        ...   sum        int,
+        ...   uniques           blob,
+        ...   PRIMARY KEY(gid, period, tid)
+        ... );
+cqlsh:test> describe columnfamily stats;
+
+CREATE TABLE stats (
+  gid blob PRIMARY KEY
+) WITH
+  comment='' AND
+  comparator='CompositeType(org.apache.cassandra.db.marshal.Int32Type,org.apache.cassandra.db.marshal.BytesType,org.apache.cassandra.db.marshal.UTF8Type)' AND
+  read_repair_chance=0.100000 AND
+  gc_grace_seconds=864000 AND
+  default_validation=text AND
+  min_compaction_threshold=4 AND
+  max_compaction_threshold=32 AND
+  replicate_on_write='true' AND
+  compaction_strategy_class='SizeTieredCompactionStrategy' AND
+  compression_parameters:sstable_compression='SnappyCompressor';
+You can see in the above output that the stats cf is created with the column validator set to text, but neither of the non primary key columns defined are text. It should either be setting metadata for those columns or not setting a default validator or some combination of the two.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 1
+Component:
+Legacy/CQL
+Label:
+cql3
+Environment:
+
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Nick Bailey
+Create date:
+26/Jun/12 16:44
+Update date:
+16/Apr/19 09:32
+Resolved date:
+11/Sep/12 09:03

@@ -1,0 +1,80 @@
+Summary:
+Too aggressive task resubmission from the distributed log manager
+Description:
+With default settings for "hbase.splitlog.manager.timeout" => 25s and "hbase.splitlog.max.resubmit" => 3.
+On tests mentionned on HBASE-5843, I have variations around this scenario, 0.94 + HDFS 1.0.3:
+The regionserver in charge of the split does not answer in less than 25s, so it gets interrupted but actually continues. Sometimes, we go out of the number of retry, sometimes not, sometimes we're out of retry, but the as the interrupts were ignored we finish nicely. In the mean time, the same single task is executed in parallel by multiple nodes, increasing the probability to get into race conditions.
+Details:
+t0: unplug a box with DN+RS
+t + x: other boxes are already connected, to their connection starts to dies. Nevertheless, they don't consider this node as suspect.
+t + 180s: zookeeper -> master detects the node as dead. recovery start. It can be less than 180s sometimes it around 150s.
+t + 180s: distributed split starts. There is only 1 task, it's immediately acquired by a one RS.
+t + 205s: the RS has multiple errors when splitting, because a datanode is missing as well. The master decides to give the task to someone else. But often the task continues in the first RS. Interrupts are often ignored, as it's well stated in the code ("// TODO interrupt often gets swallowed, do what else?")
+   2012-09-04 18:27:30,404 INFO org.apache.hadoop.hbase.regionserver.SplitLogWorker: Sending interrupt to stop the worker thread
+t + 211s: two regionsservers are processing the same task. They fight for the leases:
+2012-09-04 18:27:32,004 WARN org.apache.hadoop.hdfs.DFSClient: DataStreamer Exception: org.apache.hadoop.ipc.RemoteException:          org.apache.hadoop.hdfs.server.namenode.LeaseExpiredException: Lease mismatch on
+   /hbase/TABLE/4d1c1a4695b1df8c58d13382b834332e/recovered.edits/0000000000000000037.temp owned by DFSClient_hb_rs_BOX2,60020,1346775882980 but is accessed by DFSClient_hb_rs_BOX1,60020,1346775719125
+They can fight like this for many files, until the tasks finally get interrupted or finished.
+The taks on the second box can be cancelled as well. In this case, the task is created again for a new box.
+The master seems to stop after 3 attemps. It can as well renounce to split the files. Sometimes the tasks were not cancelled on the RS side, so the split is finished despites what the master thinks and logs. In this case, the assignement starts. In the other, it's "we've got a problem").
+2012-09-04 18:43:52,724 INFO org.apache.hadoop.hbase.master.SplitLogManager: Skipping resubmissions of task /hbase/splitlog/hdfs%3A%2F%2FBOX1%3A9000%2Fhbase%2F.logs%2FBOX0%2C60020%2C1346776587640-splitting%2FBOX0%252C60020%252C1346776587640.1346776587832 because threshold 3 reached     
+t + 300s: split is finished. Assignement starts
+t + 330s: assignement is finished, regions are available again.
+There are a lot of subcases possible depending on the number of logs files, of region server and so on.
+The issues are:
+1) it's difficult, especially in HBase but not only, to interrupt a task. The pattern is often
+ void f() throws IOException{
+  try {
+     // whatever throw InterruptedException
+  }catch(InterruptedException){
+    throw new InterruptedIOException();
+  }
+}
+
+ boolean g(){
+   int nbRetry= 0;  
+   for(;;)
+      try{
+         f();
+         return true;
+      }catch(IOException e){
+         nbRetry++;
+         if ( nbRetry > maxRetry) return false;
+      }
+   } 
+ }
+This tyically shallows the interrupt. There are other variation, but this one seems to be the standard.
+Even if we fix this in HBase, we need the other layers to be Interrupteble as well. That's not proven.
+2) 25s is very aggressive, considering that we have a default timeout of 180s for zookeeper. In other words, we give 180s to a regionserver before acting, but when it comes to split, it's 25s only. There may be reasons for this, but it seems dangerous, as during a failure the cluster is less available than during normal operations. We could do stuff around this, for example:
+=> Obvious option: increase the timeout at each try. Something like *2.
+=> Also possible: increase the initial timeout
+=> check for an update instead of blindly cancelling + resubmitting.
+3) Globally, it seems that this retry mechanism duplicates the failure detection already in place with ZK. Would it not make sense to just hook into this existing detection mechanism, and resubmit a task if and only if we detect that the regionserver in charge died? During a failure scenario we should be much more gentle than during normal operation, not the opposite.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.1, 0.95.2
+Fix_version:
+0.95.0
+Component:
+master, regionserver
+Label:
+None
+Environment:
+3 nodes cluster test, but can occur as well on a much bigger one. It's all luck!
+Attachment number:
+0
+Assignee:
+Nicolas Liochon
+Reporter:
+Nicolas Liochon
+Create date:
+07/Sep/12 15:09
+Update date:
+05/Nov/14 04:51
+Resolved date:
+03/Oct/12 15:26

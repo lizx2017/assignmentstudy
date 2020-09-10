@@ -1,0 +1,90 @@
+Summary:
+SDK 4 Charts bug: DateTimeAxis, AxisRenderer and canDropLabels
+Description:
+Steps to reproduce:
+A Chart (LineChart, AreaChart) throws an exception when it uses DateTimeAxis (on horizontal axis) and dropping of labels is allowed.
+Here is a small Flex 4 program to reproduce the problem.
+Make sure the chart has explicit sizes, as sometimes, though not always, removing them eliminates the exception.
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark"
+xmlns:mx="library://ns.adobe.com/flex/mx"
+minWidth="955" minHeight="600" creationComplete="onCreationComplete()">
+<fx:Script>
+<![CDATA[
+import mx.collections.ArrayCollection;
+[Bindable]
+private var dgd:ArrayCollection = new ArrayCollection();
+protected function onCreationComplete():void {
+for (var i:int = 1; i < 30; i++) {
+dgd.addItem(
+{ d: new Date(2011, 1, i), v:i + 5 - Math.random()* 10}
+);
+}
+}
+]]
+>
+</fx:Script>
+<mx:LineChart dataProvider="
+{dgd}
+" width="300" height="200">
+<mx:horizontalAxis>
+<mx:DateTimeAxis id="hx" labelUnits="days" />
+</mx:horizontalAxis>
+<mx:horizontalAxisRenderers>
+<!--
+to fix the problem set canDropLabels="false"
+-->
+<mx:AxisRenderer axis="
+{hx}
+" canDropLabels="true"/>
+</mx:horizontalAxisRenderers>
+<mx:series>
+<mx:LineSeries yField="v" xField="d"/>
+</mx:series>
+</mx:LineChart>
+</s:Application>
+Actual Results:
+When canDropLabels="true" runtime exception is happening while initializing the app:
+TypeError: Error #1009: Cannot access a property or method of a null object reference.
+at mx.charts::AxisRenderer/measureHorizontalGutters()[E:\dev\4.x\framewo rks\projects\datavisualization\src\mx\charts\AxisRenderer.as:2277]
+at mx.charts::AxisRenderer/calcRotationAndSpacing()[E:\dev\4.x\framework s\projects\datavisualization\src\mx\charts\AxisRenderer.as:1891]
+at mx.charts::AxisRenderer/adjustGutters()[E:\dev\4.x\frameworks\project s\datavisualization\src\mx\charts\AxisRenderer.as:1567]
+at mx.charts.chartClasses::CartesianChart/updateAxisLayout()[E:\dev\4.x\ frameworks\projects\datavisualization\src\mx\charts\chartClasses\Carte sianChart.as:2264]
+at mx.charts.chartClasses::CartesianChart/updateDisplayList()[E:\dev\4.x \frameworks\projects\datavisualization\src\mx\charts\chartClasses\Cart esianChart.as:1391]
+at mx.core::UIComponent/validateDisplayList()[E:\dev\4.x\frameworks\proj ects\framework\src\mx\core\UIComponent.as:8709]
+at mx.managers::LayoutManager/validateDisplayList()[E:\dev\4.x\framework s\projects\framework\src\mx\managers\LayoutManager.as:663]
+at mx.managers::LayoutManager/doPhasedInstantiation()[E:\dev\4.x\framewo rks\projects\framework\src\mx\managers\LayoutManager.as:718]
+at mx.managers::LayoutManager/doPhasedInstantiationCallback()[E:\dev\4.x \frameworks\projects\framework\src\mx\managers\LayoutManager.as:1072]
+When canDropLabels="false" the Chart tries to squeeze all labels, reducing label's font size to unreadable (see the picture).
+Expected Results:
+Charts same as on the picture, only with readable labels on X-axis, and some of them dropped where required.
+Workaround (if any):
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+Adobe Flex SDK 4.1 (
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+26/Jan/11 07:25
+Update date:
+07/Nov/11 05:49
+Resolved date:
+07/Nov/11 05:48

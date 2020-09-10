@@ -1,0 +1,80 @@
+Summary:
+file descriptor leak in getKeyRange
+Description:
+paste from mailing list:
+Cassandra reported the following:
+WARN [GMFD:1] 2009-11-12 16:07:24,961 MessagingService.java (line 393)
+Exception was generated at : 11/12/2009 16:07:24 on thread GMFD:1
+Too many open files
+java.net.SocketException: Too many open files
+at sun.nio.ch.Net.socket0(Native Method)
+at sun.nio.ch.Net.socket(Unknown Source)
+at sun.nio.ch.DatagramChannelImpl.<init>(Unknown Source)
+at sun.nio.ch.SelectorProviderImpl.openDatagramChannel(Unknown
+Source)
+at java.nio.channels.DatagramChannel.open(Unknown Source)
+at
+org.apache.cassandra.net.UdpConnection.init(UdpConnection.java:49)
+at
+org.apache.cassandra.net.MessagingService.sendUdpOneWay(MessagingService.java:388)
+at
+org.apache.cassandra.gms.GossipDigestSynVerbHandler.doVerb(Gossiper.java:889)
+at
+org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:38)
+at
+java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Unknown Source)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown
+Source)
+at java.lang.Thread.run(Unknown Source)
+Lsof reports that the java process has 65486 files open (I have ulimit
+-n 65535 set in cassandra.in.sh). Many of the lsof entries include a
+trailing '(deleted)' comment after the file path.
+This appears to be similar to CASSANDRA-283. Anyone have a work around
+for this? Would a forced GC take care of the ones marked deleted?
+Here is my sample code to count the number of keys:
+public class CClient
+{
+public static void main(String[] args)
+throws TException, InvalidRequestException, UnavailableException,
+UnsupportedEncodingException, NotFoundException
+{
+TTransport tr = new TSocket("localhost", 9160);
+TProtocol proto = new TBinaryProtocol(tr);
+Cassandra.Client client = new Cassandra.Client(proto);
+tr.open();
+int count = 0;
+int block = 1000;
+String key = " ";
+while (true)
+{ List<String> list = client.get_key_range("Keyspace1", "Standard1", key, "~", block, ConsistencyLevel.ONE); int size = list.size(); if (size == 0) break; count += size; key = list.get(size - 1) + '~'; System.out.println("Count: " + Integer.toString(count)); }
+tr.close();
+}
+}
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jonathan Ellis
+Create date:
+13/Nov/09 19:57
+Update date:
+16/Apr/19 09:33
+Resolved date:
+13/Nov/09 21:28

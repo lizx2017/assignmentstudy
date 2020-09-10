@@ -1,0 +1,59 @@
+Summary:
+Murmur3Partitioner doesn't yield proper ownership calculation
+Description:
+In a new 1.2 install with Murmur3 as default, I setup a test cluster with N=RF=3 for the cluster size and RF for a keyspace
+but when I look at the ring output (with the keyspace name), to my surprise it shows RF=2.
+Further investigate shows the "total replica" is an addition of the float value from the effectiveOwnership. But that results in < 1 for the setup:
+#bean is set to org.apache.cassandra.db:type=StorageService
+$>run effectiveOwnership Keyspace1
+#calling operation effectiveOwnership of mbean org.apache.cassandra.db:type=StorageService
+#operation returns:
+{
+/127.0.0.1 = 0.9999989;
+/127.0.0.2 = 0.9999989;
+/127.0.0.3 = 0.9999989;
+}
+$ ./bin/nodetool -h 0 -p 7100 ring Keyspace1
+Datacenter: datacenter1
+==========
+Replicas: 2
+Address Rack Status State Load Owns Token
+3074457345618258602
+127.0.0.1 rack1 Up Normal 1.02 GB 100.00% -9223372036854775808
+127.0.0.2 rack1 Up Normal 996.38 MB 100.00% -3074457345618258603
+127.0.0.3 rack1 Up Normal 980.55 MB 100.00% 3074457345618258602
+Keyspace: Keyspace1:
+Replication Strategy: org.apache.cassandra.locator.SimpleStrategy
+Durable Writes: true
+Options: [replication_factor:3]
+The println would simply class the float value to int, so i guess that's round down.
+When using RandomPartitioner, the effectiveOwnership will return 1.0
+So I guess the real question is, is the Murmur3 calculation correct? Or is it losing precision? If it is correct, then I guess we need to force the float -> int to round up? (is that even the right thing to do?)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.4
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jackson Chung
+Create date:
+02/Nov/13 01:47
+Update date:
+16/Apr/19 09:32
+Resolved date:
+21/Nov/13 20:19

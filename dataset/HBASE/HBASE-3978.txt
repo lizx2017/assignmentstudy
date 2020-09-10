@@ -1,0 +1,56 @@
+Summary:
+rowlock lease renew doesn't work when custom coprocessor/RegionObserver indicates to bypass default action
+Description:
+Region server will keep extending the lease on the rowlock as long as there is some action on the row. This is done inside HRegionServer.getLockFromId, where it renew the lease on the rowlock. However, when coprocessor "pre-action" observer is used, getLockFromId is skipped if default action is bypassed. Take HRegionServer.exists as example, RegionCoprocessorHost.preExists could return Boolean object if one of the regionobservers indicates default action should be bypassed; thus getLockFromId didn't called and the lease on the lock doesn't get renewed.
+public boolean exists(byte[] regionName, Get get) throws IOException {
+checkOpen();
+requestCount.incrementAndGet();
+try {
+HRegion region = getRegion(regionName);
+if (region.getCoprocessorHost() != null) {
+Boolean result = region.getCoprocessorHost().preExists(get);
+if (result != null)
+{ return result.booleanValue(); }
+}
+Result r = region.get(get, getLockFromId(get.getLockId()));
+boolean result = r != null && !r.isEmpty();
+if (region.getCoprocessorHost() != null)
+{ result = region.getCoprocessorHost().postExists(get, result); }
+return result;
+} catch (Throwable t)
+{ throw convertThrowableToIOE(cleanup(t)); }
+}
+The application scenario is:
+a) client application passes in a rowlock object in an action.
+b) there is custom coprocessor/observer used.
+c) For a given action, the custom coprocessor/observer might tell coprocessor framework to bypass the default action.
+From client application point of view, the behavior is sometimes the rowlock will timeout even though client is accessing the row all the time, depending on whether coprocessor/observer wants to bypass the default action.
+This applies to several other actions as well, increment, checkAndPut, checkandDelete.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.0
+Component:
+Coprocessors, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ming Ma
+Reporter:
+Ming Ma
+Create date:
+10/Jun/11 21:25
+Update date:
+20/Nov/15 11:52
+Resolved date:
+12/Jun/11 16:07

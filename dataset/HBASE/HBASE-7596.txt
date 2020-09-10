@@ -1,0 +1,45 @@
+Summary:
+Redundant FSTableDescriptor update
+Description:
+The TableAddFamilyHandler and TableDeleteFamilyHandler code looks like
+// Update table descriptor in HDFS
+HTableDescriptor htd = this.masterServices.getMasterFileSystem()
+    .addColumn(tableName, familyDesc);
+// Update in-memory descriptor cache
+this.masterServices.getTableDescriptors().add(htd);
+while the ModifyTableHandler code is just
+// Update descriptor
+this.masterServices.getTableDescriptors().add(this.htd);
+The MasterFileSystem code looks like
+HTableDescriptor htd = this.services.getTableDescriptors().get(tableName);
+// ...add/remove columns to the descriptor...
+this.services.getTableDescriptors().add(htd);
+so, the service.getTableDescriptors().add() is called two times for the add/delete family handler. (and the table descriptor rewritten twice FSTableDescriptors.updateHTableDescriptor())
+Status:
+CLOSED
+Priority:
+Trivial
+Resolution:
+Fixed
+Affects_version:
+0.94.4, 0.95.2
+Fix_version:
+0.95.0
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Matteo Bertozzi
+Reporter:
+Matteo Bertozzi
+Create date:
+17/Jan/13 00:16
+Update date:
+23/Sep/13 18:45
+Resolved date:
+18/Jan/13 00:11

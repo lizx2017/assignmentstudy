@@ -1,0 +1,66 @@
+Summary:
+CqlPagingRecorderReader Used when Partition Key Is Explicitly Stated
+Description:
+From http://stackoverflow.com/questions/19189649/composite-key-in-cassandra-with-pig/19211546#19211546
+The user was attempting to load a single partition using a where clause in a pig load statement.
+CQL Table
+CREATE table data (
+  occurday  text,
+  seqnumber int,
+  occurtimems bigint,
+  unique bigint,
+
+  fields map<text, text>,
+
+  primary key ((occurday, seqnumber), occurtimems, unique)
+)
+Pig Load statement Query
+data = LOAD 'cql://ks/data?where_clause=seqnumber%3D10%20AND%20occurday%3D%272013-10-01%27' USING CqlStorage();    
+This results in an exception when processed by the the CqlPagingRecordReader which attempts to page this query even though it contains at most one partition key. This leads to an invalid CQL statement.
+CqlPagingRecordReader Query
+SELECT * FROM "data" WHERE token("occurday","seqnumber") > ? AND
+token("occurday","seqnumber") <= ? AND occurday='A Great Day' 
+AND seqnumber=1 LIMIT 1000 ALLOW FILTERING
+Exception
+ InvalidRequestException(why:occurday cannot be restricted by more than one relation if it includes an Equal)
+I'm not sure it is worth the special case but, a modification to not use the paging record reader when the entire partition key is specified would solve this issue.
+Solution
+If it have EQUAL clauses for all the partitioning keys, we use Query
+  SELECT * FROM "data" 
+  WHERE occurday='A Great Day' 
+       AND seqnumber=1 LIMIT 1000 ALLOW FILTERING
+instead of
+  SELECT * FROM "data" 
+  WHERE token("occurday","seqnumber") > ? 
+   AND token("occurday","seqnumber") <= ? 
+   AND occurday='A Great Day' 
+   AND seqnumber=1 LIMIT 1000 ALLOW FILTERING
+The base line implementation is to retrieve all data of all rows around the ring. This new feature is to retrieve all data of a wide row. It's a one level lower than the base line. It helps for the use case where user is only interested in a specific wide row, so the user doesn't spend whole job to retrieve all the rows around the ring.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Liu
+Reporter:
+Russell Spitzer
+Create date:
+06/Oct/13 17:28
+Update date:
+16/Apr/19 09:32
+Resolved date:
+21/Nov/13 23:44

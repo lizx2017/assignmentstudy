@@ -1,0 +1,134 @@
+Summary:
+DimensionalRangeQuery not working with UninvertingReader
+Description:
+As I was trying out dimensional fields for SOLR-8396, I realized that DimensionalRangeQuery is not working with UninvertingReader.
+In Solr, all directory readers are wrapped by an UninvertingReader and an ExitableDirectoryReader.
+Here's the error:
+Exception in thread "main" java.lang.IllegalArgumentException: field="rating" was indexed with numDims=0 but this query has numDims=1
+ at org.apache.lucene.search.DimensionalRangeQuery$1.scorer(DimensionalRangeQuery.java:186)
+ at org.apache.lucene.search.Weight.bulkScorer(Weight.java:135)
+ at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:667)
+ at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:474)
+ at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:593)
+ at org.apache.lucene.search.IndexSearcher.searchAfter(IndexSearcher.java:451)
+ at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:462)
+ at DimensionalRangeQueryExample.query(DimensionalRangeQueryExample.java:66)
+Here's an example program to trigger this failure:
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.DimensionalIntField;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.LegacyIntField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.StoredDocument;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.search.DimensionalRangeQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LegacyNumericRangeQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.RAMDirectory;
+import org.apache.lucene.uninverting.UninvertingReader;
+import org.apache.lucene.util.BytesRef;
+
+public class DimensionalRangeQueryExample {
+ public static void main(String[] args) throws IOException, ParseException {
+  StandardAnalyzer analyzer = new StandardAnalyzer();
+  Directory index = new RAMDirectory();
+  IndexWriterConfig config = new IndexWriterConfig(analyzer);
+
+  IndexWriter w = new IndexWriter(index, config);
+  addDoc(w, "Lucene in Action", 1);
+  addDoc(w, "Lucene for Dummies", 2);
+  addDoc(w, "Managing Gigabytes", 3);
+  addDoc(w, "The Art of Computer Science", 4);
+  w.commit();
+  w.close();
+
+  DirectoryReader reader = (DirectoryReader.open(index));
+
+  Map<String, UninvertingReader.Type> uninvertingMap = new HashMap<>();
+  uninvertingMap.put("id", UninvertingReader.Type.BINARY);
+  uninvertingMap.put("rating", UninvertingReader.Type.INTEGER);
+  reader = UninvertingReader.wrap(reader, uninvertingMap);
+
+  IndexSearcher searcher = new IndexSearcher(reader);
+
+  Query legacyQuery = LegacyNumericRangeQuery.newIntRange("rating_legacy", 1, 4, true, true);
+  Query dimensionalQuery = DimensionalRangeQuery.new1DIntRange("rating", 1, true, 4, true);
+
+  System.out.println("Legacy query: ");
+  query(legacyQuery, searcher); // works
+  System.out.println("Dimensional query: ");
+  query(dimensionalQuery, searcher); // fails
+  
+  reader.close();
+ }
+
+ private static void query(Query q, IndexSearcher searcher) throws IOException {
+  int hitsPerPage = 10;
+  TopDocs docs = searcher.search(q, hitsPerPage);
+  ScoreDoc[] hits = docs.scoreDocs;
+
+  System.out.println("Found " + hits.length + " hits.");
+  for(int i=0;i<hits.length;++i) {
+   int docId = hits[i].doc;
+   StoredDocument d = searcher.doc(docId);
+   System.out.println((i + 1) + ". " + d);
+  }
+ }
+ private static void addDoc(IndexWriter w, String title, int rating) throws IOException {
+  Document doc = new Document();
+  String id = ""+new Random().nextInt(1000);
+  byte idBytes[] = id.getBytes();
+  doc.add(new StringField("id", new BytesRef(idBytes), Store.YES));
+  doc.add(new TextField("title", title, Field.Store.YES));
+  doc.add(new DimensionalIntField("rating", rating));
+  LegacyIntField legacy = new LegacyIntField("rating_legacy", rating, Store.YES);
+  legacy.setIntValue(rating);
+  doc.add(legacy);
+  w.addDocument(doc);
+ }
+}
+I don't yet know more as to why this could be. Michael McCandless Any ideas, please?
+Apologies if I should've brought this up in the mailing lists, or as a comment in LUCENE-6917 itself.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+5.4.1, 5.5, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ishan Chattopadhyaya
+Create date:
+28/Dec/15 12:56
+Update date:
+09/May/16 18:33
+Resolved date:
+11/Jan/16 15:20

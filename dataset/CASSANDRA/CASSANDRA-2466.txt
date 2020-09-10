@@ -1,0 +1,37 @@
+Summary:
+bloom filters should avoid huge array allocations to avoid fragmentation concerns
+Description:
+The fact that bloom filters are backed by single large arrays of longs is expected to interact badly with promotion of objects into old gen with CMS, due to fragmentation concerns (as discussed in CASSANDRA-2463).
+It should be less of an issue than CASSANDRA-2463 in the sense that you need to have a lot of rows before the array sizes become truly huge. For comparison, the ~ 143 million row key limit implied by the use of 'int' in BitSet prior to the switch to OpenBitSet translates roughly to 238 MB (assuming the limitation factor there was the addressability of the bits with a 32 bit int, which is my understanding).
+Having a preliminary look at OpenBitSet with an eye towards replacing the single long[] with multiple arrays, it seems that if we're willing to drop some of the functionality that is not used for bloom filter purposes, the bits[i] indexing should be pretty easy to augment with modulo to address an appropriate smaller array. Locality is not an issue since the bloom filter case is the worst possible case for locality anyway, and it doesn't matter whether it's one huge array or a number of ~ 64k arrays.
+Callers may be affected like BloomFilterSerializer which cares about the underlying bit array.
+If the full functionality of OpenBitSet is to be maintained (e.g., xorCount) some additional acrobatics would be necessary and presumably at a noticable performance cost if such operations were to be used in performance critical places.
+An argument against touching OpenBitSet is that it seems to be pretty carefully written and tested and has some non-trivial details and people have seemingly benchmarked it quite carefully. On the other hand, the improvement would then apply to other things as well, such as the bitsets used to keep track of in-core pages (off the cuff for scale, a 64 gig sstable should imply a 2 mb bit set, with one bit per 4k page).
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Oleg Anastasyev
+Reporter:
+Peter Schuller
+Create date:
+13/Apr/11 03:45
+Update date:
+16/Apr/19 09:33
+Resolved date:
+26/Oct/11 19:34

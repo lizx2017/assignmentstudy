@@ -1,0 +1,71 @@
+Summary:
+ALTER TYPE RENAME hangs
+Description:
+I can't rename a user defined type using 'ALTER TYPE RENAME'.
+Steps to reproduce:
+[cqlsh 4.1.1 | Cassandra 2.1-SNAPSHOT | CQL spec 3.1.1 | Thrift protocol 19.39.0]
+Use HELP for help.
+cqlsh> 
+rhatch@whatup:~/git/cstar/cassandra$ ccm clear
+rhatch@whatup:~/git/cstar/cassandra$ ccm remove
+rhatch@whatup:~/git/cstar/cassandra$ ccm create test_cluster
+Current cluster is now: test_cluster
+rhatch@whatup:~/git/cstar/cassandra$ ccm populate -n 1
+rhatch@whatup:~/git/cstar/cassandra$ ccm start
+rhatch@whatup:~/git/cstar/cassandra$ ccm node1 cqlsh
+Connected to test_cluster at 127.0.0.1:9160.
+[cqlsh 4.1.1 | Cassandra 2.1-SNAPSHOT | CQL spec 3.1.1 | Thrift protocol 19.39.0]
+cqlsh> create keyspace user_type_renaming with replication = {'class':'SimpleStrategy', 'replication_factor':1} ;
+cqlsh> use user_type_renaming ;
+cqlsh:user_type_renaming>               CREATE TYPE simple_type (
+                      ...               user_number int
+                      ...               );
+cqlsh:user_type_renaming>               ALTER TYPE simple_type rename to renamed_type;
+And here's the log contents after the failure:
+INFO  [MigrationStage:1] 2014-01-14 13:11:21,521 DefsTables.java:410 - Loading org.apache.cassandra.db.marshal.UserType(user_type_renaming,73696d706c655f74797065,757365725f6e756d626572:org.apache.cassandra.db.marshal.Int32Type)
+ERROR [Thrift:1] 2014-01-14 13:11:36,684 CassandraDaemon.java:139 - Exception in thread Thread[Thrift:1,5,main]
+java.lang.AssertionError: null
+ at org.apache.cassandra.config.Schema.getKSMetaData(Schema.java:228) ~[main/:na]
+ at org.apache.cassandra.cql3.statements.AlterTypeStatement$TypeRename.makeUpdatedType(AlterTypeStatement.java:357) ~[main/:na]
+ at org.apache.cassandra.cql3.statements.AlterTypeStatement.announceMigration(AlterTypeStatement.java:108) ~[main/:na]
+ at org.apache.cassandra.cql3.statements.SchemaAlteringStatement.execute(SchemaAlteringStatement.java:71) ~[main/:na]
+ at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:194) ~[main/:na]
+ at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:228) ~[main/:na]
+ at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:218) ~[main/:na]
+ at org.apache.cassandra.thrift.CassandraServer.execute_cql3_query(CassandraServer.java:1966) ~[main/:na]
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4486) ~[thrift/:na]
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4470) ~[thrift/:na]
+ at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:39) ~[libthrift-0.9.1.jar:0.9.1]
+ at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:39) ~[libthrift-0.9.1.jar:0.9.1]
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:194) ~[main/:na]
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145) ~[na:1.7.0_45]
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615) ~[na:1.7.0_45]
+ at java.lang.Thread.run(Thread.java:744) ~[na:1.7.0_45]
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Russ Hatch
+Create date:
+14/Jan/14 20:16
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/Jan/14 18:16

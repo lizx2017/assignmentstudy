@@ -1,0 +1,85 @@
+Summary:
+Static Initialization Deadlock between COSNumber/COSInteger
+Description:
+Problem
+Using Tika 1.10 (PDF Box 1.8.10) to parse PDF documents in a multi-threaded application, processing unexpectedly halted. Investigating the output of a kill -3, we found:
+"pool-2-thread-18" #50 prio=5 os_prio=0 tid=0x00002af088a67000 nid=0xc9b9 in Object.wait() [0x00002af0dc803000]
+   java.lang.Thread.State: RUNNABLE
+  at org.apache.pdfbox.pdfparser.BaseParser.parseDirObject(BaseParser.java:1348)
+
+x 15
+
+"pool-2-thread-13" #45 prio=5 os_prio=0 tid=0x00002af0cf910800 nid=0xc9b4 in Object.wait() [0x00002af0dc2ff000]
+   java.lang.Thread.State: RUNNABLE
+  at org.apache.pdfbox.cos.COSDocument.getObjectFromPool(COSDocument.java:720)
+  at org.apache.pdfbox.pdfparser.PDFParser.parseObject(PDFParser.java:685)
+
+x 2
+
+"pool-2-thread-11" #43 prio=5 os_prio=0 tid=0x00002af0cfba6000 nid=0xc9b2 in Object.wait() [0x00002af0dc0fc000]
+   java.lang.Thread.State: RUNNABLE
+  at org.apache.pdfbox.cos.COSNumber.<clinit>(COSNumber.java:33)
+  at org.apache.pdfbox.pdfparser.BaseParser.parseDirObject(BaseParser.java:1348)
+
+x 1
+Upon further investigation, it appears that there is a risk for deadlock when BaseParser calls COSNumber.get() and COSDocument call COSInteger.get().
+I was able to semi-reliably replicate this issue with the below Spock test:
+import org.apache.pdfbox.cos.COSInteger
+import org.apache.pdfbox.cos.COSNumber
+import spock.lang.Specification
+
+class ThreadingIssueSpec extends Specification{
+
+    def "testy test"(){
+        setup:
+        Thread thread = new Thread(new Runnable(){
+
+            @Override
+            void run() {
+                for (int i =0; i<100; i++){
+                    COSNumber.get("-")
+                }
+            }
+        })
+        thread.start()
+
+        for(int i =0; i<100; i++) {
+            COSInteger.get("-")
+        }
+
+        thread.join()
+
+        expect:
+        1==1
+    }
+}
+(you'll likely need to run this several times before the test hangs, but it does eventually hang)
+I updated my Tika dep to 1.14 (PDF Box 2.0.3) and was still able to replicate this issue.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.3
+Fix_version:
+2.0.5, 3.0.0 PDFBox
+Component:
+None
+Label:
+None
+Environment:
+mac os x, java
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Sean Story
+Create date:
+20/Feb/17 16:31
+Update date:
+13/Feb/18 19:36
+Resolved date:
+09/Mar/17 21:49

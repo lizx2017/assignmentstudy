@@ -1,0 +1,53 @@
+Summary:
+HFile V2 does not honor setCacheBlocks when scanning.
+Description:
+While testing the LRU cache during the scanning I noticed quite some churn in the cache even when Scan.cacheBlocks is set to false. After debugging this, I found that HFile V2 always caches blocks in the LRU cache regardless of the cacheBlocks setting.
+Here's a trace (from Eclipse) showing the problem:
+HFileReaderV2.readBlock(long, int, boolean, boolean, boolean) line: 279
+HFileReaderV2.readBlockData(long, long, int, boolean) line: 219
+HFileBlockIndex$BlockIndexReader.seekToDataBlock(byte[], int, int, HFileBlock) line: 191
+HFileReaderV2$ScannerV2.seekTo(byte[], int, int, boolean) line: 502
+HFileReaderV2$ScannerV2.reseekTo(byte[], int, int) line: 539
+StoreFileScanner.reseekAtOrAfter(HFileScanner, KeyValue) line: 151
+StoreFileScanner.reseek(KeyValue) line: 110
+KeyValueHeap.reseek(KeyValue) line: 255
+StoreScanner.reseek(KeyValue) line: 409
+StoreScanner.next(List<KeyValue>, int) line: 304
+KeyValueHeap.next(List<KeyValue>, int) line: 114
+KeyValueHeap.next(List<KeyValue>) line: 143
+HRegion$RegionScannerImpl.nextRow(byte[]) line: 2774
+HRegion$RegionScannerImpl.nextInternal(int) line: 2722
+HRegion$RegionScannerImpl.next(List<KeyValue>, int) line: 2682
+HRegion$RegionScannerImpl.next(List<KeyValue>) line: 2699
+HRegionServer.next(long, int) line: 2092
+Every scanner.next causes a reseek, which eventually causes a call to HFileBlockIndex$BlockIndexReader.seekToDataBlock(...) at which point the cacheBlocks information is lost. HFileReaderV2.readBlockData calls HFileReaderV2.readBlock with cacheBlocks set unconditionally to true.
+The fix is not immediately clear, unless we want to pass cacheBlocks to HFileBlockIndex$BlockIndexReader.seekToDataBlock and then on to HFileBlock.BasicReader.readBlockData and all its implementers, which is ugly as readBlockData should not care about caching.
+Avoiding caching during scans is somewhat important for us.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.0, 0.94.0
+Fix_version:
+0.92.0, 0.94.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mikhail Bautin
+Reporter:
+Lars Hofhansl
+Create date:
+27/Sep/11 07:22
+Update date:
+12/Oct/12 05:35
+Resolved date:
+02/Oct/11 21:30

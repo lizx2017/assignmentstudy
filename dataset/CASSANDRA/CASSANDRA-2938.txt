@@ -1,0 +1,108 @@
+Summary:
+NotFoundException doing a quick succession of insert/get's on the same CF or rowkey
+Description:
+Issue
+A customer complained about pycassa.cassandra.c08.ttypes.NotFoundException: NotFoundException()
+This issue is related to a quick succession of insert/get's.
+Customer's AWS instance on EBS: 1 row with 10K columns, with sleep code: fails 1/10 inserts
+3-node test cluster on Rackspace.
+We could not reproduce this with the sleep code left in. This was tested with the SimpleStrategy and NetworkTopologyStrategy.
+1 row with 10K columns, without sleep code: fails 1/500 inserts
+10K row with 1 column, without sleep code: Script passes 2 in 5 attempts. When it fails, it is at about the 4000-5000th insert.
+Stack
+Traceback (most recent call last):
+  File "t910.py", line 56, in <module>
+    test()
+  File "t910.py", line 43, in test
+    db.get('testraw', columns=[key, ]) 
+  File "/usr/local/lib/python2.6/dist-packages/pycassa-1.1.0-py2.6.egg/pycassa/columnfamily.py", line 391, in get
+    read_consistency_level or self.read_consistency_level)
+  File "/usr/local/lib/python2.6/dist-packages/pycassa-1.1.0-py2.6.egg/pycassa/pool.py", line 380, in new_f
+    result = getattr(super(ConnectionWrapper, self), f.__name__)(*args, **kwargs)
+  File "/usr/local/lib/python2.6/dist-packages/pycassa-1.1.0-py2.6.egg/pycassa/cassandra/c08/Cassandra.py", line 422, in get
+    return self.recv_get()
+  File "/usr/local/lib/python2.6/dist-packages/pycassa-1.1.0-py2.6.egg/pycassa/cassandra/c08/Cassandra.py", line 449, in recv_get
+    raise result.nfe
+pycassa.cassandra.c08.ttypes.NotFoundException: NotFoundException()
+Script - also attached
+#!/usr/bin/python
+
+import time
+import pycassa
+from pycassa import system_manager
+from pycassa.system_manager import *
+
+def test():
+        m = pycassa.system_manager.SystemManager('cathy1:9160')
+
+        pool = pycassa.pool.ConnectionPool('testraw',
+                server_list=['cathy1:9160', ], timeout=5, pool_size=16,
+                max_overflow=0, prefill=False, pool_timeout=30, max_retries=8)
+
+        kspaces = m.list_keyspaces()
+
+        if not 'testraw' in kspaces:
+                m.create_keyspace('testraw', 3)
+
+        cfs = m.get_keyspace_column_families('testraw')
+
+        if 'testraw' not in cfs:
+                m.create_column_family('testraw', 'testraw',
+
+        comparator_type=system_manager.BYTES_TYPE,
+                default_validation_class=system_manager.BYTES_TYPE,
+                row_cache_size=1024 * 1024, key_cache_size=0)
+
+        db = pycassa.ColumnFamily(pool, 'testraw',
+                read_consistency_level=pycassa.ConsistencyLevel.QUORUM,
+                write_consistency_level=pycassa.ConsistencyLevel.QUORUM)
+
+        try:
+                for i in range(10000):
+                        print 'Inserting %d' % i
+
+                        # The following code generates 1 row with 10K columns
+                        key = str(i)
+                        db.insert('testraw', {key: ''})
+                        db.get('testraw', columns=[key, ])
+
+                        # The following code generates 10K rows with 1 columns
+                        #key = 'key' + str(i) 
+                        #db.insert(key, {str(i) : ''}) 
+                        #db.get(key, columns=[str(i), ]) 
+
+                        # time.sleep(.1) 
+        finally:
+                print 'Done'
+                m.drop_keyspace('testraw')
+
+if __name__ == '__main__':
+        test()
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Invalid
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Cathy Daw
+Create date:
+22/Jul/11 19:21
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Jul/11 17:53

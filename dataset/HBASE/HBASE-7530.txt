@@ -1,0 +1,51 @@
+Summary:
+[replication] Work around HDFS-4380 else we get NPEs
+Description:
+I've been spending a lot of time trying to figure the recent test failures related to replication. One I seem to be constantly getting is this NPE:
+2013-01-09 10:08:56,912 ERROR [RegionServer:1;172.23.7.205,61604,1357754664830-EventThread.replicationSource,2] regionserver.ReplicationSource$1(727): Unexpected exception in ReplicationSource, currentPath=hdfs://localhost:61589/user/jdcryans/hbase/.logs/172.23.7.205,61604,1357754664830/172.23.7.205%2C61604%2C1357754664830.1357754936216
+java.lang.NullPointerException
+        at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.updateBlockInfo(DFSClient.java:1885)
+        at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.openInfo(DFSClient.java:1858)
+        at org.apache.hadoop.hdfs.DFSClient$DFSInputStream.<init>(DFSClient.java:1834)
+        at org.apache.hadoop.hdfs.DFSClient.open(DFSClient.java:578)
+        at org.apache.hadoop.hdfs.DistributedFileSystem.open(DistributedFileSystem.java:154)
+        at org.apache.hadoop.fs.FilterFileSystem.open(FilterFileSystem.java:108)
+        at org.apache.hadoop.io.SequenceFile$Reader.openFile(SequenceFile.java:1495)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader$WALReader.openFile(SequenceFileLogReader.java:62)
+        at org.apache.hadoop.io.SequenceFile$Reader.<init>(SequenceFile.java:1482)
+        at org.apache.hadoop.io.SequenceFile$Reader.<init>(SequenceFile.java:1475)
+        at org.apache.hadoop.io.SequenceFile$Reader.<init>(SequenceFile.java:1470)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader$WALReader.<init>(SequenceFileLogReader.java:55)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.reset(SequenceFileLogReader.java:308)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationHLogReaderManager.openReader(ReplicationHLogReaderManager.java:69)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.openReader(ReplicationSource.java:500)
+        at org.apache.hadoop.hbase.replication.regionserver.ReplicationSource.run(ReplicationSource.java:312)
+Talking to Todd Lipcon, he said it was likely fixed in Hadoop 2.0 via HDFS-3222 but for Hadoop 1.0 he created HDFS-4380. This seems to happen while crossing block boundaries and TestReplication uses a 20KB block size for the HLog. The intent was just to get HLogs to roll more often, and this can also be achieved with hbase.regionserver.logroll.multiplier with a value of 0.0003f.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.3
+Fix_version:
+0.94.5, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+10/Jan/13 18:45
+Update date:
+13/Mar/13 22:48
+Resolved date:
+11/Jan/13 00:54

@@ -1,0 +1,109 @@
+Summary:
+communication exceptions between nodes
+Description:
+After upgrading from 2.0.5 to 2.1.0 beta1, I get a lot of exceptions. They may be related, so I encapsulate all of the exceptions in this ticket. Essentially, it comes down to these three, where the first exception only appears once at boot time.
+Exception 1
+ERROR [HintedHandoff:1] 2014-02-22 01:44:59,509 - Scanned over 100000 tombstones in system.hints; query aborted (see tombstone_fail_threshold)
+ERROR [HintedHandoff:1] 2014-02-22 01:44:59,514 - Exception in thread Thread[HintedHandoff:1,1,main]
+org.apache.cassandra.db.filter.TombstoneOverwhelmingException: null
+        at org.apache.cassandra.db.filter.SliceQueryFilter.collectReducedColumns(SliceQueryFilter.java:213) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.filter.QueryFilter.collateColumns(QueryFilter.java:123) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.filter.QueryFilter.collateOnDiskAtom(QueryFilter.java:81) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.filter.QueryFilter.collateOnDiskAtom(QueryFilter.java:73) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.CollationController.collectAllData(CollationController.java:283) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.CollationController.getTopLevelColumns(CollationController.java:51) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.ColumnFamilyStore.getTopLevelColumns(ColumnFamilyStore.java:1846) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.ColumnFamilyStore.getColumnFamily(ColumnFamilyStore.java:1639) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.HintedHandOffManager.doDeliverHintsToEndpoint(HintedHandOffManager.java:375) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.HintedHandOffManager.deliverHintsToEndpoint(HintedHandOffManager.java:332) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.HintedHandOffManager.access$300(HintedHandOffManager.java:94) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.HintedHandOffManager$5.run(HintedHandOffManager.java:558) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source) ~[na:1.7.0]
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source) ~[na:1.7.0]
+        at java.lang.Thread.run(Unknown Source) ~[na:1.7.0]
+Exception 2
+ERROR [WRITE-/10.9.163.158] 2014-02-22 01:46:06,279 - error writing to /10.9.163.158
+java.lang.NullPointerException: null
+        at org.apache.cassandra.db.ArrayBackedSortedColumns.sortCells(ArrayBackedSortedColumns.java:116) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.ArrayBackedSortedColumns.maybeSortCells(ArrayBackedSortedColumns.java:103) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.ArrayBackedSortedColumns.getColumnCount(ArrayBackedSortedColumns.java:313) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.ColumnFamilySerializer.contentSerializedSize(ColumnFamilySerializer.java:117) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.ColumnFamilySerializer.serializedSize(ColumnFamilySerializer.java:132) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.Mutation$MutationSerializer.serializedSize(Mutation.java:337) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.Mutation$MutationSerializer.serializedSize(Mutation.java:263) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.net.MessageOut.serialize(MessageOut.java:116) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.net.OutboundTcpConnection.writeInternal(OutboundTcpConnection.java:273) [apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.net.OutboundTcpConnection.writeConnected(OutboundTcpConnection.java:225) [apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:163) [apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+INFO  [HANDSHAKE-/10.9.163.158] 2014-02-22 01:46:06,286 - Handshaking version with /10.9.163.158
+ERROR [MutationStage:107] 2014-02-22 01:46:06,682 - Exception in thread Thread[MutationStage:107,5,main]
+java.lang.RuntimeException: java.nio.BufferOverflowException
+        at org.apache.cassandra.service.StorageProxy$LocalMutationRunnable.run(StorageProxy.java:2006) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source) ~[na:1.7.0]
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source) ~[na:1.7.0]
+        at java.lang.Thread.run(Unknown Source) ~[na:1.7.0]
+Caused by: java.nio.BufferOverflowException: null
+        at java.nio.Buffer.nextPutIndex(Unknown Source) ~[na:1.7.0]
+        at java.nio.DirectByteBuffer.put(Unknown Source) ~[na:1.7.0]
+        at org.apache.cassandra.io.util.ByteBufferOutputStream.write(ByteBufferOutputStream.java:38) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.io.util.ChecksummedOutputStream.write(ChecksummedOutputStream.java:46) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at java.io.DataOutputStream.writeInt(Unknown Source) ~[na:1.7.0]
+        at org.apache.cassandra.db.ColumnSerializer.serialize(ColumnSerializer.java:77) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.ColumnFamilySerializer.serialize(ColumnFamilySerializer.java:70) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.Mutation$MutationSerializer.serialize(Mutation.java:277) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.commitlog.CommitLog.add(CommitLog.java:222) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.commitlog.CommitLog.add(CommitLog.java:193) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.Keyspace.apply(Keyspace.java:349) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.Keyspace.apply(Keyspace.java:328) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.Mutation.apply(Mutation.java:205) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.service.StorageProxy$7.runMayThrow(StorageProxy.java:940) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.service.StorageProxy$LocalMutationRunnable.run(StorageProxy.java:2002) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        ... 3 common frames omitted
+Exception 3
+ERROR [WRITE-/10.218.142.35] 2014-02-22 01:46:08,670 - error writing to /10.218.142.35
+java.lang.IllegalArgumentException: fromIndex(3) > toIndex(2)
+        at java.util.TimSort.rangeCheck(Unknown Source) ~[na:1.7.0]
+        at java.util.TimSort.sort(Unknown Source) ~[na:1.7.0]
+        at java.util.Arrays.sort(Unknown Source) ~[na:1.7.0]
+        at org.apache.cassandra.db.ArrayBackedSortedColumns.sortCells(ArrayBackedSortedColumns.java:113) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.ArrayBackedSortedColumns.maybeSortCells(ArrayBackedSortedColumns.java:103) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.ArrayBackedSortedColumns.getSortedColumns(ArrayBackedSortedColumns.java:301) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.ColumnFamily.iterator(ColumnFamily.java:445) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.ColumnFamilySerializer.contentSerializedSize(ColumnFamilySerializer.java:119) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.ColumnFamilySerializer.serializedSize(ColumnFamilySerializer.java:132) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.Mutation$MutationSerializer.serializedSize(Mutation.java:337) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.db.Mutation$MutationSerializer.serializedSize(Mutation.java:263) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.net.MessageOut.serialize(MessageOut.java:116) ~[apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.net.OutboundTcpConnection.writeInternal(OutboundTcpConnection.java:273) [apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.net.OutboundTcpConnection.writeConnected(OutboundTcpConnection.java:225) [apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+        at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:163) [apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT]
+Note: apache-cassandra-2.1.0~beta1.jar:2.1.0-beta1-SNAPSHOT is to fix the issue from CASSANDRA-6753
+Let me know if there is any other info I should provide.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+2.1 beta1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+David Chia
+Create date:
+22/Feb/14 02:03
+Update date:
+16/Apr/19 09:31
+Resolved date:
+24/Feb/14 08:50

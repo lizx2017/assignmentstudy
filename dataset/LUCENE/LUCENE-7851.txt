@@ -1,0 +1,56 @@
+Summary:
+Lucene54DocValuesProducer#getSortedSetTable lookupTerm does not honor setDocument
+Description:
+I'm having a problem with the lookupTerm method of the anonymous RandomAccessOrds class returned by Lucene54DocValuesProducer#getSortedSetTable(). It does not seem to honor setDocument. It returns the same ord every time regardless of my calling setDocument with different arguments.
+To reproduce:
+I have two documents with a multi-valued string field "strfield". Both have a single value "a". I have a custom class that extends FieldCacheSource. This is obviously just a dummy, but it's the simplest way I know to reproduce the problem.
+public class MyValueSource extends FieldCacheSource {
+  public MyValueSource(String field) {
+    super(field);
+  }
+
+  @Override
+  public FunctionValues getValues(Map map, LeafReaderContext readerContext) throws IOException {
+    SortedSetDocValues dvs = DocValues.getSortedSet(readerContext.reader(), FieldNames.PARENTS_DATES);
+    dvs.setDocument(0);
+    long zeroOrd = dvs.lookupTerm(new BytesRef("a"));
+    dvs.setDocument(1);
+    long oneOrd = dvs.lookupTerm(new BytesRef("a"));
+    assert(zeroOrd != oneOrd); // FAILS. The same ord is always returned.
+
+    return new LongDocValues(this) {
+      @Override
+      public long longVal(int doc) {
+        return 0;
+      }
+    };
+  }
+}
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+6.0.1
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Vesa Pirila
+Create date:
+24/May/17 22:03
+Update date:
+24/May/17 23:19
+Resolved date:
+24/May/17 22:19

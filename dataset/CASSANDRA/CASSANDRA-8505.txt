@@ -1,0 +1,70 @@
+Summary:
+Invalid results are returned while secondary index are being build
+Description:
+If you request an index creation and then execute a query that use the index the results returned might be invalid until the index is fully build. This is caused by the fact that the table column will be marked as indexed before the index is ready.
+The following unit tests can be use to reproduce the problem:
+    @Test
+    public void testIndexCreatedAfterInsert() throws Throwable
+    {
+        createTable("CREATE TABLE %s (a int, b int, c int, primary key((a, b)))");
+
+        execute("INSERT INTO %s (a, b, c) VALUES (0, 0, 0);");
+        execute("INSERT INTO %s (a, b, c) VALUES (0, 1, 1);");
+        execute("INSERT INTO %s (a, b, c) VALUES (0, 2, 2);");
+        execute("INSERT INTO %s (a, b, c) VALUES (1, 0, 3);");
+        execute("INSERT INTO %s (a, b, c) VALUES (1, 1, 4);");
+        
+        createIndex("CREATE INDEX ON %s(b)");
+        
+        assertRows(execute("SELECT * FROM %s WHERE b = ?;", 1),
+                   row(0, 1, 1),
+                   row(1, 1, 4));
+    }
+    
+    @Test
+    public void testIndexCreatedBeforeInsert() throws Throwable
+    {
+        createTable("CREATE TABLE %s (a int, b int, c int, primary key((a, b)))");
+
+        createIndex("CREATE INDEX ON %s(b)");
+        
+        execute("INSERT INTO %s (a, b, c) VALUES (0, 0, 0);");
+        execute("INSERT INTO %s (a, b, c) VALUES (0, 1, 1);");
+        execute("INSERT INTO %s (a, b, c) VALUES (0, 2, 2);");
+        execute("INSERT INTO %s (a, b, c) VALUES (1, 0, 3);");
+        execute("INSERT INTO %s (a, b, c) VALUES (1, 1, 4);");
+
+        assertRows(execute("SELECT * FROM %s WHERE b = ?;", 1),
+                   row(0, 1, 1),
+                   row(1, 1, 4));
+    }
+The first test will fail while the second will work.
+In my opinion the first test should reject the request as invalid (as if the index was not existing) until the index is fully build.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+3.0.1, 3.1
+Component:
+Feature/2i Index, (2)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Benjamin Lerer
+Create date:
+17/Dec/14 21:09
+Update date:
+16/Apr/19 09:31
+Resolved date:
+27/Nov/15 10:21

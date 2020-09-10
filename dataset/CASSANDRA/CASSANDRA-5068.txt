@@ -1,0 +1,64 @@
+Summary:
+CLONE - Once a host has been hinted to, log messages for it repeat every 10 mins even if no hints are delivered
+Description:
+We have "0 row" hinted handoffs every 10 minutes like clockwork. This impacts our ability to monitor the cluster by adding persistent noise in the handoff metric.
+Previous mentions of this issue are here:
+http://www.mail-archive.com/user@cassandra.apache.org/msg25982.html
+The hinted handoffs can be scrubbed away with
+nodetool -h 127.0.0.1 scrub system HintsColumnFamily
+but they return after anywhere from a few minutes to multiple hours later.
+These started to appear after an upgrade to 1.1.6 and haven't gone away despite rolling cleanups, rolling restarts, multiple rounds of scrubbing, etc.
+A few things we've noticed about the handoffs:
+1. The phantom handoff endpoint changes after a non-zero handoff comes through
+2. Sometimes a non-zero handoff will be immediately followed by an "off schedule" phantom handoff to the endpoint the phantom had been using before
+3. The sstable2json output seems to include multiple sub-sections for each handoff with the same "deletedAt" information.
+The phantom handoff endpoint changes after a non-zero handoff comes through:
+INFO [HintedHandoff:1] 2012-12-11 06:57:35,093 HintedHandOffManager.java (line 392) Finished hinted handoff of 0 rows to endpoint /10.10.10.1
+INFO [HintedHandoff:1] 2012-12-11 07:07:35,092 HintedHandOffManager.java (line 392) Finished hinted handoff of 0 rows to endpoint /10.10.10.1
+INFO [HintedHandoff:1] 2012-12-11 07:07:37,915 HintedHandOffManager.java (line 392) Finished hinted handoff of 1058 rows to endpoint /10.10.10.2
+INFO [HintedHandoff:1] 2012-12-11 07:17:35,093 HintedHandOffManager.java (line 392) Finished hinted handoff of 0 rows to endpoint /10.10.10.2
+INFO [HintedHandoff:1] 2012-12-11 07:27:35,093 HintedHandOffManager.java (line 392) Finished hinted handoff of 0 rows to endpoint /10.10.10.2
+Sometimes a non-zero handoff will be immediately followed by an "off schedule" phantom handoff to the endpoint the phantom had been using before:
+INFO [HintedHandoff:1] 2012-12-12 21:47:39,335 HintedHandOffManager.java (line 392) Finished hinted handoff of 0 rows to endpoint /10.10.10.3
+INFO [HintedHandoff:1] 2012-12-12 21:57:39,335 HintedHandOffManager.java (line 392) Finished hinted handoff of 0 rows to endpoint /10.10.10.3
+INFO [HintedHandoff:1] 2012-12-12 22:07:43,319 HintedHandOffManager.java (line 392) Finished hinted handoff of 1416 rows to endpoint /10.10.10.4
+INFO [HintedHandoff:1] 2012-12-12 22:07:43,320 HintedHandOffManager.java (line 392) Finished hinted handoff of 0 rows to endpoint /10.10.10.3
+INFO [HintedHandoff:1] 2012-12-12 22:17:39,357 HintedHandOffManager.java (line 392) Finished hinted handoff of 0 rows to endpoint /10.10.10.4
+INFO [HintedHandoff:1] 2012-12-12 22:27:39,337 HintedHandOffManager.java (line 392) Finished hinted handoff of 0 rows to endpoint /10.10.10.4
+The first few entries from one of the json files:
+{
+"0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+"ccf5dc203a2211e20000e154da71a9bb":
+{ "deletedAt": -9223372036854775808, "subColumns": [] }
+,
+"ccf603303a2211e20000e154da71a9bb":
+{ "deletedAt": -9223372036854775808, "subColumns": [] }
+,
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.10, 1.2.2
+Component:
+None
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Peter Haggerty
+Create date:
+13/Dec/12 23:50
+Update date:
+16/Apr/19 09:32
+Resolved date:
+11/Feb/13 19:06

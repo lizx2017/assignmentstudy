@@ -1,0 +1,33 @@
+Summary:
+Fix prepared statement size computation
+Description:
+When computed the size of CQLStatement to limit the prepared statement cache (CASSANDRA-6107), we overestimate the actual memory used because the statement include a reference to the table CFMetaData which measureDeep counts. And as it happens, that reference is big: on a simple test preparing a very trivial select statement, I was able to only prepare 87 statements before some started to be evicted because each statement was more than 93K big and more than 92K of that was the CFMetaData object. As it happens there is no reason to account the CFMetaData object at all since it's in memory anyway whether or not there is prepared statements or not.
+Attaching a simple (if not extremely elegant) patch to remove what we don't care about of the computation. Another solution would be to use the MemoryMeter.withTrackerProvider option as we do in Memtable, but in the QueryProcessor case we currently use only one MemoryMeter, not one per CF, so it didn't felt necessarilly cleaner. We could create one-shot MemoryMeter object each time we need to measure a CQLStatement but that doesn't feel a lot simpler/cleaner either. But if someone feels religious about some other solution, I don't care.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.12, 2.0.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+18/Nov/13 11:33
+Update date:
+16/Apr/19 09:31
+Resolved date:
+18/Nov/13 16:46

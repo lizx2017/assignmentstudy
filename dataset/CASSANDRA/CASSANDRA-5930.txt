@@ -1,0 +1,56 @@
+Summary:
+Offline scrubs can choke on broken files
+Description:
+There are cases where offline scrub can hit an exception and die, like:
+WARNING: Non-fatal error reading row (stacktrace follows)
+Exception in thread "main" java.io.IOError: java.io.IOError: java.io.EOFException
+ at org.apache.cassandra.db.compaction.Scrubber.scrub(Scrubber.java:242)
+ at org.apache.cassandra.tools.StandaloneScrubber.main(StandaloneScrubber.java:121)
+Caused by: java.io.IOError: java.io.EOFException
+ at org.apache.cassandra.db.compaction.PrecompactedRow.merge(PrecompactedRow.java:116)
+ at org.apache.cassandra.db.compaction.PrecompactedRow.<init>(PrecompactedRow.java:99)
+ at org.apache.cassandra.db.compaction.CompactionController.getCompactedRow(CompactionController.java:176)
+ at org.apache.cassandra.db.compaction.CompactionController.getCompactedRow(CompactionController.java:182)
+ at org.apache.cassandra.db.compaction.Scrubber.scrub(Scrubber.java:171)
+ ... 1 more
+Caused by: java.io.EOFException
+ at java.io.RandomAccessFile.readFully(RandomAccessFile.java:399)
+ at java.io.RandomAccessFile.readFully(RandomAccessFile.java:377)
+ at org.apache.cassandra.utils.BytesReadTracker.readFully(BytesReadTracker.java:95)
+ at org.apache.cassandra.utils.ByteBufferUtil.read(ByteBufferUtil.java:401)
+ at org.apache.cassandra.utils.ByteBufferUtil.readWithLength(ByteBufferUtil.java:363)
+ at org.apache.cassandra.db.ColumnSerializer.deserialize(ColumnSerializer.java:120)
+ at org.apache.cassandra.db.ColumnSerializer.deserialize(ColumnSerializer.java:37)
+ at org.apache.cassandra.db.ColumnFamilySerializer.deserializeColumns(ColumnFamilySerializer.java:144)
+ at org.apache.cassandra.io.sstable.SSTableIdentityIterator.getColumnFamilyWithColumns(SSTableIdentityIterator.java:234)
+ at org.apache.cassandra.db.compaction.PrecompactedRow.merge(PrecompactedRow.java:112)
+ ... 5 more
+Since the purpose of offline scrub is to fix broken stuff, it should be more resilient to broken stuff...
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Jeremiah Jordan
+Create date:
+23/Aug/13 21:54
+Update date:
+16/Apr/19 09:32
+Resolved date:
+03/Feb/14 20:33

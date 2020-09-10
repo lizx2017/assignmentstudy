@@ -1,0 +1,65 @@
+Summary:
+TestFieldSkew test failure
+Description:
+This test adds empty documents with no field contents, then reopens and asserts that scores are the same. Its not supposed to be a random test, it just does a simple execution against each query.
+But it fails with this seed in trunk (i committed some improved debugging):
+ant test  -Dtestcase=TestSimilarity2 -Dtests.method=testNoFieldSkew -Dtests.seed=216F1F3C38561BEF -Dtests.multiplier=2 -Dtests.nightly=true -Dtests.slow=true -Dtests.locale=es_ES -Dtests.timezone=America/Catamarca -Dtests.asserts=true -Dtests.file.encoding=UTF-8
+   [junit4]    > Throwable #1: java.lang.AssertionError: DefaultSimilarity: actual=0.0 = No matching clauses
+   [junit4]    > ,expected=0.2169777 = sum of:
+   [junit4]    >   0.10848885 = weight(foo:bar in 0) [DefaultSimilarity], result of:
+   [junit4]    >     0.10848885 = score(doc=0,freq=1.0), product of:
+   [junit4]    >       0.70710677 = queryWeight, product of:
+   [junit4]    >         0.30685282 = idf(docFreq=1, docCount=1)
+   [junit4]    >         2.3043842 = queryNorm
+   [junit4]    >       0.15342641 = fieldWeight in 0, product of:
+   [junit4]    >         1.0 = tf(freq=1.0), with freq of:
+   [junit4]    >           1.0 = termFreq=1.0
+   [junit4]    >         0.30685282 = idf(docFreq=1, docCount=1)
+   [junit4]    >         0.5 = fieldNorm(doc=0)
+   [junit4]    >   0.10848885 = weight(foo:baz in 0) [DefaultSimilarity], result of:
+   [junit4]    >     0.10848885 = score(doc=0,freq=1.0), product of:
+   [junit4]    >       0.70710677 = queryWeight, product of:
+   [junit4]    >         0.30685282 = idf(docFreq=1, docCount=1)
+   [junit4]    >         2.3043842 = queryNorm
+   [junit4]    >       0.15342641 = fieldWeight in 0, product of:
+   [junit4]    >         1.0 = tf(freq=1.0), with freq of:
+   [junit4]    >           1.0 = termFreq=1.0
+   [junit4]    >         0.30685282 = idf(docFreq=1, docCount=1)
+   [junit4]    >         0.5 = fieldNorm(doc=0)
+   [junit4]    >  expected:<0.21697770059108734> but was:<0.0>
+   [junit4]    >  at __randomizedtesting.SeedInfo.seed([216F1F3C38561BEF:89FA6BFD1F67BF87]:0)
+   [junit4]    >  at org.apache.lucene.search.similarities.TestSimilarity2.testNoFieldSkew(TestSimilarity2.java:201)
+   [junit4]    >  at java.lang.Thread.run(Thread.java:745)
+   [junit4]   2> NOTE: test params are: codec=DummyCompressingStoredFields(storedFieldsFormat=CompressingStoredFieldsFormat(compressionMode=DUMMY, chunkSize=16060, maxDocsPerChunk=1, blockSize=6), termVectorsFormat=CompressingTermVectorsFormat(compressionMode=DUMMY, chunkSize=16060, blockSize=6)), sim=DefaultSimilarity, locale=es_ES, timezone=America/Catamarca
+   [junit4]   2> NOTE: Linux 3.19.0-25-generic amd64/Oracle Corporation 1.8.0_45 (64-bit)/cpus=8,threads=1,free=140426184,total=189267968
+   [junit4]   2> NOTE: All tests run in this JVM: [TestSimilarity2]
+   [junit4] Completed [1/1] in 0.64s, 1 test, 1 failure <<< FAILURES!
+This is scary, it means the first reopen did not make documents visible when it should have? (or there is a sneaky test bug)
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+20/Aug/15 15:29
+Update date:
+20/Aug/15 15:44
+Resolved date:
+

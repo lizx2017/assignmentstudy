@@ -1,0 +1,39 @@
+Summary:
+Race condition in snapshot repair
+Description:
+When we do a snapshot/sequential repair, we use the repair session id as the snapshot name. Unfortunately in Directories.java when we delete a snapshot, we delete it for all column families, even when called on a specific cf store.
+So what can happen is this:
+Node B finishes validation compaction for CF1 and Notifies Node A
+Node B starts to delete snapshot for CF1
+Node A finishes repair of CF1 and starts repair of CF2
+Node B takes snapshot of CF2 and starts validation compaction, but the previous validation compaction is still deleting snapshots, so the snapshot it wants to run a validation on gets deleted out from under it.
+I've only reproduced on 1.2.6, but looking at the code this definitely looks like it exists in 1.2 HEAD. Not positive about 2.0.
+I think the fix is just to update Directories.java to not delete the snapshot from all column families.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.10, 2.0.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Yuki Morishita
+Reporter:
+Nick Bailey
+Create date:
+12/Sep/13 14:57
+Update date:
+16/Apr/19 09:32
+Resolved date:
+13/Sep/13 16:41

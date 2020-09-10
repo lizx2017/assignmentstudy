@@ -1,0 +1,59 @@
+Summary:
+Nodetool move fails to stream out data from moved node to new endpoint.
+Description:
+When moving a node in the ring with nodetool move, that node streams its data to itself instead of to the new endpoint responsible for its old range.
+Steps to reproduce:
+Create a cluster (A,B,C,D) with tokens (0,4,8,C) using ByteOrderedPartitioner
+Create a keyspace and CF with RF=1
+Insert keys (2,6,A,E). This should put one key on each node.
+Move node A to token 7. This should cause:
++ node C streams key 6 to node A
++ node A streams key E to node B
+However instead, node A streams key E to itself.
+Selected log messages from node A:
+INFO [RMI TCP Connection(6)-10.2.129.41] 2011-07-26 16:29:17,075 StorageService.java (line 1878) Moving miles/10.2.129.41 from Token(bytes[00]) to Token(bytes[07]).
+DEBUG [RMI TCP Connection(6)-10.2.129.41] 2011-07-26 16:29:17,080 StorageService.java (line 1941) Table ks: work map
+{/10.2.129.16=[(Token(bytes[04]),Token(bytes[07])]]}
+.
+INFO [RMI TCP Connection(6)-10.2.129.41] 2011-07-26 16:29:17,080 StorageService.java (line 1946) Sleeping 30000 ms before start streaming/fetching ranges.
+...
+INFO [RMI TCP Connection(6)-10.2.129.41] 2011-07-26 16:29:46,728 StorageService.java (line 522) Moving: fetching new ranges and streaming old ranges
+DEBUG [RMI TCP Connection(6)-10.2.129.41] 2011-07-26 16:29:46,728 StorageService.java (line 1960) [Move->STREAMING] Work Map: {ks={(Token(bytes[0c]),Token(bytes[00])]=[miles/10.2.129.41]}}
+DEBUG [RMI TCP Connection(6)-10.2.129.41] 2011-07-26 16:29:46,729 StorageService.java (line 1965) [Move->FETCHING] Work Map: {ks={/10.2.129.16=[(Token(bytes[04]),Token(bytes[07])]]}}
+DEBUG [RMI TCP Connection(6)-10.2.129.41] 2011-07-26 16:29:46,730 StorageService.java (line 2411) Requesting from /10.2.129.16 ranges (Token(bytes[04]),Token(bytes[07])]
+...
+INFO [StreamStage:1] 2011-07-26 16:29:46,737 StreamOut.java (line 90) Beginning transfer to miles/10.2.129.41
+DEBUG [StreamStage:1] 2011-07-26 16:29:46,737 StreamOut.java (line 91) Ranges are (Token(bytes[0c]),Token(bytes[00])]
+This appears to be caused because in StorageService.move we call
+Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.moving(newToken));
+and then get the new token metadata in order to calculate where the new endpoint is that we should stream to
+TokenMetadata tokenMetaClone = tokenMetadata_.cloneAfterAllSettled();
+however, in addLocalApplicationState there is no notification broadcast for the change in local state, so tokenMetadata_ never updates the list of moving nodes, and the tokenMetaClone is still the state of the ring from before the move.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.3
+Component:
+None
+Label:
+move streaming
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Overton
+Reporter:
+Sam Overton
+Create date:
+26/Jul/11 15:42
+Update date:
+16/Apr/19 09:32
+Resolved date:
+27/Jul/11 22:47

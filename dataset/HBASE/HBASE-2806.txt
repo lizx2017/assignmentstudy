@@ -1,0 +1,54 @@
+Summary:
+DNS hiccups cause uncaught NPE in HServerAddress#getBindAddress
+Description:
+Yesterday at the Hadoop Summit, the "HADOOP" wireless network was using a pair of DNS servers that couldn't resolve localhost.. This prevented me from starting HBase as the construction of the HMaster was failing with the following rather cryptic error:
+2010-06-29 14:30:24,603 ERROR org.apache.hadoop.hbase.master.HMaster: Failed to start master
+java.lang.RuntimeException: Failed construction of Master: class org.apache.hadoop.hbase.master.HMaster$LocalHMasternull
+        at org.apache.hadoop.hbase.master.HMaster.constructMaster(HMaster.java:1217)
+        at org.apache.hadoop.hbase.LocalHBaseCluster.<init>(LocalHBaseCluster.java:112)
+        at org.apache.hadoop.hbase.master.HMaster.doMain(HMaster.java:1298)
+        at org.apache.hadoop.hbase.master.HMaster.main(HMaster.java:1355)
+Caused by: java.lang.reflect.InvocationTargetException
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:39)
+        at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:27)
+        at java.lang.reflect.Constructor.newInstance(Constructor.java:513)
+        at org.apache.hadoop.hbase.master.HMaster.constructMaster(HMaster.java:1215)
+        ... 3 more
+Caused by: java.lang.NullPointerException
+        at org.apache.hadoop.hbase.HServerAddress.getBindAddress(HServerAddress.java:89)
+        at org.apache.hadoop.hbase.master.HMaster.<init>(HMaster.java:204)
+        at org.apache.hadoop.hbase.master.HMaster$LocalHMaster.<init>(HMaster.java:1230)
+        ... 8 more
+The NullPointerException in getBindAddress comes from the following line of code:
+    return this.address.getAddress().getHostAddress();
+where getAddress() was returning null.
+I think the code should check for this case, log an appropriate error message (to point whoever is going to troubleshoot the problem in the right direction), and throw something else than an NPE.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benoit Sigoure
+Reporter:
+Benoit Sigoure
+Create date:
+30/Jun/10 18:40
+Update date:
+20/Nov/15 12:43
+Resolved date:
+05/Jul/10 19:35

@@ -1,0 +1,55 @@
+Summary:
+Oversize integer in CQL throws NumberFormatException
+Description:
+In CQL, the parser does not handle an oversize Integer, the client socket get closed and an exception is output in the log.
+cqlsh:TEST1> select count(*) from Items limit 10000000000000;
+TSocket read 0 bytes
+cqlsh:TEST1> select count(*) from Items limit 1;
+TSocket read 0 bytes
+ERROR 02:51:28,600 Error occurred during processing of message.
+java.lang.NumberFormatException: For input string: "10000000000"
+ at java.lang.NumberFormatException.forInputString(NumberFormatException.java:48)
+ at java.lang.Integer.parseInt(Integer.java:461)
+ at java.lang.Integer.parseInt(Integer.java:499)
+ at org.apache.cassandra.cql.CqlParser.selectStatement(CqlParser.java:631)
+ at org.apache.cassandra.cql.CqlParser.query(CqlParser.java:221)
+ at org.apache.cassandra.cql.QueryProcessor.getStatement(QueryProcessor.java:951)
+ at org.apache.cassandra.cql.QueryProcessor.process(QueryProcessor.java:873)
+ at org.apache.cassandra.thrift.CassandraServer.execute_cql_query(CassandraServer.java:1234)
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3542)
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql_query.getResult(Cassandra.java:3530)
+ at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:32)
+ at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:34)
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:184)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+The INTEGER type in Cql.g matches digits but not to any particular limit.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.11, 1.1.1
+Component:
+Legacy/CQL
+Label:
+cql
+Environment:
+
+Attachment number:
+0
+Assignee:
+Dave Brosius
+Reporter:
+Scott Sadler
+Create date:
+27/May/12 06:08
+Update date:
+16/Apr/19 09:32
+Resolved date:
+31/May/12 00:40

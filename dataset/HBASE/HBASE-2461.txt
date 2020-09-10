@@ -1,0 +1,48 @@
+Summary:
+Split doesn't handle IOExceptions when creating new region reference files
+Description:
+I was testing an HDFS patch which had a bug in it, so it happened to throw an NPE during a split with the following trace:
+2010-04-16 19:18:20,727 ERROR org.apache.hadoop.hbase.regionserver.CompactSplitThread: Compaction failed for region TestTable,-1945465867<1271449232310>,1271453785648
+java.lang.NullPointerException
+at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.enqueueCurrentPacket(DFSClient.java:3124)
+at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.flushInternal(DFSClient.java:3220)
+at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.closeInternal(DFSClient.java:3306)
+at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.close(DFSClient.java:3255)
+at org.apache.hadoop.fs.FSDataOutputStream$PositionCache.close(FSDataOutputStream.java:61)
+at org.apache.hadoop.fs.FSDataOutputStream.close(FSDataOutputStream.java:86)
+at org.apache.hadoop.fs.FileSystem.createNewFile(FileSystem.java:560)
+at org.apache.hadoop.hbase.util.FSUtils.create(FSUtils.java:95)
+at org.apache.hadoop.hbase.io.Reference.write(Reference.java:129)
+at org.apache.hadoop.hbase.regionserver.StoreFile.split(StoreFile.java:498)
+at org.apache.hadoop.hbase.regionserver.HRegion.splitRegion(HRegion.java:682)
+at org.apache.hadoop.hbase.regionserver.CompactSplitThread.split(CompactSplitThread.java:162)
+at org.apache.hadoop.hbase.regionserver.CompactSplitThread.run(CompactSplitThread.java:95)
+After that, my region was gone, any further writes to it would fail.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+regionserver
+Label:
+moved_from_0_20_5
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Todd Lipcon
+Create date:
+17/Apr/10 02:39
+Update date:
+20/Nov/15 12:43
+Resolved date:
+04/Aug/10 00:02

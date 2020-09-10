@@ -1,0 +1,48 @@
+Summary:
+DateTieredCompactionStrategy is always compacting
+Description:
+Running 2.0.11 and having switched a table to DTCS we've seen that disk IO and gc count increase, along with the number of reads happening in the "compaction" hump of cfhistograms.
+Data, and generally performance, looks good, but compactions are always happening, and pending compactions are building up.
+The schema for this is
+CREATE TABLE search (
+  loginid text,
+  searchid timeuuid,
+  description text,
+  searchkey text,
+  searchurl text,
+  PRIMARY KEY ((loginid), searchid)
+);
+We're sitting on about 82G (per replica) across 6 nodes in 4 DCs.
+CQL executed against this keyspace, and traffic patterns, can be seen in slides 7+8 of https://prezi.com/b9-aj6p2esft/
+Attached are sstables-per-read and read-latency graphs from cfhistograms, and screenshots of our munin graphs as we have gone from STCS, to LCS (week ~44), to DTCS (week ~46).
+These screenshots are also found in the prezi on slides 9-11.
+Patrick McFadin, Björn Hegerfors,
+Can this be a consequence of occasional deleted rows, as is described under (3) in the description of CASSANDRA-6602 ?
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+compaction dtcs perf
+Environment:
+
+Attachment number:
+0
+Assignee:
+Björn Hegerfors
+Reporter:
+mck
+Create date:
+24/Nov/14 21:28
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Sep/15 16:26

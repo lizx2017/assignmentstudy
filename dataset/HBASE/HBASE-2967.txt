@@ -1,0 +1,52 @@
+Summary:
+Failed split: IOE 'File is Corrupt!' -- sync length not being written out to SequenceFile
+Description:
+We saw this on one of our clusters:
+2010-09-07 18:07:16,229 WARN org.apache.hadoop.hbase.master.RegionServerOperationQueue: Failed processing: ProcessServerShutdown of sv4borg18,60020,1283516293515; putting onto delayed todo queue
+java.io.IOException: File is corrupt!
+        at org.apache.hadoop.io.SequenceFile$Reader.readRecordLength(SequenceFile.java:1907)
+        at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1932)
+        at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1837)
+        at org.apache.hadoop.io.SequenceFile$Reader.next(SequenceFile.java:1883)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.next(SequenceFileLogReader.java:121)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogReader.next(SequenceFileLogReader.java:113)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.parseHLog(HLog.java:1493)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.splitLog(HLog.java:1256)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.splitLog(HLog.java:1143)
+        at org.apache.hadoop.hbase.master.ProcessServerShutdown.process(ProcessServerShutdown.java:299)
+        at org.apache.hadoop.hbase.master.RegionServerOperationQueue.process(RegionServerOperationQueue.java:147)
+        at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:532)
+Because it was an IOE, it got requeued. Each time around we failed on it again.
+A few things:
++ This exception needs to add filename and the position in file at which problem found.
++ Need to commit little patch over in HBASE-2889 that outputs position and ordinal of wal edit because it helps diagnose these kinds of issues.
++ We should be able to skip the bad edit; just postion ourselves at byte past the bad sync and start reading again
++ There must be something about our setup that makes it so we fail write of the sync 16 random bytes that make up the SF 'sync' marker though oddly for one of the files, the sync failure happens at 1/3rd of the way into a 64MB wal, edit #2000 out of 130k odd edits.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+stack
+Create date:
+08/Sep/10 06:25
+Update date:
+20/Nov/15 12:42
+Resolved date:
+08/Sep/10 21:23

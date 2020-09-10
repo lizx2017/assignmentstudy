@@ -1,0 +1,59 @@
+Summary:
+LIMIT 1 fails while doing a select with index field in where clause
+Description:
+create table test(field1 text, field2 timeuuid, field3 boolean, primary key(field1, field2));
+create index test_index on test(field3);
+insert into test(field1, field2, field3) values ('hola', now(), false);
+insert into test(field1, field2, field3) values ('hola', now(), false);
+Now doing a select:
+select count from test where field3 = false limit 1;
+will result in this excepcion
+java.lang.IllegalArgumentException: fromIndex(0) > toIndex(-1)
+at java.util.ArrayList.subListRangeCheck(ArrayList.java:924)
+at java.util.ArrayList.subList(ArrayList.java:914)
+at org.apache.cassandra.service.pager.AbstractQueryPager.discardLast(AbstractQueryPager.java:243)
+at org.apache.cassandra.service.pager.AbstractQueryPager.fetchPage(AbstractQueryPager.java:86)
+at org.apache.cassandra.service.pager.RangeSliceQueryPager.fetchPage(RangeSliceQueryPager.java:36)
+at org.apache.cassandra.cql3.statements.SelectStatement.pageCountQuery(SelectStatement.java:202)
+at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:169)
+at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:58)
+at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:188)
+at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:222)
+at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:212)
+at org.apache.cassandra.thrift.CassandraServer.execute_cql3_query(CassandraServer.java:1958)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4486)
+at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4470)
+at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:39)
+at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:39)
+at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:194)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+at java.lang.Thread.run(Thread.java:724)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+2.0.5
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+David Morales
+Create date:
+13/Jan/14 17:47
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Jan/14 10:20

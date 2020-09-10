@@ -1,0 +1,81 @@
+Summary:
+Secondary Index can miss data without an error
+Description:
+Seeing issues with secondary indexes after upgrading from 1.1->1.2. Using the same thrift code from 1.1, every once in a while a row is inserted that does not show up in the secondary index on a text column.
+Using sstable2json we can see the row in the regular sstables on every node, but not in the secondary index sstables (even after flushing/taking a snapshot).
+If we move the snapshot to a test node and rebuild the secondary index, it gets populated correctly and returns the data.
+Sanitized create statement:
+create column family test2i 
+with column_type = 'Standard' 
+and comparator = 'UTF8Type' 
+and default_validation_class = 'UTF8Type' 
+and key_validation_class = 'UTF8Type' 
+and read_repair_chance = 1.0 
+and dclocal_read_repair_chance = 0.0 
+and populate_io_cache_on_flush = false 
+and gc_grace = 0 
+and min_compaction_threshold = 4 
+and max_compaction_threshold = 32 
+and replicate_on_write = false 
+and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy' 
+and caching = 'KEYS_ONLY' 
+and column_metadata = [ 
+{column_name : 'second', 
+validation_class : UTF8Type, 
+index_name : 'test2i_second_idx', 
+index_type : 0}, 
+{column_name : 'A', 
+validation_class : UTF8Type}, 
+{column_name : 'B', 
+validation_class : UTF8Type}, 
+{column_name : 'C', 
+validation_class : UTF8Type}, 
+{column_name : 'D', 
+validation_class : UTF8Type}, 
+{column_name : 'E', 
+validation_class : UTF8Type}, 
+{column_name : 'F', 
+validation_class : UTF8Type}, 
+{column_name : 'G', 
+validation_class : UTF8Type}, 
+{column_name : 'H', 
+validation_class : UTF8Type}, 
+{column_name : 'I', 
+validation_class : UTF8Type}, 
+{column_name : 'J', 
+validation_class : UTF8Type}, 
+{column_name : 'K', 
+validation_class : UTF8Type}, 
+{column_name : 'L', 
+validation_class : UTF8Type}, 
+{column_name : 'M', 
+validation_class : UTF8Type}] 
+and compression_options = {'sstable_compression' : 'org.apache.cassandra.io.compress.SnappyCompressor'};
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.17, 2.0.9, 2.1 rc2
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Jeremiah Jordan
+Create date:
+19/May/14 23:23
+Update date:
+16/Apr/19 09:31
+Resolved date:
+18/Jun/14 00:43

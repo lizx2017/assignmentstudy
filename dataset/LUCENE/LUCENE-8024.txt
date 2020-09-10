@@ -1,0 +1,49 @@
+Summary:
+Remove unnecessary norms.advanceExact check in score()
+Description:
+This should no longer be needed, since the index-time boost is removed, and since sims are no longer asked to score non-existent terms.
+E.g. core tests pass with:
+--- a/lucene/core/src/java/org/apache/lucene/search/similarities/BM25Similarity.java
++++ b/lucene/core/src/java/org/apache/lucene/search/similarities/BM25Similarity.java
+@@ -230,11 +230,8 @@ public class BM25Similarity extends Similarity {
+       if (norms == null) {
+         norm = k1;
+       } else {
+-        if (norms.advanceExact(doc)) {
+-          norm = cache[((byte) norms.longValue()) & 0xFF];
+-        } else {
+-          norm = cache[0];
+-        }
++        norms.advanceExact(doc);
++        norm = cache[((byte) norms.longValue()) & 0xFF];
+       }
+       return weightValue * (float) (freq / (freq + norm));
+     }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+8.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+31/Oct/17 00:38
+Update date:
+31/Oct/17 23:49
+Resolved date:
+31/Oct/17 23:49

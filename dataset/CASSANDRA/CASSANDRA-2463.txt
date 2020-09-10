@@ -1,0 +1,41 @@
+Summary:
+Flush and Compaction Unnecessarily Allocate 256MB Contiguous Buffers
+Description:
+Currently, Cassandra 0.7.x allocates a 256MB contiguous byte array at the beginning of a memtable flush or compaction (presently hard-coded as Config.in_memory_compaction_limit_in_mb). When several memtable flushes are triggered at once (as by `nodetool flush` or `nodetool snapshot`), the tenured generation will typically experience extreme pressure as it attempts to locate [n] contiguous 256mb chunks of heap to allocate. This will often trigger a promotion failure, resulting in a stop-the-world GC until the allocation can be made. (Note that in the case of the "release valve" being triggered, the problem is even further exacerbated; the release valve will ironically trigger two contiguous 256MB allocations when attempting to flush the two largest memtables).
+This patch sets the buffer to be used by BufferedRandomAccessFile to Math.min(bytesToWrite, BufferedRandomAccessFile.DEFAULT_BUFFER_SIZE) rather than a hard-coded 256MB. The typical resulting buffer size is 64kb.
+I've taken some time to measure the impact of this change on the base 0.7.4 release and with this patch applied. This test involved launching Cassandra, performing four million writes across three column families from three clients, and monitoring heap usage and garbage collections. Cassandra was launched with 2GB of heap and the default JVM options shipped with the project. This configuration has 7 column families with a total of 15GB of data.
+Here's the base 0.7.4 release:
+http://cl.ly/413g2K06121z252e2t10
+Note that on launch, we see a flush + compaction triggered almost immediately, resulting in at least 7x very quick 256MB allocations maxing out the heap, resulting in a promotion failure and a full GC. As flushes proceeed, we see that most of these have a corresponding CMS, consistent with the pattern of a large allocation and immediate collection. We see a second promotion failure and full GC at the 75% mark as the allocations cannot be satisfied without a collection, along with several CMSs in between. In the failure cases, the allocation requests occur so quickly that a standard CMS phase cannot completed before a ParNew attempts to promote the surviving byte array into the tenured generation. The heap usage and GC profile of this graph is very unhealthy.
+Here's the 0.7.4 release with this patch applied:
+http://cl.ly/050I1g26401B1X0w3s1f
+This graph is very different. At launch, rather than a immediate spike to full allocation and a promotion failure, we see a slow allocation slope reaching only 1/8th of total heap size. As writes begin, we see several flushes and compactions, but none result in immediate, large allocations. The ParNew collector keeps up with collections far more ably, resulting in only one healthy CMS collection with no promotion failure. Unlike the unhealthy rapid allocation and massive collection pattern we see in the first graph, this graph depicts a healthy sawtooth pattern of ParNews and an occasional effective CMS with no danger of heap fragmentation resulting in a promotion failure.
+The bottom line is that there's no need to allocate a hard-coded 256MB write buffer for flushing memtables and compactions to disk. Doing so results in unhealthy rapid allocation patterns and increases the probability of triggering promotion failures and full stop-the-world GCs which can cause nodes to become unresponsive and shunned from the ring during flushes and compactions.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+C. Scott Andreas
+Reporter:
+C. Scott Andreas
+Create date:
+12/Apr/11 21:23
+Update date:
+16/Apr/19 09:33
+Resolved date:
+13/Apr/11 05:34

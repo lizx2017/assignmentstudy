@@ -1,0 +1,46 @@
+Summary:
+Generated time-based UUID don't conform to the spec
+Description:
+When UUIDGen layout the clock sequence and and node part of version 1 UUID, it does so with
+private long getClockSeqAndNode(InetAddress addr)
+{
+    long lsb = 0;
+    lsb |= (clock & 0x3f00000000000000L) >>> 56; // was 58?
+    lsb |= 0x0000000000000080;
+    lsb |= (clock & 0x00ff000000000000L) >>> 48;
+    lsb |= makeNode(addr);
+    return lsb;
+}
+This is not correct however, as this layout the clock seq (and variant) on the right-most part of the lsb while it should be on the left-most one.
+At a minimum, the generated UUID don't fully respect the spec since the variant is not set correctly. But it also means that the clock seq bits end up being all 0's (as can be trivially seen in the string representation of the generated UUIDs).
+Note that none of those is a huge huge deal as there is still largely enough random bytes to ensure that two different nodes won't end up with the same lsb. And having the variant wrong has probably no practical implementation. There is no reason not to fix those though.
+One other small details is that the getAdjustedTimestamp as a sign error so that it returns completely broken timestamps. That being said the method is currently unused so that's not a big deal. I'm attaching a fix for that part too because that method might be useful someday but I won't shed a tear if we prefer just removing it.
+I'm marking this for 1.2 because I'm not sure it's worth bothering with 1.1.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+28/Nov/12 17:41
+Update date:
+16/Apr/19 09:32
+Resolved date:
+29/Nov/12 09:24

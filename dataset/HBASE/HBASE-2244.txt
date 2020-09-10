@@ -1,0 +1,81 @@
+Summary:
+META gets inconsistent in a number of crash scenarios
+Description:
+(Forking this issue off from HBASE-2235).
+During load testing, in a number of failure scenarios (unexpected region server deaths) etc., we notice that META can get inconsistent. This primarily happens for regions which are in the process of being split. Manually running add_table.rb seems to fix the tables meta data just fine.
+But it would be good to do automatic cleansing (as part of META scanners work) and/or avoid these inconsistent states altogether.
+For example, for a particular startkey, I see all these entries:
+test1,1204765,1266569946560 column=info:regioninfo, timestamp=1266581302018, value=REGION => {NAME => 'test1,
+                             1204765,1266569946560', STARTKEY => '1204765', ENDKEY => '1441091', ENCODED => 18
+                             19368969, OFFLINE => true, SPLIT => true, TABLE => {{NAME => 'test1', FAMILIES =>
+                              [{NAME => 'actions', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647'
+                             , BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}
+ test1,1204765,1266569946560 column=info:server, timestamp=1266570029133, value=10.129.68.212:60020
+ test1,1204765,1266569946560 column=info:serverstartcode, timestamp=1266570029133, value=1266562597546
+ test1,1204765,1266569946560 column=info:splitB, timestamp=1266581302018, value=\x00\x071441091\x00\x00\x00\x0
+                             1\x26\xE6\x1F\xDF\x27\x1Btest1,1290703,1266581233447\x00\x071290703\x00\x00\x00\x
+                             05\x05test1\x00\x00\x00\x00\x00\x02\x00\x00\x00\x07IS_ROOT\x00\x00\x00\x05false\x
+                             00\x00\x00\x07IS_META\x00\x00\x00\x05false\x00\x00\x00\x01\x07\x07actions\x00\x00
+                             \x00\x07\x00\x00\x00\x0BBLOOMFILTER\x00\x00\x00\x05false\x00\x00\x00\x0BCOMPRESSI
+                             ON\x00\x00\x00\x04NONE\x00\x00\x00\x08VERSIONS\x00\x00\x00\x013\x00\x00\x00\x03TT
+                             L\x00\x00\x00\x0A2147483647\x00\x00\x00\x09BLOCKSIZE\x00\x00\x00\x0565536\x00\x00
+                             \x00\x09IN_MEMORY\x00\x00\x00\x05false\x00\x00\x00\x0ABLOCKCACHE\x00\x00\x00\x04t
+                             rueh\x0FQ\xCF
+ test1,1204765,1266581233447 column=info:regioninfo, timestamp=1266609172177, value=REGION => {NAME => 'test1,
+                             1204765,1266581233447', STARTKEY => '1204765', ENDKEY => '1290703', ENCODED => 13
+                             73493090, OFFLINE => true, SPLIT => true, TABLE => {{NAME => 'test1', FAMILIES =>
+                              [{NAME => 'actions', VERSIONS => '3', COMPRESSION => 'NONE', TTL => '2147483647'
+                             , BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}]}}
+ test1,1204765,1266581233447 column=info:server, timestamp=1266604768670, value=10.129.68.213:60020
+ test1,1204765,1266581233447 column=info:serverstartcode, timestamp=1266604768670, value=1266562597511
+ test1,1204765,1266581233447 column=info:splitA, timestamp=1266609172177, value=\x00\x071226169\x00\x00\x00\x0
+                             1\x26\xE7\xCA,\x7D\x1Btest1,1204765,1266609171581\x00\x071204765\x00\x00\x00\x05\
+                             x05test1\x00\x00\x00\x00\x00\x02\x00\x00\x00\x07IS_ROOT\x00\x00\x00\x05false\x00\
+                             x00\x00\x07IS_META\x00\x00\x00\x05false\x00\x00\x00\x01\x07\x07actions\x00\x00\x0
+                             0\x07\x00\x00\x00\x0BBLOOMFILTER\x00\x00\x00\x05false\x00\x00\x00\x0BCOMPRESSION\
+                             x00\x00\x00\x04NONE\x00\x00\x00\x08VERSIONS\x00\x00\x00\x013\x00\x00\x00\x03TTL\x
+                             00\x00\x00\x0A2147483647\x00\x00\x00\x09BLOCKSIZE\x00\x00\x00\x0565536\x00\x00\x0
+                             0\x09IN_MEMORY\x00\x00\x00\x05false\x00\x00\x00\x0ABLOCKCACHE\x00\x00\x00\x04true
+                             \xB9\xBD\xFEO
+ test1,1204765,1266581233447 column=info:splitB, timestamp=1266609172177, value=\x00\x071290703\x00\x00\x00\x0
+                             1\x26\xE7\xCA,\x7D\x1Btest1,1226169,1266609171581\x00\x071226169\x00\x00\x00\x05\
+                             x05test1\x00\x00\x00\x00\x00\x02\x00\x00\x00\x07IS_ROOT\x00\x00\x00\x05false\x00\
+                             x00\x00\x07IS_META\x00\x00\x00\x05false\x00\x00\x00\x01\x07\x07actions\x00\x00\x0
+                             0\x07\x00\x00\x00\x0BBLOOMFILTER\x00\x00\x00\x05false\x00\x00\x00\x0BCOMPRESSION\
+                             x00\x00\x00\x04NONE\x00\x00\x00\x08VERSIONS\x00\x00\x00\x013\x00\x00\x00\x03TTL\x
+                             00\x00\x00\x0A2147483647\x00\x00\x00\x09BLOCKSIZE\x00\x00\x00\x0565536\x00\x00\x0
+                             0\x09IN_MEMORY\x00\x00\x00\x05false\x00\x00\x00\x0ABLOCKCACHE\x00\x00\x00\x04true
+                             \xE1\xDF\xF8p
+ test1,1204765,1266609171581 column=info:regioninfo, timestamp=1266609172212, value=REGION => {NAME => 'test1,
+                             1204765,1266609171581', STARTKEY => '1204765', ENDKEY => '1226169', ENCODED => 21
+                             34878372, TABLE => {{NAME => 'test1', FAMILIES => [{NAME => 'actions', VERSIONS =
+                             > '3', COMPRESSION => 'NONE', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMOR
+                             Y => 'false', BLOCKCACHE => 'true'}]}}
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.20.4, 0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+20/Feb/10 02:08
+Update date:
+12/Oct/12 06:15
+Resolved date:
+04/Mar/10 18:24

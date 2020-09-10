@@ -1,0 +1,65 @@
+Summary:
+Terminal UDFs evaluated at prepare time throw protocol version error
+Description:
+When a pure function with only terminal arguments (or with no arguments) is used in a where clause, it's executed at prepare time and Server.CURRENT_VERSION passed as the protocol version for serialization purposes. For native functions, this isn't a problem, but UDFs use classes in the bundled java-driver-core jar for (de)serialization of args and return values. When Server.CURRENT_VERSION is greater than the highest version supported by the bundled java driver the execution fails with the following exception:
+ERROR [SharedPool-Worker-1] 2015-03-24 18:10:59,391 QueryMessage.java:132 - Unexpected error during query
+org.apache.cassandra.exceptions.FunctionExecutionException: execution of 'ks.overloaded[text]' failed: java.lang.IllegalArgumentException: No protocol version matching integer version 4
+    at org.apache.cassandra.exceptions.FunctionExecutionException.create(FunctionExecutionException.java:35) ~[main/:na]
+    at org.apache.cassandra.cql3.udf.gen.Cksoverloaded_1.execute(Cksoverloaded_1.java) ~[na:na]
+    at org.apache.cassandra.cql3.functions.FunctionCall.executeInternal(FunctionCall.java:78) ~[main/:na]
+    at org.apache.cassandra.cql3.functions.FunctionCall.access$200(FunctionCall.java:34) ~[main/:na]
+    at org.apache.cassandra.cql3.functions.FunctionCall$Raw.execute(FunctionCall.java:176) ~[main/:na]
+    at org.apache.cassandra.cql3.functions.FunctionCall$Raw.prepare(FunctionCall.java:161) ~[main/:na]
+    at org.apache.cassandra.cql3.SingleColumnRelation.toTerm(SingleColumnRelation.java:108) ~[main/:na]
+    at org.apache.cassandra.cql3.SingleColumnRelation.newEQRestriction(SingleColumnRelation.java:143) ~[main/:na]
+    at org.apache.cassandra.cql3.Relation.toRestriction(Relation.java:127) ~[main/:na]
+    at org.apache.cassandra.cql3.restrictions.StatementRestrictions.<init>(StatementRestrictions.java:126) ~[main/:na]
+    at org.apache.cassandra.cql3.statements.SelectStatement$RawStatement.prepareRestrictions(SelectStatement.java:787) ~[main/:na]
+    at org.apache.cassandra.cql3.statements.SelectStatement$RawStatement.prepare(SelectStatement.java:740) ~[main/:na]
+    at org.apache.cassandra.cql3.QueryProcessor.getStatement(QueryProcessor.java:488) ~[main/:na]
+    at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:252) ~[main/:na]
+    at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:246) ~[main/:na]
+    at org.apache.cassandra.transport.messages.QueryMessage.execute(QueryMessage.java:119) ~[main/:na]
+    at org.apache.cassandra.transport.Message$Dispatcher.channelRead0(Message.java:475) [main/:na]
+    at org.apache.cassandra.transport.Message$Dispatcher.channelRead0(Message.java:371) [main/:na]
+    at io.netty.channel.SimpleChannelInboundHandler.channelRead(SimpleChannelInboundHandler.java:105) [netty-all-4.0.23.Final.jar:4.0.23.Final]
+    at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:333) [netty-all-4.0.23.Final.jar:4.0.23.Final]
+    at io.netty.channel.AbstractChannelHandlerContext.access$700(AbstractChannelHandlerContext.java:32) [netty-all-4.0.23.Final.jar:4.0.23.Final]
+    at io.netty.channel.AbstractChannelHandlerContext$8.run(AbstractChannelHandlerContext.java:324) [netty-all-4.0.23.Final.jar:4.0.23.Final]
+    at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471) [na:1.7.0_71]
+    at org.apache.cassandra.concurrent.AbstractTracingAwareExecutorService$FutureTask.run(AbstractTracingAwareExecutorService.java:164) [main/:na]
+    at org.apache.cassandra.concurrent.SEPWorker.run(SEPWorker.java:105) [main/:na]
+    at java.lang.Thread.run(Thread.java:745) [na:1.7.0_71]
+Caused by: java.lang.IllegalArgumentException: No protocol version matching integer version 4
+    at com.datastax.driver.core.ProtocolVersion.fromInt(ProtocolVersion.java:89) ~[cassandra-driver-core-2.1.2.jar:na]
+    at org.apache.cassandra.cql3.functions.UDFunction.compose(UDFunction.java:177) ~[main/:na]
+    ... 25 common frames omitted
+This is currently the case on trunk following the bump of Server.CURRENT_VERSION to 4 by CASSANDRA-7660.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Sam Tunnicliffe
+Create date:
+25/Mar/15 11:53
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Apr/15 17:54

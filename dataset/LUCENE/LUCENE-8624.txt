@@ -1,0 +1,73 @@
+Summary:
+int overflow in ByteBuffersDataOutput.size()
+Description:
+Hi,
+When indexing large data sets with ByteBuffersDirectory, an exception like the below is thrown:
+Caused by: java.lang.IllegalArgumentException: cannot write negative vLong (got: -4294888321)
+at org.apache.lucene.store.DataOutput.writeVLong(DataOutput.java:225)
+at org.apache.lucene.codecs.lucene50.Lucene50SkipWriter.writeSkipData(Lucene50SkipWriter.java:182)
+at org.apache.lucene.codecs.MultiLevelSkipListWriter.bufferSkip(MultiLevelSkipListWriter.java:143)
+at org.apache.lucene.codecs.lucene50.Lucene50SkipWriter.bufferSkip(Lucene50SkipWriter.java:162)
+at org.apache.lucene.codecs.lucene50.Lucene50PostingsWriter.startDoc(Lucene50PostingsWriter.java:228)
+at org.apache.lucene.codecs.PushPostingsWriterBase.writeTerm(PushPostingsWriterBase.java:148)
+at org.apache.lucene.codecs.blocktree.BlockTreeTermsWriter$TermsWriter.write(BlockTreeTermsWriter.java:865)
+at org.apache.lucene.codecs.blocktree.BlockTreeTermsWriter.write(BlockTreeTermsWriter.java:344)
+at org.apache.lucene.codecs.FieldsConsumer.merge(FieldsConsumer.java:105)
+at org.apache.lucene.codecs.perfield.PerFieldPostingsFormat$FieldsWriter.merge(PerFieldPostingsFormat.java:169)
+at org.apache.lucene.index.SegmentMerger.mergeTerms(SegmentMerger.java:244)
+at org.apache.lucene.index.SegmentMerger.merge(SegmentMerger.java:139)
+at org.apache.lucene.index.IndexWriter.mergeMiddle(IndexWriter.java:4453)
+at org.apache.lucene.index.IndexWriter.merge(IndexWriter.java:4075)
+The exception is caused by an integer overflow while calling getFilePointer() in Lucene50PostingsWriter, which eventually calls the size() method in ByteBuffersDataOutput.
+ByteBuffersDataOutput.java
+public long size() {
+ long size = 0;
+ int blockCount = blocks.size();
+ if (blockCount >= 1) {
+ int fullBlockSize = (blockCount - 1) * blockSize(); // throws integer overflow
+ int lastBlockSize = blocks.getLast().position();
+ size = fullBlockSize + lastBlockSize;
+ }
+ return size;
+}
+In my case, I had a blockCount = 65 and a blockSize() = 33554432 which overflows fullBlockSize. The fix:
+ByteBuffersDataOutput.java
+public long size() {
+long size = 0;
+int blockCount = blocks.size();
+if (blockCount >= 1) {
+long fullBlockSize = 1L * (blockCount - 1) * blockSize();
+int lastBlockSize = blocks.getLast().position();
+size = fullBlockSize + lastBlockSize;
+}
+return size;
+}
+  Thanks
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+7.5
+Fix_version:
+7.7
+Component:
+core/store
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Dawid Weiss
+Reporter:
+Mulugeta Mammo
+Create date:
+27/Dec/18 20:02
+Update date:
+28/Dec/18 09:56
+Resolved date:
+28/Dec/18 09:43

@@ -1,0 +1,53 @@
+Summary:
+CartesianDataCanvas added childs do not persist in the _childMap dictionary
+Description:
+Steps to reproduce:
+1. Add a chart item using CartesianDataCanvas.addDataChild(...) method in a initialize event handler.
+2. update the chart item using CartesianDataCanvas.updateDataChild(...) method in a creationComplete event handler.
+Actual Results:
+updateDataChild throws null reference exception.
+Expected Results:
+updateDataChild should not throw null reference exception.
+Workaround (if any):
+update the chart item using CartesianDataCanvas.updateDataChild(...) right after addDataChild(...) method.
+It also seems that if the addDataChild is supplied with some combination of the coordinate points, it seems ok, but not with defaults which are nulls.
+By looking at the code, the _childMap being instantiated with weak reference dictionary may cause this issue in the constructor?
+_childMap = new Dictionary(true);
+But then, looking into the code of the class reveals that the dictionary management seems to be quite convoluted...
+As an example, the code segment below seems to be somewhat confusing?
+public function addDataChild(child:DisplayObject,left:* = undefined, top:* = undefined, right:* = undefined,
+bottom:* = undefined , hCenter:* = undefined, vCenter:* = undefined):void
+{ var dc:CartesianDataChild = new CartesianDataChild(child,left,top,right,bottom); dc.addEventListener("change",dataChildChangeHandler,false,0,true); addChild(child); updateDataChild(child,left,top,right,bottom,hCenter,vCenter); invalidateOpCodes(); }
+override public function addChild(child:DisplayObject):DisplayObject
+{ var dc:CartesianDataChild = new CartesianDataChild(child); _childMap[child] = dc; _dataChildren.push(dc); dc.addEventListener("change",dataChildChangeHandler,false,0,true); invalidateOpCodes(); return super.addChild(child); }
+addDataChild calls addChild, and dc is created in each methods with the same event handler installed to each instance?
+Seems to me that making the dictionary with no weak reference and monitoring the dictionary content carefully will reveal some issues.
+Ensuring only one CartesianDataChild is instantiated and managed in the dictionary for each added chart item will be good.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+23/Nov/09 16:20
+Update date:
+17/Oct/12 17:37
+Resolved date:
+

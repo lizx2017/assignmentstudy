@@ -1,0 +1,50 @@
+Summary:
+Unable to process overlay on Cognos PDF documents
+Description:
+Since we upgrade from PDFBox 1.7.1 to PDFBox 2.0.8, we cannot overlay PDF documents anymore. These PDF documens are from Cognos Reporting and still works fine with PDFBox 1.7.1.
+Attached files:
+report_cognos_merged.pdf - a document that contains an intro page that was succesfully merged into a cognos report. Page 2 and 3 are the original cognos report pages.
+confidential_overlay.pdf - an overlay pdf document
+report_cognos_overlayed.pdf - the resulting document after processing the overlay
+To reproduce, use the attached report_cognos_merged.pdf and overlay this with the attached confidential_overlay.pdf. The resulting attached file report_cognos_overlayed.pdf only shows an overlay on the first page. The other two pages are not overlayed.
+Code snippet used to overlay, comming from PDFBOX-4002 (I also tried each and every hint mentioned in that issue):
+   public void addLayer() throws Exception {
+        PDDocument inDocument = PDDocument.load(basePdf);
+        PDDocument layoutDocument = PDDocument.load(overlayLayout);        
+        LayerUtility layerUtility = new LayerUtility(inDocument);
+        PDFormXObject layerObject = layerUtility.importPageAsForm(layoutDocument, 0);        
+        AffineTransform transform = new AffineTransform();
+        for (int i = 0; i < inDocument.getNumberOfPages(); i++) {
+            layerUtility.appendFormAsLayer(inDocument.getPage(i), layerObject, transform, layer + "_" + i);
+        }
+        layerUtility.getDocument().save(outPdf);
+    }
+Since we at Infor do have a customer escallation on this particular issue, any hints as to why this might not work in PDF2.0.8 (and only on PDF1.7.1), or any particularities about the base PDF that might be causing this to be behaving differently would be helpful.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.8
+Fix_version:
+2.0.9, 3.0.0 PDFBox
+Component:
+Documentation, (2)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Ad Kooiman
+Create date:
+21/Dec/17 12:41
+Update date:
+24/Mar/18 09:41
+Resolved date:
+21/Dec/17 20:48

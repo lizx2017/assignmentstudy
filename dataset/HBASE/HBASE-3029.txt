@@ -1,0 +1,36 @@
+Summary:
+if scanner.next() throws IOE we dont do anything
+Description:
+During a scan if the HFile layer throws a unrecoverable IOE, for example, checksum exception, right now we throw the exception, and abort that RPC. But the scanner is not marked as closed, and the HFileScanner is left in a weird state. Subsequent calls get weird exceptions about ByteBuffers but this is an artifact of being left pointing at the end of the previous block when we should be into the next block.
+If the DFSClient throws an exception we have a choice:
+make some efforts to retry
+assume DFSClient has already tried, and thus this is a fatal type error
+The former case might be hard to implement, and the latter case needs to be handled so that subsequent calls to the scanner throw meaningful exceptions. Right now there is no way to early terminate a scanner from the server-side... HRegion$RegionScanner doesn't have a 'closed' flag nor does it have the ability to realize the scanner is now closed. The client side takes care of not iterating past the end of a scanner so in the normal case we dont iterate anymore once a scanner returns 'false'.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Not A Problem
+Affects_version:
+0.89.20100621
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+ryan rawson
+Create date:
+22/Sep/10 09:29
+Update date:
+08/Jun/14 22:02
+Resolved date:
+08/Jun/14 22:02

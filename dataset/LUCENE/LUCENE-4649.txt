@@ -1,0 +1,41 @@
+Summary:
+kill ThreadInterruptedException
+Description:
+the way we currently do this is bogus.
+For example in FSDirectory's fsync, i think we should instead:
+} catch (InterruptedException ie) {
+- throw new ThreadInterruptedException(ie);
++ Thread.currentThread().interrupt(); // restore status
++ IOException e = new java.io.InterruptedIOException("fsync() interrupted");
++ e.initCause(ie);
++ throw e;
+and crazy code in IndexWriter etc that catches ThreadInterruptedExc just to restore status should be removed.
+Instead the guy doing the catch (InterruptedException) should do the right thing.
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+28/Dec/12 16:56
+Update date:
+02/Jan/13 21:12
+Resolved date:
+

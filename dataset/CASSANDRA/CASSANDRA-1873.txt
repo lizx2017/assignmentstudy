@@ -1,0 +1,34 @@
+Summary:
+Read Repair behavior thwarts DynamicEndpointSnitch at CL.ONE
+Description:
+When doing a CL.ONE read, the coordinator node selects the data node from the list of replicas via snitch sortByProximity. The data node (not the coordinator) then sends digest requests to the remaining replicas, and compares their answers to its own (in ConsistencyChecker).
+This means that, in a multi-datacenter situation, for any given range R with replicas X in dc1 and Y in dc2, the only node with latency information for Y will be X. Since DES falls back to subsnitch (static) order when latency information is missing for any replica it is asked to sort, DES will be unable to direct requests to Y no matter how overwhelmed X becomes.
+To fix this, we should move the digest-checking code into the coordinator node (probably starting with the 0.7 ConsistencyChecker, which represents a cleanup of the 0.6 one).
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.9, 0.7.0 rc 3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Jonathan Ellis
+Create date:
+17/Dec/10 00:23
+Update date:
+16/Apr/19 09:33
+Resolved date:
+21/Dec/10 21:23

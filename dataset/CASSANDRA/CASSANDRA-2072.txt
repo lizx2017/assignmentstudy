@@ -1,0 +1,41 @@
+Summary:
+Race condition during decommission
+Description:
+Occasionally when decommissioning a node, there is a race condition that occurs where another node will never remove the token and thus propagate it again with a state of down. With CASSANDRA-1900 we can solve this, but it shouldn't occur in the first place.
+Given nodes A, B, and C, if you decommission B it will stream to A and C. When complete, B will decommission and receive this stacktrace:
+ERROR 00:02:40,282 Fatal exception in thread Thread[Thread-5,5,main]
+java.util.concurrent.RejectedExecutionException: ThreadPoolExecutor has shut down
+at org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor$1.rejectedExecution(DebuggableThreadPoolExecutor.java:62)
+at java.util.concurrent.ThreadPoolExecutor.reject(ThreadPoolExecutor.java:767)
+at java.util.concurrent.ThreadPoolExecutor.execute(ThreadPoolExecutor.java:658)
+at org.apache.cassandra.net.MessagingService.receive(MessagingService.java:387)
+at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:91
+At this point A will show it is removing B's token, but C will not and instead its failure detector will report that B is dead, and nodetool ring on C shows B in a leaving/down state. In another gossip round, C will propagate this state back to A.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Brandon Williams
+Reporter:
+Brandon Williams
+Create date:
+28/Jan/11 00:06
+Update date:
+16/Apr/19 09:33
+Resolved date:
+03/Feb/11 20:17

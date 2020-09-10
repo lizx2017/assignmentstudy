@@ -1,0 +1,46 @@
+Summary:
+OutOfMemoryError when writing text blobs to a very large number of tables
+Description:
+This test goes outside the norm for Cassandra, creating ~2000 column families, and writing large text blobs to them.
+The process goes like this:
+Bring up a 6 node m2.2xlarge cluster on EC2. This instance type has enough memory (34.2GB) so that Cassandra will allocate a full 8GB heap without tuning cassandra-env.sh. However, this instance type only has a single drive, so data and commitlog are comingled. (This test has also been run m1.xlarge instances which have four drives (but lower memory) and has exhibited similar results when assigning one to commitlog and 3 to datafile_directories.)
+Use the 'memtable_allocator: HeapAllocator' setting from CASSANDRA-5935.
+Create 2000 CFs:
+CREATE KEYSPACE cf_stress WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3}
+CREATE COLUMNFAMILY cf_stress.tbl_00000 (id timeuuid PRIMARY KEY, val1 text, val2 text, val3 text ) ;
+# repeat for tbl_00001, tbl_00002 ... tbl_02000
+This process of creating tables takes a long time, about 5 hours, but for anyone wanting to create that many tables, presumably they only need to do this once, so this may be acceptable.
+Write data:
+The test dataset consists of writing 100K, 1M, and 10M documents to these tables:
+INSERT INTO {table_name} (id, val1, val2, val3) VALUES (?, ?, ?, ?)
+With 5 threads doing these inserts across the cluster, indefinitely, randomly choosing a table number 1-2000, the cluster eventually topples over with 'OutOfMemoryError: Java heap space'.
+A heap dump analysis indicates that it's mostly memtables:
+Best current theory is that this is commitlog bound and that the memtables cannot flush fast enough due to locking issues. But I'll let Jonathan Ellis comment more on that.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.10, 2.0.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Ryan McGuire
+Create date:
+06/Sep/13 17:22
+Update date:
+16/Apr/19 09:32
+Resolved date:
+17/Sep/13 17:16

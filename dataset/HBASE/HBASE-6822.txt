@@ -1,0 +1,46 @@
+Summary:
+[WINDOWS] MiniZookeeperCluster multiple daemons bind to the same port
+Description:
+TestHBaseTestingUtility.testMiniZooKeeper() tests whether the mini zk cluster is working by launching 5 threads corresponding to zk servers.
+NIOServerCnxnFactory.configure() configures the socket as:
+        this.ss = ServerSocketChannel.open();
+        ss.socket().setReuseAddress(true);
+setReuseAddress() is set, because it allows the server to come back up and bind to the same port before the socket is timed-out by the kernel.
+Under windows, the behavior on ServerSocket.setReuseAddress() is different than on linux, in which it allows any process to bind to an already-bound port. This causes ZK nodes starting on the same node, to be able to bind to the same port.
+The following part of the patch at https://issues.apache.org/jira/browse/HADOOP-8223 deals with this case for Hadoop:
+if(Shell.WINDOWS) {
++      // result of setting the SO_REUSEADDR flag is different on Windows
++      // http://msdn.microsoft.com/en-us/library/ms740621(v=vs.85).aspx
++      // without this 2 NN's can start on the same machine and listen on 
++      // the same port with indeterminate routing of incoming requests to them
++      ret.setReuseAddress(false);
++    }
+We should do the same in Zookeeper (I'll open a ZOOK issue). But in the meantime, we can fix hbase tests to not rely on BindException to resolve for bind errors. Especially, in MiniZKCluster.startup() when starting more than 1 servers, we already know that we have to increment the port number.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.3, 0.95.2
+Fix_version:
+0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Enis Soztutar
+Reporter:
+Enis Soztutar
+Create date:
+18/Sep/12 23:55
+Update date:
+23/Sep/13 18:31
+Resolved date:
+08/Nov/12 22:08

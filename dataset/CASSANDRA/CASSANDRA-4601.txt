@@ -1,0 +1,45 @@
+Summary:
+Ensure unique commit log file names
+Description:
+The commit log segment name uses System.nanoTime() as part of the file name. There is no guarantee that successive calls to nanoTime() will return different values. And on less than optimal hypervisors this happens a lot.
+I observed the following in the wild:
+ERROR [COMMIT-LOG-ALLOCATOR] 2012-08-31 15:56:49,815 AbstractCassandraDaemon.java (line 134) Exception in thread Thread[COMMIT-LOG-ALLOCATOR,5,main]
+java.lang.AssertionError: attempted to delete non-existing file CommitLog-13926764209796414.log
+        at org.apache.cassandra.io.util.FileUtils.deleteWithConfirm(FileUtils.java:68)
+        at org.apache.cassandra.db.commitlog.CommitLogSegment.discard(CommitLogSegment.java:172)
+        at org.apache.cassandra.db.commitlog.CommitLogAllocator$4.run(CommitLogAllocator.java:223)
+        at org.apache.cassandra.db.commitlog.CommitLogAllocator$1.runMayThrow(CommitLogAllocator.java:95)
+        at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+        at java.lang.Thread.run(Unknown Source)
+My assumption is that it was because of duplicate file names. As this is on a hypervisor that is less than optimal.
+After a while (about 30 minutes) mutations stopped being processed and the pending count sky rocketed. I think this was because log writing was blocked trying to get a new segment and writers could not submit to the commit log queue. The only way to stop the affected nodes was kill -9.
+Over about 24 hours this happened 5 times. I have deployed a patch that has been running for 12 hours without incident, will attach.
+The affected nodes could still read, and I'm checking logs to see how the other nodes handled the situation.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.5
+Component:
+None
+Label:
+None
+Environment:
+java 1.6, ubuntu
+Attachment number:
+0
+Assignee:
+amorton
+Reporter:
+amorton
+Create date:
+02/Sep/12 22:37
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Sep/12 20:09

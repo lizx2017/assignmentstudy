@@ -1,0 +1,43 @@
+Summary:
+Actually uses efficient cross DC writes
+Description:
+CASSANDRA-2138 introduced the following code:
+if (dataCenter.equals(localDataCenter) || StorageService.instance.useEfficientCrossDCWrites())
+{
+    // direct writes to local DC or old Cassadra versions
+    for (InetAddress destination : messages.getValue())
+        MessagingService.instance().sendRR(message, destination, handler);
+}
+else
+{
+    // Non-local DC. First endpoint in list is the destination for this group
+A 'not' is missing on that useEfficientCrossDCWrites call (which does return true for any version >= 0.7.1).
+A simple fix would be to add the missing !, but as said a comment, all this code should have been removed in 0.8 since it was detecting nodes before 0.7.1, but direct upgrade from pre-0.7.1 to 0.8+ is not supported. So let's just completely remove that code now.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.8, 1.0.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sylvain Lebresne
+Create date:
+08/Nov/11 10:36
+Update date:
+16/Apr/19 09:32
+Resolved date:
+08/Nov/11 15:29

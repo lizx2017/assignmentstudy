@@ -1,0 +1,46 @@
+Summary:
+Put.has() can't determine result correctly
+Description:
+the public method 'has(byte [] family, byte [] qualifier)' internally invoked the private method 'has(byte [] family, byte [] qualifier, long ts, byte [] value, boolean ignoreTS, boolean ignoreValue)' with 'value=new byte[0], ignoreTS=true, ignoreValue=true', but there's a logical error in the body, it'll enter the block
+else if (ignoreValue) {
+      for (KeyValue kv: list) {
+        if (Arrays.equals(kv.getFamily(), family) && Arrays.equals(kv.getQualifier(), qualifier)
+            && kv.getTimestamp() == ts) {
+          return true;
+        }
+      }
+    }
+the expression 'kv.getTimestamp() == ts' in the if conditions should only exist when 'ignoreTS=false', otherwise, the following code will return false!
+Put put = new Put(Bytes.toBytes("row-01"));
+put.add(Bytes.toBytes("family-01"), Bytes.toBytes("qualifier-01"),
+    1234567L, Bytes.toBytes("value-01"));
+System.out.println(put.has(Bytes.toBytes("family-01"),
+    Bytes.toBytes("qualifier-01")));
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.92.1
+Fix_version:
+0.94.1, 0.95.0
+Component:
+Client
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Alex Newman
+Reporter:
+Wang Qiang
+Create date:
+18/May/12 13:59
+Update date:
+26/Feb/13 08:16
+Resolved date:
+28/May/12 23:27

@@ -1,0 +1,163 @@
+Summary:
+HBase increments from old value after delete and write to disk
+Description:
+Deleted row values are sometimes used for starting points on new increments.
+To reproduce:
+Create a row "r". Set column "x" to some default value.
+Force hbase to write that value to the file system (such as restarting the cluster).
+Delete the row.
+Call table.incrementColumnValue with "some_value"
+Get the row.
+The returned value in the column was incremented from the old value before the row was deleted instead of being initialized to "some_value".
+Code to reproduce:
+import java.io.IOException;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.hbase.client.Increment;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.util.Bytes;
+
+public class HBaseTestIncrement
+{
+ static String tableName  = "testIncrement";
+
+ static byte[] infoCF = Bytes.toBytes("info");
+
+ static byte[] rowKey = Bytes.toBytes("test-rowKey");
+
+ static byte[] newInc = Bytes.toBytes("new");
+ static byte[] oldInc = Bytes.toBytes("old");
+
+ /**
+  * This code reproduces a bug with increment column values in hbase
+  * Usage: First run part one by passing '1' as the first arg
+  *        Then restart the hbase cluster so it writes everything to disk
+  *   Run part two by passing '2' as the first arg
+  *
+  * This will result in the old deleted data being found and used for the increment calls
+  *
+  * @param args
+  * @throws IOException
+  */
+ public static void main(String[] args) throws IOException
+ {
+  if("1".equals(args[0]))
+   partOne();
+  if("2".equals(args[0]))
+   partTwo();
+  if ("both".equals(args[0]))
+  {
+   partOne();
+   partTwo();
+  }
+ }
+
+ /**
+  * Creates a table and increments a column value 10 times by 10 each time.
+  * Results in a value of 100 for the column
+  *
+  * @throws IOException
+  */
+ static void partOne()throws IOException
+ {
+
+  Configuration conf = HBaseConfiguration.create();
+
+
+  HBaseAdmin admin = new HBaseAdmin(conf);
+  HTableDescriptor tableDesc = new HTableDescriptor(tableName);
+  tableDesc.addFamily(new HColumnDescriptor(infoCF));
+  if(admin.tableExists(tableName))
+  {
+   admin.disableTable(tableName);
+   admin.deleteTable(tableName);
+  }
+  admin.createTable(tableDesc);
+
+  HTablePool pool = new HTablePool(conf, Integer.MAX_VALUE);
+  HTableInterface table = pool.getTable(Bytes.toBytes(tableName));
+
+  //Increment unitialized column
+  for (int j = 0; j < 10; j++)
+  {
+   table.incrementColumnValue(rowKey, infoCF, oldInc, (long)10);
+   Increment inc = new Increment(rowKey);
+   inc.addColumn(infoCF, newInc, (long)10);
+   table.increment(inc);
+  }
+
+  Get get = new Get(rowKey);
+  Result r = table.get(get);
+  System.out.println("initial values: new " + Bytes.toLong(r.getValue(infoCF, newInc)) + " old " + Bytes.toLong(r.getValue(infoCF, oldInc)));
+
+ }
+
+ /**
+  * First deletes the data then increments the column 10 times by 1 each time
+  *
+  * Should result in a value of 10 but it doesn't, it results in a values of 110
+  *
+  * @throws IOException
+  */
+ static void partTwo()throws IOException
+ {
+  Configuration conf = HBaseConfiguration.create();
+
+  HTablePool pool = new HTablePool(conf, Integer.MAX_VALUE);
+  HTableInterface table = pool.getTable(Bytes.toBytes(tableName));
+  
+  Delete delete = new Delete(rowKey);
+  table.delete(delete);
+
+
+  //Increment columns
+  for (int j = 0; j < 10; j++)
+  {
+   table.incrementColumnValue(rowKey, infoCF, oldInc, (long)1);
+   Increment inc = new Increment(rowKey);
+   inc.addColumn(infoCF, newInc, (long)1);
+   table.increment(inc);
+  }
+
+
+  Get get = new Get(rowKey);
+  Result r = table.get(get);
+  System.out.println("after delete values: new " + Bytes.toLong(r.getValue(infoCF, newInc)) + " old " + Bytes.toLong(r.getValue(infoCF, oldInc)));
+
+ }
+}
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Resolved
+Affects_version:
+0.90.1
+Fix_version:
+0.92.3
+Component:
+io, regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ShiXing
+Reporter:
+Nathaniel Cook
+Create date:
+01/Apr/11 16:59
+Update date:
+16/Nov/16 20:41
+Resolved date:
+16/Nov/16 20:41

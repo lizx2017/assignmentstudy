@@ -1,0 +1,64 @@
+Summary:
+FDFField.writeXML KO with String
+Description:
+When saving an XFDF into file, all the `<value>` are skiped in the output.
+This is due to an incoherence between `writeXML()` which use `value instanceof COSString`
+ public void writeXML(Writer output) throws IOException
+    {
+        output.write("<field name=\"" + getPartialFieldName() + "\">\n");
+        Object value = getValue();
+        if (value != null)
+        {
+            if (value instanceof COSString)
+            {
+                output.write("<value>" + escapeXML(((COSString) value).getString()) + "</value>\n");
+            }
+            else if (value instanceof COSStream)
+            {
+                output.write("<value>" + escapeXML(((COSStream) value).toTextString()) + "</value>\n");
+            }
+        }
+and `getValue()` which transform COSString into String :
+ public Object getValue() throws IOException
+    {
+        COSBase value = field.getDictionaryObject(COSName.V);
+        if (value instanceof COSName)
+        {
+            return ((COSName) value).getName();
+        }
+        else if (value instanceof COSArray)
+        {
+            return COSArrayList.convertCOSStringCOSArrayToList((COSArray) value);
+        }
+        else if (value instanceof COSString)
+        {
+            return ((COSString) value).getString();
+        }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.8
+Fix_version:
+2.0.9, 3.0.0 PDFBox
+Component:
+AcroForm
+Label:
+FDF
+Environment:
+
+Attachment number:
+0
+Assignee:
+Maruan Sahyoun
+Reporter:
+Loic
+Create date:
+23/Feb/18 14:46
+Update date:
+24/Mar/18 09:41
+Resolved date:
+05/Mar/18 06:29

@@ -1,0 +1,40 @@
+Summary:
+BooleanFilter should optionally pass down further restricted acceptDocs in the MUST case (and acceptDocs in general)
+Description:
+Spin-off from dev@lao:
+I am about to write a Filter that only operates on a set of documents that have already passed other filter(s). It's rather expensive, since it has to use DocValues to examine a value and then determine if its a match. So it scales O where n is the number of documents it must see. The 2nd arg of getDocIdSet is Bits acceptDocs. Unfortunately Bits doesn't have an int iterator but I can deal with that seeing if it extends DocIdSet.
+I'm looking at BooleanFilter which I want to use and I notice that it passes null to filter.getDocIdSet for acceptDocs, and it justifies this with the following comment:
+// we dont pass acceptDocs, we will filter at the end using an additional filter
+the idea of passing the already build bits for the MUST is a good idea and can be implemented easily.
+The reason why the acceptDocs were not passed down is the new way of filter works in Lucene 4.0 and to optimize caching. Because accept docs are the only thing that changes when deletions are applied and filters are required to handle them separately: whenever something is able to cache (e.g. CachingWrapperFilter), the acceptDocs are not cached, so the underlying filters get a null acceptDocs to produce the full bitset and the filtering is done when CachingWrapperFilter gets the “uptodate” acceptDocs. But for this case this does not matter if the first filter clause does not get acceptdocs, but later MUST clauses of course can get them (they are not deletion-specific)!
+Can you open issue to optimize the MUST case (possibly MUST_NOT, too)?
+Another thing that could help here: You can stop using BooleanFilter if you can apply the filters sequentially (only MUST clauses) by wrapping with multiple FilteredQuery: new FilteredQuery(new FilteredQuery(originalQuery, clause1), clause2). If the DocIdSets enable bits() and the FilteredQuery autodetection decides to use random access filters, the acceptdocs are also passed down from the outside to the inner, removing the documents filtered out.
+Maybe BooleanFilter should have 2 modes (Boolean ctor argument): Passing down the acceptDocs to every filter (for the case where Filter calculation is expensive and accept docs help to limit the calculations) or not passing down (if the filter is cheap and the multiple acceptDocs bit checks for every single filter is more expensive – which is then more effective, e.g. when the Filter is only a cached bitset). The first mode would also optimize the MUST/MUST_NOT case to pass down the further restricted acceptDocs on later filters (just like FilteredQuery does).
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Uwe Schindler
+Create date:
+08/Nov/12 10:12
+Update date:
+20/Feb/18 13:55
+Resolved date:
+20/Feb/18 13:55

@@ -1,0 +1,41 @@
+Summary:
+Unbounded key range only ever scans first node in ring
+Description:
+        List<AbstractBounds> ranges = getRestrictedRanges(new Bounds(leftToken, p.getMinimumToken()));
+when called with empty start key this means we have a Bounds(minToken, minToken), which hits the getRR special case
+        // special case for bounds containing exactly 1 token
+        if (queryRange instanceof Bounds && queryRange.left.equals(queryRange.right))
+        {
+            if (logger.isDebugEnabled())
+                logger.debug("restricted single token match for query " + queryRange);
+            return Collections.singletonList(queryRange);
+        }
+Looks like this broke as a side effect of CASSANDRA-1442. Prior to that a bounds from [T, minToken] was considered "up to infinity" by getRR so would span multiple nodes.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.6.8, 0.7.0 rc 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Stu Hood
+Reporter:
+Jonathan Ellis
+Create date:
+10/Nov/10 03:20
+Update date:
+16/Apr/19 09:33
+Resolved date:
+10/Nov/10 14:31

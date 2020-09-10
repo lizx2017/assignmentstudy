@@ -1,0 +1,43 @@
+Summary:
+RegionScannerImpl.next() is inefficient.
+Description:
+We just came across a special scenario.
+For our Phoenix project (SQL runtime for HBase), we push a lot of work into HBase via coprocessors. One method is to wrap RegionScanner in coprocessor hooks and then do processing in the hook to avoid returning a lot of data to the client unnecessarily.
+In this specific case this is pretty bad. Since the wrapped RegionScanner's next() does not "know" that it is called this way is still does all of this on each invocation:
+Starts a RegionOperation
+Increments the request count
+set the current read point on a thread local (because generally each call could come from a different thread)
+Finally does the next on its StoreScanner(s)
+Ends the RegionOperation
+When this is done in a tight loop millions of times (as is the case for us) it starts to become significant.
+Not sure what to do about this, really. Opening this issue for discussion.
+One way is to extend the RegionScanner with an "internal" next() method of sorts, so that all this overhead can be avoided. The coprocessor could call the regular next() methods once and then just call the cheaper internal version.
+Are there better/cleaner ways?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.94.4, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lars Hofhansl
+Reporter:
+Lars Hofhansl
+Create date:
+18/Nov/12 06:39
+Update date:
+26/Feb/13 08:22
+Resolved date:
+11/Dec/12 05:47

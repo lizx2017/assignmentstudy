@@ -1,0 +1,150 @@
+Summary:
+Filter evaluates KVs outside requested columns
+Description:
+1- Fill row with some columns
+2- Get row with some columns less than universe - Use filter to print kvs
+3- Filter prints not requested columns
+Filter (AllwaysNextColFilter) always return ReturnCode.INCLUDE_AND_NEXT_COL and prints KV's qualifier
+SUFFIX_0 = 0
+SUFFIX_1 = 1
+SUFFIX_4 = 4
+SUFFIX_6 = 6
+P= Persisted
+R= Requested
+E= Evaluated
+X= Returned
+5580 5581 5584 5586 5590 5591 5594 5596 5600 5601 5604 5606 ...
+  P P     P P     P P   ...
+  R R R   R R R         ...
+  E E     E E     E     ...
+  X X     X X          
+ExtraColumnTest.java
+    @Test
+    public void testFilter() throws Exception {
+
+        Configuration config = HBaseConfiguration.create();
+        config.set("hbase.zookeeper.quorum", "myZK");
+
+        HTable hTable = new HTable(config, "testTable");
+        byte[] cf = Bytes.toBytes("cf");
+        byte[] row = Bytes.toBytes("row");
+
+
+        byte[] col1 = new QualifierConverter().objectToByteArray(new Qualifier((short) 558, (byte) SUFFIX_1));
+        byte[] col2 = new QualifierConverter().objectToByteArray(new Qualifier((short) 559, (byte) SUFFIX_1));
+        byte[] col3 = new QualifierConverter().objectToByteArray(new Qualifier((short) 560, (byte) SUFFIX_1));
+        byte[] col4 = new QualifierConverter().objectToByteArray(new Qualifier((short) 561, (byte) SUFFIX_1));
+        byte[] col5 = new QualifierConverter().objectToByteArray(new Qualifier((short) 562, (byte) SUFFIX_1));
+        byte[] col6 = new QualifierConverter().objectToByteArray(new Qualifier((short) 563, (byte) SUFFIX_1));
+
+
+        byte[] col1g = new QualifierConverter().objectToByteArray(new Qualifier((short) 558, (byte) SUFFIX_6));
+        byte[] col2g = new QualifierConverter().objectToByteArray(new Qualifier((short) 559, (byte) SUFFIX_6));
+
+        byte[] col1v = new QualifierConverter().objectToByteArray(new Qualifier((short) 558, (byte) SUFFIX_4));
+        byte[] col2v = new QualifierConverter().objectToByteArray(new Qualifier((short) 559, (byte) SUFFIX_4));
+        byte[] col3v = new QualifierConverter().objectToByteArray(new Qualifier((short) 560, (byte) SUFFIX_4));
+        byte[] col4v = new QualifierConverter().objectToByteArray(new Qualifier((short) 561, (byte) SUFFIX_4));
+        byte[] col5v = new QualifierConverter().objectToByteArray(new Qualifier((short) 562, (byte) SUFFIX_4));
+        byte[] col6v = new QualifierConverter().objectToByteArray(new Qualifier((short) 563, (byte) SUFFIX_4));
+
+        // =========== INSERTION =============//
+        Put put = new Put(row);
+        put.add(cf, col1, Bytes.toBytes((short) 1));
+        put.add(cf, col2, Bytes.toBytes((short) 1));
+        put.add(cf, col3, Bytes.toBytes((short) 3));
+        put.add(cf, col4, Bytes.toBytes((short) 3));
+        put.add(cf, col5, Bytes.toBytes((short) 3));
+        put.add(cf, col6, Bytes.toBytes((short) 3));
+        hTable.put(put);
+
+        put = new Put(row);
+        put.add(cf, col1v, Bytes.toBytes((short) 10));
+        put.add(cf, col2v, Bytes.toBytes((short) 10));
+        put.add(cf, col3v, Bytes.toBytes((short) 10));
+        put.add(cf, col4v, Bytes.toBytes((short) 10));
+        put.add(cf, col5v, Bytes.toBytes((short) 10));
+        put.add(cf, col6v, Bytes.toBytes((short) 10));
+
+        hTable.put(put);
+        hTable.flushCommits();
+
+        //==============READING=================//
+        Filter allwaysNextColFilter = new AllwaysNextColFilter();
+
+        Get get = new Get(row);
+        get.addColumn(cf, col1); //5581
+        get.addColumn(cf, col1v); //5584
+        get.addColumn(cf, col1g); //5586
+        get.addColumn(cf, col2); //5591
+        get.addColumn(cf, col2v); //5594        
+        get.addColumn(cf, col2g); //5596
+        
+        get.setFilter(allwaysNextColFilter);
+        get.setMaxVersions(1);
+        System.out.println(get);
+
+        Scan scan = new Scan(get);
+
+        ResultScanner scanner = hTable.getScanner(scan);
+        Iterator<Result> iterator = scanner.iterator();
+
+        System.out.println("SCAN");
+        while (iterator.hasNext()) {
+            Result next = iterator.next();
+            for (KeyValue kv : next.list()) {
+                System.out.println(new QualifierConverter().byteArrayToObject(kv.getQualifier()));
+            }
+        }
+    }
+
+}
+Requested 5581 5584 5586 5591 5594 5596
+NOT REQUESTED: 5561
+Sysout Filter
+\x00\x00\x1A\xBE\x00\x05^:\x00\x00\xA0X\x00\x00=\x1A/H0:\x02.\x01/1373577819267/Put/vlen=2/ts=2
+Qualifier{date=558, type=SUFFIX_1}
+\x00\x00\x1A\xBE\x00\x05^:\x00\x00\xA0X\x00\x00=\x1A/H0:\x02.\x02/1373577819272/Put/vlen=2/ts=3
+Qualifier{date=558, type=SUFFIX_4}
+\x00\x00\x1A\xBE\x00\x05^:\x00\x00\xA0X\x00\x00=\x1A/H0:\x02/\x01/1373577819267/Put/vlen=2/ts=2
+ualifier{date=559, type=SUFFIX_1}
+\x00\x00\x1A\xBE\x00\x05^:\x00\x00\xA0X\x00\x00=\x1A/H0:\x02/\x02/1373577819272/Put/vlen=2/ts=3
+Qualifier{date=559, type=SUFFIX_4}
+ 
+\x00\x00\x1A\xBE\x00\x05^:\x00\x00\xA0X\x00\x00=\x1A/H0:\x020\x01/1373577819267/Put/vlen=2/ts=2
+Qualifier{date=560, type=SUFFIX_1} (DATE 5601 NOT REQUESTED BUT EVALUATED)
+Sysout ExtraColumnTest
+{"timeRange":[0,9223372036854775807],"totalColumns":6,"cacheBlocks":true,"families":{"H0":["\\x02.\\x01","\\x02.\\x02","\\x02.\\x06","\\x02/\\x01"]},"maxVersions":1,"filter":"AllwaysNextColFilter","row":"\\x00\\x00\\x1A\\xBE\\x00\\x05^:\\x00\\x00\\xA0X\\x00\\x00=\\x1A"}
+SCAN
+Qualifier{date=558, type=SUFFIX_1}
+Qualifier{date=558, type=SUFFIX_4}
+Qualifier{date=559, type=SUFFIX_1}
+Qualifier{date=559, type=SUFFIX_4}
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+0.94.7
+Fix_version:
+0.98.0, 0.94.12, 0.96.0
+Component:
+Filters
+Label:
+filters hbase keyval
+Environment:
+
+Attachment number:
+0
+Assignee:
+Vasu Mariyala
+Reporter:
+Federico Gaule
+Create date:
+11/Jul/13 21:26
+Update date:
+04/Oct/13 20:34
+Resolved date:
+10/Sep/13 04:59

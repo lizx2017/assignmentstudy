@@ -1,0 +1,35 @@
+Summary:
+Growing pending compactions
+Description:
+I noticed on one of our new cassandra production server, that "pending compactions" number is steadily growing. The cluster is under low write load, so "compactions are not keeping up" was not the case.
+A quick investigation shown, that compactions are stopping far before all pending tasks are completed. I also found, that if concurrent_compactors=1, background compactions are not happening at all.
+The bug is in BackgroundCompactionTask rescheduling logic. The executor pool "room control" code in CompactionManager.submitBackground() does not reschedule next background cycle, if executor.getActiveCount reach maximun pool size, so it is lost forever.
+So I patched it to always schedule single background cycle, regardless of the free room in executor pool.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Oleg Anastasyev
+Reporter:
+Oleg Anastasyev
+Create date:
+10/May/13 06:25
+Update date:
+16/Apr/19 09:32
+Resolved date:
+13/May/13 18:45

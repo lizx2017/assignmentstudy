@@ -1,0 +1,72 @@
+Summary:
+HierarchicalCollectionView: infinate loop when manually calling itemUpdated() and dispatching a add event on the source collection.
+Description:
+Steps to reproduce:
+1. Have a HierarchicalCollectionView in use somewhere with a ArrayCollection as the source.
+2. Add a item to the source array of the ArrayCollection.
+3. Call itemUpdated( newItem ) added on the ArrayCollection.
+4. Dispatch a CollectionEventKind.Add so HierarchicalCollectionView picks it up (since it ignores refreshes).
+Actual Results:
+Infiniate loop occurs in AdvancedListBase.
+HierarchicalCollectionView makes a faulty assumption in the collectionChangeHandler where it assumes that because item(s) have been added or removed from the source ArrayCollection that the "length" property needs to be adjusted += or -= by the same amount.
+see method: collectionChangeHandler lines 1087, 1106, 1148
+"currentLength += convertedEvent.items.length;"
+Unfortunatly, in the example listed above HierarchicalCollectionView will receive two collection change events of type "ADD" instead of one "Update" and one "Add" because ListCollectionView changes the update event to a Add event when the index is not found (-1) for the updated item.
+Once this happens and two Add events have come in for a single item, currentLength is now greater than the number of items in the collection resulting in the HierarchicalCollectionViewCursor to never be able to get to "afterLast". This causes a infinite loop in AdvancedListBase at lines 6003 where moveNext() is called and collectionIterator.current becomes null and the while loop never can exit.
+while (items.length && !collectionIterator.afterLast)
+{
+var len:int = items.length;
+var data:Object = collectionIterator.current;
+for (var i:int = 0; i < len; i++)
+{
+if (data == items[i])
+{
+uid = itemToUID(data);
+addSelectionData(uid, new ListBaseSelectionData(data, index, false));
+items.splice(i, 1);
+if (items.length == 0)
+{ _selectedIndex = index; _selectedItem = data; }
+break;
+}
+}
+try
+{ collectionIterator.moveNext(); index++; }
+catch (e2:ItemPendingError)
+{ e2.addResponder(new ItemResponder(selectionDataPendingResultHandler, selectionDataPendingFailureHandler, new ListBaseSelectionDataPending(false, index, items, CursorBookmark.CURRENT, 1))); return; }
+}
+Expected Results:
+Realistically, the while loop should be smart enough to exit in a situation such as this but really this is the result of list collection view changing a event type so double add events occur. In short, no infinite loop should occur.
+Workaround (if any):
+One solution is to allow the currentLength to be incorrect, but to suppress the infinite loop check to see if "moveNext()" on the cursor returns "true" before allowing the while loop to continue executing.
+The second one that is monkey patched into our project at the moment for testing seems to be working ok and is more appropriate. Make sure currentLength never gets our of sync with the source ArrayCollection for the HierarchicalCollectionView.
+In collectionChangeHandler instead of adding/subtracting the length, recalculate the length by setting it using the calculateLength() method HCV uses everywhere else.
+currentLength = calculateLength();
+Discovered in Flex SDK 3.5
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+30/Sep/10 12:32
+Update date:
+26/Jul/11 02:06
+Resolved date:
+29/Jan/12 22:15

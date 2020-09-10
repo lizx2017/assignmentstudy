@@ -1,0 +1,42 @@
+Summary:
+table TTL expires before its real expiration time which cause row key disappear from Scanner
+Description:
+When we create a table with the following schema:
+{NAME => 'jobs_global', IS_ROOT => 'false', IS_META => 'false', MAX_FILESIZE => '134217728', FAMILIES => [
+{NAM E => 'job', BLOOMFILTER => 'false', COMPRESSION => 'NONE', VERSIONS => '1', LENGTH => '2147483647', TTL => '86 400', IN_MEMORY => 'false', BLOCKCACHE => 'false'}
+], INDEXES => []}
+The TTL is set to 86400 which should expire after 1 day, but the truth is that it expired before 86400 seconds.
+To reproduce, create a table with the above schema and run some stress testing to create some splits and compaction,
+usually in 4 - 5 hours, the row key will start missing from the Scanners.
+By invoking HTable.get() and HTable.getRow(), the column appears to exist.
+But if you launch a scanner or a MapReduce task to scan the table, the key will be missing.
+By running a simple MapReduce task that prints out all the key value, you can tell some keys are already missing prior to its expiration time.
+When we alter the table's TTL to a longer time, e.g. 604800, the row key appears in the scanner.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.19.1
+Fix_version:
+None
+Component:
+Client
+Label:
+None
+Environment:
+linux
+Attachment number:
+0
+Assignee:
+Andrew Purtell
+Reporter:
+Andy Lee
+Create date:
+12/May/09 15:19
+Update date:
+20/May/09 21:56
+Resolved date:
+20/May/09 21:56

@@ -1,0 +1,53 @@
+Summary:
+Constant compaction under LCS
+Description:
+It appears that tables configured with LCS will completely re-compact themselves over some period of time after upgrading from 2.0 to 2.1 (2.0.11 -> 2.1.2, specifically). It starts out with <10 pending tasks for an hour or so, then starts building up, now with 50-100 tasks pending across the cluster after 12 hours. These nodes are under heavy write load, but were easily able to keep up in 2.0 (they rarely had >5 pending compaction tasks), so I don't think it's LCS in 2.1 actually being worse, just perhaps some different LCS behavior that causes the layout of tables from 2.0 to prompt the compactor to reorganize them?
+The nodes flushed ~11MB SSTables under 2.0. They're currently flushing ~36MB SSTables due to the improved memtable setup in 2.1. Before I upgraded the entire cluster to 2.1, I noticed the problem and tried several variations on the flush size, thinking perhaps the larger tables in L0 were causing some kind of cascading compactions. Even if they're sized roughly like the 2.0 flushes were, same behavior occurs. I also tried both enabling & disabling STCS in L0 with no real change other than L0 began to back up faster, so I left the STCS in L0 enabled.
+Tables are configured with 32MB sstable_size_in_mb, which was found to be an improvement on the 160MB table size for compaction performance. Maybe this is wrong now? Otherwise, the tables are configured with defaults. Compaction has been unthrottled to help them catch-up. The compaction threads stay very busy, with the cluster-wide CPU at 45% "nice" time. No nodes have completely caught up yet. I'll update JIRA with status about their progress if anything interesting happens.
+From a node around 12 hours ago, around an hour after the upgrade, with 19 pending compaction tasks:
+SSTables in each level: [6/4, 10, 105/100, 268, 0, 0, 0, 0, 0]
+SSTables in each level: [6/4, 10, 106/100, 271, 0, 0, 0, 0, 0]
+SSTables in each level: [1, 16/10, 105/100, 269, 0, 0, 0, 0, 0]
+SSTables in each level: [5/4, 10, 103/100, 272, 0, 0, 0, 0, 0]
+SSTables in each level: [4, 11/10, 105/100, 270, 0, 0, 0, 0, 0]
+SSTables in each level: [1, 12/10, 105/100, 271, 0, 0, 0, 0, 0]
+SSTables in each level: [1, 14/10, 104/100, 267, 0, 0, 0, 0, 0]
+SSTables in each level: [9/4, 10, 103/100, 265, 0, 0, 0, 0, 0]
+Recently, with 41 pending compaction tasks:
+SSTables in each level: [4, 13/10, 106/100, 269, 0, 0, 0, 0, 0]
+SSTables in each level: [4, 12/10, 106/100, 273, 0, 0, 0, 0, 0]
+SSTables in each level: [5/4, 11/10, 106/100, 271, 0, 0, 0, 0, 0]
+SSTables in each level: [4, 12/10, 103/100, 275, 0, 0, 0, 0, 0]
+SSTables in each level: [2, 13/10, 106/100, 273, 0, 0, 0, 0, 0]
+SSTables in each level: [3, 10, 104/100, 275, 0, 0, 0, 0, 0]
+SSTables in each level: [6/4, 11/10, 103/100, 269, 0, 0, 0, 0, 0]
+SSTables in each level: [4, 16/10, 105/100, 264, 0, 0, 0, 0, 0]
+More information about the use case: writes are roughly uniform across these tables. The data is "sharded" across these 8 tables by key to improve compaction parallelism. Each node receives up to 75,000 writes/sec sustained at peak, and a small number of reads. This is a pre-production cluster that's being warmed up with new data, so the low volume of reads (~100/sec per node) is just from automatic sampled data checks, otherwise we'd just use STCS
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.3
+Component:
+Local/Compaction
+Label:
+lcs
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Rick Branson
+Create date:
+11/Dec/14 19:22
+Update date:
+16/Apr/19 09:31
+Resolved date:
+18/Dec/14 06:36

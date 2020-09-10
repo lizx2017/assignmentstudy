@@ -1,0 +1,42 @@
+Summary:
+Null pointer fatal in ConstraintLayout when executing Transition on DropDownList
+Description:
+In some very specific cases ConstraintLayout will throw a null pointer error when a component inside it is playing a transition. I tried a few things and found out that:
+parseConstraints() creates a new rowBaselines Vector (or empties it if it exists)
+some other process calls clearConstraintCache() in the middle of the execution of parseConstraints(), setting rowBaselines back to null
+parseConstraints() calls parseElementConstraints() which tries to access elements in rowBaselines and throws the error
+I know very little about how Effects and Transitions work, so the "some other process" part is a bit of a mistery to me.
+Steps to reproduce:
+Compile and run Main.mxml
+Select the first item in the list
+Click on the list and, before the resize transition finishes, click on it again.
+Workaround: subclass ConstraintLayout (or FormItemLayout), override `measure()`, put a try/cacth block around it and use this custom layout. Not exactly pretty but it works without apparent side effects.
+Quick fix (but probably not the ideal solution): just test whether rowBaselines exists before trying to access it in ConstraintLayout.parseElementConstraints().
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+Apache Flex 4.8 (par
+Fix_version:
+Apache Flex 4.16.0
+Component:
+Spark: DropDownList, (2)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mihai Chira
+Reporter:
+Maxime Cowez
+Create date:
+17/Dec/12 16:36
+Update date:
+18/Aug/16 13:46
+Resolved date:
+18/Aug/16 13:44

@@ -1,0 +1,126 @@
+Summary:
+Region opens and assignment running independent of shutdown processing
+Description:
+This is so broke, its hard to know where to start.
+In the below, node 14 expires, we continue to take on messages from it queueing open region todos for us to work on later. Then we start to process shutdown of server 14. Meantime we are assigning it regions.
+Later, not reported here. The open of a particular region is queued on the todo list > 1 time. Processing the 2nd and 3rd times we call the assignment a duplicate and tell remote server close its region (it'll be same region as was in the first todo message). It dutifully closes without report. Now we NSRE till the end of time trying to find this closed region.
+2009-08-05 04:39:12,007 [main-SendThread] DEBUG org.apache.zookeeper.ClientCnxn: Got notification sessionid:0x22e734176a0001
+2009-08-05 04:39:12,007 [main-SendThread] DEBUG org.apache.zookeeper.ClientCnxn: Got WatchedEvent: Znode change. Path: /hbase/rs/1249419499242 Type: NodeDeleted for sessionid 0x22e734176a0001
+2009-08-05 04:39:12,007 [main-EventThread] INFO org.apache.hadoop.hbase.master.ServerManager: 14.powerset.com,60020,1249419499242 znode expired
+2009-08-05 04:39:12,137 [IPC Server handler 22 on 60001] DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.XX.142:60020, startcode: 1249419499272, load: (requests=5, regions=243,  
+usedHeap=732, maxHeap=1391): total nregions to assign=7, nregions to reach balance=7, isMetaAssign=false
+2009-08-05 04:39:13,028 [main-SendThread] DEBUG org.apache.zookeeper.ClientCnxn: Got ping response for sessionid:0x22e734176a0001 after 0ms
+2009-08-05 04:39:13,554 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_PROCESS_OPEN: TestTable,0707104931,1249439925123 from 14.powerset.com,60
+020,1249447142944; 1 of 19
+2009-08-05 04:39:13,554 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_PROCESS_OPEN: TestTable,0807477918,1249435417405 from 14.powerset.com,60
+020,1249447142944; 2 of 19
+2009-08-05 04:39:13,554 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_PROCESS_OPEN: TestTable,0239771780,1249436471662 from 14.powerset.com,60
+020,1249447142944; 3 of 19
+2009-08-05 04:39:13,554 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_PROCESS_OPEN: TestTable,0295087929,1249438529628 from 14.powerset.com,60
+020,1249447142944; 4 of 19
+2009-08-05 04:39:13,554 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_PROCESS_OPEN: TestTable,0344538034,1249438625837 from 14.powerset.com,60
+020,1249447142944; 5 of 19
+2009-08-05 04:39:13,554 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_PROCESS_OPEN: TestTable,0067977092,1249431465797 from 14.powerset.com,60
+020,1249447142944; 6 of 19
+2009-08-05 04:39:13,554 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_PROCESS_OPEN: TestTable,0521945645,1249426826597 from 14.powerset.com,60
+020,1249447142944; 7 of 19
+2009-08-05 04:39:13,554 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_PROCESS_OPEN: TestTable,0221136504,1249447128488 from 14.powerset.com,60
+020,1249447142944; 8 of 19
+2009-08-05 04:39:13,555 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_PROCESS_OPEN: TestTable,0272411446,1249433459428 from 14.powerset.com,60
+020,1249447142944; 9 of 19
+2009-08-05 04:39:13,555 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: TestTable,0284541889,1249434580130 from 14.powerset.com,60020,1249
+447142944; 10 of 19
+2009-08-05 04:39:13,555 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: TestTable,0707104931,1249439925123 from 14.powerset.com,60020,1249
+447142944; 11 of 19
+2009-08-05 04:39:13,555 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: TestTable,0807477918,1249435417405 from 14.powerset.com,60020,1249
+447142944; 12 of 19
+2009-08-05 04:39:13,555 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: TestTable,0239771780,1249436471662 from 14.powerset.com,60020,1249
+447142944; 13 of 19
+2009-08-05 04:39:13,555 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: TestTable,0295087929,1249438529628 from 14.powerset.com,60020,1249
+447142944; 14 of 19
+2009-08-05 04:39:13,555 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: TestTable,0344538034,1249438625837 from 14.powerset.com,60020,1249
+447142944; 15 of 19
+2009-08-05 04:39:13,555 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: TestTable,0067977092,1249431465797 from 14.powerset.com,60020,1249
+447142944; 16 of 19
+2009-08-05 04:39:13,555 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: TestTable,0521945645,1249426826597 from 14.powerset.com,60020,1249
+447142944; 17 of 19
+2009-08-05 04:39:13,555 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: TestTable,0221136504,1249447128488 from 14.powerset.com,60020,1249
+447142944; 18 of 19
+2009-08-05 04:39:13,555 [IPC Server handler 4 on 60001] INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_OPEN: TestTable,0272411446,1249433459428 from 14.powerset.com,60020,1249
+447142944; 19 of 19
+2009-08-05 04:39:14,260 [IPC Server handler 24 on 60001] DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.XX.140:60020, startcode: 1249419499240, load: (requests=0, regions=236,  
+usedHeap=644, maxHeap=1391): total nregions to assign=7, nregions to reach balance=7, isMetaAssign=false
+2009-08-05 04:39:14,994 [IPC Server handler 3 on 60001] DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.XX.139:60020, startcode: 1249419499241, load: (requests=0, regions=242, u
+sedHeap=715, maxHeap=1391): total nregions to assign=7, nregions to reach balance=7, isMetaAssign=false
+2009-08-05 04:39:15,196 [IPC Server handler 2 on 60001] DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.XX.142:60020, startcode: 1249419499272, load: (requests=0, regions=243, u
+sedHeap=733, maxHeap=1391): total nregions to assign=7, nregions to reach balance=7, isMetaAssign=false
+2009-08-05 04:39:15,289 [HMaster-SendThread] DEBUG org.apache.zookeeper.ClientCnxn: Got ping response for sessionid:0x22e734176a0002 after 1ms
+2009-08-05 04:39:15,319 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,321 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,321 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,322 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,323 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,325 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:14,260 [IPC Server handler 24 on 60001] DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.XX.140:60020, startcode: 1249419499240, load: (requests=0, regions=236, 
+usedHeap=644, maxHeap=1391): total nregions to assign=7, nregions to reach balance=7, isMetaAssign=false
+2009-08-05 04:39:14,994 [IPC Server handler 3 on 60001] DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.XX.139:60020, startcode: 1249419499241, load: (requests=0, regions=242, u
+sedHeap=715, maxHeap=1391): total nregions to assign=7, nregions to reach balance=7, isMetaAssign=false
+2009-08-05 04:39:15,196 [IPC Server handler 2 on 60001] DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.XX.142:60020, startcode: 1249419499272, load: (requests=0, regions=243, u
+sedHeap=733, maxHeap=1391): total nregions to assign=7, nregions to reach balance=7, isMetaAssign=false
+2009-08-05 04:39:15,289 [HMaster-SendThread] DEBUG org.apache.zookeeper.ClientCnxn: Got ping response for sessionid:0x22e734176a0002 after 1ms
+2009-08-05 04:39:15,319 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,321 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,321 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,322 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,323 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,325 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,327 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,328 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,330 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: RegionAssignmentHistorian from 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:15,331 [HMaster] DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: ProcessServerShutdown of 14.powerset.com,60020,1249419499242
+2009-08-05 04:39:15,331 [HMaster] INFO org.apache.hadoop.hbase.master.RegionServerOperation: process shutdown of server 14.powerset.com,60020,1249419499242: logSplit: false, rootRescanned: false, numbe
+rOfMetaRegions: 1, onlineMetaRegions.size(): 1
+2009-08-05 04:39:15,340 [HMaster] INFO org.apache.hadoop.hbase.regionserver.HLog: Splitting 34 hlog(s) in hdfs://12.powerset.com:9002/hbase/.logs/14.powerset.com,60020,1249419499242
+2009-08-05 04:39:15,341 [HMaster] DEBUG org.apache.hadoop.hbase.regionserver.HLog: Splitting hlog 1 of 34: hdfs://12.powerset.com:9002/hbase/.logs/14.powerset.com,60020,1249419499242/hlog.dat
+.1249446428006, length=58628658
+2009-08-05 04:39:15,412 [HMaster] DEBUG org.apache.hadoop.hbase.regionserver.HLog: Adding queue for TestTable,0855568194,1249436793311
+2009-08-05 04:39:15,989 [HMaster] DEBUG org.apache.hadoop.hbase.regionserver.HLog: Adding queue for TestTable,0839835862,1249431318932
+2009-08-05 04:39:16,030 [HMaster] DEBUG org.apache.hadoop.hbase.regionserver.HLog: Adding queue for TestTable,0470769394,1249439783171
+2009-08-05 04:39:16,566 [IPC Server handler 0 on 60001] DEBUG org.apache.hadoop.hbase.master.RegionManager: Assigning for address: XX.XX.XX.141:60020, startcode: 1249447142944, load: (requests=0, regions=10, us
+edHeap=51, maxHeap=1391): total nregions to assign=7, nregions to reach balance=0, isMetaAssign=false
+2009-08-05 04:39:16,566 [IPC Server handler 0 on 60001] DEBUG org.apache.hadoop.hbase.master.RegionManager: Doing for address: XX.XX.XX.141:60020, startcode: 1249447142944, load: (requests=0, regions=10, usedHe
+ap=51, maxHeap=1391) nregions: 7 and nRegionsToAssign: 7
+2009-08-05 04:39:16,566 [IPC Server handler 0 on 60001] INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region TestTable,0196260871,1249434878197 to 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:16,566 [IPC Server handler 0 on 60001] INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region TestTable,0831634449,1249445668584 to 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:16,566 [IPC Server handler 0 on 60001] INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region TestTable,0621687088,1249440865643 to 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:16,566 [IPC Server handler 0 on 60001] INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region TestTable,0046898120,1249435993439 to 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:16,566 [IPC Server handler 0 on 60001] INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region TestTable,0706868362,1249439909374 to 14.powerset.com,60020,1249447142944
+2009-08-05 04:39:16,566 [IPC Server handler 0 on 60001] INFO org.apache.hadoop.hbase.master.RegionManager: Assigning region TestTable,0226534644,1249438950155 to 14.powerset.com,60020,1249447142944
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.20.0
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+05/Aug/09 20:21
+Update date:
+20/Nov/15 13:01
+Resolved date:
+03/Jun/10 17:36

@@ -1,0 +1,106 @@
+Summary:
+Problem with disabling and droping table
+Description:
+Table disabling was interrupted by kill -9 all part of hbase and now we cannot do anything with this table, disabling doesn't show any exception:
+hbase(main):019:0> disable 'NGolden_CTU'
+0 row(s) in 0.0250 seconds
+but droping show this:
+hbase(main):020:0> drop 'NGolden_CTU'
+ERROR: org.apache.hadoop.hbase.TableNotDisabledException: org.apache.hadoop.hbase.TableNotDisabledException: NGolden_CTU
+at org.apache.hadoop.hbase.master.HMaster.checkTableModifiable(HMaster.java:861)
+at org.apache.hadoop.hbase.master.handler.TableEventHandler.<init>(TableEventHandler.java:52)
+at org.apache.hadoop.hbase.master.handler.DeleteTableHandler.<init>(DeleteTableHandler.java:42)
+at org.apache.hadoop.hbase.master.HMaster.deleteTable(HMaster.java:779)
+at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:570)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1025)
+Here is some help for this command:
+Drop the named table. Table must first be disabled. If table has
+more than one region, run a major compaction on .META.:
+hbase> major_compact ".META."
+after this nothing strange is in logs
+when we restart hbase we get this:
+2010-11-03 08:56:37,892 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Processing open of NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b.
+2010-11-03 08:56:37,892 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x12c10b5fb780005 Attempting to transition node 0c8579e52b0ea3f2dab5b6a857ad030b from M_ZK_REGION_OFFLINE to RS_ZK_REGION_OPENING
+2010-11-03 08:56:37,892 ERROR org.apache.hadoop.hbase.executor.EventHandler: Caught throwable while processing event M_RS_OPEN_REGION
+java.lang.NullPointerException
+at org.apache.hadoop.hbase.util.Writables.getWritable(Writables.java:75)
+at org.apache.hadoop.hbase.executor.RegionTransitionData.fromBytes(RegionTransitionData.java:198)
+at org.apache.hadoop.hbase.zookeeper.ZKAssign.transitionNode(ZKAssign.java:669)
+at org.apache.hadoop.hbase.zookeeper.ZKAssign.transitionNodeOpening(ZKAssign.java:549)
+at org.apache.hadoop.hbase.zookeeper.ZKAssign.transitionNodeOpening(ZKAssign.java:542)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.transitionZookeeperOfflineToOpening(OpenRegionHandler.java:208)
+at org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler.process(OpenRegionHandler.java:89)
+at org.apache.hadoop.hbase.executor.EventHandler.run(EventHandler.java:151)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:619)
+Other logs with this region:
+hbase@db2a:logs$ grep "0c8579e52b0ea3f2dab5b6a857ad030b" hbase-hbase-master-db2a.goldenline.pl.log
+2010-11-03 08:54:02,575 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x12c10b5fb780002 Async create of unassigned node for 0c8579e52b0ea3f2dab5b6a857ad030b with OFFLINE state
+2010-11-03 08:54:03,555 DEBUG org.apache.hadoop.hbase.master.AssignmentManager$CreateUnassignedAsyncCallback: rs=NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b. state=OFFLINE, ts=1288770842575, server=db2a.goldenline.pl,60020,1288770551154
+2010-11-03 08:54:03,777 DEBUG org.apache.hadoop.hbase.master.AssignmentManager$ExistsUnassignedAsyncCallback: rs=NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b. state=OFFLINE, ts=1288770842575
+2010-11-03 08:54:42,836 INFO org.apache.hadoop.hbase.master.AssignmentManager: Regions in transition timed out: NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b. state=PENDING_OPEN, ts=1288770843777
+2010-11-03 08:54:42,836 INFO org.apache.hadoop.hbase.master.AssignmentManager: Region has been PENDING_OPEN for too long, reassigning region=NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b.
+2010-11-03 08:54:42,836 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Forcing OFFLINE; was=NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b. state=PENDING_OPEN, ts=1288770843777
+2010-11-03 08:54:42,836 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: No previous transition plan was found (or we are ignoring an existing plan) for NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b. so generated a random one; hri=NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b., src=, dest=db2b.goldenline.pl,60020,1288770553679; 2 (online=2, exclude=null) available servers
+2010-11-03 08:54:42,836 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Assigning region NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b. to db2b.goldenline.pl,60020,1288770553679
+2010-11-03 08:56:12,824 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENING, server=db2a.goldenline.pl,60020,1288770551154, region=0c8579e52b0ea3f2dab5b6a857ad030b
+2010-11-03 08:56:12,975 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_OPENED, server=db2a.goldenline.pl,60020,1288770551154, region=0c8579e52b0ea3f2dab5b6a857ad030b
+2010-11-03 08:56:12,976 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Handling OPENED event for 0c8579e52b0ea3f2dab5b6a857ad030b; deleting unassigned node
+2010-11-03 08:56:12,976 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x12c10b5fb780002 Deleting existing unassigned node for 0c8579e52b0ea3f2dab5b6a857ad030b that is in expected state RS_ZK_REGION_OPENED
+2010-11-03 08:56:12,978 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x12c10b5fb780002 Successfully deleted unassigned node for region 0c8579e52b0ea3f2dab5b6a857ad030b in expected state RS_ZK_REGION_OPENED
+2010-11-03 08:56:13,011 DEBUG org.apache.hadoop.hbase.master.handler.OpenedRegionHandler: Opened region NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b. on db2a.goldenline.pl,60020,1288770551154
+hbase@db2a:logs$ grep "0c8579e52b0ea3f2dab5b6a857ad030b" hbase-hbase-regionserver-db2a.goldenline.pl.log
+2010-11-03 08:54:04,470 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Received request to open region: NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b.
+2010-11-03 08:56:12,770 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Processing open of NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b.
+2010-11-03 08:56:12,770 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x12c10b5fb780001 Attempting to transition node 0c8579e52b0ea3f2dab5b6a857ad030b from M_ZK_REGION_OFFLINE to RS_ZK_REGION_OPENING
+2010-11-03 08:56:12,819 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x12c10b5fb780001 Successfully transitioned node 0c8579e52b0ea3f2dab5b6a857ad030b from M_ZK_REGION_OFFLINE to RS_ZK_REGION_OPENING
+2010-11-03 08:56:12,819 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Opening region: REGION => {NAME => 'NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b.', STARTKEY => '3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E', ENDKEY => '3065-d_2010_9_11_47D955785DEC3CE95377D70F67BA5ABC', ENCODED => 0c8579e52b0ea3f2dab5b6a857ad030b, TABLE => {{NAME => 'NGolden_CTU', FAMILIES => [
+{NAME => 'c', BLOOMFILTER => 'ROW', REPLICATION_SCOPE => '0', COMPRESSION => 'LZO', VERSIONS => '1', TTL => '-1', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}
+]}}
+2010-11-03 08:56:12,819 DEBUG org.apache.hadoop.hbase.regionserver.HRegion: Instantiated NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b.
+2010-11-03 08:56:12,939 INFO org.apache.hadoop.hbase.regionserver.StoreFile$Reader: Loaded row bloom filter metadata for hdfs://db2a:50001/hbase/NGolden_CTU/0c8579e52b0ea3f2dab5b6a857ad030b/c/561636411807463667
+2010-11-03 08:56:12,939 DEBUG org.apache.hadoop.hbase.regionserver.Store: loaded hdfs://db2a:50001/hbase/NGolden_CTU/0c8579e52b0ea3f2dab5b6a857ad030b/c/561636411807463667, isReference=false, isBulkLoadResult=false, seqid=1820373362, majorCompaction=true
+2010-11-03 08:56:12,939 INFO org.apache.hadoop.hbase.regionserver.HRegion: Onlined NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b.; next sequenceid=1820373363
+2010-11-03 08:56:12,939 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x12c10b5fb780001 Attempting to transition node 0c8579e52b0ea3f2dab5b6a857ad030b from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2010-11-03 08:56:12,970 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x12c10b5fb780001 Successfully transitioned node 0c8579e52b0ea3f2dab5b6a857ad030b from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING
+2010-11-03 08:56:12,971 INFO org.apache.hadoop.hbase.catalog.MetaEditor: Updated row NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b. in region .META.,,1 with server=db2a.goldenline.pl:60020, startcode=1288770551154
+2010-11-03 08:56:12,971 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x12c10b5fb780001 Attempting to transition node 0c8579e52b0ea3f2dab5b6a857ad030b from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENED
+2010-11-03 08:56:12,973 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x12c10b5fb780001 Successfully transitioned node 0c8579e52b0ea3f2dab5b6a857ad030b from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENED
+2010-11-03 08:56:12,973 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Opened NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b.
+hbase@db2b:logs$ grep "0c8579e52b0ea3f2dab5b6a857ad030b" hbase-hbase-regionserver-db2b.goldenline.pl.log
+2010-11-03 08:54:42,840 INFO org.apache.hadoop.hbase.regionserver.HRegionServer: Received request to open region: NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b.
+2010-11-03 08:56:37,892 DEBUG org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler: Processing open of NGolden_CTU,3065-d_2010_10_14_245FF1A15F4E236002ED3AB651BAB97E,1288046281444.0c8579e52b0ea3f2dab5b6a857ad030b.
+2010-11-03 08:56:37,892 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: regionserver:60020-0x12c10b5fb780005 Attempting to transition node 0c8579e52b0ea3f2dab5b6a857ad030b from M_ZK_REGION_OFFLINE to RS_ZK_REGION_OPENING
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Sebastian Bauer
+Create date:
+03/Nov/10 08:21
+Update date:
+16/Jul/14 23:15
+Resolved date:
+16/Jul/14 23:15

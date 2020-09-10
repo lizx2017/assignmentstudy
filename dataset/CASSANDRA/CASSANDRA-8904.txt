@@ -1,0 +1,74 @@
+Summary:
+Compaction pending tasks is 9 but no compaction is running
+Description:
+I have found mismatch of compaction requirement computation in LeveldManifest.java
+—
+In getCompactionCandidates() method is used following expression:
+double score = (double) SSTableReader.getTotalBytes(remaining) / (double)maxBytesForLevel;
+And compaction is triggered when score>1.001
+In our situation 671758260447/(10^4*64*1024*1024) = 1.00099
+—
+in getEstimatedTasks() method is used different expression:
+estimated[i] = Math.max(0L, SSTableReader.getTotalBytes(sstables) - maxBytesForLevel) / maxSSTableSizeInBytes
+In our situation (671758260447-(10^4*64*1024*1024))/(64*1024*1024) = 9.97812 implicitly converted to long is 9
+—
+Here are debug log parts and column family create command:
+DEBUG [CompactionExecutor:1695] 2015-03-04 10:31:46,173 LeveledManifest.java (line 384) L0 contains 2 SSTables (24467649 bytes) in Manifest@160946690
+DEBUG [CompactionExecutor:1695] 2015-03-04 10:31:46,173 LeveledManifest.java (line 384) L1 contains 10 SSTables (659509359 bytes) in Manifest@160946690
+DEBUG [CompactionExecutor:1695] 2015-03-04 10:31:46,173 LeveledManifest.java (line 384) L2 contains 105 SSTables (6670197371 bytes) in Manifest@160946690
+DEBUG [CompactionExecutor:1695] 2015-03-04 10:31:46,173 LeveledManifest.java (line 384) L3 contains 1043 SSTables (67139124061 bytes) in Manifest@160946690
+DEBUG [CompactionExecutor:1695] 2015-03-04 10:31:46,174 LeveledManifest.java (line 384) L4 contains 10410 SSTables (671758260447 bytes) in Manifest@160946690
+DEBUG [CompactionExecutor:1695] 2015-03-04 10:31:46,174 LeveledManifest.java (line 384) L5 contains 75 SSTables (5019585316 bytes) in Manifest@160946690
+DEBUG [CompactionExecutor:1695] 2015-03-04 10:31:46,191 LeveledManifest.java (line 346) Compaction score for level 5 is 7.479764991998672E-4
+DEBUG [CompactionExecutor:1695] 2015-03-04 10:31:46,196 LeveledManifest.java (line 346) Compaction score for level 4 is 1.0009978122219443
+DEBUG [CompactionExecutor:1695] 2015-03-04 10:31:46,197 LeveledManifest.java (line 346) Compaction score for level 3 is 1.0004509100466967
+DEBUG [CompactionExecutor:1695] 2015-03-04 10:31:46,197 LeveledManifest.java (line 346) Compaction score for level 2 is 0.9939368622004986
+DEBUG [CompactionExecutor:1695] 2015-03-04 10:31:46,197 LeveledManifest.java (line 346) Compaction score for level 1 is 0.9827455267310142
+DEBUG [CompactionExecutor:1695] 2015-03-04 10:31:46,197 LeveledManifest.java (line 346) Compaction score for level 0 is 0.0883796289563179
+DEBUG [RMI TCP Connection(3047)-77.234.40.29] 2015-03-04 10:32:18,093 LeveledManifest.java (line 670) Estimating [0, 0, 0, 0, 9, 0, 0, 0, 0] compactions to do for fr.sha
+CREATE TABLE sha (
+"KEY" blob,
+column1 blob,
+value blob,
+PRIMARY KEY ("KEY", column1)
+) WITH COMPACT STORAGE AND
+bloom_filter_fp_chance=0.100000 AND
+caching='NONE' AND
+comment='' AND
+dclocal_read_repair_chance=0.000000 AND
+gc_grace_seconds=172800 AND
+read_repair_chance=0.000000 AND
+replicate_on_write='true' AND
+populate_io_cache_on_flush='false' AND
+compaction=
+{'sstable_size_in_mb': '64', 'class': 'LeveledCompactionStrategy'}
+AND
+compression={};
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15
+Component:
+None
+Label:
+compaction
+Environment:
+
+Attachment number:
+0
+Assignee:
+Carl Yeksigian
+Reporter:
+Zdenek Ott
+Create date:
+04/Mar/15 09:57
+Update date:
+16/Apr/19 09:31
+Resolved date:
+17/Mar/15 10:20

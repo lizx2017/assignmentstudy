@@ -1,0 +1,51 @@
+Summary:
+IllegalArgumentException when Preparing Statements
+Description:
+When preparing a lot of statements with the python native driver, I occasionally get an error response with an error that corresponds to the following stacktrace in the cassandra logs:
+ERROR [Native-Transport-Requests:126] 2014-01-11 13:58:05,503 ErrorMessage.java (line 210) Unexpected exception during request
+java.lang.IllegalArgumentException
+        at com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap.checkArgument(ConcurrentLinkedHashMap.java:259)
+        at com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap$BoundedEntryWeigher.weightOf(ConcurrentLinkedHashMap.java:1448)
+        at com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap.put(ConcurrentLinkedHashMap.java:764)
+        at com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap.put(ConcurrentLinkedHashMap.java:743)
+        at org.apache.cassandra.cql3.QueryProcessor.storePreparedStatement(QueryProcessor.java:255)
+        at org.apache.cassandra.cql3.QueryProcessor.prepare(QueryProcessor.java:221)
+        at org.apache.cassandra.transport.messages.PrepareMessage.execute(PrepareMessage.java:77)
+        at org.apache.cassandra.transport.Message$Dispatcher.messageReceived(Message.java:287)
+        at org.jboss.netty.channel.SimpleChannelUpstreamHandler.handleUpstream(SimpleChannelUpstreamHandler.java:70)
+        at org.jboss.netty.channel.DefaultChannelPipeline.sendUpstream(DefaultChannelPipeline.java:564)
+        at org.jboss.netty.channel.DefaultChannelPipeline$DefaultChannelHandlerContext.sendUpstream(DefaultChannelPipeline.java:791)
+        at org.jboss.netty.handler.execution.ChannelUpstreamEventRunnable.doRun(ChannelUpstreamEventRunnable.java:43)
+        at org.jboss.netty.handler.execution.ChannelEventRunnable.run(ChannelEventRunnable.java:67)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:895)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:918)
+        at java.lang.Thread.run(Thread.java:662)
+Looking at the CLHM source, this means we're giving the statement a weight that's less than 1. I'll also note that these errors frequently happen in clumps of 2 or 3 at a time.
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.14, 2.0.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Tyler Hobbs
+Create date:
+15/Jan/14 20:59
+Update date:
+16/Apr/19 09:31
+Resolved date:
+17/Oct/14 13:44

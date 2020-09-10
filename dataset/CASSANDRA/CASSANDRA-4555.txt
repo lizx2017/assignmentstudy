@@ -1,0 +1,69 @@
+Summary:
+select statement with indexed column causes node to OOM
+Description:
+After creating a keyspace, table and index on a clean ccm 3 node cluster based on trunk, when a select statement with an index expression is executed in cqlsh one of the nodes OOM's and goes down.
+The steps to reproduce the problem are:
+create a 3 node cluster from trunk (I used ccm)
+execute the following statements in cqlsh:
+CREATE KEYSPACE trace WITH strategy_class = 'SimpleStrategy'
+  AND strategy_options:replication_factor = '1';
+
+CREATE TABLE trace.trace_events(sessionId  timeuuid,
+  coordinator       inet,
+  eventId           timeuuid,
+  description       text,
+  duration          bigint,
+  happened_at       timestamp,
+  name              text,
+  payload_types     map<text, text>,
+  payload           map<text, blob>,
+  source            inet,
+  type              text,
+  PRIMARY KEY (sessionId, coordinator, eventId));
+
+CREATE INDEX idx_name ON trace.trace_events (name);
+Executing the following statement causes node2 to OOM:
+select * from trace_events where name = 'batch_mutate';
+In my case node2 goes down with:
+ERROR [Thread-9] 2012-08-17 19:42:55,741 CassandraDaemon.java (line 131) Exception in thread Thread[Thread-9,5,main]
+java.lang.OutOfMemoryError: Java heap space
+ at org.apache.cassandra.dht.Token$TokenSerializer.deserialize(Token.java:97)
+ at org.apache.cassandra.dht.AbstractBounds$AbstractBoundsSerializer.deserialize(AbstractBounds.java:161)
+ at org.apache.cassandra.db.RangeSliceCommandSerializer.deserialize(RangeSliceCommand.java:299)
+ at org.apache.cassandra.db.RangeSliceCommandSerializer.deserialize(RangeSliceCommand.java:181)
+ at org.apache.cassandra.net.MessageIn.read(MessageIn.java:94)
+ at org.apache.cassandra.net.IncomingTcpConnection.receiveMessage(IncomingTcpConnection.java:181)
+ at org.apache.cassandra.net.IncomingTcpConnection.handleModernVersion(IncomingTcpConnection.java:122)
+ at org.apache.cassandra.net.IncomingTcpConnection.run(IncomingTcpConnection.java:69)
+ INFO [StorageServiceShutdownHook] 2012-08-17 19:42:55,746 ThriftServer.java (line 221) Stop listening to thrift clients
+ INFO [StorageServiceShutdownHook] 2012-08-17 19:42:55,748 Gossiper.java (line 1054) Announcing shutdown
+ INFO [StorageServiceShutdownHook] 2012-08-17 19:42:56,749 MessagingService.java (line 657) Waiting for messaging service to quiesce
+ INFO [ACCEPT-/127.0.0.2] 2012-08-17 19:42:56,751 MessagingService.java (line 849) MessagingService shutting down server thread.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.0 beta 1
+Component:
+None
+Label:
+None
+Environment:
+mac os x
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+David Alves
+Create date:
+18/Aug/12 01:02
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/Aug/12 04:49

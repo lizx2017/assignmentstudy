@@ -1,0 +1,60 @@
+Summary:
+AssertionError with static columns
+Description:
+Depending on how you insert static column values, regular values (and implicitly static column row markers and regular column rows markers), you can cause an AssertionError on select (collision between some of the empty composite name fragments) if you have an empty partition key
+Example:
+cqlsh:test> create table select_error(pkey text, ckey text, value text, static_value text static, PRIMARY KEY(pkey, ckey));
+cqlsh:test> insert into select_error(pkey, static_value) VALUES('partition1', 'static value');
+cqlsh:test> insert into select_error(pkey, ckey, value) VALUES('partition1', '', 'value');
+cqlsh:test> select * from select_error;
+TSocket read 0 bytes
+Causes
+java.lang.AssertionError
+ at org.apache.cassandra.cql3.statements.ColumnGroupMap.add(ColumnGroupMap.java:64)
+ at org.apache.cassandra.cql3.statements.ColumnGroupMap.access$200(ColumnGroupMap.java:32)
+ at org.apache.cassandra.cql3.statements.ColumnGroupMap$Builder.add(ColumnGroupMap.java:151)
+ at org.apache.cassandra.cql3.statements.SelectStatement.processColumnFamily(SelectStatement.java:1202)
+ at org.apache.cassandra.cql3.statements.SelectStatement.process(SelectStatement.java:1078)
+ at org.apache.cassandra.cql3.statements.SelectStatement.processResults(SelectStatement.java:280)
+ at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:257)
+ at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:222)
+ at org.apache.cassandra.cql3.statements.SelectStatement.execute(SelectStatement.java:60)
+ at org.apache.cassandra.cql3.QueryProcessor.processStatement(QueryProcessor.java:158)
+ at org.apache.cassandra.cql3.QueryProcessor.process(QueryProcessor.java:175)
+ at org.apache.cassandra.thrift.CassandraServer.execute_cql3_query(CassandraServer.java:1958)
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4486)
+ at org.apache.cassandra.thrift.Cassandra$Processor$execute_cql3_query.getResult(Cassandra.java:4470)
+ at org.apache.thrift.ProcessFunction.process(ProcessFunction.java:39)
+ at org.apache.thrift.TBaseProcessor.process(TBaseProcessor.java:39)
+ at org.apache.cassandra.thrift.CustomTThreadPoolServer$WorkerProcess.run(CustomTThreadPoolServer.java:201)
+ at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+ at java.lang.Thread.run(Thread.java:744)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.10
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+graham sanderson
+Create date:
+26/Jun/14 20:49
+Update date:
+16/Apr/19 09:31
+Resolved date:
+30/Jun/14 13:58

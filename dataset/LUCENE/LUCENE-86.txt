@@ -1,0 +1,81 @@
+Summary:
+IllegalStateException: docs out of order after 10 insert/delete/optimize
+Description:
+The following JUnit Test leads to the error. The index becomes unusable.
+Set the variable directory in the JUnit test.
+---------------
+java.lang.IllegalStateException: docs out of order
+at org.apache.lucene.index.SegmentMerger.appendPostings(Unknown Source)
+at org.apache.lucene.index.SegmentMerger.mergeTermInfo(Unknown Source)
+at org.apache.lucene.index.SegmentMerger.mergeTermInfos(Unknown Source)
+at org.apache.lucene.index.SegmentMerger.mergeTerms(Unknown Source)
+at org.apache.lucene.index.SegmentMerger.merge(Unknown Source)
+at org.apache.lucene.index.IndexWriter.mergeSegments(Unknown Source)
+at org.apache.lucene.index.IndexWriter.optimize(Unknown Source)
+at iproject.search.lucene.LuceneErrorTest.testLuceneError
+(MyTest.java:58)
+---------------
+package test;
+import junit.framework.*;
+import org.apache.lucene.index.*;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.document.*;
+import org.apache.lucene.store.*;
+import org.apache.lucene.search.*;
+import java.io.*;
+public class MyTest extends TestCase {
+public MyTest(String s)
+{ super(s); }
+protected void setUp() {
+}
+protected void tearDown() {
+}
+public void testError() throws IOException {
+String directory = "here the directory for a temporary index";
+org.apache.lucene.analysis.Analyzer a = new
+org.apache.lucene.analysis.WhitespaceAnalyzer();
+org.apache.lucene.document.Document idoc;
+org.apache.lucene.index.IndexWriter iw;
+org.apache.lucene.index.IndexReader ir;
+// empty the directory
+iw = new org.apache.lucene.index.IndexWriter(directory, a, true);
+iw.close();
+for( int k=0; k<50; k++ ) {
+System.out.println( "run # " + k );
+// add a document
+iw = new org.apache.lucene.index.IndexWriter(directory, a, false);
+try
+{ idoc = new org.apache.lucene.document.Document(); idoc.add( Field.Text("number", "abc") ); iw.addDocument(idoc); iw.close(); /* if the next lines are commented, the call to optimize throws an IOException by k=10: // java.lang.IllegalStateException: docs out of order // at org.apache.lucene.index.SegmentMerger.appendPostings(Unknown Source) // at org.apache.lucene.index.SegmentMerger.mergeTermInfo(Unknown Source) // at org.apache.lucene.index.SegmentMerger.mergeTermInfos(Unknown Source) // at org.apache.lucene.index.SegmentMerger.mergeTerms(Unknown Source) // at org.apache.lucene.index.SegmentMerger.merge(Unknown Source) // at org.apache.lucene.index.IndexWriter.mergeSegments(Unknown Source) // at org.apache.lucene.index.IndexWriter.optimize(Unknown Source) iw = new org.apache.lucene.index.IndexWriter(directory, a, false); iw.optimize(); iw.close(); */ ir = org.apache.lucene.index.IndexReader.open(directory); for( int i=0; i<ir.maxDoc(); i++ ) ir.delete(i); ir.close(); iw = new org.apache.lucene.index.IndexWriter(directory, a, false); iw.optimize(); }
+finally
+{ iw.close(); }
+}
+}
+}
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Cannot Reproduce
+Affects_version:
+1.2
+Fix_version:
+None
+Component:
+core/store
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Andrei Tandoev
+Create date:
+20/Feb/03 20:46
+Update date:
+02/Jun/11 22:05
+Resolved date:
+27/May/06 01:36

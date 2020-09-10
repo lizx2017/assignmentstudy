@@ -1,0 +1,59 @@
+Summary:
+incremental_backups and snapshot_before_compaction duplicate hard links
+Description:
+See discussion @ http://thread.gmane.org/gmane.comp.db.cassandra.user/15933/
+Enabling both incremental_backups and snapshot_before_compaction leads to the same hard links trying to be created.
+This gives stacktraces like
+java.io.IOError: java.io.IOException: Unable to create hard link from
+/cassandra-data/<keyspace>/<cf>-f-3875-Data.db
+to
+/cassandra-data/<keyspace>/snapshots/compact-<cf>/<cf>-f-3875-Data.db
+(errno 17)
+at org.apache.cassandra.db.ColumnFamilyStore.snapshotWithoutFlush(ColumnFamilyStore.java:1629)
+at org.apache.cassandra.db.ColumnFamilyStore.snapshot(ColumnFamilyStore.java:1654)
+at org.apache.cassandra.db.Table.snapshot(Table.java:198)
+at org.apache.cassandra.db.CompactionManager.doCompaction(CompactionManager.java:504)
+at org.apache.cassandra.db.CompactionManager$1.call(CompactionManager.java:146)
+at org.apache.cassandra.db.CompactionManager$1.call(CompactionManager.java:112)
+at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+at java.lang.Thread.run(Thread.java:662)
+Caused by: java.io.IOException: Unable to create hard link from
+/cassandra-data/<keyspace>/<cf>-f-3875-Data.db
+to
+/cassandra-data/<keyspace>/snapshots/compact-<cf>/<cf>-f-3875-Data.db
+(errno 17)
+at org.apache.cassandra.utils.CLibrary.createHardLink(CLibrary.java:155)
+at org.apache.cassandra.io.sstable.SSTableReader.createLinks(SSTableReader.java:713)
+at org.apache.cassandra.db.ColumnFamilyStore.snapshotWithoutFlush(ColumnFamilyStore.java:1622)
+... 10 more
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.8.0
+Component:
+None
+Label:
+None
+Environment:
+linux, jna
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+mck
+Create date:
+03/May/11 20:19
+Update date:
+16/Apr/19 09:33
+Resolved date:
+05/May/11 15:42

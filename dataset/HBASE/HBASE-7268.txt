@@ -1,0 +1,41 @@
+Summary:
+correct local region location cache information can be overwritten (or deleted) w/stale information from an old server
+Description:
+Discovered via HBASE-7250; related to HBASE-5877.
+Test is writing from multiple threads.
+Server A has region R; client knows that.
+R gets moved from A to server B.
+B gets killed.
+R gets moved by master to server C.
+~15 seconds later, client tries to write to it (on A?).
+Multiple client threads report from RegionMoved exception processing logic "R moved from C to B", even though such transition never happened (neither in nor before the sequence described below). Not quite sure how the client learned of the transition to C, I assume it's from meta from some other thread...
+Then, put fails (it may fail due to accumulated errors that are not logged, which I am investigating... but the bogus cache update is there nonwithstanding).
+I have a patch but not sure if it works, test still fails locally for yet unknown reason.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.95.2
+Fix_version:
+0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergey Shelukhin
+Reporter:
+Sergey Shelukhin
+Create date:
+04/Dec/12 03:25
+Update date:
+23/Sep/13 18:31
+Resolved date:
+24/Jan/13 17:21

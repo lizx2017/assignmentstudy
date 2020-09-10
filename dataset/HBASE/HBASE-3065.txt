@@ -1,0 +1,35 @@
+Summary:
+Retry all 'retryable' zk operations; e.g. connection loss
+Description:
+The 'new' master refactored our zk code tidying up all zk accesses and coralling them behind nice zk utility classes. One improvement was letting out all KeeperExceptions letting the client deal. Thats good generally because in old days, we'd suppress important state zk changes in state. But there is at least one case the new zk utility could handle for the application and thats the class of retryable KeeperExceptions. The one that comes to mind is conection loss. On connection loss we should retry the just-failed operation. Usually the retry will just work. At worse, on reconnect, we'll pick up the expired session event.
+Adding in this change shouldn't be too bad given the refactor of zk corralled all zk access into one or two classes only.
+One thing to consider though is how much we should retry. We could retry on a timer or we could retry for ever as long as the Stoppable interface is passed so if another thread has stopped or aborted the hosting service, we'll notice and give up trying. Doing the latter is probably better than some kinda timeout.
+HBASE-3062 adds a timed retry on the first zk operation. This issue is about generalizing what is over there across all zk access.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Liyin Tang
+Reporter:
+stack
+Create date:
+01/Oct/10 15:51
+Update date:
+20/Nov/15 12:43
+Resolved date:
+03/Aug/11 02:06

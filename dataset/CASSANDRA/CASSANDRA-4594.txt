@@ -1,0 +1,74 @@
+Summary:
+COPY TO and COPY FROM don't default to consistent ordering of columns
+Description:
+Here is the input:
+                                                         
+CREATE KEYSPACE test WITH strategy_class = 'SimpleStrategy' AND strategy_options:replication_factor = 1;
+USE test;                                                                       
+                                                                                
+CREATE TABLE airplanes (                                                        
+                name text PRIMARY KEY,                                          
+                manufacturer ascii,                                             
+                year int,                                                       
+                mach float                                                      
+            );                                                                  
+                                                                                
+INSERT INTO airplanes (name, manufacturer, year, mach) VALUES ('P38-Lightning', 'Lockheed', 1937, '.7');
+                                                                                
+COPY airplanes TO 'temp.cfg' WITH HEADER=true;                                  
+                                                                                
+TRUNCATE airplanes;                                                                
+                                                                                   
+COPY airplanes FROM 'temp.cfg' WITH HEADER=true;                                
+                                                                                   
+SELECT * FROM airplanes;
+Here is what happens when executed. Note how it tried to import the float into the int column:
+cqlsh:test> DROP KEYSPACE test;                                                                
+cqlsh:test> CREATE KEYSPACE test WITH strategy_class = 'SimpleStrategy' AND strategy_options:replication_factor = 1;
+cqlsh:test> USE test;                                                                       
+cqlsh:test>                                                                                    
+cqlsh:test> CREATE TABLE airplanes (                                            
+        ...                 name text PRIMARY KEY,                              
+        ...                 manufacturer ascii,                                 
+        ...                 year int,                                           
+        ...                 mach float                                          
+        ...             );                                                      
+cqlsh:test>                                                                     
+cqlsh:test> INSERT INTO airplanes (name, manufacturer, year, mach) VALUES ('P38-Lightning', 'Lockheed', 1937, '.7');
+cqlsh:test>                                                                     
+cqlsh:test> COPY airplanes TO 'temp.cfg' WITH HEADER=true;                      
+1 rows exported in 0.003 seconds.                                               
+cqlsh:test> TRUNCATE airplanes;                                                 
+cqlsh:test>                                                                     
+cqlsh:test> COPY airplanes FROM 'temp.cfg' WITH HEADER=true;                    
+Bad Request: unable to make int from '0.7'                                      
+Aborting import at record #0 (line 1). Previously-inserted values still present.
+0 rows imported in 0.002 seconds.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.6
+Component:
+None
+Label:
+cqlsh
+Environment:
+cqlsh
+Attachment number:
+0
+Assignee:
+paul cannon
+Reporter:
+Tyler Patterson
+Create date:
+30/Aug/12 23:13
+Update date:
+16/Apr/19 09:32
+Resolved date:
+18/Sep/12 19:03

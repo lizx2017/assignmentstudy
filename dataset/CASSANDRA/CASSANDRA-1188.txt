@@ -1,0 +1,39 @@
+Summary:
+multiget_slice calls do not close files resulting in file descriptor leak
+Description:
+Insert 1000 rows into a super column family. Read them back in a loop using multiget_slice. Note leaked file descriptors with lsof:
+lsof -p `ps ax | grep [C]assandraDaemon | awk '
+{print $1}
+'` | awk '
+{print $9}
+' | sort | uniq -c | sort -n | tail -n 5
+Looks like SSTableNamesIterator is never closing the files it creates via the sstable ...?
+This is similar to CASSANDRA-1178 except for use of multiget_slice instead of get_slice
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7 beta 1
+Component:
+None
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Matthew F. Dennis
+Reporter:
+Matt Conway
+Create date:
+14/Jun/10 15:12
+Update date:
+16/Apr/19 09:33
+Resolved date:
+14/Jun/10 17:58

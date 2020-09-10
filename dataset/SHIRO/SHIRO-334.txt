@@ -1,0 +1,63 @@
+Summary:
+DefaultSerializer does not load classes from the ContextClassLoader, causing RememberMe to not work
+Description:
+RememberMe functionality does not work because Shiro is in a different class loader than the RememberMe serializable class,
+The only thing that needs to change is the resolveClass() function,
+and it should use Thread.currentThread().getContextClassLoader().loadClass() to load the class,
+as that works in all cases and all class loader configurations.
+I fixed this in my code by overriding DefaultSerializer, but this should be the default behavior:
+private static class Serialize<T> extends DefaultSerializer<T>
+{
+@Override
+public T deserialize(byte[] serialized) throws SerializationException
+{
+if (serialized == null)
+{ String msg = "argument cannot be null."; throw new IllegalArgumentException(msg); }
+ByteArrayInputStream bais = new ByteArrayInputStream(serialized);
+BufferedInputStream bis = new BufferedInputStream(bais);
+try
+{
+ObjectInputStream ois = new ObjectInputStream(bis)
+{
+@Override
+public Class resolveClass(ObjectStreamClass desc) throws ClassNotFoundException
+{ // ************ THIS IS THE LINE THAT WAS CHANGED ******************** return Thread.currentThread().getContextClassLoader().loadClass(desc.getName()); }
+};
+@SuppressWarnings(
+{"unchecked"}
+)
+T deserialized = (T) ois.readObject();
+ois.close();
+return deserialized;
+} catch (Exception e)
+{ String msg = "Unable to deserialze argument byte array."; throw new SerializationException(msg, e); }
+}
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.1.0, (3)
+Fix_version:
+1.2.0
+Component:
+Authentication (log-in)
+Label:
+None
+Environment:
+glassfish
+Attachment number:
+0
+Assignee:
+Les Hazlewood
+Reporter:
+Lenny Primak
+Create date:
+14/Dec/11 17:31
+Update date:
+24/Jan/12 01:11
+Resolved date:
+15/Dec/11 00:01

@@ -1,0 +1,42 @@
+Summary:
+server should not produce RAITE for already-opening region in 0.94 (because master retry logic handles this case poorly)
+Description:
+The code in 0.94 AM sets the region plan to point to the same server when retrying the assignment due to RAITE.
+LOG.warn("Failed assignment of "
+            + state.getRegion().getRegionNameAsString()
+            + " to "
+            + plan.getDestination()
+            + ", trying to assign "
+            + (regionAlreadyInTransitionException ? "to the same region server"
+                + " because of RegionAlreadyInTransitionException;" : "elsewhere instead; ")
+            + "retry=" + i, t);
+However, there's no wait time in the loop that retries the assignment, and if region is being marked failed to open, which may take some time, master can easily exhaust retries in less than half a second, going to the same server every time and getting the same exception (unfortunately I no longer have logs); then the region will be stuck.
+Do you think this is worth fixing (for example, by not using the same server here after a few retries, or by adding timed backoff in such cases)?
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+0.94.6
+Fix_version:
+0.94.7
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sergey Shelukhin
+Reporter:
+Sergey Shelukhin
+Create date:
+20/Mar/13 00:44
+Update date:
+27/Apr/13 15:55
+Resolved date:
+08/Apr/13 18:28

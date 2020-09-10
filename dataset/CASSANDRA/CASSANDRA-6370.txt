@@ -1,0 +1,85 @@
+Summary:
+Updating cql created table through cassandra-cli transform it into a compact storage table
+Description:
+To reproduce :
+echo "CREATE TABLE test (aid int, period text, event text, viewer text, PRIMARY KEY (aid, period, event, viewer) );" | cqlsh -kmykeyspace;
+echo "describe table test;" | cqlsh -kmykeyspace;
+Output >
+CREATE TABLE test (
+aid int,
+period text,
+event text,
+viewer text,
+PRIMARY KEY (aid, period, event, viewer)
+) WITH
+bloom_filter_fp_chance=0.010000 AND
+caching='KEYS_ONLY' AND
+comment='' AND
+dclocal_read_repair_chance=0.000000 AND
+gc_grace_seconds=864000 AND
+read_repair_chance=0.100000 AND
+replicate_on_write='true' AND
+populate_io_cache_on_flush='false' AND
+compaction=
+{'class': 'SizeTieredCompactionStrategy'}
+AND
+compression=
+{'sstable_compression': 'SnappyCompressor'}
+;
+Then do :
+echo "update column family test with dclocal_read_repair_chance = 0.1;" | cassandra-cli -kmykeyspace
+And finally again : echo "describe table test;" | cqlsh -kmykeyspace;
+Output >
+CREATE TABLE test (
+aid int,
+column1 text,
+column2 text,
+column3 text,
+column4 text,
+value blob,
+PRIMARY KEY (aid, column1, column2, column3, column4)
+) WITH COMPACT STORAGE AND
+bloom_filter_fp_chance=0.010000 AND
+caching='KEYS_ONLY' AND
+comment='' AND
+dclocal_read_repair_chance=0.100000 AND
+gc_grace_seconds=864000 AND
+read_repair_chance=0.100000 AND
+replicate_on_write='true' AND
+populate_io_cache_on_flush='false' AND
+compaction=
+{'class': 'SizeTieredCompactionStrategy'}
+AND
+compression=
+{'sstable_compression': 'SnappyCompressor'}
+;
+This is quite annoying in production. If it is happening to you:
+UPDATE system.schema_columnfamilies SET column_aliases = '["period","event","viewer"]' WHERE keyspace_name='mykeyspace' AND columnfamily_name='test'; should help restoring the table. (Thanks Sylvain for this information.)
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.12
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Alain RODRIGUEZ
+Create date:
+18/Nov/13 14:23
+Update date:
+16/Apr/19 09:31
+Resolved date:
+18/Nov/13 16:46

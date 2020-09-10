@@ -1,0 +1,44 @@
+Summary:
+Dtest on low cardinality secondary indexes failing in 2.1
+Description:
+test_low_cardinality_indexes in secondary_indexes_test.py is failing when tested on the cassandra-2.1 branch. This test has been failing on cassci for a while (at least the last 10 builds) and can easily be reproduced locally as well. It appears to still work on 2.0.
+======================================================================
+FAIL: test_low_cardinality_indexes (secondary_indexes_test.TestSecondaryIndexes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/shawn/git/cstar5/cassandra-dtest/tools.py", line 213, in wrapped
+    f(obj)
+  File "/home/shawn/git/cstar5/cassandra-dtest/secondary_indexes_test.py", line 89, in test_low_cardinality_indexes
+    check_request_order()
+  File "/home/shawn/git/cstar5/cassandra-dtest/secondary_indexes_test.py", line 84, in check_request_order
+    self.assertTrue('Executing indexed scan' in relevant_events[-1][0], str(relevant_events[-1]))
+AssertionError: (u'Enqueuing request to /127.0.0.2', '127.0.0.1')
+The test checks that a series of messages are found in the trace after a select query against an index is carried out. It fails to find an 'Executing indexed scan' from node 1 (which takes the query, note both node2 and node3 produced this message). Brief investigation seemed to show that whichever node you create the patient_cql_connection on will not produce this message, indicating perhaps it does not carry out the scan. Should also note that changing 'numrows' (rows initially added) or 'b' (value on index column we query for) does not appear to make a difference.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.0
+Component:
+Feature/2i Index, Test/dtest
+Label:
+qa-resolved
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+Shawn Kumar
+Create date:
+23/Jul/14 17:27
+Update date:
+16/Apr/19 09:31
+Resolved date:
+12/Aug/14 18:34

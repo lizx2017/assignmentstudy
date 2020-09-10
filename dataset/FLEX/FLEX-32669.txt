@@ -1,0 +1,39 @@
+Summary:
+DMV components should not override CSSStyleDeclaration.defaultFactory to establish default styles
+Description:
+In many DMV classes, components initialize their styles by setting the defaultFactory like so:
+var dtStyle:CSSStyleDeclaration = HaloDefaults.createSelector("mx.charts.chartClasses.DataTip", styleManager);
+dtStyle.defaultFactory = function():void
+{ this.backgroundColor = 0xFFFFFF; }
+This stops themes from being applied to chart components because the defaultFactory on the CSSStyleDeclaration is being clobbered.
+On fixing SDK-24986, we discovered an important workflow that is broken in DMV due to this approach, namely the "Use Flash Text Engine in MX components" option. This option in Flash Builder 4 sets a MXFTEText.css theme on the project. The styles in here that set the textFieldClass for ActionScript charting classes such as DataTip, ChartLabel, etc... will be clobbered at runtime with the hard coded style initialization in the charting classes and thus FTE based text will not be used for text in any chart (and thus legacy TextField based text won't render for CFF/DefineFont4 based embedded fonts).
+Charts should establish their defaults through the datavisualization.swc's defaults.css mechanism rather than hard coding in defaults inside each component (and not clobber the default factory for the relevant type selector).
+If this old behavior of clobbering the default factory was needed for older code, it should be version checked, but not run for at least Flex 4 or greater.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK 4.0 (
+Fix_version:
+None
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+11/Jan/10 18:10
+Update date:
+29/Jun/11 22:58
+Resolved date:
+10/Mar/11 09:33

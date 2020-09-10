@@ -1,0 +1,45 @@
+Summary:
+NullPointerException in AntPathMatcher
+Description:
+WebUtils.getRequestUri uses the normalize method to canonicalize the request URI. During an automated pentest, we found that a request to the following URL will cause a NPE:
+curl --path-as-is "http://127.0.0.1/\../\../\../\../\../\../Server4/admin-serv/config/adm.conf"
+The request will cause the path parameter of the `doMatch`method in org.apache.shiro.util.AntPathMatcher to be null. Executing the line
+{{ if (path.startsWith(this.pathSeparator) != pattern.startsWith(this.pathSeparator)) }} will throw the NPE.
+This could be handled by adjusting the normalize method or null checking the path in the doMatch method.
+Stacktrace
+java.lang.NullPointerException
+at org.apache.shiro.util.AntPathMatcher.doMatch(AntPathMatcher.java:109)
+at org.apache.shiro.util.AntPathMatcher.match(AntPathMatcher.java:90)
+at org.apache.shiro.util.AntPathMatcher.matches(AntPathMatcher.java:86)
+at org.apache.shiro.web.filter.mgt.PathMatchingFilterChainResolver.pathMatches(PathMatchingFilterChainResolver.java:135)
+at org.apache.shiro.web.filter.mgt.PathMatchingFilterChainResolver.getChain(PathMatchingFilterChainResolver.java:106)
+at org.apache.shiro.web.servlet.AbstractShiroFilter.getExecutionChain(AbstractShiroFilter.java:415)
+at org.apache.shiro.web.servlet.AbstractShiroFilter.executeChain(AbstractShiroFilter.java:448)
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+1.3.0
+Fix_version:
+None
+Component:
+Authorization (access control)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Christian Thum
+Create date:
+22/Aug/16 12:59
+Update date:
+22/Aug/16 13:10
+Resolved date:
+

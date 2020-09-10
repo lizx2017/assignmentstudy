@@ -1,0 +1,45 @@
+Summary:
+Switching log-splitting policy after last failure master start may cause data loss
+Description:
+How happen?
+If server A is down, and it has three log files, all the data is from one region.
+File 1: kv01 kv02 kv03
+File 2: kv04 kv05 kv06
+File 3: kv07 kv08 kv09
+Here,kv01 means, its log seqID is 01
+Case:Switch to maste-local-log-splitting from distributed-log-splitting
+1.Master find serverA is down, and start to split its log files using split-log-splitting.
+2.Successfully split log file2, and move it to oldLogs, and generate one edit file named 06 in region recover.edits dir.
+3.Master restart, and change the log-splitting policy to maste-local-log-splitting , and start to split file 1, file 3
+4.Successfully split log file1 and file3, and generate one edit file named 09 in region recover.edits dir.
+5.Region replay edits from edit file 06 and 09, Region's seqID is 06 after it replay edits from 06, and when replaying edit from 09, it will skip kv01,kv02,kv03, So these data loss.
+As the above case, if we switch to distributed-log-splitting from maste-local-log-splitting, it could also cause data loss
+Should we fix this bug or avoid the case? I'm not sure...
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+0.92.1, 0.94.0
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+06/Jul/12 03:45
+Update date:
+26/Feb/13 04:49
+Resolved date:
+

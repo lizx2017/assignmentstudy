@@ -1,0 +1,35 @@
+Summary:
+Persist Master in-memory state so on restart or failover, new instance can pick up where the old left off
+Description:
+Today there was some good stuff up on IRC on how transitions won't always make it across Master failovers in multi-master deploy because transitions are kept in in-memory structure up in the Master and so on master crash, the new master will be missing state on startup (Todd was main promulgator of this observation and of the opinion that while master rewrite is scheduled for 0.21, some part needs to be done for 0.20.5). A few suggestions were made: transitions should be file-backed somehow, etc. Let this issue be about the subset we want to do for 0.20.5.
+Of the in-memory state queues, there is at least the master tasks queue – process region opens, closes, regionserver crashes, etc. – where tasks must be done in order and IIRC, tasks are fairly idempotent (at least in the server crash case, its multi-step and we'll put the crash event back on the queue if we cannot do all steps in the one go). Perhaps this queue could be done using the new queue facility in zk 3.3.0 (I haven't looked to check if possible, just suggesting). Another suggestion was a file to which we'd append queue items, requeueing, and marking the file with task complete, etc. On Master restart or fail-over, we'd replay the queue log.
+There is also the Map of regions-in-transition. Yesterday we learned that there is a bug where server shutdown processing does not iterate the Map of regions-in-transition. This Map may hold regions that are in "opening" or "opened" state but haven't yet had the fact added to .META. by master. Meantime the hosting server can crash. Regions that were opening will stay in the regions-in-transition and those in opened-but-not-yet-added-to-meta will go ahead and add a crashed server to .META. (Currently regions-in-transition does not record server the region opening/open is happening on so it doesn't have enough info to be processed as part of server shutdown).
+Regions-in-transition also needs to be persistant. On startup, regions-in-transition can get kinda hectic on a big cluster. Ordering is not so important here I believe. A directory in zk might work (For 1M regions in a big cluster, that'd be about 2M creates and 2M deletes during startup – thats too much?). Or we could write a WAL-like log again of region transitions (We'd have to develop a little vocabulary) that got reread by a new master.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+moved_from_0_20_5
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Gray
+Reporter:
+stack
+Create date:
+24/Apr/10 04:03
+Update date:
+20/Nov/15 12:42
+Resolved date:
+19/Oct/10 00:09

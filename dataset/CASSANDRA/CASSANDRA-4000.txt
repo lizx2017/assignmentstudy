@@ -1,0 +1,51 @@
+Summary:
+Division by zero on get_slice
+Description:
+We have a column family with String row keys and Long column keys.
+Our WideEntityService is trying to get the first column in the range from 0 to Long.MAX. It's a batch operation performed for every row in the CF (rows count is approximately tens of thousands and each row contains from 0 to 1000 columns).
+After processing each row we are removing some of the columns we have queried. Also, at the same time we are writing in this CF in another threads but somewhat less intensive.
+An error rises approximately for a one of 100 rows.
+Exception itself:
+[05-Mar-2012 18:47:25,247] ERROR [http-8095-1 WideEntityServiceImpl.java:142] - get: key1 -
+{type=RANGE, start=0, end=9223372036854775807, orderDesc=false, limit=1}
+me.prettyprint.hector.api.exceptions.HCassandraInternalException: Cassandra encountered an internal error processing this request: TApplicationError type: 6 message:Internal error processing get_slice
+at me.prettyprint.cassandra.service.ExceptionsTranslatorImpl.translate(ExceptionsTranslatorImpl.java:31)
+at me.prettyprint.cassandra.service.KeyspaceServiceImpl$7.execute(KeyspaceServiceImpl.java:285)
+at me.prettyprint.cassandra.service.KeyspaceServiceImpl$7.execute(KeyspaceServiceImpl.java:268)
+at me.prettyprint.cassandra.service.Operation.executeAndSetResult(Operation.java:101)
+at me.prettyprint.cassandra.connection.HConnectionManager.operateWithFailover(HConnectionManager.java:233)
+at me.prettyprint.cassandra.service.KeyspaceServiceImpl.operateWithFailover(KeyspaceServiceImpl.java:131)
+at me.prettyprint.cassandra.service.KeyspaceServiceImpl.getSlice(KeyspaceServiceImpl.java:289)
+at me.prettyprint.cassandra.model.thrift.ThriftSliceQuery$1.doInKeyspace(ThriftSliceQuery.java:53)
+at me.prettyprint.cassandra.model.thrift.ThriftSliceQuery$1.doInKeyspace(ThriftSliceQuery.java:49)
+at me.prettyprint.cassandra.model.KeyspaceOperationCallback.doInKeyspaceAndMeasure(KeyspaceOperationCallback.java:20)
+at me.prettyprint.cassandra.model.ExecutingKeyspace.doExecute(ExecutingKeyspace.java:85)
+at me.prettyprint.cassandra.model.thrift.ThriftSliceQuery.execute(ThriftSliceQuery.java:48)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.9
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Sergey B
+Create date:
+05/Mar/12 15:45
+Update date:
+16/Apr/19 09:32
+Resolved date:
+07/Mar/12 10:14

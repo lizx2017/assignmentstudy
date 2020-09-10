@@ -1,0 +1,66 @@
+Summary:
+Exception when querying a composite-keyed table with a collection index
+Description:
+Given the following schema:
+  
+CREATE TABLE products (
+      account text,
+      id int,
+      categories set<text>,
+      PRIMARY KEY (account, id)
+);
+
+CREATE INDEX cat_index ON products(categories);
+The following query fails with an exception
+SELECT * FROM products WHERE account = 'xyz' AND categories CONTAINS 'lmn';
+errors={}, last_host=127.0.0.1
+The exception in cassandra's log is:
+WARN  17:01:49 Uncaught exception on thread Thread[SharedPool-Worker-2,5,main]: {}
+java.lang.RuntimeException: java.lang.IndexOutOfBoundsException
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:2015) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471) ~[na:1.7.0_25]
+ at org.apache.cassandra.concurrent.AbstractTracingAwareExecutorService$FutureTask.run(AbstractTracingAwareExecutorService.java:162) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ at org.apache.cassandra.concurrent.SEPWorker.run(SEPWorker.java:103) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ at java.lang.Thread.run(Thread.java:724) ~[na:1.7.0_25]
+Caused by: java.lang.IndexOutOfBoundsException: null
+ at org.apache.cassandra.db.composites.Composites$EmptyComposite.get(Composites.java:60) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ at org.apache.cassandra.db.index.composites.CompositesIndexOnCollectionKey.makeIndexColumnPrefix(CompositesIndexOnCollectionKey.java:78) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ at org.apache.cassandra.db.index.composites.CompositesSearcher.makePrefix(CompositesSearcher.java:82) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ at org.apache.cassandra.db.index.composites.CompositesSearcher.getIndexedIterator(CompositesSearcher.java:116) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ at org.apache.cassandra.db.index.composites.CompositesSearcher.search(CompositesSearcher.java:68) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ at org.apache.cassandra.db.index.SecondaryIndexManager.search(SecondaryIndexManager.java:589) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ at org.apache.cassandra.db.ColumnFamilyStore.search(ColumnFamilyStore.java:2060) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ at org.apache.cassandra.db.RangeSliceCommand.executeLocally(RangeSliceCommand.java:131) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ at org.apache.cassandra.service.StorageProxy$LocalRangeSliceRunnable.runMayThrow(StorageProxy.java:1368) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ at org.apache.cassandra.service.StorageProxy$DroppableRunnable.run(StorageProxy.java:2011) ~[apache-cassandra-2.1.0-rc1.jar:2.1.0-rc1]
+ ... 4 common frames omitted
+The following query however works
+SELECT * FROM products WHERE categories CONTAINS 'lmn';
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Mikhail Stepura
+Reporter:
+Ghais Issa
+Create date:
+09/Jun/14 17:05
+Update date:
+16/Apr/19 09:31
+Resolved date:
+12/Jun/14 18:12

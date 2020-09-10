@@ -1,0 +1,134 @@
+Summary:
+[DefaultWebSessionManager] Cannot get data w/ httpMethod="POST" and "Content-Type: application/x-www-form-urlencoded"
+Description:
+web.xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+         version="3.0">
+
+    <context-param>
+        <param-name>shiroConfigLocations</param-name>
+        <param-value>classpath:shiro.ini</param-value>
+    </context-param>
+
+        <listener>
+            <listener-class&gt;org.apache.shiro.web.env.EnvironmentLoaderListener</listener-class&gt;
+        </listener>
+
+        <filter>
+            <filter-name>ShiroFilter</filter-name>
+            <filter-class&gt;org.apache.shiro.web.servlet.ShiroFilter</filter-class&gt;
+        </filter>
+
+        <filter-mapping>
+            <filter-name>ShiroFilter</filter-name>
+            <url-pattern>/*</url-pattern>
+            <dispatcher>REQUEST</dispatcher>
+            <dispatcher>FORWARD</dispatcher>
+            <dispatcher>INCLUDE</dispatcher>
+            <dispatcher>ERROR</dispatcher>
+        </filter-mapping>
+</web-app>
+ShiroServlet.java
+package shiro;
+
+import java.io.IOException;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.io.IOUtils;
+
+/**
+ * Created by buom on 5/27/14.
+ */
+@WebServlet(urlPatterns = "/shiro")
+public class ShiroServlet extends HttpServlet {
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
+        String payload = IOUtils.toString(request.getInputStream());
+        String output = "payload: " + payload +  "\n" +
+            "contentType: " + request.getContentType() + "\n" +
+            "method: " + request.getMethod();
+
+        response.getWriter().write(output);
+
+    }
+}
+Test 1:
+shiro.ini
+[main]
+
+# Create a Session Manager
+sessionManager = org.apache.shiro.web.session.mgt.DefaultWebSessionManager
+securityManager.sessionManager = $sessionManager
+
+[filters]
+authc.successUrl = /index.jsp
+Run
+$ curl -i -XPOST -H'Content-Type: application/x-www-form-urlencoded' -d'name=buom' http://localhost:8080/coz/shiro
+HTTP/1.1 200 OK
+Server: Apache-Coyote/1.1
+Content-Length: 69
+Date: Tue, 27 May 2014 12:48:41 GMT
+
+payload: 
+contentType: application/x-www-form-urlencoded
+method: POST
+Test 2:
+shiro.ini
+[main]
+
+# Create a Session Manager
+#sessionManager = org.apache.shiro.web.session.mgt.DefaultWebSessionManager
+#securityManager.sessionManager = $sessionManager
+
+[filters]
+authc.successUrl = /index.jsp
+Run
+$ curl -i -XPOST -H'Content-Type: application/x-www-form-urlencoded' -d'name=buom' http://localhost:8080/coz/shiro
+HTTP/1.1 200 OK
+Server: Apache-Coyote/1.1
+Content-Length: 78
+Date: Tue, 27 May 2014 12:47:39 GMT
+
+payload: name=buom
+contentType: application/x-www-form-urlencoded
+method: POST
+Conclusion
+Fail in the Test 1
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+1.2.2, 1.2.3
+Fix_version:
+None
+Component:
+Web
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+buom
+Create date:
+27/May/14 12:51
+Update date:
+27/May/14 12:54
+Resolved date:
+

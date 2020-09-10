@@ -1,0 +1,65 @@
+Summary:
+Avoid unnecessary DNS lookups for locality computation in HMaster
+Description:
+We recently hit an issue where upon each RS heartbeat we were looking up and resolving DNS name + address of the RS in the master, but needed it only for locality based assignment on startup.
+Some flakiness in the DNS subsystem cause one of the threads to get stuck in the lookup and the synchronized call at:
+ServerManager.java:528
+processMsgs() {
+...
+synchronized (this.master.getRegionManager()) {
+// does dns lookup
+}
+}
+The offending stack trace was:
+"IPC Server handler 232 on 60000" daemon prio=10 tid=0x00007fcb64164000 nid=0x7d16 runnable [0x0000000052e7f000]
+java.lang.Thread.State: RUNNABLE
+at java.net.Inet4AddressImpl.lookupAllHostAddr(Native Method)
+at java.net.InetAddress$1.lookupAllHostAddr(InetAddress.java:849)
+at java.net.InetAddress.getAddressFromNameService(InetAddress.java:1200)
+at java.net.InetAddress.getAllByName0(InetAddress.java:1153)
+at java.net.InetAddress.getAllByName0(InetAddress.java:1128)
+at java.net.InetAddress.getHostFromNameService(InetAddress.java:550)
+at java.net.InetAddress.getHostName(InetAddress.java:476)
+at java.net.InetAddress.getHostName(InetAddress.java:448)
+at java.net.InetSocketAddress.getHostName(InetSocketAddress.java:210)
+at org.apache.hadoop.hbase.HServerAddress.getHostname(HServerAddress.java:117)
+at org.apache.hadoop.hbase.master.RegionManager.regionsAwaitingAssignment(RegionManager.java:469)
+at org.apache.hadoop.hbase.master.RegionManager.assignRegions(RegionManager.java:263)
+at org.apache.hadoop.hbase.master.ServerManager.processMsgs(ServerManager.java:500)
+locked <0x00007fcb985b2030> (a org.apache.hadoop.hbase.master.RegionManager)
+at org.apache.hadoop.hbase.master.ServerManager.processRegionServerAllsWell(ServerManager.java:425)
+at org.apache.hadoop.hbase.master.ServerManager.regionServerReport(ServerManager.java:335)
+at org.apache.hadoop.hbase.master.HMaster.regionServerReport(HMaster.java:841)
+at sun.reflect.GeneratedMethodAccessor15.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:585)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:933)
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Karthik Ranganathan
+Reporter:
+Karthik Ranganathan
+Create date:
+31/Oct/11 14:51
+Update date:
+28/Aug/12 19:17
+Resolved date:
+28/Aug/12 18:00

@@ -1,0 +1,59 @@
+Summary:
+HRS#closeAllRegions should take care of HRS#onlineRegions's weak consistency
+Description:
+This's the reason of why did "https://builds.apache.org/job/hbase-0.90/282" get failure . In this test, one case was timeout and cause the whole test process got killed.
+[logs]
+Here's the related logs(From org.apache.hadoop.hbase.mapreduce.TestTableMapReduce-output.txt):
+2011-08-31 10:09:01,089 INFO  [RegionServer:0;vesta.apache.org,52257,1314785332968.leaseChecker] regionserver.Leases(124): RegionServer:0;vesta.apache.org,52257,1314785332968.leaseChecker closing leases
+2011-08-31 10:09:01,089 INFO  [RegionServer:0;vesta.apache.org,52257,1314785332968.leaseChecker] regionserver.Leases(131): RegionServer:0;vesta.apache.org,52257,1314785332968.leaseChecker closed leases
+2011-08-31 10:09:01,403 INFO  [RegionServer:0;vesta.apache.org,52257,1314785332968] regionserver.HRegionServer(709): Waiting on 1 regions to close
+2011-08-31 10:09:01,403 DEBUG [RegionServer:0;vesta.apache.org,52257,1314785332968] regionserver.HRegionServer(713): {74a7a8befdf9561dc1d90c4241afeac7=mrtest,uuu,1314785328546.74a7a8befdf9561dc1d90c4241afeac7.}
+2011-08-31 10:09:01,697 INFO  [Master:0;vesta.apache.org:50036] master.ServerManager(465): Waiting on regionserver(s) to go down vesta.apache.org,52257,1314785332968
+2011-08-31 10:09:02,697 INFO  [Master:0;vesta.apache.org:50036] master.ServerManager(465): Waiting on regionserver(s) to go down vesta.apache.org,52257,1314785332968
+2011-08-31 10:09:03,008 INFO  [vesta.apache.org:50036.timeoutMonitor] hbase.Chore(79): vesta.apache.org:50036.timeoutMonitor exiting
+2011-08-31 10:09:03,697 INFO  [Master:0;vesta.apache.org:50036] master.ServerManager(465): Waiting on regionserver(s) to go down vesta.apache.org,52257,1314785332968
+2011-08-31 10:09:04,697 INFO  [Master:0;vesta.apache.org:50036] master.ServerManager(465): Waiting on regionserver(s) to go down vesta.apache.org,52257,1314785332968
+2011-08-31 10:09:05,698 INFO  [Master:0;vesta.apache.org:50036] master.ServerManager(465): Waiting on regionserver(s) to go down vesta.apache.org,52257,1314785332968
+2011-08-31 10:09:06,698 INFO  [Master:0;vesta.apache.org:50036] master.ServerManager(465): Waiting on regionserver(s) to go down vesta.apache.org,52257,1314785332968
+2011-08-31 10:09:07,698 INFO  [Master:0;vesta.apache.org:50036] master.ServerManager(465): Waiting on regionserver(s) to go down vesta.apache.org,52257,1314785332968
+[Analysis]
+One region was opened during the RS's stopping.
+This is method of "HRS#closeAllRegions":
+  protected void closeAllRegions(final boolean abort) {
+    closeUserRegions(abort);
+    -------------------------
+    if (meta != null) closeRegion(meta.getRegionInfo(), abort, false);
+    if (root != null) closeRegion(root.getRegionInfo(), abort, false);
+  }
+HRS#onlineRegions is a ConcurrentHashMap. So walk down this map may not get all the data if some entries are been added during the traverse. Once one region was missed, it can't be closed anymore. And this regionserver will not be stopped normally. Then the following logs occurred:
+2011-08-31 10:09:01,403 INFO  [RegionServer:0;vesta.apache.org,52257,1314785332968] regionserver.HRegionServer(709): Waiting on 1 regions to close
+2011-08-31 10:09:01,403 DEBUG [RegionServer:0;vesta.apache.org,52257,1314785332968] regionserver.HRegionServer(713): {74a7a8befdf9561dc1d90c4241afeac7=mrtest,uuu,1314785328546.74a7a8befdf9561dc1d90c4241afeac7.}
+2011-08-31 10:09:01,697 INFO  [Master:0;vesta.apache.org:50036] master.ServerManager(465): Waiting on regionserver(s) to go down vesta.apache.org,52257,1314785332968
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.5
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jieshan Bean
+Reporter:
+Jieshan Bean
+Create date:
+07/Sep/11 02:42
+Update date:
+20/Nov/15 11:54
+Resolved date:
+08/Sep/11 15:39

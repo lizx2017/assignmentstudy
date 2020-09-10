@@ -1,0 +1,44 @@
+Summary:
+High Heap Consumption due to high number of SSTableReader
+Description:
+Given a workload with quite a lot of reads, I recently encountered high heap memory consumption. Given 2GB of Heap, it appears I have 750.000+ tasks in SSTableReader.syncExecutor, consuming more than 1.2GB. These tasks have type SSTableReader$5, which I guess corresponds to :
+readMeterSyncFuture = syncExecutor.scheduleAtFixedRate(new Runnable()
+{
+public void run()
+{
+if (!isCompacted.get())
+{
+meterSyncThrottle.acquire();
+SystemKeyspace.persistSSTableReadMeter(desc.ksname, desc.cfname, desc.generation, readMeter);
+}
+}
+}, 1, 5, TimeUnit.MINUTES);
+I do not have have to the environment right now, but I could provide a threaddump later if necessary.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1.1
+Component:
+Legacy/Local Write-Read Paths, Local/Compaction
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+T Jake Luciani
+Reporter:
+Benoit Lacelle
+Create date:
+07/Oct/14 07:39
+Update date:
+16/Apr/19 09:31
+Resolved date:
+14/Oct/14 12:58

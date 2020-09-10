@@ -1,0 +1,57 @@
+Summary:
+Table can't disable
+Description:
+In TimeoutMonitor :
+if node exists and node state is RS_ZK_REGION_CLOSED
+We should send a zk message again when close region is timeout.
+in this case, It may be loss some message.
+I See. It seems like a bug. This is my analysis.
+// disable table and master sent Close message to region server, Region state was set PENDING_CLOSE
+2011-05-08 17:44:25,745 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Sent CLOSE to serverName=C4C4.site,60020,1304820199467, load=(requests=0, regions=123, usedHeap=4097, maxHeap=8175) for region ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66.
+2011-05-08 17:44:45,530 INFO org.apache.hadoop.hbase.master.ServerManager: Received REGION_SPLIT: ufdr,2011050812#8613817306227#0516,1304845660567.8e9a3b05abe1c3a692999cf5e8dfd9dd.: Daughters; ufdr,2011050812#8613817306227#0516,1304847764729.5e4bca85c33fa6605ffc9a5c2eb94e62., ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66. from C4C4.site,60020,1304820199467
+2011-05-08 17:45:45,542 INFO org.apache.hadoop.hbase.master.ServerManager: Received REGION_SPLIT: ufdr,2011050812#8613817306227#0516,1304845660567.8e9a3b05abe1c3a692999cf5e8dfd9dd.: Daughters; ufdr,2011050812#8613817306227#0516,1304847764729.5e4bca85c33fa6605ffc9a5c2eb94e62., ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66. from C4C4.site,60020,1304820199467
+// received splitting message and cleared Region state (PENDING_CLOSE)
+2011-05-08 17:46:45,303 WARN org.apache.hadoop.hbase.master.AssignmentManager: Overwriting 4418fb197685a21f77e151e401cf8b66 on serverName=C4C4.site,60020,1304820199467, load=(requests=0, regions=123, usedHeap=4097, maxHeap=8175)
+2011-05-08 17:46:45,538 INFO org.apache.hadoop.hbase.master.ServerManager: Received REGION_SPLIT: ufdr,2011050812#8613817306227#0516,1304845660567.8e9a3b05abe1c3a692999cf5e8dfd9dd.: Daughters; ufdr,2011050812#8613817306227#0516,1304847764729.5e4bca85c33fa6605ffc9a5c2eb94e62., ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66. from C4C4.site,60020,1304820199467
+2011-05-08 17:47:45,548 INFO org.apache.hadoop.hbase.master.ServerManager: Received REGION_SPLIT: ufdr,2011050812#8613817306227#0516,1304845660567.8e9a3b05abe1c3a692999cf5e8dfd9dd.: Daughters; ufdr,2011050812#8613817306227#0516,1304847764729.5e4bca85c33fa6605ffc9a5c2eb94e62., ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66. from C4C4.site,60020,1304820199467
+2011-05-08 17:48:45,545 INFO org.apache.hadoop.hbase.master.ServerManager: Received REGION_SPLIT: ufdr,2011050812#8613817306227#0516,1304845660567.8e9a3b05abe1c3a692999cf5e8dfd9dd.: Daughters; ufdr,2011050812#8613817306227#0516,1304847764729.5e4bca85c33fa6605ffc9a5c2eb94e62., ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66. from C4C4.site,60020,1304820199467
+2011-05-08 17:49:46,108 INFO org.apache.hadoop.hbase.master.ServerManager: Received REGION_SPLIT: ufdr,2011050812#8613817306227#0516,1304845660567.8e9a3b05abe1c3a692999cf5e8dfd9dd.: Daughters; ufdr,2011050812#8613817306227#0516,1304847764729.5e4bca85c33fa6605ffc9a5c2eb94e62., ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66. from C4C4.site,60020,1304820199467
+2011-05-08 17:50:46,105 INFO org.apache.hadoop.hbase.master.ServerManager: Received REGION_SPLIT: ufdr,2011050812#8613817306227#0516,1304845660567.8e9a3b05abe1c3a692999cf5e8dfd9dd.: Daughters; ufdr,2011050812#8613817306227#0516,1304847764729.5e4bca85c33fa6605ffc9a5c2eb94e62., ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66. from C4C4.site,60020,1304820199467
+2011-05-08 17:51:46,117 INFO org.apache.hadoop.hbase.master.ServerManager: Received REGION_SPLIT: ufdr,2011050812#8613817306227#0516,1304845660567.8e9a3b05abe1c3a692999cf5e8dfd9dd.: Daughters; ufdr,2011050812#8613817306227#0516,1304847764729.5e4bca85c33fa6605ffc9a5c2eb94e62., ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66. from C4C4.site,60020,1304820199467
+2011-05-08 17:52:46,112 INFO org.apache.hadoop.hbase.master.ServerManager: Received REGION_SPLIT: ufdr,2011050812#8613817306227#0516,1304845660567.8e9a3b05abe1c3a692999cf5e8dfd9dd.: Daughters; ufdr,2011050812#8613817306227#0516,1304847764729.5e4bca85c33fa6605ffc9a5c2eb94e62., ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66. from C4C4.site,60020,1304820199467
+2011-05-08 17:52:47,309 DEBUG org.apache.hadoop.hbase.zookeeper.ZKUtil: master:60000-0x22fcd582836003d Retrieved 125 byte(s) of data from znode /hbase/unassigned/4418fb197685a21f77e151e401cf8b66 and set watcher; region=ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66., server=C4C4.site,60020,1304820199467, state=RS_ZK_REGION_CLOSED
+2011-05-08 17:52:47,388 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling new unassigned node: /hbase/unassigned/4418fb197685a21f77e151e401cf8b66 (region=ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66., server=C4C4.site,60020,1304820199467, state=RS_ZK_REGION_CLOSED)
+2011-05-08 17:52:47,388 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Handling transition=RS_ZK_REGION_CLOSED, server=C4C4.site,60020,1304820199467, region=4418fb197685a21f77e151e401cf8b66
+// region server had closed region, but the region state had cleared. So it printed warning log.
+2011-05-08 17:52:47,388 WARN org.apache.hadoop.hbase.master.AssignmentManager: Received CLOSED for region 4418fb197685a21f77e151e401cf8b66 from server C4C4.site,60020,1304820199467 but region was in the state null and not in expected PENDING_CLOSE or CLOSING states
+2011-05-08 17:52:47,397 WARN org.apache.hadoop.hbase.master.AssignmentManager: Overwriting 4418fb197685a21f77e151e401cf8b66 on serverName=C4C4.site,60020,1304820199467, load=(requests=0, regions=123, usedHeap=4097, maxHeap=8175)
+// The region state was set PENDING_CLOSE again. the table couldn't disable and enable.
+2011-05-08 17:52:47,398 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Starting unassignment of region ufdr,2011050812#8613817398167#4032,1304847764729.4418fb197685a21f77e151e401cf8b66. (offlining)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.90.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+gaojinchao
+Create date:
+17/May/11 01:27
+Update date:
+20/Nov/15 12:41
+Resolved date:
+10/Jun/11 21:58

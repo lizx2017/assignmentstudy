@@ -1,0 +1,68 @@
+Summary:
+Master can't exit when open port failed
+Description:
+When Hmaster crashed and restart , The Hmaster is hung up.
+// start up all service threads.
+startServiceThreads(); ----this open port failed!
+// Wait for region servers to report in. Returns count of regions.
+int regionCount = this.serverManager.waitForRegionServers();
+// TODO: Should do this in background rather than block master startup
+this.fileSystemManager.
+splitLogAfterStartup(this.serverManager.getOnlineServers());
+// Make sure root and meta assigned before proceeding.
+assignRootAndMeta(); — hung up this function, because of root can't be assigned.
+if (!catalogTracker.verifyRootRegionLocation(timeout)) {
+this.assignmentManager.assignRoot();
+this.catalogTracker.waitForRoot(); — This statement code is hung up.
+assigned++;
+}
+Log is as：
+2011-04-07 16:38:22,850 INFO org.mortbay.log: Logging to org.slf4j.impl.Log4jLoggerAdapter(org.mortbay.log) via org.mortbay.log.Slf4jLog
+2011-04-07 16:38:22,908 INFO org.apache.hadoop.http.HttpServer: Port returned by webServer.getConnectors()[0].getLocalPort() before open() is -1. Opening the listener on 60010
+2011-04-07 16:38:22,909 FATAL org.apache.hadoop.hbase.master.HMaster: Failed startup
+java.net.BindException: Address already in use
+at sun.nio.ch.Net.bind(Native Method)
+at sun.nio.ch.ServerSocketChannelImpl.bind(ServerSocketChannelImpl.java:119)
+at sun.nio.ch.ServerSocketAdaptor.bind(ServerSocketAdaptor.java:59)
+at org.mortbay.jetty.nio.SelectChannelConnector.open(SelectChannelConnector.java:216)
+at org.apache.hadoop.http.HttpServer.start(HttpServer.java:445)
+at org.apache.hadoop.hbase.master.HMaster.startServiceThreads(HMaster.java:542)
+at org.apache.hadoop.hbase.master.HMaster.finishInitialization(HMaster.java:373)
+at org.apache.hadoop.hbase.master.HMaster.run(HMaster.java:278)
+2011-04-07 16:38:22,910 INFO org.apache.hadoop.hbase.master.HMaster: Aborting
+2011-04-07 16:38:22,911 INFO org.apache.hadoop.hbase.master.ServerManager: Exiting wait on regionserver(s) to checkin; count=0, stopped=true, count of regions out on cluster=0
+2011-04-07 16:38:22,914 DEBUG org.apache.hadoop.hbase.master.MasterFileSystem: No log files to split, proceeding...
+2011-04-07 16:38:22,930 INFO org.apache.hadoop.ipc.HbaseRPC: Server at 167-6-1-12/167.6.1.12:60020 could not be reached after 1 tries, giving up.
+2011-04-07 16:38:22,930 INFO org.apache.hadoop.hbase.catalog.RootLocationEditor: Unsetting ROOT region location in ZooKeeper
+2011-04-07 16:38:22,941 DEBUG org.apache.hadoop.hbase.zookeeper.ZKAssign: master:60000-0x22f2c49d2590021 Creating (or updating) unassigned node for 70236052 with OFFLINE state
+2011-04-07 16:38:22,956 DEBUG org.apache.hadoop.hbase.master.AssignmentManager: Server stopped; skipping assign of ROOT,,0.70236052 state=OFFLINE, ts=1302165502941
+2011-04-07 16:38:32,746 INFO org.apache.hadoop.hbase.master.AssignmentManager$TimeoutMonitor: 167-6-1-11:60000.timeoutMonitor exiting
+2011-04-07 16:39:22,770 INFO org.apache.hadoop.hbase.master.LogCleaner: master-167-6-1-11:60000.oldLogCleaner exiting
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.1
+Fix_version:
+0.90.3
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+gaojinchao
+Reporter:
+gaojinchao
+Create date:
+07/Apr/11 03:17
+Update date:
+20/Nov/15 12:43
+Resolved date:
+25/Apr/11 23:16

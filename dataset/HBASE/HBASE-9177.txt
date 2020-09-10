@@ -1,0 +1,62 @@
+Summary:
+Cluster UUID is not properly parsable after rewriting to PB.
+Description:
+I am facing this problem while testing HBASE-8348(migration).
+->I have started two clusters with 0.94 version to replicate data from one cluster to other. When we have started master,writing cluster id without PB.
+-> killed both the clusters when Replication in progress
+-> running migration script to migrate hdfs and zk data to 0.96.0(No changes in cluster id.)
+-> starting 0.96.0 processes.
+Then not able to start region server.
+java.io.IOException: Region server startup failed
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.convertThrowableToIOE(HRegionServer.java:2629)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.handleReportForDutyResponse(HRegionServer.java:1202)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:802)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: java.lang.NumberFormatException: For input string: " $411f611e
+ at java.lang.NumberFormatException.forInputString(NumberFormatException.java:48)
+ at java.lang.Long.parseLong(Long.java:410)
+ at java.lang.Long.valueOf(Long.java:498)
+ at java.lang.Long.decode(Long.java:641)
+ at java.util.UUID.fromString(UUID.java:208)
+ at org.apache.hadoop.hbase.zookeeper.ZKClusterId.getUUIDForCluster(ZKClusterId.java:90)
+ at org.apache.hadoop.hbase.replication.regionserver.Replication.initialize(Replication.java:127)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.newReplicationInstance(HRegionServer.java:2248)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.createNewReplicationInstance(HRegionServer.java:2219)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.setupWALAndReplication(HRegionServer.java:1423)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.handleReportForDutyResponse(HRegionServer.java:1190)
+ ... 2 more
+      try {
+        clusterId = ClusterId.parseFrom(content);
+      } catch (DeserializationException e) {
+        throw new IOException("content=" + Bytes.toString(content), e);
+      }
+      // If not pb'd, make it so.
+      if (!ProtobufUtil.isPBMagicPrefix(content)) rewriteAsPb(fs, rootdir, idPath, clusterId);
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.98.0, 0.95.2
+Fix_version:
+0.98.0, 0.95.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+rajeshbabu
+Create date:
+09/Aug/13 20:02
+Update date:
+23/Sep/13 19:22
+Resolved date:
+15/Aug/13 05:35

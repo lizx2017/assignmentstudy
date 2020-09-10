@@ -1,0 +1,45 @@
+Summary:
+Prepared Statement on Defunct CF Can Impact Cluster Availability
+Description:
+Synopsis: misbehaving clients can cause DoS on a cluster with a defunct prepared statement
+Scenario:
+1.) Create prepared INSERT statement on existing table X
+2.) Table X is dropped
+3.) Continue using prepared statement from (1)
+Result:
+a.) on coordinator node: COMMIT-LOG-WRITER + MutationStage errors
+b.) on other nodes: "UnknownColumnFamilyException reading from socket; closing" --> leads to thrashing inter-node connections
+c.) Other clients of the cluster suffer from I/O timeouts, presumably a result of (b)
+Other observations:
+On single-node clusters, clients return from insert without error because mutation errors are swallowed.
+On multiple-node clusters, clients receive a confounded 'read timeout' error because the closed internode connections do not propagate the error back.
+With prepared SELECT statements (as opposed to INSERT described above). A NullPointerException is caused on the server, and no meaninful error is returned to the client.
+Besides the obvious "don't do that" to the integrator, it would be good if the cluster could handle this error case more gracefully and avoid undue impact.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.14
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Adam Holmberg
+Reporter:
+Adam Holmberg
+Create date:
+31/Dec/13 21:18
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Jan/14 13:18

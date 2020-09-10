@@ -1,0 +1,59 @@
+Summary:
+CommitLogReplayer date time issue
+Description:
+Hi,
+First off I am sorry if the component is not right for this.
+I am trying to get the point-in-time backup to work. And I ran into the following issues:
+1. The documentation in the commitlog_archiving.properties seems to be out of date, as the example date format is no more valid and can't be parsed.
+2.
+The restore_point_in_time property seems to differ from the actual maxTimeStamp. I added additional logging to the codebase in the class CommitLogReplayer like that:
+protected boolean pointInTimeExceeded(RowMutation frm)
+{
+long restoreTarget = CommitLog.instance.archiver.restorePointInTime;
+logger.info(String.valueOf(restoreTarget));
+for (ColumnFamily families : frm.getColumnFamilies())
+{ logger.info(String.valueOf(families.maxTimestamp())); if (families.maxTimestamp() > restoreTarget) return true; }
+return false;
+}
+The following output can be seen:
+The restoreTarget timestamp is: 1377015783000
+This has been correctly parsed as I added this date to the properties:
+2013:08:20 17:23:03
+the value for families.maxTimestamp() is: 1377009021033000
+This date corresponds to: Mon 45605-09-05 10:50:33 BST (44 millennia from now)
+It seems like the timestamp has 3 additional zeros. This also means that the code can never return false on the call, as the restoreTarget will always be smaller then the maxTimestamp(). Therefore the Replayer can never replay any of my commitlog files.
+The timestamp minus the 3 zeros corresponds to "Tue 2013-08-20 15:30:21 BST (23 hours ago)" which makes more sense and would allow for the replay to work.
+My config:
+Cassandra-1.2.4
+Java 1.6
+Ubuntu 12.04 64bit
+If you need any more information let me know and I'll be happy to suply whatever info I can.
+– artur
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.10
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Vijay
+Reporter:
+Artur Kronenberg
+Create date:
+21/Aug/13 13:12
+Update date:
+16/Apr/19 09:32
+Resolved date:
+15/Sep/13 00:59

@@ -1,0 +1,93 @@
+Summary:
+Document wrongly deleted from index
+Description:
+I'm trying to implement document deletion from an index.
+If I create an index with three documents (A, B and C) and then try to delete A, A gets marked as deleted but C is removed from the index. I've tried this with different number of documents and saw that it is always the last document that is removed.
+When I run the example unit test code bellow I get this output:
+Before delete
+Found 3 documents
+Document at = 0; isDeleted = false; path = a; 
+Document at = 1; isDeleted = false; path = b; 
+Document at = 2; isDeleted = false; path = c; 
+After delete
+Found 2 documents
+Document at = 0; isDeleted = true; path = a; 
+Document at = 1; isDeleted = false; path = b; 
+Example unit test:
+ExampleUnitTest.java
+    @Test
+    public void delete() throws Exception {
+        File indexDir = FileUtils.createTempDir();
+
+        IndexWriter writer = new IndexWriter(new NIOFSDirectory(indexDir), new IndexWriterConfig(Version.LUCENE_40,
+            new StandardAnalyzer(Version.LUCENE_40)));
+        Document doc = new Document();
+        String fieldName = "path";
+        doc.add(new StringField(fieldName, "a", Store.YES));
+        writer.addDocument(doc);
+        doc = new Document();
+        doc.add(new StringField(fieldName, "b", Store.YES));
+        writer.addDocument(doc);
+        doc = new Document();
+        doc.add(new StringField(fieldName, "c", Store.YES));
+        writer.addDocument(doc);
+        writer.commit();
+
+        System.out.println("Before delete");
+        print(indexDir);
+
+        writer.deleteDocuments(new Term(fieldName, "a"));
+        writer.commit();
+
+        System.out.println("After delete");
+        print(indexDir);
+
+    }
+
+    public static void print(File indexDirectory) throws IOException {
+        DirectoryReader reader = DirectoryReader.open(new NIOFSDirectory(indexDirectory));
+        Bits liveDocs = MultiFields.getLiveDocs(reader);
+        int numDocs = reader.numDocs();
+        System.out.println("Found " + numDocs + " documents");
+        for (int i = 0; i < numDocs; i++) {
+            Document document = reader.document(i);
+            StringBuffer sb = new StringBuffer();
+            sb.append("Document at = ").append(i);
+            sb.append("; isDeleted = ").append(liveDocs != null ? !liveDocs.get(i) : false).append("; ");
+            for (IndexableField field : document.getFields()) {
+                String fieldName = field.name();
+                for (String value : document.getValues(fieldName)) {
+                    sb.append(fieldName).append(" = ").append(value).append("; ");
+                }
+            }
+            System.out.println(sb.toString());
+        }
+    }
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+4.0
+Fix_version:
+None
+Component:
+core/index
+Label:
+None
+Environment:
+mac os x
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Miguel Ferreira
+Create date:
+09/Jan/13 14:53
+Update date:
+10/Jan/13 10:04
+Resolved date:
+09/Jan/13 15:57

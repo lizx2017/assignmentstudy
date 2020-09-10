@@ -1,0 +1,46 @@
+Summary:
+PDFBox doesn't respect different setting of /DA at PDAnnotationWidget level to /DA at PDField level
+Description:
+See the attached file "SF1152.pdf" and locate the "Bureau" field. If you open this document in Acrobat the font size shows as Auto and functions as such in Acrobat/Acrobat Reader. However, PDFBox thinks the font size is set to 9. I confirmed this in both PDFDebugger and in our rendering code.
+The second attachment "TestSF1152-LL.pdf" shows the behavior from PDFBox not picking up the correct Auto font size. The value is truncated unless you click inside the field or delete the value and replace it.
+The following code shows the problem:
+            final PDDocument document = PDDocument.load(ClassLoader.getSystemResourceAsStream("SF1152.pdf"));
+            final PDAcroForm form = document.getDocumentCatalog().getAcroForm();
+            final PDTextField field = (PDTextField)form.getField("Bureau");
+            final COSDictionary dict = field.getCOSObject();
+            String defaultAppearance = ((COSString)dict.getDictionaryObject(COSName.DA)).getString();
+            System.out.println(defaultAppearance);
+results in:
+/Helv 9 Tf 0 0 0.5 rg
+If I manually set the font size to auto using:
+dict.setString(COSName.DA, "/Helv 0 Tf 0 0 0.5 rg");
+the PDF renders correctly.
+But we shouldn't have to manipulate font sizes in code when it's set correctly in the PDF.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.4
+Fix_version:
+2.0.6, 3.0.0 PDFBox
+Component:
+AcroForm
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Maruan Sahyoun
+Reporter:
+Scott Coldwell
+Create date:
+15/Feb/17 22:19
+Update date:
+22/Jun/17 15:57
+Resolved date:
+12/May/17 05:51

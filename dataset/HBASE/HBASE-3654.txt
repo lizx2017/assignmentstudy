@@ -1,0 +1,82 @@
+Summary:
+Weird blocking between getOnlineRegion and createRegionLoad
+Description:
+Saw this when debugging something else:
+"regionserver60020" prio=10 tid=0x00007f538c1c0000 nid=0x4c7 runnable [0x00007f53931da000]
+   java.lang.Thread.State: RUNNABLE
+ at org.apache.hadoop.hbase.regionserver.Store.getStorefilesIndexSize(Store.java:1380)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.createRegionLoad(HRegionServer.java:916)
+ - locked <0x0000000672aa0a00> (a java.util.concurrent.ConcurrentSkipListMap)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.buildServerLoad(HRegionServer.java:767)
+ - locked <0x0000000656f62710> (a java.util.HashMap)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.tryRegionServerReport(HRegionServer.java:722)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.run(HRegionServer.java:591)
+ at java.lang.Thread.run(Thread.java:662)
+
+"IPC Reader 9 on port 60020" prio=10 tid=0x00007f538c1be000 nid=0x4c6 waiting for monitor entry [0x00007f53932db000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.getFromOnlineRegions(HRegionServer.java:2295)
+ - waiting to lock <0x0000000656f62710> (a java.util.HashMap)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.getOnlineRegion(HRegionServer.java:2307)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:2333)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer$QosFunction.isMetaRegion(HRegionServer.java:379)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer$QosFunction.apply(HRegionServer.java:422)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer$QosFunction.apply(HRegionServer.java:361)
+ at org.apache.hadoop.hbase.ipc.HBaseServer.getQosLevel(HBaseServer.java:1126)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Connection.processData(HBaseServer.java:982)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Connection.readAndProcess(HBaseServer.java:946)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Listener.doRead(HBaseServer.java:522)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Listener$Reader.run(HBaseServer.java:316)
+ - locked <0x0000000656e60068> (a org.apache.hadoop.hbase.ipc.HBaseServer$Listener$Reader)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+...
+
+"IPC Reader 0 on port 60020" prio=10 tid=0x00007f538c08b000 nid=0x4bd waiting for monitor entry [0x00007f5393be4000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.getFromOnlineRegions(HRegionServer.java:2295)
+ - waiting to lock <0x0000000656f62710> (a java.util.HashMap)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.getOnlineRegion(HRegionServer.java:2307)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer.getRegion(HRegionServer.java:2333)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer$QosFunction.isMetaRegion(HRegionServer.java:379)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer$QosFunction.apply(HRegionServer.java:422)
+ at org.apache.hadoop.hbase.regionserver.HRegionServer$QosFunction.apply(HRegionServer.java:361)
+ at org.apache.hadoop.hbase.ipc.HBaseServer.getQosLevel(HBaseServer.java:1126)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Connection.processData(HBaseServer.java:982)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Connection.readAndProcess(HBaseServer.java:946)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Listener.doRead(HBaseServer.java:522)
+ at org.apache.hadoop.hbase.ipc.HBaseServer$Listener$Reader.run(HBaseServer.java:316)
+ - locked <0x0000000656e635c8> (a org.apache.hadoop.hbase.ipc.HBaseServer$Listener$Reader)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+All the readers are blocked! I have the feeling something much better could be done.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.1
+Fix_version:
+0.90.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Subbu M Iyer
+Reporter:
+Jean-Daniel Cryans
+Create date:
+16/Mar/11 04:09
+Update date:
+20/Nov/15 12:43
+Resolved date:
+24/Mar/11 20:26

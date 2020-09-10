@@ -1,0 +1,68 @@
+Summary:
+HMaster uses wrong name for address (in stand-alone mode)
+Description:
+In STANDALONE mode:
+When setting the configuration option "hbase.master.dns.interface" (and optional "hbase.master.dns.nameserver") to non-default values,
+it is EXPECTED that the master node would report its fully qualified dns name when registering in ZooKeeper,
+BUT INSTEAD, the machines hostname is taken instead.
+For example, my machine is called (aka "its hostname is...") "machine1" but it's name in the network is "machine1.our-dev-network.my-corp.com", so to find this machine's IP anywhere on the network i would need to query for the whole name (because trying to find "machine1" is ambiguous on a network).
+Why is this a bug, because when trying to connect to this stand-alone hbase installation from outside the machine it is running on, when querying ZK for /hbase/master we get only the "machine1" part, and then fail with an unresolvable address for the master (which later even gives a null pointer because of a missing null check).
+This is the stack trace when calling HTable's c'tor:
+java.lang.IllegalArgumentException: hostname can't be null
+at java.net.InetSocketAddress.<init>(InetSocketAddress.java:139) ~[na:1.7.0_02]
+at org.apache.hadoop.hbase.HServerAddress.getResolvedAddress(HServerAddress.java:108) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.HServerAddress.<init>(HServerAddress.java:64) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.zookeeper.RootRegionTracker.dataToHServerAddress(RootRegionTracker.java:82) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.zookeeper.RootRegionTracker.waitRootRegionLocation(RootRegionTracker.java:73) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:579) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:559) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:688) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:590) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:559) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:688) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:594) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:559) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:173) ~[hbase-0.90.4.jar:0.90.4]
+at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:147) ~[hbase-0.90.4.jar:0.90.4]
+==============
+Why this happens?
+1. When building the HMaster object we correctly use the static 'getMyAddress(conf)' to read the configuration options, and then to try and resolve the machine's ip. This method returns the full qualified name correctly, and this is then used to construct an 'HServerAddress' object which is locally stored as 'a'.
+2. So far so good, but now, instead of using this object as the value for the master's 'address' field the code goes on to initialize the 'rpcServer' field. As part of this calls the static 'HBaseRPC.getServer' method is called with, among others, the HServerAddress's BIND ADDRESS (aka the IP) that we have just built.
+3. But now, when we finally get to setting the value for HMaster's 'address' field, we initialize a NEW HServerAddress initialized with rpcServer.getListenerAddress() (which is basically the IP we just gave it, with a new listening port.
+4. HServerAddress calls 'getAddress().getHostName()' on this address object, which would return the local hostname of the machine, because the IP would be resolved locally by the machine, and not using a nameserver.
+So eventually, the fully qualified name computed in step 1 is NOT USED in any way, instead, all further processing is done on the IP address of the host (and its local resolving to the hostname).
+=======
+What should happen?
+The 'HMaster.address' field should be set to an address which is made of the fully qualified name retrieved in step 1, combined with the port retrieved from the rpcServer computed at step 2.
+====
+Notes:
+1. It seems that the 'HBaseServer' c'tor (which is called when 'HBaseRPC.getServer()' static method is called) is faulty as it doesn't use the port number sent to it in effect (it sets the local 'port' field to it, but then overrides it without ever reading it later on, with the port returned from the new 'Listener' object. This might be a bug, but i have not checked it enough.
+2. The same bug with the master node could repeat itself in the region server code, but i haven't checked that at all.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+0.90.4
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Eran Hirsch
+Create date:
+19/Dec/11 18:47
+Update date:
+11/Apr/15 01:01
+Resolved date:
+11/Apr/15 01:01

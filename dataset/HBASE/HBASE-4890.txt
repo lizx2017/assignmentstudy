@@ -1,0 +1,76 @@
+Summary:
+fix possible NPE in HConnectionManager
+Description:
+I was running YCSB against a 0.92 branch and encountered this error message:
+11/11/29 08:47:16 WARN client.HConnectionManager$HConnectionImplementation: Failed all from region=usertable,user3917479014967760871,1322555655231.f78d161e5724495a9723bcd972f97f41., hostname=c0316.hal.cloudera.com, port=57020
+java.util.concurrent.ExecutionException: java.lang.RuntimeException: java.lang.NullPointerException
+        at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+        at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.processBatchCallback(HConnectionManager.java:1501)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.processBatch(HConnectionManager.java:1353)
+        at org.apache.hadoop.hbase.client.HTable.flushCommits(HTable.java:898)
+        at org.apache.hadoop.hbase.client.HTable.doPut(HTable.java:775)
+        at org.apache.hadoop.hbase.client.HTable.put(HTable.java:750)
+        at com.yahoo.ycsb.db.HBaseClient.update(Unknown Source)
+        at com.yahoo.ycsb.DBWrapper.update(Unknown Source)
+        at com.yahoo.ycsb.workloads.CoreWorkload.doTransactionUpdate(Unknown Source)
+        at com.yahoo.ycsb.workloads.CoreWorkload.doTransaction(Unknown Source)
+        at com.yahoo.ycsb.ClientThread.run(Unknown Source)
+Caused by: java.lang.RuntimeException: java.lang.NullPointerException
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getRegionServerWithoutRetries(HConnectionManager.java:1315)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation$3.call(HConnectionManager.java:1327)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation$3.call(HConnectionManager.java:1325)
+        at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+        at java.lang.Thread.run(Thread.java:619)
+Caused by: java.lang.NullPointerException
+        at org.apache.hadoop.hbase.ipc.WritableRpcEngine$Invoker.invoke(WritableRpcEngine.java:158)
+        at $Proxy4.multi(Unknown Source)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation$3$1.call(HConnectionManager.java:1330)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation$3$1.call(HConnectionManager.java:1328)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.getRegionServerWithoutRetries(HConnectionManager.java:1309)
+        ... 7 more
+It looks like the NPE is caused by server being null in the MultiRespone call() method.
+     public MultiResponse call() throws IOException {
+         return getRegionServerWithoutRetries(
+             new ServerCallable<MultiResponse>(connection, tableName, null) {
+               public MultiResponse call() throws IOException {
+                 return server.multi(multi);
+               }
+               @Override
+               public void connect(boolean reload) throws IOException {
+                 server =
+                   connection.getHRegionConnection(loc.getHostname(), loc.getPort());
+               }
+             }
+         );
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.92.0
+Fix_version:
+0.92.1, 0.94.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+stack
+Reporter:
+Jonathan Hsieh
+Create date:
+29/Nov/11 17:04
+Update date:
+12/Oct/12 05:34
+Resolved date:
+08/Mar/12 05:02

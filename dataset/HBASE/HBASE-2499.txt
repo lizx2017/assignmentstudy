@@ -1,0 +1,35 @@
+Summary:
+Race condition when disabling a table leaves regions in transition
+Description:
+A lot of people reported that weren't able to add/delete a column because only some of the regions got the modification. I personally thought it was due to the CME bug in the Master, but I'm able to easily reproduce on 0.20.4 on a 1800 regions table.
+Since 0.20.3, we now call disableTable after every retry to make sure we don't miss any region. This creates a race where while we scan .META. in TableOperation, a region could be reported as closed after we scanned the row. We end up processing it like if it was assigned and we put it back into regionsInTransition. We need to either query .META. before processing each region or make some more check to see if the region was closed.
+This kills the RC in my book.
+In the mean time, anyone getting this can restart their HBase and it will pick up the change.
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.20.3
+Fix_version:
+0.20.4, 0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jean-Daniel Cryans
+Reporter:
+Jean-Daniel Cryans
+Create date:
+28/Apr/10 20:45
+Update date:
+12/Oct/12 06:14
+Resolved date:
+29/Apr/10 01:25

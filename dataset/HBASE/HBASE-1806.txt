@@ -1,0 +1,33 @@
+Summary:
+Scanners do not respect row locks; scanner view could return a skewed view on row if ongoing update
+Description:
+What I'm seeing is that BaseScanner misses updates made by an update milliseconds before – even hundreds of milliseconds before. See hbase-1784 where I'm seeing double-assignment of regions.
+Scanners do not respect row locks. They should else could return a row with partial updates committed. What if a .META. region has tens of storefiles and a scan does a get full row which takes a long time. Say an update comes in during this read. First it will go in because no row lock is outstanding. Second, we'll miss the edit given we look at things in order – memstore, then each storefile down to the oldest. What if the update is followed by an update of server state; e.g. region is moved out of intransition state? And inside in same server, say the master, it makes decisions dependent on what it sees when it does a scanner#next; e.g. BaseScanner checking for assignment?
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+stack
+Create date:
+01/Sep/09 04:44
+Update date:
+31/Jan/10 07:18
+Resolved date:
+16/Oct/09 01:28

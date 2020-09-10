@@ -1,0 +1,134 @@
+Summary:
+In the Cli, update column family <cf> with comparator; create Column metadata
+Description:
+Using cassandra-cli, I can't update the comparator of a column family with the type I want and when I did it with BytesType, Column metadata appear for each of my existing columns.
+Step to reproduce:
+[default@unknown] create keyspace Test
+    with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
+    and strategy_options = [{replication_factor:1}];
+
+[default@unknown] use Test;
+Authenticated to keyspace: Test
+
+[default@Test] create column family test;
+
+[default@Test] describe keyspace;
+...
+    ColumnFamily: test
+      Key Validation Class: org.apache.cassandra.db.marshal.BytesType
+      Default column value validator: org.apache.cassandra.db.marshal.BytesType
+      Columns sorted by: org.apache.cassandra.db.marshal.BytesType
+      Row cache size / save period in seconds: 0.0/0
+      Key cache size / save period in seconds: 200000.0/14400
+      Memtable thresholds: 0.571875/122/1440 (millions of ops/MB/minutes)
+      GC grace seconds: 864000
+      Compaction min/max thresholds: 4/32
+      Read repair chance: 1.0
+      Replicate on write: false
+      Built indexes: []
+...
+
+[default@Test] update column family test with comparator = 'LongType';
+comparators do not match.
+why?? the CF is empty
+[default@Test] update column family test with comparator = 'BytesType';
+f8e4dcb0-9cca-11e0-0000-d0583497e7ff
+Waiting for schema agreement...
+... schemas agree across the cluster
+
+[default@Test] describe keyspace;
+...
+    ColumnFamily: test
+      Key Validation Class: org.apache.cassandra.db.marshal.BytesType
+      Default column value validator: org.apache.cassandra.db.marshal.BytesType
+      Columns sorted by: org.apache.cassandra.db.marshal.BytesType
+      Row cache size / save period in seconds: 0.0/0
+      Key cache size / save period in seconds: 200000.0/14400
+      Memtable thresholds: 0.571875/122/1440 (millions of ops/MB/minutes)
+      GC grace seconds: 864000
+      Compaction min/max thresholds: 4/32
+      Read repair chance: 1.0
+      Replicate on write: false
+      Built indexes: []
+...
+
+[default@Test] set test[ascii('row1')][long(1)]=integer(35);
+set test[ascii('row1')][long(2)]=integer(36);
+set test[ascii('row1')][long(3)]=integer(38);
+set test[ascii('row2')][long(1)]=integer(45);
+set test[ascii('row2')][long(2)]=integer(42);
+set test[ascii('row2')][long(3)]=integer(33);
+
+[default@Test] list test;
+Using default limit of 100
+-------------------
+RowKey: 726f7731
+=> (column=0000000000000001, value=35, timestamp=1308744931122000)
+=> (column=0000000000000002, value=36, timestamp=1308744931124000)
+=> (column=0000000000000003, value=38, timestamp=1308744931125000)
+-------------------
+RowKey: 726f7732
+=> (column=0000000000000001, value=45, timestamp=1308744931127000)
+=> (column=0000000000000002, value=42, timestamp=1308744931128000)
+=> (column=0000000000000003, value=33, timestamp=1308744932722000)
+
+2 Rows Returned.
+
+[default@Test] update column family test with comparator = 'LongType';
+comparators do not match.
+same question than before, my columns contains only long, why I can't?
+[default@Test] update column family test with comparator = 'BytesType';
+
+[default@Test] describe keyspace;                                      
+Keyspace: Test:
+  Replication Strategy: org.apache.cassandra.locator.SimpleStrategy
+    Options: [replication_factor:1]
+  Column Families:
+    ColumnFamily: test
+      Key Validation Class: org.apache.cassandra.db.marshal.BytesType
+      Default column value validator: org.apache.cassandra.db.marshal.BytesType
+      Columns sorted by: org.apache.cassandra.db.marshal.BytesType
+      Row cache size / save period in seconds: 0.0/0
+      Key cache size / save period in seconds: 200000.0/14400
+      Memtable thresholds: 0.571875/122/1440 (millions of ops/MB/minutes)
+      GC grace seconds: 864000
+      Compaction min/max thresholds: 4/32
+      Read repair chance: 1.0
+      Replicate on write: false
+      Built indexes: []
+      Column Metadata:
+        Column Name:  (0000000000000001)
+          Validation Class: org.apache.cassandra.db.marshal.IntegerType
+        Column Name:  (0000000000000003)
+          Validation Class: org.apache.cassandra.db.marshal.IntegerType
+        Column Name:  (0000000000000002)
+          Validation Class: org.apache.cassandra.db.marshal.IntegerType
+Column Metadata appear from nowhere. I don't think that it's expected.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.8, 0.8.2
+Component:
+Legacy/Tools
+Label:
+None
+Environment:
+ubuntu
+Attachment number:
+0
+Assignee:
+Pavel Yaskevich
+Reporter:
+Silvère Lestang
+Create date:
+22/Jun/11 12:54
+Update date:
+16/Apr/19 09:32
+Resolved date:
+17/Jul/11 14:13

@@ -1,0 +1,51 @@
+Summary:
+Understand why NRT performance is affected by flush frequency
+Description:
+In LUCENE-2061 (perf tests for NRT), I test NRT performance by first
+getting a baseline QPS with only searching, using enough threads to
+saturate.
+Then, I pick an indexing rate (I used 100 docs/sec), and index docs at
+that rate, and I also reopen a NRT reader at different frequencies
+(10/sec, 1/sec, every 5 seconds, etc.), and then again test QPS
+(saturated).
+I think this is a good approach for testing NRT – apps can see, as a
+function of "freshness" and at a fixed indexing rate, what the cost is
+to QPS. You'd expect as index rate goes up, and freshness goes up,
+QPS will go down.
+But I found something very strange: the low frequency reopen rates
+often caused a highish hit to QPS. When I forced IW to flush every
+100 docs (= once per second), the performance was generally much
+better.
+I actually would've expected the reverse – flushing in batch ought to
+use fewer resoruces.
+One theory is something odd about my test env (based on OpenSolaris),
+so I'd like to retest on a more mainstream OS.
+I'm opening this issue to get to the bottom of it...
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Not A Problem
+Affects_version:
+None
+Fix_version:
+4.1
+Component:
+core/index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+10/Dec/09 19:40
+Update date:
+10/May/13 10:33
+Resolved date:
+11/Sep/12 16:50

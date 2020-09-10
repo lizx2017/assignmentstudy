@@ -1,0 +1,36 @@
+Summary:
+RegionServer should abort when WAL close encounters an error with unflushed edits
+Description:
+The ability to ride over WAL close errors on log rolling added in HBASE-4222 could lead to missing HLog entries if:
+A table has DEFERRED_LOG_FLUSH=true
+There are unflushed WALEdit entries for that table in the current SequenceFile writer buffer
+Since the writes were already acknowledged to the client, just ignoring the close error to allow for another log roll doesn't seem like the right thing to do here.
+We could easily flag this state and only ride over the close error if there aren't unflushed entries. This would bring the above condition back to the previous behavior of aborting the region server. However, aborting the region server in this state is still guaranteeing data loss. Is there anything we can do better in this case?
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Fixed
+Affects_version:
+0.90.5, (2)
+Fix_version:
+0.90.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Gary Helmling
+Reporter:
+Gary Helmling
+Create date:
+29/Aug/11 21:12
+Update date:
+20/Nov/15 11:52
+Resolved date:
+14/Oct/11 00:47

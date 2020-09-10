@@ -1,0 +1,57 @@
+Summary:
+"disk full" when running cleanup (on a far from full disk)
+Description:
+I'm trying to run cleanup, but get this:
+ INFO [CompactionExecutor:18] 2015-03-25 10:29:16,355 CompactionManager.java (line 564) Cleaning up SSTableReader(path='/cassandra/production/Data_daily/production-Data_daily-jb-4345750-Data.db')
+ERROR [CompactionExecutor:18] 2015-03-25 10:29:16,664 CassandraDaemon.java (line 199) Exception in thread Thread[CompactionExecutor:18,1,main]
+java.io.IOException: disk full
+        at org.apache.cassandra.db.compaction.CompactionManager.doCleanupCompaction(CompactionManager.java:567)
+        at org.apache.cassandra.db.compaction.CompactionManager.access$400(CompactionManager.java:63)
+        at org.apache.cassandra.db.compaction.CompactionManager$5.perform(CompactionManager.java:281)
+        at org.apache.cassandra.db.compaction.CompactionManager$2.call(CompactionManager.java:225)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:745)
+Now that's odd, since:
+Disk has some 680G left
+The sstable it's trying to cleanup is far less than 680G:
+# ls -lh *4345750*
+-rw-r--r-- 1 cassandra cassandra  64M Mar 21 04:42 production-Data_daily-jb-4345750-CompressionInfo.db
+-rw-r--r-- 1 cassandra cassandra 219G Mar 21 04:42 production-Data_daily-jb-4345750-Data.db
+-rw-r--r-- 1 cassandra cassandra 503M Mar 21 04:42 production-Data_daily-jb-4345750-Filter.db
+-rw-r--r-- 1 cassandra cassandra  42G Mar 21 04:42 production-Data_daily-jb-4345750-Index.db
+-rw-r--r-- 1 cassandra cassandra 5.9K Mar 21 04:42 production-Data_daily-jb-4345750-Statistics.db
+-rw-r--r-- 1 cassandra cassandra  81M Mar 21 04:42 production-Data_daily-jb-4345750-Summary.db
+-rw-r--r-- 1 cassandra cassandra   79 Mar 21 04:42 production-Data_daily-jb-4345750-TOC.txt
+Sure, it's large, but it's not 680G.
+No other compactions are running on that server. I'm getting this on 12 / 56 servers right now.
+Could it be some bug in the calculation of the expected size of the new sstable, perhaps?
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15, 2.1.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Robert Stupp
+Reporter:
+Erik Forsberg
+Create date:
+25/Mar/15 10:59
+Update date:
+16/Apr/19 09:31
+Resolved date:
+31/Mar/15 08:52

@@ -1,0 +1,35 @@
+Summary:
+Parsing hexadecimal strings is not strict enough + FIX
+Description:
+Hexadecimal strings (strings in '<','>') are parsed in BaseParser with the same method parsing literal strings (strings in '(',')'). Since in literal strings the parsing of escape sequences and parentheses is quite tricky, there are a number of rules to capture problematic cases. However for hexadecimal strings this is not needed. Here we known of the allowed restricted character set and we don't have to count opening and closing brackets.
+The problem with the relaxed parsing (and therefore this is marked as bug) is with parsing documents containing trash data between objects (I have a number of them - however confidential ones - produced by verypdf.com, which seems to got updated a lot and after an endobj it contains e.g. <PrY... - simply some remainings from old objects). This trash would be no problem when parsing with an ISO conforming parser since these ranges would be ignored, but with the current sequential parser it is parsed and the best one can hope is that the trash is found to be not parseable and the parser searches for a new starting point via PDFParser#skipToNextObj. This is now where the problem with the relaxed hexadecimal parsing is: as in the example the opening '<' triggers a hexadecimal string parsing it because of later '<' it goes until end of document, reading all valid objects as string content. With a more strict parsing we would find that it is not a hexadecimal string with the second character.
+I have therefore added a method for parsing hexadecimal strings (see attached diff) which fails (IOException) if an invalid character is read (this method also runs faster than previous parser since there are only small number of cases to test).
+With this change I can now parse the mentioned (correct) documents (with forced parsing) which wasn't possible before.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+1.7.0
+Fix_version:
+1.7.0
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Timo Boehme
+Create date:
+15/Nov/11 15:29
+Update date:
+25/Jan/13 11:05
+Resolved date:
+01/Dec/11 15:58

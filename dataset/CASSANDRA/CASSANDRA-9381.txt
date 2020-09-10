@@ -1,0 +1,50 @@
+Summary:
+AbstractColumnFamilyInputFormat is incorrectly interpreting token values when building ColumnFamilySplit
+Description:
+The SplitCallable.call method in AbstractColumnFamilyInputFormat has the following code for building ColumnFamilySplits:
+            for (TokenRange subSplit : subSplits.keySet())
+            {
+                List<TokenRange> ranges = subSplit.unwrap();
+                for (TokenRange subrange : ranges)
+                {
+                    ColumnFamilySplit split =
+                            new ColumnFamilySplit(
+                                    subrange.getStart().toString().substring(2),
+                                    subrange.getEnd().toString().substring(2),
+                                    subSplits.get(subSplit),
+                                    endpoints);
+
+                    logger.debug("adding {}", split);
+                    splits.add(split);
+                }
+            }
+The subrange.getStart().toString().substring(2) works for the OrderPreservingPartitioner because the toString for the OPPToken in the java driver returns a hex value preceded by 0x. It doesn't work for the Murmur3Partitioner because the toString for the M3PToken returns Long.toString.
+As a result the tokens lose their first 2 digits.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Philip Thompson
+Reporter:
+Mike Adamson
+Create date:
+14/May/15 12:40
+Update date:
+16/Apr/19 09:31
+Resolved date:
+15/May/15 11:27

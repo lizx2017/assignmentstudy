@@ -1,0 +1,86 @@
+Summary:
+A resize event is dispatched before orientationChanging on iOS devices when the ViewNavigatorApplication dimensions are not explicitly set
+Description:
+Steps to reproduce:
+Set the following properties in the application descriptor file:
+<aspectRatio>landscape</aspectRatio>
+<autoOrients>true</autoOrients>
+Compile the code below for iOS and run in the iPad simulator or on an actual device, then change the device orientation.
+<?xml version="1.0" encoding="utf-8"?>
+<s:ViewNavigatorApplication
+applicationComplete="applicationCompleteHandler();"
+applicationDPI="160"
+firstView="views.appHomeView"
+xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark">
+<fx:Script>
+<![CDATA[
+import mx.events.ResizeEvent;
+private function applicationCompleteHandler():void
+{ addEventListener(ResizeEvent.RESIZE, applicationResizeHandler); stage.addEventListener(StageOrientationEvent.ORIENTATION_CHANGING, stageOrientationChangingHandler); }
+private function applicationResizeHandler(event:ResizeEvent):void
+{ trace("applicationResizeHandler called"); }
+private function stageOrientationChangingHandler(event:StageOrientationEvent):void
+{ event.preventDefault(); trace("stageOrientationChangingHandler called"); }
+]]
+>
+</fx:Script>
+</s:ViewNavigatorApplication>
+<?xml version="1.0" encoding="utf-8"?>
+<s:View
+backgroundColor="#185f98"
+title="Orientation Test"
+updateComplete="updateCompleteHandler(event);"
+xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark">
+<fx:Script>
+<![CDATA[
+import mx.events.FlexEvent;
+private function updateCompleteHandler(event:FlexEvent):void
+{ trace("View Dimensions (W, H): " + width + ", " + height); }
+]]
+>
+</fx:Script>
+</s:View>
+Actual Results:
+The resize event fires, followed by the orientationChanging event. The orientation does not change; however, the view is resized.
+Expected Results:
+Since we're calling the preventDefault() method of the orientationChanging event, automatic reorientation should be cancelled and a resize event should not be triggered.
+Workaround (if any):
+Supplying explicit dimensions to the ViewNavigatorApplication, as shown below, yields the expected behavior.
+<s:ViewNavigatorApplication
+applicationComplete="applicationCompleteHandler();"
+applicationDPI="160"
+firstView="views.appHomeView"
+height="768"
+width="1024"
+xmlns:fx="http://ns.adobe.com/mxml/2009"
+xmlns:s="library://ns.adobe.com/flex/spark">
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.6 (
+Fix_version:
+None
+Component:
+Spark: Application
+Label:
+None
+Environment:
+Affected OS(s): Apple IOS
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+11/Jan/12 07:36
+Update date:
+11/Jan/12 07:39
+Resolved date:
+

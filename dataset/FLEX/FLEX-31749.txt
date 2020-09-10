@@ -1,0 +1,76 @@
+Summary:
+DateTimeAxis shows incorrect labels when dates span daylight savings time boundary.
+Description:
+Steps to reproduce:
+This was discovered in Flex 2.0.1. hf3, but still seems to be present in Moxie.
+Use the following code:
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml">
+<mx:Script>
+<![CDATA[
+import mx.collections.ArrayCollection;
+[Bindable]
+private var chartData:ArrayCollection = new ArrayCollection( [
+{ date: new Date( 2007, 10, 3 ), profit: 2000 }
+,
+{ date: new Date( 2007, 10, 4 ), profit: 1000 }
+,
+{ date: new Date( 2007, 10, 5 ), profit: 1500 }
+,
+{ date: new Date( 2007, 10, 6 ), profit: 1800 }
+,
+{ date: new Date( 2007, 10, 7 ), profit: 2400 }
+]);
+]]
+>
+</mx:Script>
+<mx:Panel title="LineChart Example"
+height="100%" width="100%" layout="horizontal">
+<mx:LineChart id="linechart" height="100%" width="45%"
+paddingLeft="5" paddingRight="5"
+showDataTips="true" dataProvider="
+{chartData}
+">
+<mx:horizontalAxis>
+<mx:DateTimeAxis dataUnits="days" displayLocalTime="true" autoAdjust="false" />
+</mx:horizontalAxis>
+<mx:series>
+<mx:LineSeries xField="date" yField="profit" form="curve" displayName="Profit" />
+</mx:series>
+</mx:LineChart>
+</mx:Panel>
+</mx:Application>
+Actual Results:
+The labels on the chart show 11/4 twice, and each day after the DST break is "off by 1" – 11/3/07, 11/4/07, 11/4/07, 11/5/07, 11/6/07.
+However, hovering over the chart to view the data tips shows the correct date values. If you add a label function, the date being passed to the label function is off by one because the hours are set incorrectly. For example, instead of 11/5/07 12:00am, the value passed to labelFunction is 11/4/07 11:00pm, which is what gives the "off by 1" date value even though it's only off by an hour because of the daylight savings time switch.
+Expected Results:
+The labels on the chart should be 11/3/07, 11/4/07, 11/5/07, 11/6/07, 11/7/07.
+Workaround (if any):
+Use a custom label function and adjust the hour of the date value passed in to account for the different timeZoneOffset.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Adobe Flex SDK Previ
+Fix_version:
+Adobe Flex SDK Previ
+Component:
+Charts
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+09/Oct/07 11:25
+Update date:
+24/Jan/08 02:07
+Resolved date:
+13/Oct/07 02:01

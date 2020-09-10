@@ -1,0 +1,53 @@
+Summary:
+TestUtil.checkIterator can make tests very slow.
+Description:
+This is used e.g. in assertingcodec and does various checks that an iterator is well-behaved, but checking for the UOE on each element makes indexing in tests too costly.
+It is enough to just check for the first element?
+Here is an example seed i hit on accident. It indexes quite a few docs (should probably, separately be marked a slow or nightly test), and consistently takes ~ 320 seconds on master.
+ant test -Dtestcase=TestBoolean2 -Dtests.slow=true -Dtests.seed=DEE69D15C462C3A8
+   [junit4] Started J0 PID(14619@localhost).
+   [junit4] Suite: org.apache.lucene.search.TestBoolean2
+   [junit4] HEARTBEAT J0 PID(14619@localhost): 2016-08-16T12:20:42, stalled for 71.5s at: TestBoolean2 (suite)
+   [junit4] HEARTBEAT J0 PID(14619@localhost): 2016-08-16T12:21:42, stalled for  131s at: TestBoolean2 (suite)
+   [junit4] HEARTBEAT J0 PID(14619@localhost): 2016-08-16T12:22:42, stalled for  191s at: TestBoolean2 (suite)
+   [junit4] HEARTBEAT J0 PID(14619@localhost): 2016-08-16T12:23:42, stalled for  251s at: TestBoolean2 (suite)
+   [junit4] OK      0.05s | TestBoolean2.testQueries04
+   [junit4] OK      0.01s | TestBoolean2.testQueries05
+   [junit4] OK      0.02s | TestBoolean2.testQueries02
+   [junit4] OK      0.03s | TestBoolean2.testQueries03
+   [junit4] OK      0.02s | TestBoolean2.testQueries06
+   [junit4] OK      0.00s | TestBoolean2.testQueries07
+   [junit4] OK      4.97s | TestBoolean2.testRandomQueries
+   [junit4] OK      0.02s | TestBoolean2.testQueries08
+   [junit4] OK      0.01s | TestBoolean2.testQueries01
+   [junit4] OK      0.01s | TestBoolean2.testQueries09
+   [junit4] Completed [1/1] in 317.06s, 10 tests
+With this simple fix, it takes 24s, more than 10x faster.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+7.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Robert Muir
+Create date:
+16/Aug/16 16:55
+Update date:
+07/Mar/18 15:24
+Resolved date:
+16/Aug/16 20:24

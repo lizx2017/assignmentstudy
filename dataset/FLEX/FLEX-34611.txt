@@ -1,0 +1,58 @@
+Summary:
+Application crash when textFlow property set to null with preserveSelection
+Description:
+In the TextContainerManager class, the setText method has this starting code:
+public function setText(text:String):void
+{
+var hadPreviousSelection:Boolean = false;
+var selectionChanged:Boolean = false;
+var selectionState:SelectionState = null;
+var oldAnchorPosition:int = -1;
+var oldActivePosition:int = -1;
+if (_sourceState == SOURCE_TEXTFLOW)
+{
+if (_textFlow.interactionManager && _textFlow.interactionManager.hasSelection()){
+hadPreviousSelection = true;
+//preserve the selection state
+if (_preserveSelectionOnSetText)
+{
+oldAnchorPosition = Math.min(_textFlow.interactionManager.anchorPosition, text.length);
+oldActivePosition = Math.min(_textFlow.interactionManager.activePosition, text.length);
+...
+The problem is the fact that when a RichEditableText has its textFlow property set to null, the TextContainerManager class make this call:
+setText(null);
+Then, if _preserveSelectionOnSetText is true, we have a null object reference error because of line #583
+oldAnchorPosition = Math.min(_textFlow.interactionManager.anchorPosition, text.length);
+with the text variable equal to null
+The problem is worse in debug, because each time the error is thrown the app lose focus because of the debugger, and the error is thrown again because of the activate event when the app regain focus, resulting in crash or unusable app.
+The solution seems quite simple: check that text is not null before trying to restore selection.
+line 581 would be:
+if (_preserveSelectionOnSetText && text)
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+Apache Flex 4.14.0
+Component:
+Spark: RichEditableText
+Label:
+RichEditableText tlf
+Environment:
+
+Attachment number:
+0
+Assignee:
+Frédéric THOMAS
+Reporter:
+dimitri kara
+Create date:
+17/Oct/14 14:10
+Update date:
+19/Jan/15 20:16
+Resolved date:
+24/Oct/14 14:48

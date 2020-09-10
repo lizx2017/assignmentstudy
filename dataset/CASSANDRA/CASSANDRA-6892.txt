@@ -1,0 +1,90 @@
+Summary:
+Cassandra 2.0.x validates Thrift columns incorrectly and causes InvalidRequestException
+Description:
+I just upgrade my local dev machine to Cassandra 2.0, which causes one of my automated tests to fail now. With the latest 1.2.x it was working fine.
+The Exception I get on my client (using Hector) is:
+me.prettyprint.hector.api.exceptions.HInvalidRequestException: InvalidRequestException(why:(Expected 8 or 0 byte long (21)) [MDS_0][MasterdataIndex][key2] failed validation)
+ at me.prettyprint.cassandra.service.ExceptionsTranslatorImpl.translate(ExceptionsTranslatorImpl.java:52)
+ at me.prettyprint.cassandra.connection.HConnectionManager.operateWithFailover(HConnectionManager.java:265)
+ at me.prettyprint.cassandra.model.ExecutingKeyspace.doExecuteOperation(ExecutingKeyspace.java:113)
+ at me.prettyprint.cassandra.model.MutatorImpl.execute(MutatorImpl.java:243)
+ at me.prettyprint.cassandra.service.template.AbstractColumnFamilyTemplate.executeBatch(AbstractColumnFamilyTemplate.java:115)
+ at me.prettyprint.cassandra.service.template.AbstractColumnFamilyTemplate.executeIfNotBatched(AbstractColumnFamilyTemplate.java:163)
+ at me.prettyprint.cassandra.service.template.ColumnFamilyTemplate.update(ColumnFamilyTemplate.java:69)
+ at com.mycompany.spring3utils.dataaccess.cassandra.AbstractCassandraDAO.doUpdate(AbstractCassandraDAO.java:482)
+ ....
+Caused by: InvalidRequestException(why:(Expected 8 or 0 byte long (21)) [MDS_0][MasterdataIndex][key2] failed validation)
+ at org.apache.cassandra.thrift.Cassandra$batch_mutate_result.read(Cassandra.java:20833)
+ at org.apache.thrift.TServiceClient.receiveBase(TServiceClient.java:78)
+ at org.apache.cassandra.thrift.Cassandra$Client.recv_batch_mutate(Cassandra.java:964)
+ at org.apache.cassandra.thrift.Cassandra$Client.batch_mutate(Cassandra.java:950)
+ at me.prettyprint.cassandra.model.MutatorImpl$3.execute(MutatorImpl.java:246)
+ at me.prettyprint.cassandra.model.MutatorImpl$3.execute(MutatorImpl.java:1)
+ at me.prettyprint.cassandra.service.Operation.executeAndSetResult(Operation.java:104)
+ at me.prettyprint.cassandra.connection.HConnectionManager.operateWithFailover(HConnectionManager.java:258)
+ ... 46 more
+The schema of my column family is:
+create column family MasterdataIndex with
+    compression_options = {sstable_compression:SnappyCompressor, chunk_length_kb:64} and
+    comparator = UTF8Type and
+    key_validation_class = 'CompositeType(UTF8Type,LongType)' and
+    default_validation_class = BytesType;
+From the error message it looks like Cassandra is trying to validate the value with the key-validator! (My value in this case it 21 bytes long)
+I studied the Cassandra 2.0 code and found something wrong. It seems in CFMetaData.addDefaultKeyAliases it passes the KeyValidator into ColumnDefinition.partitionKeyDef. Inside ColumnDefinition the validator is expected to be the value validator!
+In CFMetaData:
+    private List<ColumnDefinition> addDefaultKeyAliases(List<ColumnDefinition> pkCols)
+    {
+        for (int i = 0; i < pkCols.size(); i++)
+        {
+            if (pkCols.get(i) == null)
+            {
+                Integer idx = null;
+                AbstractType<?> type = keyValidator;
+                if (keyValidator instanceof CompositeType)
+                {
+                    idx = i;
+                    type = ((CompositeType)keyValidator).types.get(i);
+                }
+                // For compatibility sake, we call the first alias 'key' rather than 'key1'. This
+                // is inconsistent with column alias, but it's probably not worth risking breaking compatibility now.
+                ByteBuffer name = ByteBufferUtil.bytes(i == 0 ? DEFAULT_KEY_ALIAS : DEFAULT_KEY_ALIAS + (i + 1));
+                ColumnDefinition newDef = ColumnDefinition.partitionKeyDef(name, type, idx); // type is LongType in my case, as it uses keyValidator !!!
+                column_metadata.put(newDef.name, newDef);
+                pkCols.set(i, newDef);
+            }
+        }
+        return pkCols;
+    }
+...
+    public AbstractType<?> getValidator() // in ThriftValidation this is expected to be the value validator!
+    {
+        return validator;
+    }
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.7
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Christian Spriegel
+Create date:
+20/Mar/14 09:33
+Update date:
+16/Apr/19 09:31
+Resolved date:
+02/Apr/14 12:03

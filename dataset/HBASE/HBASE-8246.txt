@@ -1,0 +1,48 @@
+Summary:
+Backport HBASE-6318 to 0.94 where SplitLogWorker exits due to ConcurrentModificationException
+Description:
+Today we found the following error in our tests. Later I found we already fixed the issue in trunk. I think we should backpor the fix because the consequence of the issue is high and the fix isn't complicated.
+2013-04-01 21:23:21,864 INFO org.apache.hadoop.hbase.regionserver.SplitLogWorker: worker ip-10-143-160-121.ec2.internal,60020,1364849529986 done with task /hbase/splitlog/hdfs%3A%2F%2Fip-10-137-16-140.ec2.internal%3A8020%2Fapps%2Fhbase%2Fdata%2F.logs%2Fip-10-137-20-188.ec2.internal%2C60020%2C1364849530779-splitting%2Fip-10-137-20-188.ec2.internal%252C60020%252C1364849530779.1364865556657 in 67129ms
+2013-04-01 21:23:21,864 ERROR org.apache.hadoop.hbase.regionserver.SplitLogWorker: unexpected error
+java.util.ConcurrentModificationException
+        at java.util.TreeMap$PrivateEntryIterator.nextEntry(TreeMap.java:1100)
+        at java.util.TreeMap$ValueIterator.next(TreeMap.java:1145)
+        at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter$OutputSink.closeLogWriters(HLogSplitter.java:1279)
+        at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter$OutputSink.finishWritingAndClose(HLogSplitter.java:1170)
+        at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.splitLogFile(HLogSplitter.java:475)
+        at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.splitLogFile(HLogSplitter.java:403)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker$1.exec(SplitLogWorker.java:111)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker.grabTask(SplitLogWorker.java:264)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker.taskLoop(SplitLogWorker.java:195)
+        at org.apache.hadoop.hbase.regionserver.SplitLogWorker.run(SplitLogWorker.java:163)
+        at java.lang.Thread.run(Thread.java:662)
+2013-04-01 21:23:21,865 INFO org.apache.hadoop.hbase.regionserver.SplitLogWorker: SplitLogWorker ip-10-143-160-121.ec2.internal,60020,1364849529986 exiting
+The impact of this issue is that SplitLogWorker exits so does the region server recovering mechanism of HBase. If any RS failed after all SplitLogWorkers in te cluster exit due to the issue, you'll see a hang log splitting job and the failed RS won't be recovered.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.6
+Fix_version:
+0.94.7
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ted Yu
+Reporter:
+Jeffrey Zhong
+Create date:
+02/Apr/13 21:03
+Update date:
+27/Apr/13 15:55
+Resolved date:
+03/Apr/13 13:48

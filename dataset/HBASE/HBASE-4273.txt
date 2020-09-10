@@ -1,0 +1,68 @@
+Summary:
+java.lang.NullPointerException when a table is being disabled and HMaster restarts
+Description:
+This bug occurs in following scenario.
+1. For some reason, the regionLocation isn't set in .META. table for some regions. Perhaps createTable didn't complete successfully.
+1. The table of those regions is being disabled.
+2. HMaster restarted.
+3. At HMaster startup, it tries to transition from disabling to disabled state. It got the following exception.
+java.lang.NullPointerException: Passed server is null
+at
+org.apache.hadoop.hbase.master.ServerManager.sendRegionClose(ServerManager.
+java:581)
+at
+org.apache.hadoop.hbase.master.AssignmentManager.unassign(AssignmentManager
+.java:1093)
+at
+org.apache.hadoop.hbase.master.AssignmentManager.unassign(AssignmentManager
+.java:1040)
+at
+org.apache.hadoop.hbase.master.handler.DisableTableHandler$BulkDisabler$1.r
+un(DisableTableHandler.java:132)
+at
+java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.j
+ava:886)
+In AssignmentManager.rebuildUserRegions, it added such regions to its regions list,
+if (regionLocation == null) {
+// Region not being served, add to region map with no assignment
+// If this needs to be assigned out, it will also be in ZK as RIT
+// add if the table is not in disabled and enabling state
+if (false == checkIfRegionBelongsToDisabled(regionInfo)
+&& false == checkIfRegionsBelongsToEnabling(regionInfo))
+{ regions.put(regionInfo, regionLocation); }
+
+Perhaps, it should be
+
+if (regionLocation == null) {
+// Region not being served, add to region map with no assignment
+// If this needs to be assigned out, it will also be in ZK as RIT
+// add if the table is not in disabled and enabling state
+if (true == checkIfRegionBelongsToEnabled(regionInfo) { regions.put(regionInfo, regionLocation); }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ming Ma
+Reporter:
+Ming Ma
+Create date:
+29/Aug/11 05:18
+Update date:
+20/Nov/15 11:55
+Resolved date:
+08/Sep/11 03:03

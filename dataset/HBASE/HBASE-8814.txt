@@ -1,0 +1,72 @@
+Summary:
+Possible NPE in split if a region has empty store files.
+Description:
+2013-06-27 14:12:54,472 INFO  [RS:1;BLRY2R009039160:49833-splits-1372322572806] regionserver.SplitRequest(92): Running rollback/cleanup of failed split of testSplitShouldNotThrowNPEEvenARegionHasEmptySplitFiles,,1372322556662.276e00da1420119e2f91f3a4c4c41d78.; java.util.concurrent.ExecutionException: java.lang.NullPointerException
+java.io.IOException: java.util.concurrent.ExecutionException: java.lang.NullPointerException
+ at org.apache.hadoop.hbase.regionserver.SplitTransaction.splitStoreFiles(SplitTransaction.java:602)
+ at org.apache.hadoop.hbase.regionserver.SplitTransaction.createDaughters(SplitTransaction.java:297)
+ at org.apache.hadoop.hbase.regionserver.SplitTransaction.execute(SplitTransaction.java:466)
+ at org.apache.hadoop.hbase.regionserver.SplitRequest.run(SplitRequest.java:82)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: java.util.concurrent.ExecutionException: java.lang.NullPointerException
+ at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+ at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+ at org.apache.hadoop.hbase.regionserver.SplitTransaction.splitStoreFiles(SplitTransaction.java:596)
+ ... 6 more
+Caused by: java.lang.NullPointerException
+ at org.apache.hadoop.hbase.regionserver.HRegionFileSystem.splitStoreFile(HRegionFileSystem.java:539)
+ at org.apache.hadoop.hbase.regionserver.SplitTransaction.splitStoreFile(SplitTransaction.java:610)
+ at org.apache.hadoop.hbase.regionserver.SplitTransaction.access$1(SplitTransaction.java:607)
+ at org.apache.hadoop.hbase.regionserver.SplitTransaction$StoreFileSplitter.call(SplitTransaction.java:633)
+ at org.apache.hadoop.hbase.regionserver.SplitTransaction$StoreFileSplitter.call(SplitTransaction.java:1)
+ at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+ at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+ ... 3 more
+If a storefile is empty(can be because of puts and deletes) then first and lastkey of the file will be empty. Then we will get first or last key as null. Then we will end up in NPE when we will check splitkey in the range or not.
+    if (top) {
+      //check if larger than last key.
+      KeyValue splitKey = KeyValue.createFirstOnRow(splitRow);
+      byte[] lastKey = f.createReader().getLastKey();      
+      if (f.getReader().getComparator().compare(splitKey.getBuffer(), 
+          splitKey.getKeyOffset(), splitKey.getKeyLength(), lastKey, 0, lastKey.length) > 0) {
+        return null;
+      }
+    } else {
+      //check if smaller than first key
+      KeyValue splitKey = KeyValue.createLastOnRow(splitRow);
+      byte[] firstKey = f.createReader().getFirstKey();
+      if (f.getReader().getComparator().compare(splitKey.getBuffer(), 
+          splitKey.getKeyOffset(), splitKey.getKeyLength(), firstKey, 0, firstKey.length) < 0) {
+        return null;
+      }      
+    }
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.8
+Fix_version:
+0.98.0, 0.95.2, 0.94.10
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+rajeshbabu
+Reporter:
+rajeshbabu
+Create date:
+27/Jun/13 08:57
+Update date:
+24/Jul/13 19:08
+Resolved date:
+08/Jul/13 18:39

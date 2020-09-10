@@ -1,0 +1,62 @@
+Summary:
+Missing data from secondary index when secondary index is against a compound PK member
+Description:
+Under 2.0.8, assuming the following schema:
+CREATE TABLE foo (
+a text,
+b text,
+c text,
+d text,
+PRIMARY KEY (a, b)
+);
+CREATE INDEX foo_b_idx ON foo (b);
+If you do a delete against c or d but specify a and b in the where clause, it will remove the secondary index reference to b (verified that it removes it from the underlying SSTable as well).
+Example:
+cqlsh:test> insert into foo (a, b, c, d) values ('test','test2','to_be_deleted', 'test3');
+cqlsh:test> select * from foo;
+a | b | c | d
+-----------------------+------
+test | test2 | to_be_deleted | test3
+(1 rows)
+cqlsh:test> delete c from foo where a = 'test' and b = 'test2';
+cqlsh:test> select * from foo where b = 'test2';
+(0 rows)
+cqlsh:test> select * from foo where a = 'test' and b = 'test2';
+a | b | c | d
+--------------+------
+test | test2 | null | test3
+(1 rows)
+cqlsh:test> select * from foo;
+a | b | c | d
+--------------+------
+test | test2 | null | test3
+(1 rows)
+Dropping and recreating the index in CQL brings the secondary index reference back.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+2.0.13
+Component:
+Feature/2i Index
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Vahram Sukyas
+Create date:
+01/Jul/14 16:52
+Update date:
+16/Apr/19 09:31
+Resolved date:
+22/Jan/15 17:43

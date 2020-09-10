@@ -1,0 +1,47 @@
+Summary:
+Master may assign META region twice to two regionservers when regionserver is closed and started repeatedly in short time
+Description:
+In the following case:
+1.first,kill all the regionservers
+2.then, start all the regionservers immediately
+3.then, kill all the regionservers immediately
+4.then, start all the regionservers immediately
+Master may assign META region twice , and make two regionserver carrying META region.
+Through logs, we find that:
+Before 1, Regionserver A carrys the META region,
+Between 2 and 3 , master receives Regionserver A startup message and is ready to assign meta region to Regionserver B
+But, it fails because of 3, and then reassign meta region to Regionserver C,Then ,it is successful after 4,
+when 4 , Regionserver C is started earlier than Regionserver A , and Regionserver A is started earlier than Regionserver C successfully online the META region. Therefore, when master receives Regionserver A startup message in 4, it consider Regionserver A carryed META region through CatalogTracker and create a MetaServerShutdownHandler
+In MetaServerShutdownHandler's process(), after completing split hlog, Regionserver C has already onlined META region,
+however it will execute the following code all the same where isCarryingMeta() return true :
+if (isCarryingMeta())this.services.getAssignmentManager().assignMeta();
+After that, META region will online on two regionservers
+In order to prevent it , we should verify meta region location before assign Meta region .
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.90.2
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+shenchunhui
+Create date:
+14/Oct/11 07:34
+Update date:
+11/Apr/15 00:53
+Resolved date:
+11/Apr/15 00:53

@@ -1,0 +1,63 @@
+Summary:
+regionserver's logsyncer thread hangs on DFSClient$DFSOutputStream.waitForAckedSeqno
+Description:
+During loads into HBase, we are noticing that a RS is sometimes getting stuck.
+The logSyncer thread:
+      at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.waitForAckedSeqno(DFSClient.java:3367)
+        - locked <0x00002aaac7fef748> (a java.util.LinkedList)
+        at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.sync(DFSClient.java:3301)
+        at org.apache.hadoop.fs.FSDataOutputStream.sync(FSDataOutputStream.java:97)
+        at org.apache.hadoop.io.SequenceFile$Writer.syncFs(SequenceFile.java:944)
+        at sun.reflect.GeneratedMethodAccessor3.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+        at java.lang.reflect.Method.invoke(Method.java:597)
+        at org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogWriter.sync(SequenceFileLogWriter.java:124)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.hflush(HLog.java:949)
+A lot of other threads are stuck on:
+        at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:1925)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog$LogSyncer.addToSyncQueue(HLog.java:916)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.sync(HLog.java:936)
+        at org.apache.hadoop.hbase.regionserver.wal.HLog.append(HLog.java:828)
+        at org.apache.hadoop.hbase.regionserver.HRegion.put(HRegion.java:1657)
+        at org.apache.hadoop.hbase.regionserver.HRegion.put(HRegion.java:1425)
+        at org.apache.hadoop.hbase.regionserver.HRegion.put(HRegion.java:1393)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.put(HRegionServer.java:1665)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.multiPut(HRegionServer.java:2326)
+Subsequently, trying to disable the table, which in turn attempts to close the region(s), caused internalFlushCache() also to get stuck here:
+      at java.util.concurrent.locks.AbstractQueuedSynchronizer.acquire(AbstractQueuedSynchronizer.java:1114)
+        at java.util.concurrent.locks.ReentrantReadWriteLock$WriteLock.lock(ReentrantReadWriteLock.java:807)
+        at org.apache.hadoop.hbase.regionserver.HRegion.internalFlushcache(HRegion.java:974)
+        at org.apache.hadoop.hbase.regionserver.HRegion.close(HRegion.java:511)
+        - locked <0x00002aaab76af670> (a java.lang.Object)
+        at org.apache.hadoop.hbase.regionserver.HRegion.close(HRegion.java:463)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer.closeRegion(HRegionServer.java:1468)
+        at org.apache.hadoop.hbase.regionserver.HRegionServer$Worker.run(HRegionServer.java:1329)
+I'll attach the full jstack trace soon.
+Status:
+CLOSED
+Priority:
+Critical
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.90.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Hairong Kuang
+Reporter:
+Kannan Muthukkaruppa
+Create date:
+21/Jul/10 18:49
+Update date:
+20/Nov/15 12:43
+Resolved date:
+01/Nov/10 06:23

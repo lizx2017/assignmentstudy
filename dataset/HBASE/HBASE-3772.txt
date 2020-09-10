@@ -1,0 +1,39 @@
+Summary:
+Hadoop DNS.reverseDns() doesn't canonicalize host names, leading to possible discrepancy in RS hostname vs. Master seen hostname for RS
+Description:
+I ran across this issue on a 0.20 based branch, so I'm not sure if this is still an issue for 0.90+. However, 0.90 and current trunk do still make use of DNS.getDefaultHost(), so I wanted to open this for discussion.
+In 0.20, the problem was:
+1. configure hbase-site.xml with hbase.regionserver.dns.interface=xxx
+2. IP bound on interface xxx has reverse DNS correctly configured
+3. DNS.getDefaultHost() calls DNS.reverseDns() for this IP, which does a JNDI bind to the DNS provider, returning the absolute hostname: host1.my.domain.
+4. RS reports startup to master as host1.my.domain.,60020,1234...
+5. BaseScanner when scanning .META. sees region assignments as not valid because the resolved hostname from IP goes through InetSocketAddress.getHostName() which returns the canonicalized form (host1.my.domain != host1.my.domain. though they are equivalent)
+I know the master <-> RS negotiated hostname has completely changed for 0.90. So hopefully this is no longer an issue and we can close as invalid and go have a beer. But given the underlying problem in DNS.getDefaultHost(), I wanted to confirm this.
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+None
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Gary Helmling
+Create date:
+12/Apr/11 19:39
+Update date:
+10/Mar/12 23:22
+Resolved date:
+10/Mar/12 23:22

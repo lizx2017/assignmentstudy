@@ -1,0 +1,86 @@
+Summary:
+NoHostAvailableException when preparing a statement with 'CONTAINS'
+Description:
+With C* 2.1-rc2 and the 2.1.0-SNAPSHOT Java Driver, I am not able to prepare a statement that contains the keyword 'CONTAINS'. The C* node responds well and I am able to prepare others statements but I get a 'NoHostAvailableException' as soon as I prepare a statement with 'CONTAINS'. (Could it be related to some kind of 'timeout' because it takes some time before the exception is thrown ?)
+A code sample that makes the problem happen ;
+        Session session = cluster.connect(); // Your session
+        String KS = "myTestKeyspace";
+        String CF = KS + ".myTestTable";
+        try {
+            // Create schema and insert data
+            session.execute("CREATE KEYSPACE IF NOT EXISTS " + KS + " WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1 }");
+            session.execute("CREATE TABLE IF NOT EXISTS " + CF + " ( k int PRIMARY KEY , s set<int> )");
+            session.execute("CREATE INDEX IF NOT EXISTS ks_table_set_index ON " + CF + "(s)");
+            session.execute("UPDATE " + CF + " SET s = s + {1} WHERE k = 1");
+           
+            // Simple execution => OK
+            ResultSet result = session.execute("SELECT * FROM " + CF + " WHERE s CONTAINS 1");
+            for (Row row : result.all()) {
+                System.out.println("\tKey where s contains 1 : " + row.getInt("k"));
+            }
+           
+            // Prepare another statement => OK
+            PreparedStatement results = session.prepare("SELECT * FROM " + CF + " WHERE k = ?");
+            ResultSetFuture future = session.executeAsync(results.bind(1));
+            for (Row row : future.get().all()) {
+                System.out.println("\ts where k is 1 :" + row.getSet("s", Integer.class));
+            }
+           
+            // Prepare the 'CONTAINS' statement
+            results = session.prepare("SELECT * FROM " + CF + " WHERE s CONTAINS ?"); // => Boum !
+            future = session.executeAsync(results.bind(1));
+            for (Row row : future.get().all()) {
+                System.out.println("\tKey where s contains 1 :" + row.getInt("k"));
+            }
+           
+            session.execute("DROP KEYSPACE " + KS);
+           
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            session.close();
+            cluster.close();
+        }
+The output from the Java Driver ;
+com.datastax.driver.core.exceptions.NoHostAvailableException: All host(s) tried for query failed (tried: localhost/127.0.0.1:9042 (com.datastax.driver.core.exceptions.DriverException: Timeout during read))
+    at com.datastax.driver.core.exceptions.NoHostAvailableException.copy(NoHostAvailableException.java:65)
+    at com.datastax.driver.core.DefaultResultSetFuture.extractCauseFromExecutionException(DefaultResultSetFuture.java:258)
+    at com.datastax.driver.core.AbstractSession.prepare(AbstractSession.java:79)
+    at  (...)
+Caused by: com.datastax.driver.core.exceptions.NoHostAvailableException: All host(s) tried for query failed (tried: localhost/127.0.0.1:9042 (com.datastax.driver.core.exceptions.DriverException: Timeout during read))
+    at com.datastax.driver.core.RequestHandler.sendRequest(RequestHandler.java:103)
+    at com.datastax.driver.core.RequestHandler$1.run(RequestHandler.java:175)
+    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+    at java.lang.Thread.run(Thread.java:744)
+I did not see anything in the system.log file about that.
+Discussed here :
+https://groups.google.com/a/lists.datastax.com/forum/#!topic/java-driver-user/zNme-LOf62A
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.1 rc3
+Component:
+Legacy/CQL
+Label:
+None
+Environment:
+c*, java 2.1
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Fabrice Larcher
+Create date:
+07/Jul/14 07:36
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Jul/14 16:09

@@ -1,0 +1,40 @@
+Summary:
+Infinite loop possible in Master/Master replication
+Description:
+We just discovered the following scenario:
+Cluster A and B are setup in master/master replication
+By accident we had Cluster C replicate to Cluster A.
+Now all edit originating from C will be bouncing between A and B. Forever!
+The reason is that when the edit come in from C the cluster ID is already set and won't be reset.
+We have a couple of options here:
+Optionally only support master/master (not cycles of more than two clusters). In that case we can always reset the cluster ID in the ReplicationSource. That means that now cycles > 2 will have the data cycle forever. This is the only option that requires no changes in the HLog format.
+Instead of a single cluster id per edit maintain a (unordered) set of cluster id that have seen this edit. Then in ReplicationSource we drop any edit that the sink has seen already. The is the cleanest approach, but it might need a lot of data stored per edit if there are many clusters involved.
+Maintain a configurable counter of the maximum cycle side we want to support. Could default to 10 (even maybe even just). Store a hop-count in the WAL and the ReplicationSource increases that hop-count on each hop. If we're over the max, just drop the edit.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.6, 0.95.1
+Fix_version:
+0.98.0, 0.94.12, 0.96.0
+Component:
+Replication
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Vasu Mariyala
+Reporter:
+Lars Hofhansl
+Create date:
+29/Jan/13 19:37
+Update date:
+24/Sep/13 20:32
+Resolved date:
+28/Aug/13 22:59

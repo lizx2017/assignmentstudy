@@ -1,0 +1,72 @@
+Summary:
+[0.94] FSTableDescriptors caching is racy
+Description:
+An occasionally failing test in 0.92 branch that concurrently executes master operations on a single table found this problem in FSTableDescriptors:
+diff --git src/main/java/org/apache/hadoop/hbase/util/FSTableDescriptors.java src/main/java/org/apache/hadoop/hbase/util/FSTableDescriptors.java
+index e882621..b0042cd 100644
+--- src/main/java/org/apache/hadoop/hbase/util/FSTableDescriptors.java
++++ src/main/java/org/apache/hadoop/hbase/util/FSTableDescriptors.java
+@@ -221,8 +221,15 @@ public class FSTableDescriptors implements TableDescriptors {
+     if (HConstants.HBASE_NON_USER_TABLE_DIRS.contains(htd.getNameAsString())) {
+       throw new NotImplementedException();
+     }
+-    if (!this.fsreadonly) updateHTableDescriptor(this.fs, this.rootdir, htd);
+-    long modtime = getTableInfoModtime(this.fs, this.rootdir, htd.getNameAsString());
++    if (fsreadonly) {
++      // Cannot cache here.
++      // We can't know if a modtime from the most recent file found in a
++      // directory listing at some arbitrary point in time still corresponds
++      // to the latest, nor that our htd is the latest.
++      return;
++    }
++    // Cache with the modtime of the descriptor we wrote
++    long modtime = updateHTableDescriptor(this.fs, this.rootdir, htd).getModificationTime();
+     this.cache.put(htd.getNameAsString(), new TableDescriptorModtime(modtime, htd));
+   }
+After HBASE-7305 master operations are serialized by a write lock on the table.
+However, 0.94 has code with the same issue:
+  @Override
+  public void add(HTableDescriptor htd) throws IOException {
+    if (Bytes.equals(HConstants.ROOT_TABLE_NAME, htd.getName())) {
+      throw new NotImplementedException();
+    }
+    if (Bytes.equals(HConstants.META_TABLE_NAME, htd.getName())) {
+      throw new NotImplementedException();
+    }
+    if (HConstants.HBASE_NON_USER_TABLE_DIRS.contains(htd.getNameAsString())) {
+      throw new NotImplementedException();
+    }
+    if (!this.fsreadonly) updateHTableDescriptor(this.fs, this.rootdir, htd);
+    String tableName = htd.getNameAsString();
+    long modtime = getTableInfoModtime(this.fs, this.rootdir, tableName);
+    long dirmodtime = getTableDirModtime(this.fs, this.rootdir, tableName);
+    this.cache.put(tableName, new TableDescriptorModtime(modtime, dirmodtime, htd));
+  }
+Status:
+OPEN
+Priority:
+Minor
+Resolution:
+Unresolved
+Affects_version:
+0.94.11
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Rekha Joshi
+Reporter:
+Andrew Purtell
+Create date:
+20/Aug/13 01:49
+Update date:
+12/May/14 03:49
+Resolved date:
+

@@ -1,0 +1,158 @@
+Summary:
+Regression: ArrayIndexOutOfBoundsException in PDFBox 0.7.3
+Description:
+[imported from SourceForge]
+http://sourceforge.net/tracker/index.php?group_id=78314&atid=552832&aid=1585354
+Originally submitted by cfmfluit on 2006-10-26 13:38.
+While extracting the text from a PDF using
+PDFTextStripper I get the following exception:
+Exception in thread "Thread-6"
+java.lang.ArrayIndexOutOfBoundsException: 4
+at
+org.fontbox.cmap.CMapParser.parseNextToken(CMapParser.java:294)
+at org.fontbox.cmap.CMapParser.parse(CMapParser.java:103)
+at
+org.pdfbox.pdmodel.font.PDFont.parseCmap(PDFont.java:535)
+at org.pdfbox.pdmodel.font.PDFont.encode(PDFont.java:387)
+at
+org.pdfbox.util.PDFStreamEngine.showString(PDFStreamEngine.java:325)
+at
+org.pdfbox.util.operator.ShowTextGlyph.process(ShowTextGlyph.java:80)
+at
+org.pdfbox.util.PDFStreamEngine.processOperator(PDFStreamEngine.java:452)
+at
+org.pdfbox.util.PDFStreamEngine.processSubStream(PDFStreamEngine.java:215)
+at
+org.pdfbox.util.PDFStreamEngine.processStream(PDFStreamEngine.java:174)
+at
+org.pdfbox.util.PDFTextStripper.processPage(PDFTextStripper.java:336)
+at
+org.pdfbox.util.PDFTextStripper.processPages(PDFTextStripper.java:259)
+at
+org.pdfbox.util.PDFTextStripper.writeText(PDFTextStripper.java:216)
+at
+org.pdfbox.util.PDFTextStripper.getText(PDFTextStripper.java:149)
+at
+org.semanticdesktop.aperture.extractor.pdf.PdfExtractor.processDocument(PdfExtractor.java:91)
+at
+org.semanticdesktop.aperture.extractor.pdf.PdfExtractor.extract(PdfExtractor.java:52)
+at
+org.semanticdesktop.aperture.extractor.util.ThreadedExtractorWrapper$ExtractionThread.run(ThreadedExtractorWrapper.java:158)
+I'm using PDFBox 0.7.3. With version 0.7.2 text
+extraction on this file worked fine.
+The PDF file is not online anymore and I don't know
+whether the author would appreciate it if I put it
+online somewhere, but I can send it to you if you like
+(mail me at chris AT aduna-software.com).
+[comment on SourceForge]
+Originally sent by junprevo.
+Logged In: YES
+user_id=1663139
+Originator: NO
+Hi, ben
+I did some work on this bug. don't know how to send my code to you. I will just paste my fix here.
+inside CMapParser.java
+in the method
+private Object parseNextToken(PushbackInputStream is)
+throws IOException
+{
+..........
+case 60: // '<'
+{
+int theNextByte = is.read();
+if(theNextByte == 60)
+{
+Map <Object, Object> result = new HashMap <Object, Object> ();
+for(Object key = parseNextToken(is); (key instanceof LiteralName) && key != ">>"; key = parseNextToken(is))
+{ Object value = parseNextToken(is); result.put(((LiteralName)key).name, value); }
+retval = result;
+break;
+}
+// increase array size from 4 to 6
+byte [] buffer = new byte[6];
+int multiplyer = 16;
+int bufferIndex = -1;
+for(;theNextByte != -1 && theNextByte != 62; theNextByte = is.read())
+{
+int intValue = 0;
+if(theNextByte >= 48 && theNextByte <= 57)
+intValue = theNextByte - 48;
+else
+if(theNextByte >= 65 && theNextByte <= 70)
+intValue = (10 + theNextByte) - 65;
+else
+if(theNextByte >= 97 && theNextByte <= 102)
+intValue = (10 + theNextByte) - 97;
+else
+throw new IOException("Error: expected hex character and not " + (char)theNextByte + ":" + theNextByte);
+intValue *= multiplyer;
+if(multiplyer == 16)
+{ bufferIndex++; multiplyer = 1; }
+else
+{ multiplyer = 16; }
+if(bufferIndex==buffer.length)
+{
+byte [] tempbuffer=buffer;
+buffer = new byte [buffer.length+2];
+for(int ts=0; ts<tempbuffer.length;ts++)
+{ buffer[ts]=tempbuffer[ts]; }
+}
+buffer[bufferIndex] += intValue;
+}
+byte finalResult[] = new byte[bufferIndex + 1];
+System.arraycopy(buffer, 0, finalResult, 0, bufferIndex + 1);
+retval = finalResult;
+break;
+}
+............
+}
+[comment on SourceForge]
+Originally sent by fotb.
+Logged In: YES
+user_id=1662347
+Originator: NO
+I have also this problem.
+Does anyone know if there has been any resolution to the ArrayIndexOutOfBoundsException:4 problem.
+I have extracted text from 300 pdfs using 0.7.3. All extractions were successful except 3. I recieved this error message when trying to extract text from these 3 pds (java.lang.ArrayIndexOutOfBoundsException:4). I am able to open the pdfs fine and they have no special security applied to them. Any ideas as to why PDFBOX 0.7.3 is hiccuping while trying to process these files?:
+[comment on SourceForge]
+Originally sent by fotb.
+Logged In: YES
+user_id=1662347
+Originator: NO
+I have also this problem.
+Does anyone know if there has been any resolution to the ArrayIndexOutOfBoundsException:4 problem.
+I have extracted text from 300 pdfs using 0.7.3. All extractions were successful except 3. I recieved this error message when trying to extract text from these 3 pds (java.lang.ArrayIndexOutOfBoundsException:4). I am able to open the pdfs fine and they have no special security applied to them. Any ideas as to why PDFBOX 0.7.3 is hiccuping while trying to process these files?:
+[comment on SourceForge]
+Originally sent by martin_weindel.
+Logged In: YES
+user_id=1646209
+Originator: NO
+Same problem with following PDF: http://www.vmware.com/pdf/server_datasheet.pdf
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.8.0-incubator
+Component:
+Text extraction
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Anonymous
+Create date:
+26/Oct/06 20:38
+Update date:
+21/Oct/09 09:52
+Resolved date:
+22/Jan/09 06:49

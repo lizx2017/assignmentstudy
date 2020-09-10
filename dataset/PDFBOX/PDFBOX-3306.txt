@@ -1,0 +1,61 @@
+Summary:
+SCALE_TO_FIT with DPI yields incorrect margins
+Description:
+When leveraging print margins using setImageableArea:
+Works fine when SCALE_TO_FIT and DPI 0 are provided (vector-quality printing)
+Works fine when ACTUAL_SIZE and non-zero DPI are provided
+Does NOT work when SCALE_TO_FIT and non-zero DPI are provided.
+Code to reproduce
+public static void main(String[] args) throws Exception {
+    PDDocument pdf = PDDocument.load(new URL(args[0]).openStream());
+    PrinterJob job = PrinterJob.getPrinterJob();
+
+    Paper paper = new Paper();
+    paper.setSize(612, 792); //8.5 x 11 in
+    paper.setImageableArea(72, 72, 468, 648); //1 inch margins
+
+    PageFormat page = job.getPageFormat(null);
+    page.setPaper(paper);
+
+    //Vector print - works as expected, margins applied and scaled properly
+    job.setPrintable(new PDFPrintable(pdf, Scaling.SCALE_TO_FIT, false, 0, false), page);
+    job.print();
+
+    //Unscaled raster print - works as expected, margins applied and document cut off
+    job.setPrintable(new PDFPrintable(pdf, Scaling.ACTUAL_SIZE, false, 72, false), page);
+    job.print();
+
+    //Scaled raster print - unexpected results, same scale as vector print, but same cut off as unscaled raster print
+    job.setPrintable(new PDFPrintable(pdf, Scaling.SCALE_TO_FIT, false, 72, false), page);
+    job.print();
+
+    pdf.close();
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0, 2.0.1, 2.0.2, (2)
+Fix_version:
+2.0.3, 3.0.0 PDFBox
+Component:
+Rendering
+Label:
+print
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Tres Finocchiaro
+Create date:
+04/Apr/16 13:55
+Update date:
+25/Mar/17 18:12
+Resolved date:
+03/Aug/16 19:49

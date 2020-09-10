@@ -1,0 +1,51 @@
+Summary:
+Possible Collections.sort assertion failure in STCS.filterColdSSTables
+Description:
+We have observed the following stack trace periodically:
+java.lang.IllegalArgumentException: Comparison method violates its general contract!
+        at java.util.TimSort.mergeLo(TimSort.java:747)
+        at java.util.TimSort.mergeAt(TimSort.java:483)
+        at java.util.TimSort.mergeCollapse(TimSort.java:410)
+        at java.util.TimSort.sort(TimSort.java:214)
+        at java.util.TimSort.sort(TimSort.java:173)
+        at java.util.Arrays.sort(Arrays.java:659)
+        at java.util.Collections.sort(Collections.java:217)
+        at org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy.filterColdSSTables(SizeTieredCompactionStrategy.java:94)
+        at org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy.getNextBackgroundSSTables(SizeTieredCompactionStrategy.java:59)
+        at org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy.getNextBackgroundTask(SizeTieredCompactionStrategy.java:229)
+        at org.apache.cassandra.db.compaction.CompactionManager$BackgroundCompactionTask.run(CompactionManager.java:191)
+        at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:471)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:262)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
+        at java.lang.Thread.run(Thread.java:744)
+The comparator ant SizeTieredCompactionStrategy line 94 breaks the assertions in the new JDK7 default sort algorithm, because (I think just) the hotness value (based on meter) may be modified concurrently by another thread
+This bug appears to have been introduced in CASSANDRA-6109
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.4
+Component:
+None
+Label:
+compaction
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tyler Hobbs
+Reporter:
+graham sanderson
+Create date:
+13/Dec/13 00:42
+Update date:
+16/Apr/19 09:31
+Resolved date:
+13/Dec/13 23:13

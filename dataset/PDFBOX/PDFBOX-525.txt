@@ -1,0 +1,139 @@
+Summary:
+JVM crash in ...pagedrawer.Invoke.process()
+Description:
+A standard java.awt.Graphics2D.drawImage() call in org.apache.pdfbox.util.operator.pagedrawer.Invoke.process() can result in the following JVM crash on Sun Java 1.5.0_19-b02. This problem doesn't affect Java 6 and seems to only occur in fairly specific circumstances.
+I couldn't find an existing Sun Java bug report about this exact problem, so I filed a new issue to them. No public bug reference is yet available.
+#
+An unexpected error has been detected by HotSpot Virtual Machine:
+#
+SIGSEGV (0xb) at pc=0x552019d6, pid=12208, tid=92
+#
+Java VM: Java HotSpot(TM) Server VM (1.5.0_19-b02 mixed mode)
+Problematic frame:
+C [libawt.so+0x419d6]
+#
+--------------- T H R E A D ---------------
+Current thread (0x0893a610): JavaThread "pool-5-thread-8" [_thread_in_native, id=92]
+siginfo:si_signo=11, si_errno=0, si_code=1, si_addr=0x00000018
+Registers:
+EAX=0x00000000, EBX=0x5521cda8, ECX=0x530c5580, EDX=0xfef6e5dc
+ESP=0x530c54c8, EBP=0x530c54c8, ESI=0x000027d5, EDI=0x09bb5bd0
+EIP=0x552019d6, EFLAGS=0x00010206
+Top of Stack: (sp=0x530c54c8)
+0x530c54c8: 530c54f8 5520494c 00000000 530c55e0
+0x530c54d8: 0893a6d0 5521cda8 530c55e0 000036cd
+0x530c54e8: 00000001 00000003 530c5584 09bb5bd4
+0x530c54f8: 530c5590 55202bab 0893a6d0 09bb5bd0
+0x530c5508: 530c5580 530c5584 00000001 00000001
+0x530c5518: 00000000 0893a610 7637fb78 7637fb78
+0x530c5528: 00000001 00000001 00000001 fec5f788
+0x530c5538: 00000000 00000000 80000000 3fbeadc7
+Instructions: (pc=0x552019d6)
+0x552019c6: 8b 40 10 8b e5 5d c3 90 90 90 55 8b ec 8b 45 08
+0x552019d6: 8b 40 18 8b e5 5d c3 90 90 90 55 8b ec 8b 45 08
+Stack: [0x53086000,0x530c6000), sp=0x530c54c8, free space=253k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C [libawt.so+0x419d6]
+C [libawt.so+0x4494c]
+C [libawt.so+0x42bab] Java_sun_awt_image_ImagingLib_transformBI+0x20a
+j sun.awt.image.ImagingLib.transformBI(Ljava/awt/image/BufferedImage;Ljava/awt/image/BufferedImage;[DI)I+0
+ge/BufferedImage;Ljava/awt/image/BufferedImage;)Ljava/awt/image/BufferedImage;+194More--(8%)
+j java.awt.image.AffineTransformOp.filter(Ljava/awt/image/BufferedImage;Ljava/awt/image/BufferedImage;)Ljava/awt/image/BufferedImage;+356
+j sun.java2d.pipe.DrawImage.renderImageXform(Lsun/java2d/SunGraphics2D;Ljava/awt/Image;Ljava/awt/geom/AffineTransform;IIIIILjava/awt/Color;)V+391
+j sun.java2d.pipe.DrawImage.transformImage(Lsun/java2d/SunGraphics2D;Ljava/awt/Image;IILjava/awt/geom/AffineTransform;I)V+366
+j sun.java2d.pipe.DrawImage.transformImage(Lsun/java2d/SunGraphics2D;Ljava/awt/Image;Ljava/awt/geom/AffineTransform;Ljava/awt/image/ImageObserver;)Z+17
+j sun.java2d.pipe.ValidatePipe.transformImage(Lsun/java2d/SunGraphics2D;Ljava/awt/Image;Ljava/awt/geom/AffineTransform;Ljava/awt/image/ImageObserver;)Z+17
+j sun.java2d.SunGraphics2D.drawImage(Ljava/awt/Image;Ljava/awt/geom/AffineTransform;Ljava/awt/image/ImageObserver;)Z+35
+j org.apache.pdfbox.util.operator.pagedrawer.Invoke.process(Lorg/apache/pdfbox/util/PDFOperator;Ljava/util/List;)V+348
+j org.apache.pdfbox.util.PDFStreamEngine.processOperator(Lorg/apache/pdfbox/util/PDFOperator;Ljava/util/List;)V+29
+j org.apache.pdfbox.util.PDFStreamEngine.processSubStream(Lorg/apache/pdfbox/pdmodel/PDPage;Lorg/apache/pdfbox/pdmodel/PDResources;Lorg/apache/pdfbox/cos/COSStream;)V+171
+el/PDPage;Lorg/apache/pdfbox/pdmodel/PDResources;Lorg/apache/pdfbox/cos/COSStream;)V+39-(16%)
+j org.apache.pdfbox.pdfviewer.PageDrawer.drawPage(Ljava/awt/Graphics;Lorg/apache/pdfbox/pdmodel/PDPage;Ljava/awt/Dimension;)V+57
+j org.apache.pdfbox.pdmodel.PDPage.convertToImage()Ljava/awt/image/BufferedImage;+107
+j com.day.cq.dam.handler.standard.pdf.PdfHandler.getThumbnailImage(Ljavax/jcr/Node;)Ljava/awt/image/BufferedImage;+37
+j com.day.cq.dam.core.AbstractAssetHandler.createThumbnails(Ljavax/jcr/Node;Ljavax/jcr/Node;Ljavax/jcr/Session;Ljava/util/List;)V+2
+j com.day.cq.dam.core.process.CreateThumbnailProcess.execute(Lcom/day/cq/workflow/exec/WorkItem;Lcom/day/cq/workflow/WorkflowSession;[Ljava/lang/String;)V+88
+j com.day.cq.workflow.impl.job.HandlerBase.executeProcess(Ljava/lang/String;Lcom/day/cq/workflow/exec/WorkItem;Lcom/day/cq/workflow/WorkflowSession;)Ljava/lang/String;+318
+j com.day.cq.workflow.impl.job.JobHandler.process(Lorg/osgi/service/event/Event;)Z+97
+j org.apache.sling.event.EventUtil$1.run()V+63
+j java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Ljava/lang/Runnable;)V+43
+j java.util.concurrent.ThreadPoolExecutor$Worker.run()V+28
+j java.lang.Thread.run()V+11
+v ~StubRoutines::call_stub
+V [libjvm.so+0x1435c7]
+V [libjvm.so+0x143894]
+V [libjvm.so+0x1438c8]
+V [libjvm.so+0x1e8dee]
+V [libjvm.so+0x1f31bd]
+V [libjvm.so+0x20a450]
+V [libjvm.so+0x206b81]
+V [libjvm.so+0x206b25]
+V [libjvm.so+0x4cdc92]
+C [libc.so.1+0xa7045]
+C [libc.so.1+0xa7330]
+Java frames: (J=compiled Java code, j=interpreted, Vv=VM code)
+j sun.awt.image.ImagingLib.transformBI(Ljava/awt/image/BufferedImage;Ljava/awt/image/BufferedImage;[DI)I+0
+j sun.awt.image.ImagingLib.filter(Ljava/awt/image/BufferedImageOp;Ljava/awt/image/BufferedImage;Ljava/awt/image/BufferedImage;)Ljava/awt/image/BufferedImage;+194
+j java.awt.image.AffineTransformOp.filter(Ljava/awt/image/BufferedImage;Ljava/awt/image/BufferedImage;)Ljava/awt/image/BufferedImage;+356
+t/Image;Ljava/awt/geom/AffineTransform;IIIIILjava/awt/Color;)V+391ics2D;Ljava/aw-More-(27%)
+j sun.java2d.pipe.DrawImage.transformImage(Lsun/java2d/SunGraphics2D;Ljava/awt/Image;IILjava/awt/geom/AffineTransform;I)V+366
+j sun.java2d.pipe.DrawImage.transformImage(Lsun/java2d/SunGraphics2D;Ljava/awt/Image;Ljava/awt/geom/AffineTransform;Ljava/awt/image/ImageObserver;)Z+17
+j sun.java2d.pipe.ValidatePipe.transformImage(Lsun/java2d/SunGraphics2D;Ljava/awt/Image;Ljava/awt/geom/AffineTransform;Ljava/awt/image/ImageObserver;)Z+17
+j sun.java2d.SunGraphics2D.drawImage(Ljava/awt/Image;Ljava/awt/geom/AffineTransform;Ljava/awt/image/ImageObserver;)Z+35
+j org.apache.pdfbox.util.operator.pagedrawer.Invoke.process(Lorg/apache/pdfbox/util/PDFOperator;Ljava/util/List;)V+348
+j org.apache.pdfbox.util.PDFStreamEngine.processOperator(Lorg/apache/pdfbox/util/PDFOperator;Ljava/util/List;)V+29
+j org.apache.pdfbox.util.PDFStreamEngine.processSubStream(Lorg/apache/pdfbox/pdmodel/PDPage;Lorg/apache/pdfbox/pdmodel/PDResources;Lorg/apache/pdfbox/cos/COSStream;)V+171
+j org.apache.pdfbox.util.PDFStreamEngine.processStream(Lorg/apache/pdfbox/pdmodel/PDPage;Lorg/apache/pdfbox/pdmodel/PDResources;Lorg/apache/pdfbox/cos/COSStream;)V+39
+j org.apache.pdfbox.pdfviewer.PageDrawer.drawPage(Ljava/awt/Graphics;Lorg/apache/pdfbox/pdmodel/PDPage;Ljava/awt/Dimension;)V+57
+e;+107 .pdfbox.pdmodel.PDPage.convertToImage()Ljava/awt/image/BufferedImag-More-(34%)
+j com.day.cq.dam.handler.standard.pdf.PdfHandler.getThumbnailImage(Ljavax/jcr/Node;)Ljava/awt/image/BufferedImage;+37
+j com.day.cq.dam.core.AbstractAssetHandler.createThumbnails(Ljavax/jcr/Node;Ljavax/jcr/Node;Ljavax/jcr/Session;Ljava/util/List;)V+2
+j com.day.cq.dam.core.process.CreateThumbnailProcess.execute(Lcom/day/cq/workflow/exec/WorkItem;Lcom/day/cq/workflow/WorkflowSession;[Ljava/lang/String;)V+88
+j com.day.cq.workflow.impl.job.HandlerBase.executeProcess(Ljava/lang/String;Lcom/day/cq/workflow/exec/WorkItem;Lcom/day/cq/workflow/WorkflowSession;)Ljava/lang/String;+318
+j com.day.cq.workflow.impl.job.JobHandler.process(Lorg/osgi/service/event/Event;)Z+97
+j org.apache.sling.event.EventUtil$1.run()V+63
+j java.util.concurrent.ThreadPoolExecutor$Worker.runTask(Ljava/lang/Runnable;)V+43
+j java.util.concurrent.ThreadPoolExecutor$Worker.run()V+28
+j java.lang.Thread.run()V+11
+v ~StubRoutines::call_stub
+--------------- S Y S T E M ---------------
+OS: Solaris 10 10/08 s10x_u6wos_07b X86
+Copyright 2008 Sun Microsystems, Inc. All Rights Reserved.
+Use is subject to license terms.
+Assembled 27 October 2008
+uname:SunOS 5.10 Generic_139556-08 i86pc (T2 libthread)
+rlimit: STACK 10240k, CORE infinity, NOFILE 1024, AS infinity
+load average:7.83 3.27 1.63
+CPU:total 4 (cores per cpu 2, threads per core 1) family 15 model 33 stepping 2, cmov, cx8, fxsr, mmx, sse, sse2, sse3, mmxext, 3dnowext, 3dnow
+Memory: 4k page, physical 16678440k(4299516k free)
+vm_info: Java HotSpot(TM) Server VM (1.5.0_19-b02) for solaris-x86, built on May 4 2009 00:59:39 by unknown with unknown Workshop:0x550
+time: Tue Jul 14 16:58:00 2009
+elapsed time: 94 seconds
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+0.8.0-incubator
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jukka Zitting
+Create date:
+11/Sep/09 15:17
+Update date:
+08/Feb/14 23:12
+Resolved date:
+08/Feb/14 09:46

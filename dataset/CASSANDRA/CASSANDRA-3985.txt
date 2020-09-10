@@ -1,0 +1,55 @@
+Summary:
+Ensure a directory is selected for Compaction
+Description:
+From http://www.mail-archive.com/user@cassandra.apache.org/msg20757.html
+CompactionTask.execute() checks if there is a valid compactionFileLocation only if partialCompactionsAcceptable() . upgradesstables results in a CompactionTask with userdefined set, so the valid location check is not performed.
+The result is a NPE, partial stack
+$ nodetool -h localhost upgradesstables
+Error occured while upgrading the sstables for keyspace MyKeySpace
+java.util.concurrent.ExecutionException: java.lang.NullPointerException
+        at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:222)
+        at java.util.concurrent.FutureTask.get(FutureTask.java:83)
+        at org.apache.cassandra.db.compaction.CompactionManager.performAllSSTableOperation(CompactionManager.java:203)
+        at org.apache.cassandra.db.compaction.CompactionManager.performSSTableRewrite(CompactionManager.java:219)
+        at org.apache.cassandra.db.ColumnFamilyStore.sstablesRewrite(ColumnFamilyStore.java:995)
+        at org.apache.cassandra.service.StorageService.upgradeSSTables(StorageService.java:1648)
+<snip>
+Caused by: java.lang.NullPointerException
+        at java.io.File.<init>(File.java:222)
+        at org.apache.cassandra.db.ColumnFamilyStore.getTempSSTablePath(ColumnFamilyStore.java:641)
+        at org.apache.cassandra.db.ColumnFamilyStore.getTempSSTablePath(ColumnFamilyStore.java:652)
+        at org.apache.cassandra.db.ColumnFamilyStore.createCompactionWriter(ColumnFamilyStore.java:1888)
+        at org.apache.cassandra.db.compaction.CompactionTask.execute(CompactionTask.java:151)
+        at org.apache.cassandra.db.compaction.CompactionManager$4.perform(CompactionManager.java:229)
+        at org.apache.cassandra.db.compaction.CompactionManager$2.call(CompactionManager.java:182)
+        at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+        at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+(night time here, will fix tomorrow, anyone else feel free to fix it.)
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.10, 1.1.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+amorton
+Create date:
+01/Mar/12 10:38
+Update date:
+16/Apr/19 09:32
+Resolved date:
+03/May/12 23:02

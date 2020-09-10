@@ -1,0 +1,39 @@
+Summary:
+Wrong tracking of minLevel in Leveled Compaction Strategy causing serious performance problems
+Description:
+Hi,
+since version 2.0.0 (incl. beta), Leveled Compaction Strategy contains a hard-to-spot bug in choosing of sstable candidates to be compacted with tables in higher level. It always chooses first sstable in L1 and only first 1/10 of sstables in other higher levels.
+This is caused by an error when determining "minLevel" of compacted tables in replace() function in LeveledManifest.java which is then used as an index to lastCompactedKeys array to ensure sort of "round robin" selection of SStables for compaction in each level. In the newer versions the minLevel is computed as the minimum of levels of newly created sstables instead of the old sstables.
+Typically compaction takes one table from L(X), compacts it with N tables in L(X+1) and produces M tables in L(X+1). Thus, the lastCompactedKey is improperly accounted to one level higher then it should be.
+This causes serious performance problems as the uniform token range distribution across sstables in one level is broken.
+In L1, the first SStable is always chosen to be compacted with overlapping tables in L2. Since a newly created tables in L0 contains practically whole range of keys of a given node, and the rest of ~9 tables in L1 are never pushed to the higher levels, they tend to contain higher and higher keys over time in very narrow token range. As a direct consequence, the first (the chosen) SStable in L1 (after a compaction of L1 tables with the L0 table) thus contains much wider range than anticipated ~1/10 , which forces compaction with many more tables in L2 than normally expected due to bigger overlap.
+The similar problem appears in higher levels as well.
+We noticed gradual performance degradation since we upgraded C* from 1.2.9 to 2.0.0 aprox. 1 month ago which we tracked down to increased compaction activity. We noticed that the number of sstables processed in one compaction is much higher than expected. The compaction IO activity in our case is more than 5 higher than in 1.2.9 version and only becomes worse.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.4
+Component:
+None
+Label:
+lcs
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jiri Horky
+Reporter:
+Jiri Horky
+Create date:
+01/Nov/13 15:15
+Update date:
+16/Apr/19 09:32
+Resolved date:
+22/Nov/13 23:07

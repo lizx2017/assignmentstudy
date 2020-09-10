@@ -1,0 +1,125 @@
+Summary:
+AdvancedDataGrid headerrenderer children added dynamically do not display
+Description:
+The AdvancedDataGrid in Flex 3.4 does not correctly render children of a custom headerrenderer when the children are added dynamically. This works correctly with the DataGrid.
+An AdvancedDataGrid is created with a custom headerrenderer and one field to display the column header text.
+A show button below the grid adds a text input field to the custom headerrenderer below the column text in the header.
+When the show button is selected, the AdvancedDataGrid header sizes correctly to leave space for the field but does not display the text field.
+If I drag the column, the text input field displays as I am dragging. See the attached images.
+I have included the 3 source files below:
+Thanks.
+1. TestGrid.mxml
+------------------------
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" creationComplete="onInit(event)" width="100%" height="100%">
+<mx:Script>
+<![CDATA[
+protected function onInit(event:Event):void {
+var cols:Array = grid.columns;
+var colWidth:int = grid.width;
+var col:AdvancedHeaderColumn = new AdvancedHeaderColumn();
+col.wordWrap = true;
+col.show = false;
+var headerRenderer:ClassFactory = new ClassFactory(AdvancedHeaderLabel);
+// Add any custom properties
+headerRenderer.properties =
+{text: "Column1 header that wraps", dataGridColumn: col}
+;
+col.headerRenderer = headerRenderer;
+col.headerWordWrap = true;
+cols.push(col);
+grid.columns = cols;
+grid.measuredWidth = colWidth;
+}
+protected function showText(event:Event):void {
+var cols:Array = grid.columns;
+for each (var col:AdvancedHeaderColumn in grid.columns)
+{ col.show = show.selected; }
+grid.columns = cols;
+}
+]]
+>
+</mx:Script>
+<mx:AdvancedDataGrid id="grid" height="100%" width="100%" variableRowHeight="true" editable="true" lockedColumnCount="1"/>
+<mx:Button label="Show" id="show" click="showText(event)" selected="false" toggle="true"/>
+</mx:Application>
+2. AdvancedHeaderLabel.mxml
+---------------------
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" verticalScrollPolicy="off">
+<mx:Script>
+<![CDATA[
+import mx.controls.TextInput;
+import mx.core.UITextField;
+// properties
+public var text:String;
+public var dataGridColumn:AdvancedHeaderColumn;
+// Column header
+public var textField:UITextField;
+// Optional text input field
+public var textInput:TextInput;
+override protected function createChildren():void
+{ super.createChildren(); // Always add the header text textField = new UITextField(); textField.text = text; textField.multiline = true; textField.wordWrap = true; textField.percentWidth = 100; addChildAt(textField, 0); }
+override protected function commitProperties():void {
+super.commitProperties();
+// Add the text input field?
+if (dataGridColumn && dataGridColumn.show && !textInput)
+{ textInput = new TextInput(); box.addChild(textInput); }
+}
+override protected function updateDisplayList(unscaledWidth:Number, unscaledHeight:Number):void {
+super.updateDisplayList(unscaledWidth, unscaledHeight);
+// Position and size the textInput field
+if (dataGridColumn.show && textInput)
+{ textInput.y = textField.getExplicitOrMeasuredHeight(); textInput.setActualSize(unscaledWidth, textInput.getExplicitOrMeasuredHeight()); }
+}
+override protected function measure():void {
+super.measure();
+measuredWidth = textField.getExplicitOrMeasuredWidth();
+measuredHeight = textField.getExplicitOrMeasuredHeight();
+// Make room for the text input field
+if (textInput)
+{ measuredHeight += textInput.getExplicitOrMeasuredHeight(); }
+}
+]]
+>
+</mx:Script>
+<mx:VBox height="100%" width="100%" id="box" verticalAlign="bottom"/>
+</mx:VBox>
+3. AdvancedHeaderColumn.as
+---------------------------------------------
+package {
+import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+public class AdvancedHeaderColumn extends AdvancedDataGridColumn {
+public var show:Boolean = false;
+public function AdvancedHeaderColumn(columnName:String=null)
+{ super(columnName); }
+}
+}
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Later
+Affects_version:
+Adobe Flex SDK 3.4 (
+Fix_version:
+None
+Component:
+Advanced Data Grid
+Label:
+None
+Environment:
+Affected OS(s): Windows
+Attachment number:
+0
+Assignee:
+Adobe JIRA
+Reporter:
+Adobe JIRA
+Create date:
+08/Apr/10 14:49
+Update date:
+29/Jun/11 22:58
+Resolved date:
+15/Mar/11 02:36

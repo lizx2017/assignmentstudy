@@ -1,0 +1,73 @@
+Summary:
+compaction and scrub data directories race on startup
+Description:
+Hi,
+On doing a rolling restarting of a 2.0.5 cluster in several environments I'm seeing the following error:
+ INFO [CompactionExecutor:1] 2014-03-03 17:11:07,549 CompactionTask.java (line 115) Compacting [SSTableReader(path='/Users/Matthew/.ccm/compaction_race/node1/data/system/local/system-local-jb-13-Data.db'), SSTableReader(path='/Users/Matthew/.ccm/compactio
+n_race/node1/data/system/local/system-local-jb-15-Data.db'), SSTableReader(path='/Users/Matthew/.ccm/compaction_race/node1/data/system/local/system-local-jb-16-Data.db'), SSTableReader(path='/Users/Matthew/.ccm/compaction_race/node1/data/system/local/syst
+em-local-jb-14-Data.db')]
+ INFO [CompactionExecutor:1] 2014-03-03 17:11:07,557 ColumnFamilyStore.java (line 254) Initializing system_traces.sessions
+ INFO [CompactionExecutor:1] 2014-03-03 17:11:07,560 ColumnFamilyStore.java (line 254) Initializing system_traces.events
+ WARN [main] 2014-03-03 17:11:07,608 ColumnFamilyStore.java (line 473) Removing orphans for /Users/Matthew/.ccm/compaction_race/node1/data/system/local/system-local-jb-13: [CompressionInfo.db, Filter.db, Index.db, TOC.txt, Summary.db, Data.db, Statistics.
+db]
+ERROR [main] 2014-03-03 17:11:07,609 CassandraDaemon.java (line 479) Exception encountered during startup
+java.lang.AssertionError: attempted to delete non-existing file system-local-jb-13-CompressionInfo.db
+        at org.apache.cassandra.io.util.FileUtils.deleteWithConfirm(FileUtils.java:111)
+        at org.apache.cassandra.io.util.FileUtils.deleteWithConfirm(FileUtils.java:106)
+        at org.apache.cassandra.db.ColumnFamilyStore.scrubDataDirectories(ColumnFamilyStore.java:476)
+        at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:264)
+        at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:462)
+        at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:552)
+ INFO [CompactionExecutor:1] 2014-03-03 17:11:07,612 CompactionTask.java (line 275) Compacted 4 sstables to [/Users/Matthew/.ccm/compaction_race/node1/data/system/local/system-local-jb-17,].  10,963 bytes to 5,572 (~50% of original) in 57ms = 0.093226MB/s.  4 total partitions merged to 1.  Partition merge counts were {4:1, }
+Seems like a potential race, since compactions are occurring whilst the existing data directories are being scrubbed.
+Probably an in progress compaction looks like an incomplete one and results in it being attempted to be scrubbed whilst in progress.
+On the attempt to delete in the scrubDataDirectories we discover that it no longer exists, presumably because it has now been compacted away.
+This then causes an assertion error and the node fails to start up.
+Here is a ccm script which just stops and starts a 3 node 2.0.5 cluster repeatedly.
+It seems to fairly reliably reproduce the problem, in less than ten iterations:
+#!/bin/bash
+
+ccm create compaction_race -v 2.0.5
+ccm populate -n 3
+ccm start
+
+for i in $(seq 0 1000); do 
+    echo $i;
+    ccm stop
+    ccm start
+    grep ERR ~/.ccm/compaction_race/*/logs/system.log;
+done
+Someone else should probably confirm that this is what is going wrong,
+however if it is, the solution might be as simple as to disable autocompactions slightly earlier in CassandraDaemon.setup.
+Or alternatively if there isn't a good reason why we are first scrubbing the system tables and then scrubbing all keyspaces (including the system keyspace), you could perhaps just scrub solely the non system keyspaces on the second scrub.
+Please let me know if there is anything else I can provide.
+Thanks,
+Matt
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.6, 2.1 beta2
+Component:
+Local/Compaction,
+Label:
+compaction concurren
+Environment:
+mac os, linux
+Attachment number:
+0
+Assignee:
+Joshua McKenzie
+Reporter:
+Matt Byrd
+Create date:
+04/Mar/14 02:02
+Update date:
+16/Apr/19 09:31
+Resolved date:
+04/Mar/14 23:11

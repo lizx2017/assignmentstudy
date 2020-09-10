@@ -1,0 +1,116 @@
+Summary:
+sstableloader fails
+Description:
+Ticket at the request of driftx in IRC.
+I've attached the files I'm attempting to load (this is fabricated test data for 100 keys). I generated this using SSTableSimpleUnsortedWriter. I have four dedicated nodes (mine, not ec2 or other cloud host) that I'm using, we'll call them A,B,C, and D. I first start cassandra on node A and create the test keyspace and CF:
+create keyspace test
+  with placement_strategy = 'SimpleStrategy'
+  and strategy_options = {replication_factor : 1}
+  and durable_writes = true;
+
+use test;
+
+create column family test
+  with column_type = 'Super'
+  and comparator = 'UTF8Type'
+  and subcomparator = 'UTF8Type'
+  and default_validation_class = 'UTF8Type'
+  and key_validation_class = 'UTF8Type'
+  and rows_cached = 0.0
+  and row_cache_save_period = 0
+  and row_cache_keys_to_save = 2147483647
+  and keys_cached = 200000.0
+  and key_cache_save_period = 14400
+  and read_repair_chance = 1.0
+  and gc_grace = 864000
+  and min_compaction_threshold = 4
+  and max_compaction_threshold = 32
+  and replicate_on_write = true
+  and row_cache_provider = 'ConcurrentLinkedHashCacheProvider'
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy';
+Then I perform a load using sstableloader from node D, which works fine with the following output:
+Starting client (and waiting 30 seconds for gossip) ...
+ INFO 09:12:17,660 Loading settings from file:/opt/apache-cassandra-1.0.1/conf/cassandra.yaml
+ INFO 09:12:17,761 DiskAccessMode 'auto' determined to be mmap, indexAccessMode is mmap
+ INFO 09:12:17,771 Global memtable threshold is enabled at 75MB
+ INFO 09:12:17,917 Starting up client gossip
+ INFO 09:12:17,934 Starting Messaging Service on port 7000
+ INFO 09:12:19,941 Node /172.21.31.244 is now part of the cluster
+ INFO 09:12:19,941 InetAddress /172.21.31.244 is now UP
+ INFO 09:12:48,003 Opening test/test-h-1 (2884 bytes)
+ INFO 09:12:48,017 JNA not found. Native methods will be disabled.
+Streaming revelant part of test/test-h-1-Data.db to [/172.21.31.244]
+ INFO 09:12:48,052 Stream context metadata [test/test-h-1-Data.db sections=1 progress=0/2884 - 0%], 1 sstables.
+ INFO 09:12:48,053 Streaming to /172.21.31.244
+
+progress: [/172.21.31.244 0/1 (0)] [total: 0 - 0MB/s (avg: 0MB/s)] INFO 09:12:48,103 Shutting down MessageService...
+ INFO 09:12:48,103 Waiting for in-progress requests to complete
+ INFO 09:12:48,104 MessagingService shutting down server thread.
+Then I start over by shutting cassandra, deleting all of the data and commitlog dirs, starting cassandra on Node A and Node B and creating the same keyspace and CF. When I run the loader against that, I get:
+Starting client (and waiting 30 seconds for gossip) ...
+ INFO 09:15:09,316 Loading settings from file:/opt/apache-cassandra-1.0.1/conf/cassandra.yaml
+ INFO 09:15:09,417 DiskAccessMode 'auto' determined to be mmap, indexAccessMode is mmap
+ INFO 09:15:09,427 Global memtable threshold is enabled at 75MB
+ INFO 09:15:09,572 Starting up client gossip
+ INFO 09:15:09,591 Starting Messaging Service on port 7000
+ INFO 09:15:10,777 Node /172.21.31.244 is now part of the cluster
+ INFO 09:15:10,778 InetAddress /172.21.31.244 is now UP
+ INFO 09:15:10,780 Node /172.21.31.245 is now part of the cluster
+ INFO 09:15:10,781 InetAddress /172.21.31.245 is now UP
+ INFO 09:15:39,664 Opening test/test-h-1 (2884 bytes)
+ INFO 09:15:39,691 JNA not found. Native methods will be disabled.
+Streaming revelant part of test/test-h-1-Data.db to [/172.21.31.244, /172.21.31.245]
+ INFO 09:15:39,730 Stream context metadata [test/test-h-1-Data.db sections=1 progress=0/274 - 0%], 1 sstables.
+ INFO 09:15:39,731 Streaming to /172.21.31.244
+ INFO 09:15:39,743 Stream context metadata [test/test-h-1-Data.db sections=2 progress=0/2610 - 0%], 1 sstables.
+ INFO 09:15:39,743 Streaming to /172.21.31.245
+
+progress: [/172.21.31.244 0/1 (0)] [/172.21.31.245 0/1 (0)] [total: 0 - 0MB/s (avg: 0MB/s)]Exception in thread "MiscStage:1" java.lang.AssertionError: Reference counter -1 for test/test-h-1-Data.db
+ at org.apache.cassandra.io.sstable.SSTableReader.releaseReference(SSTableReader.java:715)
+ at org.apache.cassandra.streaming.StreamOutSession.startNext(StreamOutSession.java:123)
+ at org.apache.cassandra.streaming.StreamReplyVerbHandler.doVerb(StreamReplyVerbHandler.java:59)
+ at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:59)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:885)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:907)
+ at java.lang.Thread.run(Thread.java:619)
+Exception in thread "MiscStage:2" java.lang.AssertionError: Reference counter -2 for test/test-h-1-Data.db
+ at org.apache.cassandra.io.sstable.SSTableReader.releaseReference(SSTableReader.java:715)
+ at org.apache.cassandra.streaming.StreamOutSession.close(StreamOutSession.java:150)
+ at org.apache.cassandra.streaming.StreamOutSession.close(StreamOutSession.java:132)
+ at org.apache.cassandra.streaming.StreamReplyVerbHandler.doVerb(StreamReplyVerbHandler.java:67)
+ at org.apache.cassandra.net.MessageDeliveryTask.run(MessageDeliveryTask.java:59)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:885)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:907)
+ at java.lang.Thread.run(Thread.java:619)
+progress: [/172.21.31.244 1/1 (100)] [/172.21.31.245 1/1 (100)] [total: 100 - 0MB/s (avg: 0MB/s)]
+Waiting for targets to rebuild indexes ...
+After that, it never exists. There are on errors in the logs on the server side for either node. Additional tests with larger inputs that show the same general error show slightly different behavior, specifically the progress on all but the first node gets past 1/N. For example, this is the last line on a test of a real data set that had 16 sstables: "progress: [/172.21.31.244 16/16 (100)] [/172.21.31.245 1/16 (6)] [total: 19 - 0MB/s (avg: 3MB/s)]]"... and it never progresses from there, and avg drops to zero over time indicating nothing is happening.
+I haven't replicated on any previous versions.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.2
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Jeremy Pinkham
+Create date:
+01/Nov/11 13:35
+Update date:
+16/Apr/19 09:32
+Resolved date:
+04/Nov/11 07:53

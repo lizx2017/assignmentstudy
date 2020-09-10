@@ -1,0 +1,83 @@
+Summary:
+PDFBox_1.8.2 Bug in PDTextBox
+Description:
+Error when assign values to PDTextBox:
+started
+The length of the catalog = 1
+the value of SetFont = 4
+the name of the field = Text1
+the value of the field = null
+the value of BaseFont = Times-Roman
+Exception in thread "main" java.lang.ArrayIndexOutOfBoundsException: -3
+at java.util.ArrayList.get(ArrayList.java:324)
+at org.apache.pdfbox.pdmodel.interactive.form.PDAppearance.getFontAndUpdateResources(PDAppearance.java:434)
+at org.apache.pdfbox.pdmodel.interactive.form.PDAppearance.setAppearanceValue(PDAppearance.java:268)
+at org.apache.pdfbox.pdmodel.interactive.form.PDVariableText.setValue(PDVariableText.java:131)
+at com.agict.pdftool.PDFForm.run(PDFForm.java:75)
+at com.agict.pdftool.PDFForm.main(PDFForm.java:113)
+Complete Source Code:
+package com.agict.pdftool;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.pdfbox.cos.COSDictionary;
+import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.exceptions.COSVisitorException;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDDocumentCatalog;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDResources;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.edit.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.interactive.form.PDAcroForm;
+import org.apache.pdfbox.pdmodel.interactive.form.PDTextbox;
+public class PDFForm
+{
+@SuppressWarnings("unchecked")
+private void run() throws COSVisitorException, IOException
+{ PDDocument document = new PDDocument(); PDDocumentCatalog docCatalog = document.getDocumentCatalog(); PDPage page = new PDPage(); document.addPage( page ); PDResources res = new PDResources(); res.setFonts( createFontMap() ); page.setResources( res ); PDAcroForm acroForm = new PDAcroForm( document ); PDResources dr = new PDResources(); dr.setFonts( createFontMap() ); acroForm.setDefaultResources( dr ); @SuppressWarnings("rawtypes") List annotations = page.getAnnotations(); COSDictionary dic = new COSDictionary(); PDTextbox textField = new PDTextbox( acroForm, dic ); COSDictionary textFieldDict = textField.getDictionary(); textFieldDict.setName( COSName.FT, "Tx" ); PDRectangle rect = new PDRectangle(); rect.setLowerLeftX( ( float ) 88.14579772949219 ); rect.setLowerLeftY( ( float ) 394.781005859375 ); rect.setUpperRightX( ( float ) 232.9340057373047 ); rect.setUpperRightY( ( float ) 416.5929870605469 ); textField.getWidget().setRectangle( rect ); textField.setMultiline(true); textField.setPartialName( "Text1" ); acroForm.getFields().add( textField ); annotations.add(textField); annotations.add(textField.getWidget()); docCatalog.setAcroForm( acroForm ); List fields = docCatalog.getAcroForm().getFields(); System.out.println("The length of the catalog = " + fields.size()); String fieldName = docCatalog.getAcroForm().getField("Text1").getPartialName(); String fieldValue = docCatalog.getAcroForm().getField("Text1").getValue(); System.out.println("the value of SetFont = " + dr.getFonts().size()); System.out.println("the name of the field = " + fieldName); System.out.println("the value of the field = " + fieldValue); System.out.println("the value of BaseFont = " + PDType1Font.TIMES_ROMAN.getBaseFont()); textField.setValue( "some text" ); String fieldValue2 = docCatalog.getAcroForm().getField("Text1").getValue(); System.out.println("the value of the field after set = " + fieldValue2); // create simple text PDPageContentStream contentStream = new PDPageContentStream( document, page, true, true ); contentStream.beginText(); contentStream.moveTextPositionByAmount( 100, 700 ); contentStream.drawString( "Hello World" ); contentStream.endText(); contentStream.close(); document.save( "PDF_Form.pdf" ); document.close(); }
+private Map< String, PDFont > createFontMap()
+{ Map< String, PDFont > fonts = new HashMap< String, PDFont >(); fonts.put( PDType1Font.HELVETICA.getBaseFont(), PDType1Font.HELVETICA ); fonts.put( PDType1Font.HELVETICA_BOLD.getBaseFont(), PDType1Font.HELVETICA_BOLD ); fonts.put( PDType1Font.HELVETICA_OBLIQUE.getBaseFont(), PDType1Font.HELVETICA_OBLIQUE); fonts.put( PDType1Font.HELVETICA_BOLD_OBLIQUE.getBaseFont(), PDType1Font.HELVETICA_BOLD_OBLIQUE); return fonts; }
+public static void main( String[] args )
+{
+System.out.println( "started" );
+PDFForm main = new PDFForm();
+try
+{ main.run(); }
+catch ( COSVisitorException e )
+{ // TODO Auto-generated catch block e.printStackTrace(); }
+catch ( IOException e )
+{ // TODO Auto-generated catch block e.printStackTrace(); }
+}
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+1.8.2
+Fix_version:
+None
+Component:
+AcroForm
+Label:
+None
+Environment:
+mac os x
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+arnold villasanta
+Create date:
+12/Oct/13 14:47
+Update date:
+11/Oct/14 00:21
+Resolved date:
+11/Oct/14 00:21

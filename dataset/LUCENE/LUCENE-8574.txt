@@ -1,0 +1,40 @@
+Summary:
+ExpressionFunctionValues should cache per-hit value
+Description:
+The original version of ExpressionFunctionValues had a simple per-hit cache, so that nested expressions that reference the same common variable would compute the value for that variable the first time it was referenced and then use that cached value for all subsequent invocations, within one hit.  I think it was accidentally removed in LUCENE-7609?
+This is quite important if you have non-trivial expressions that reference the same variable multiple times.
+E.g. if I have these expressions:
+x = c + d
+c = b + 2 
+d = b * 2
+Then evaluating x should only cause b's value to be computed once (for a given hit), but today it's computed twice.  The problem is combinatoric if b then references another variable multiple times, etc.
+I think to fix this we just need to restore the per-hit cache?
+ 
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+7.5, 8.0
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Robert Muir
+Reporter:
+Michael McCandless
+Create date:
+25/Nov/18 01:17
+Update date:
+26/Nov/18 17:19
+Resolved date:
+

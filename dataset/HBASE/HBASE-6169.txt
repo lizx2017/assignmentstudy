@@ -1,0 +1,44 @@
+Summary:
+When a RS aborts without finishing closing a region, this region will always remain "in transition".
+Description:
+When RS got an ZK error when trying to create a "CLOSING" node in the process of closing a region, it hence aborts without completing closing of the region.
+RS is then discovered dead by HMaster. ServerShutdownHandler does not try to reassign this region for it is in PENDING_CLOSE state; while all regions that originally belong to the dead RS get removed from the "regions" map.
+TimeoutMonitor then endlessly tries to "unassign" this region with LOG message "Region has been PENDING_CLOSE for too long". The "unassign" returns without doing anything, for this region does not exist in the "regions" map:
+public void unassign(HRegionInfo region, boolean force, ServerName dest) {
+// TODO: Method needs refactoring. Ugly buried returns throughout. Beware!
+LOG.debug("Starting unassignment of region " +
+region.getRegionNameAsString() + " (offlining)");
+synchronized (this.regions) {
+// Check if this region is currently assigned
+if (!regions.containsKey(region))
+{ LOG.debug("Attempted to unassign region " + region.getRegionNameAsString() + " but it is not " + "currently assigned anywhere"); return; }
+}
+...
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.90.6
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Maryann Xue
+Create date:
+06/Jun/12 07:42
+Update date:
+31/Mar/14 10:31
+Resolved date:
+31/Mar/14 10:31

@@ -1,0 +1,59 @@
+Summary:
+Binding not working in Flex 4 but working in Flex 3
+Description:
+When upgrading our application from Flex 3 to Flex 4, we noticed some issues where bindings are no longer correctly executed. Attached is an isolated example and the sources (and the generated AS code) for a Flex 3 and a Flex 4 sample. The Flex 3 code works, while the Flex 4 code does not.
+While comparing the generated code, I noticed that the bindings that are created are slightly different. In the Flex 3 example, a anonymous function is passed to handle the update of the binding, while in the Flex 4 example, a null value is passed. There are some other differences, but this was the one that caught my attention.
+A workaround is to add the binding via BindingUtils.bindProperty() in the creationComplete handler of the component where the binding is defined.
+***
+Binding code:
+<mx:CheckBox id="c"
+label="Test"
+selected="
+{DataGridContainer(parent.parent.parent).checked}
+"/>
+Flex 3 generated:
+new mx.binding.Binding(this,
+function():Boolean
+{ return (DataGridContainer(parent.parent.parent).checked); },
+function(_sourceFunctionReturnValue:Boolean):void
+{ c.selected = _sourceFunctionReturnValue; },
+"c.selected");
+
+Flex 4 generated:
+
+new mx.binding.Binding(this,
+function():Boolean
+{ return (DataGridContainer(parent.parent.parent).checked); }
+,
+null,
+"c.selected");
+Workaround:
+BindingUtils.bindProperty(c, "selected", DataGridContainer(parent.parent.parent), "checked");
+Status:
+OPEN
+Priority:
+Major
+Resolution:
+Unresolved
+Affects_version:
+Adobe Flex SDK 4.5.1
+Fix_version:
+None
+Component:
+Data Binding
+Label:
+None
+Environment:
+Affected OS(s): All OS Platforms
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Adobe JIRA
+Create date:
+02/Nov/11 05:22
+Update date:
+07/Nov/11 06:10
+Resolved date:
+

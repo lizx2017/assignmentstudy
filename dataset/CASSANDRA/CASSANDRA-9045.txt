@@ -1,0 +1,91 @@
+Summary:
+Deleted columns are resurrected after repair in wide rows
+Description:
+Hey guys,
+After almost a week of researching the issue and trying out multiple things with (almost) no luck I was suggested (on the user@cass list) to file a report here.
+Setup
+Cassandra 2.0.13 (we had the issue with 2.0.10 as well and upgraded to see if it goes away)
+Multi datacenter 12+6 nodes cluster.
+Schema
+cqlsh> describe keyspace blackbook;
+
+CREATE KEYSPACE blackbook WITH replication = {
+  'class': 'NetworkTopologyStrategy',
+  'IAD': '3',
+  'ORD': '3'
+};
+
+USE blackbook;
+
+CREATE TABLE bounces (
+  domainid text,
+  address text,
+  message text,
+  "timestamp" bigint,
+  PRIMARY KEY (domainid, address)
+) WITH
+  bloom_filter_fp_chance=0.100000 AND
+  caching='KEYS_ONLY' AND
+  comment='' AND
+  dclocal_read_repair_chance=0.100000 AND
+  gc_grace_seconds=864000 AND
+  index_interval=128 AND
+  read_repair_chance=0.000000 AND
+  populate_io_cache_on_flush='false' AND
+  default_time_to_live=0 AND
+  speculative_retry='99.0PERCENTILE' AND
+  memtable_flush_period_in_ms=0 AND
+  compaction={'class': 'LeveledCompactionStrategy'} AND
+  compression={'sstable_compression': 'LZ4Compressor'};
+Use case
+Each row (defined by a domainid) can have many many columns (bounce entries) so rows can get pretty wide. In practice, most of the rows are not that big but some of them contain hundreds of thousands and even millions of columns.
+Columns are not TTL'ed but can be deleted using the following CQL3 statement:
+delete from bounces where domainid = 'domain.com' and address = 'alice@example.com';
+All queries are performed using LOCAL_QUORUM CL.
+Problem
+We weren't very diligent about running repairs on the cluster initially, but shorty after we started doing it we noticed that some of previously deleted columns (bounce entries) are there again, as if tombstones have disappeared.
+I have run this test multiple times via cqlsh, on the row of the customer who originally reported the issue:
+delete an entry
+verify it's not returned even with CL=ALL
+run repair on nodes that own this row's key
+the columns reappear and are returned even with CL=ALL
+I tried the same test on another row with much less data and everything was correctly deleted and didn't reappear after repair.
+Other steps I've taken so far
+Made sure NTP is running on all servers and clocks are synchronized.
+Increased gc_grace_seconds to 100 days, ran full repair (on the affected keyspace) on all nodes, then changed it back to the default 10 days again. Didn't help.
+Performed one more test. Updated one of the resurrected columns, then deleted it and ran repair again. This time the updated version of the column reappeared.
+Finally, I noticed these log entries for the row in question:
+INFO [ValidationExecutor:77] 2015-03-25 20:27:43,936 CompactionController.java (line 192) Compacting large row blackbook/bounces:4ed558feba8a483733001d6a (279067683 bytes) incrementally
+Figuring it may be related I bumped "in_memory_compaction_limit_in_mb" to 512MB so the row fits into it, deleted the entry and ran repair once again. The log entry for this row was gone and the columns didn't reappear.
+We have a lot of rows much larger than 512MB so can't increase this parameters forever, if that is the issue.
+Please let me know if you need more information on the case or if I can run more experiments.
+Thanks!
+Roman
+Status:
+RESOLVED
+Priority:
+Urgent
+Resolution:
+Cannot Reproduce
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Marcus Eriksson
+Reporter:
+Roman Tkachenko
+Create date:
+26/Mar/15 17:25
+Update date:
+16/Apr/19 09:31
+Resolved date:
+24/Aug/15 15:51

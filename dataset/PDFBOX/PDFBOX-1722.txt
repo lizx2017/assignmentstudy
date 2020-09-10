@@ -1,0 +1,97 @@
+Summary:
+PDF conversion to image crashes the JVM because PDFBOX dont find the font and getFontDescriptor
+Description:
+some pdf files crashes the JVM during conversion to image with the following message :
+#
+A fatal error has been detected by the Java Runtime Environment:
+#
+EXCEPTION_ACCESS_VIOLATION (0xc0000005) at pc=0x0000000060d07697, pid=6488, tid=8628
+#
+JRE version: 7.0_25-b17
+Java VM: Java HotSpot(TM) 64-Bit Server VM (23.25-b01 mixed mode windows-amd64 compressed oops)
+Problematic frame:
+C [t2k.dll+0x17697]
+#
+Failed to write core dump. Minidumps are not enabled by default on client versions of Windows
+#
+If you would like to submit a bug report, please visit:
+http://bugreport.sun.com/bugreport/crash.jsp
+The crash happened outside the Java Virtual Machine in native code.
+See problematic frame for where to report the bug.
+#
+j org.apache.pdfbox.pdmodel.font.PDSimpleFont.writeFont(Ljava/awt/Graphics2D;Ljava/awt/geom/AffineTransform;FFLjava/awt/font/GlyphVector;)V+63
+j org.apache.pdfbox.pdmodel.font.PDSimpleFont.drawString(Ljava/lang/String;[ILjava/awt/Graphics;FLjava/awt/geom/AffineTransform;FF)V+253
+j org.apache.pdfbox.pdfviewer.PageDrawer.processTextPosition(Lorg/apache/pdfbox/util/TextPosition;)V+436
+j org.apache.pdfbox.util.PDFStreamEngine.processEncodedText([B)V+709
+j org.apache.pdfbox.util.operator.ShowTextGlyph.process(Lorg/apache/pdfbox/util/PDFOperator;Ljava/util/List;)V+162
+j org.apache.pdfbox.util.PDFStreamEngine.processOperator(Lorg/apache/pdfbox/util/PDFOperator;Ljava/util/List;)V+35
+j org.apache.pdfbox.util.PDFStreamEngine.processSubStream(Lorg/apache/pdfbox/cos/COSStream;)V+126
+j org.apache.pdfbox.util.PDFStreamEngine.processSubStream(Lorg/apache/pdfbox/pdmodel/PDPage;Lorg/apache/pdfbox/pdmodel/PDResources;Lorg/apache/pdfbox/cos/COSStream;)V+20
+j org.apache.pdfbox.util.PDFStreamEngine.processStream(Lorg/apache/pdfbox/pdmodel/PDPage;Lorg/apache/pdfbox/pdmodel/PDResources;Lorg/apache/pdfbox/cos/COSStream;)V+43
+j org.apache.pdfbox.pdfviewer.PageDrawer.drawPage(Ljava/awt/Graphics;Lorg/apache/pdfbox/pdmodel/PDPage;Ljava/awt/Dimension;)V+80
+j org.apache.pdfbox.pdmodel.PDPage.convertToImage(II)Ljava/awt/image/BufferedImage;+310
+j com.portal.cq.util.PDFUtils.getPdfPagesAsImages(Ljava/lang/String;)Ljava/util/List;+116
+j com.portal.cq.thread.CompiladorDeDocumentosRunnable.run()V+24
+j java.lang.Thread.run()V+11
+v ~StubRoutines::call_stub
+so i tried to resolve de PDFont with the bellow code:
+document = PDDocument.load("\\\\192.168.1.8\\clientes\\NEWSPACE\\IN\\ControleQualidade\\INTERFILE
+3032152_5.pdf");
+PDFont font = PDTrueTypeFont.loadTTF(document, new File("//192.168.1.8/clientes/font/arial.ttf"));
+@SuppressWarnings("unchecked")
+List<PDPage> pages = document.getDocumentCatalog().getAllPages();
+int j = 1;
+for (PDPage page : pages) {
+Map<String, PDFont> maps = page.getResources().getFonts();
+Set<String> chaves = maps.keySet();
+Font f = null;
+for (String chave : chaves) {
+if (chave != null) {
+if (maps.get(chave).getFontDescriptor() != null)
+{ f = FontManager.getAwtFont(maps.get(chave) .getFontDescriptor().getFontName()); }
+else
+{ page.getResources().getFonts().put(chave, font); sb.append(i+j+".png com problemas \n"); }
+}
+}
+BufferedImage convertedImage = page.convertToImage(BufferedImage.TYPE_BYTE_BINARY, RESOLUTION_DEFAULT);
+saveImageToRepository(i, j, convertedImage);
+j++;
+if (isNegativeImage(convertedImage))
+{ bImages.add(invertNegativeImage(convertedImage)); }
+else
+{ bImages.add(convertedImage); }
+}
+but in the end it change all my documents
+with a log:
+WARNING: Changing font on <> from <Arial> to the default font
+Set 19, 2013 3:19:53 PM org.apache.pdfbox.pdmodel.font.PDSimpleFont drawString
+i'll attached de result of this
+how i can solve this?
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Duplicate
+Affects_version:
+1.8.2
+Fix_version:
+None
+Component:
+FontBox
+Label:
+None
+Environment:
+windows 8, jboss, java
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Paulo R C Mello Juni
+Create date:
+19/Sep/13 18:36
+Update date:
+23/Sep/13 16:34
+Resolved date:
+23/Sep/13 16:34

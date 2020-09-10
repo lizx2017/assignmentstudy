@@ -1,0 +1,48 @@
+Summary:
+HRegion.incrementColumnValue() doesn't have a consistent behavior when the field that we are incrementing is less than 8 bytes long
+Description:
+We wanted to use an int (32-bit) atomic counter and we initialize it with a certain value when the row is created. Later, we increment the counter using HTable.incrementColumnValue(). This call results in one of two outcomes.
+1. The call succeeds, but the column value now is a long (64-bit) and is corrupt (by additional data that was in the buffer read).
+2. Throws IOException/IllegalArgumentException.
+Java.io.IOException: java.io.IOException: java.lang.IllegalArgumentException: offset (65547) + length (8) exceed the capacity of the array: 65551
+at org.apache.hadoop.hbase.util.Bytes.explainWrongLengthOrOffset(Bytes.java:502)
+at org.apache.hadoop.hbase.util.Bytes.toLong(Bytes.java:480)
+at org.apache.hadoop.hbase.regionserver.HRegion.incrementColumnValue(HRegion.java:3139)
+at org.apache.hadoop.hbase.regionserver.HRegionServer.incrementColumnValue(HRegionServer.java:2468)
+at sun.reflect.GeneratedMethodAccessor24.invoke(Unknown Source)
+at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+at java.lang.reflect.Method.invoke(Method.java:597)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Server.call(HBaseRPC.java:570)
+at org.apache.hadoop.hbase.ipc.HBaseServer$Handler.run(HBaseServer.java:1039)
+Based on our incorrect usage of counters (initializing it with a 32 bit value and later using it as a counter), I would expect that we fail consistently with mode 2 rather than silently corrupting data with mode 1. However, the exception is thrown only rarely and I am not sure what determines the case to be executed. I am wondering if this has something to do with flush.
+Here is a HRegion unit test that can reproduce this problem. http://paste.lisp.org/display/122822
+We modified our code to initialize the counter with a 64 bit value. But, I was also wondering if something has to change in HRegion.incrementColumnValue() to handle inconsistent counter sizes gracefully without corrupting existing data.
+Please let me know if you need additional information.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.3
+Fix_version:
+0.92.0
+Component:
+regionserver
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Li Pi
+Reporter:
+Praveen Kumar
+Create date:
+21/Jun/11 23:07
+Update date:
+20/Nov/15 11:53
+Resolved date:
+28/Jun/11 23:36

@@ -1,0 +1,49 @@
+Summary:
+PerformanceEvaluation does not set the correct classpath for MR because it lives in the test jar
+Description:
+Note: This was discovered running the CDH version hbase-0.90.4-cdh3u2
+Running the PerformanceEvaluation as follows:
+$HADOOP_HOME/bin/hadoop org.apache.hadoop.hbase.PerformanceEvaluation scan 5
+fails because the MR tasks do not get the HBase jar on the CP, and thus hit ClassNotFoundExceptions.
+The job gets the following only:
+file:/Users/tim/dev/hadoop/hbase-0.90.4-cdh3u2/hbase-0.90.4-cdh3u2-tests.jar
+file:/Users/tim/dev/hadoop/hadoop-0.20.2-cdh3u2/hadoop-core-0.20.2-cdh3u2.jar
+file:/Users/tim/dev/hadoop/hbase-0.90.4-cdh3u2/lib/zookeeper-3.3.3-cdh3u2.jar
+The RowCounter etc all work because they live in the HBase jar, not the test jar, and they get the following
+file:/Users/tim/dev/hadoop/hbase-0.90.4-cdh3u2/lib/guava-r06.jar
+file:/Users/tim/dev/hadoop/hadoop-0.20.2-cdh3u2/hadoop-core-0.20.2-cdh3u2.jar
+file:/Users/tim/dev/hadoop/hbase-0.90.4-cdh3u2/hbase-0.90.4-cdh3u2.jar
+file:/Users/tim/dev/hadoop/hbase-0.90.4-cdh3u2/lib/zookeeper-3.3.3-cdh3u2.jar
+Presumably this relates to
+job.setJarByClass(PerformanceEvaluation.class);
+...
+TableMapReduceUtil.addDependencyJars(job);
+A (cowboy) workaround to run PE is to unpack the jars, and copy the PerformanceEvaluation* classes building a patched jar.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Duplicate
+Affects_version:
+0.90.4
+Fix_version:
+None
+Component:
+test
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Hsieh
+Reporter:
+Tim Robertson
+Create date:
+25/Jan/12 12:36
+Update date:
+26/Jan/12 12:26
+Resolved date:
+26/Jan/12 12:26

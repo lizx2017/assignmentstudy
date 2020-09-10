@@ -1,0 +1,46 @@
+Summary:
+Constants check for JRE bitness causes SecurityException under WebStart
+Description:
+I have an app that I deploy via WebStart that uses Lucene 5.2.1 (we are locked to 5.2.1 because that's what LanguageTool uses).
+When running under the WebStart security manager, there are two locations where exceptions are thrown and prevent pretty much all Lucene classes from initializing. This is true even when we sign everything and specify <security><all-permissions/></security>.
+In RamUsageEstimator, fixed by LUCENE-6923
+In Constants, caused by the call System.getProperty("sun.arch.data.model") (stack trace below).
+Error: Caused by: java.security.AccessControlException: access denied ("java.util.PropertyPermission" "sun.arch.data.model" "read") 
+Error:  at java.security.AccessControlContext.checkPermission(AccessControlContext.java:472) 
+Error:  at java.security.AccessController.checkPermission(AccessController.java:884) 
+Error:  at java.lang.SecurityManager.checkPermission(SecurityManager.java:549) 
+Error:  at com.sun.javaws.security.JavaWebStartSecurity.checkPermission(Unknown Source) 
+Error:  at java.lang.SecurityManager.checkPropertyAccess(SecurityManager.java:1294) 
+Error:  at java.lang.System.getProperty(System.java:717) 
+Error:  at org.apache.lucene.util.Constants.<clinit>(Constants.java:71) 
+Error:  ... 34 more 
+The latter is still present in the latest version. My patch illustrates one solution that appears to be working for us.
+(This patch, together with a backport of the fix to LUCENE-6923, seems to fix the issue for our purposes. However if you really wanted to make my day you could put out a maintenance release of 5.2 with both fixes included.)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+5.5
+Fix_version:
+5.5.4, 6.3, 7.0
+Component:
+core/other
+Label:
+None
+Environment:
+mac os x, java 1.8
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Aaron Madlon-Kay
+Create date:
+24/Mar/16 07:51
+Update date:
+09/Nov/16 08:39
+Resolved date:
+04/Nov/16 13:40

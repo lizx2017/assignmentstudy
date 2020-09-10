@@ -1,0 +1,42 @@
+Summary:
+max client timestamp
+Description:
+1. In public LazilyCompactedRow(CompactionController controller, List<? extends ICountableColumnIterator> rows)
+columnStats = new ColumnStats(reducer == null ? 0 : reducer.columns, reducer == null ? Long.MIN_VALUE : reducer.maxTimestampSeen,
+reducer == null ? new StreamingHistogram(SSTable.TOMBSTONE_HISTOGRAM_BIN_SIZE) : reducer.tombstones
+Tthe maxTimestampSeen should be max(emptyColumnFamily.deletionInfo().maxTimestamp(), reducer.maxTimestampSeen)?
+2. In private ColumnFamily collectTimeOrderedData()
+// if we've already seen a row tombstone with a timestamp greater
+// than the most recent update to this sstable, we're done, since the rest of the sstables
+// will also be older
+if (sstable.getMaxTimestamp() < mostRecentRowTombstone)
+break;
+In the case that sstable.getMaxTimestamp == Long.MIN_VALUE, is it logical?
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.1.10, 1.2.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+yangwei
+Create date:
+14/Jan/13 03:16
+Update date:
+16/Apr/19 09:32
+Resolved date:
+24/Jan/13 14:58

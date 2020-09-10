@@ -1,0 +1,64 @@
+Summary:
+Excessive load times for large pdfs
+Description:
+We render preview images for pdfs being uploaded. This is usually quite fast, as often these are short PDFs (e.g. shipments). One customer has a habit of uploading 6,000+ pages, which I believe is their historicals. This can take a while, though I am currently seeing over a minute per page:
+Processed page 940 / 1930 for pdf 1d2c0351-6c1f-4198-bd0b-6728927d7d00 within f1816bb9-3da2-4b61-a3d2-3ca9c419598e in 1.443 min
+The operation is safely parallelized by reading the number of pages, enqueuing a task per page index, opening the pdf in the task, and rendering the page index. Each task creates a new MemoryUsageSetting at 2mb memory an unlimited disk. When monitoring this upload, which will take 32 hours at this rate, the active scratch files are over 500mb. 
+$ du -h /tmp/cache_12639792278559363345/session_2059639776597126303/f1816bb9-3da2-4b61-a3d2-3ca9c419598e/component/pdf/pdfbox/1d2c0351-6c1f-4198-bd0b-6728927d7d00 | cut -f1 | sort -u
+2.3G
+4.0K
+524M
+531M
+552M
+653M
+When polling the stack traces, the threads appear to be spending most of their time on expanding the temp file for the per-page task's loading of the pdf(s).
+Can you explain why this is so slow? My hope is that it could traverse to the page quickly, render it, and close. In this case I might try refactoring to pool the opened documents instead of loading anew, as previously the image rendering was performance problem (since KcmsServiceProvider is no longer available).
+  java.lang.Thread.State: RUNNABLE
+at java.io.RandomAccessFile.setLength(java.base@10.0.1/Native Method)
+at org.apache.pdfbox.io.ScratchFile.enlarge(ScratchFile.java:245)
+locked <0x00000006f6268cc0> (a java.lang.Object)
+at org.apache.pdfbox.io.ScratchFile.getNewPage(ScratchFile.java:167)
+locked <0x00000006f6268f10> (a java.util.BitSet)
+at org.apache.pdfbox.io.ScratchFileBuffer.addPage(ScratchFileBuffer.java:126)
+at org.apache.pdfbox.io.ScratchFileBuffer.ensureAvailableBytesInPage(ScratchFileBuffer.java:184)
+at org.apache.pdfbox.io.ScratchFileBuffer.write(ScratchFileBuffer.java:236)
+at org.apache.pdfbox.io.RandomAccessOutputStream.write(RandomAccessOutputStream.java:46)
+at org.apache.pdfbox.cos.COSStream$2.write(COSStream.java:279)
+at org.apache.pdfbox.pdfparser.COSParser.readValidStream(COSParser.java:1299)
+at org.apache.pdfbox.pdfparser.COSParser.parseCOSStream(COSParser.java:1127)
+at org.apache.pdfbox.pdfparser.COSParser.parseFileObject(COSParser.java:913)
+at org.apache.pdfbox.pdfparser.COSParser.parseObjectDynamically(COSParser.java:874)
+at org.apache.pdfbox.pdfparser.COSParser.parseObjectDynamically(COSParser.java:794)
+at org.apache.pdfbox.pdfparser.COSParser.parseDictObjects(COSParser.java:754)
+at org.apache.pdfbox.pdfparser.PDFParser.initialParse(PDFParser.java:185)
+at org.apache.pdfbox.pdfparser.PDFParser.parse(PDFParser.java:220)
+at org.apache.pdfbox.pdmodel.PDDocument.load(PDDocument.java:1028)
+at org.apache.pdfbox.pdmodel.PDDocument.load(PDDocument.java:949)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Won't Do
+Affects_version:
+2.0.12
+Fix_version:
+None
+Component:
+None
+Label:
+None
+Environment:
+java 1.10, ubuntu
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ben Manes
+Create date:
+29/Nov/18 04:55
+Update date:
+05/Dec/18 07:36
+Resolved date:
+29/Nov/18 09:32

@@ -1,0 +1,36 @@
+Summary:
+SERIAL consistency in errors to v1 protocol driver
+Description:
+I'm the author of the Ruby driver for CQL, and I got a bug report about strange errors when running on C* 2.0 and using lightweight transaction queries. The bug report can be found here: https://github.com/iconara/cql-rb/issues/53
+The client sent UPDATE table SET val = 42 WHERE row_id = 5 IF val = 41 and when C* couldn't fulfill SERIAL consistency it sent an error back saying "Operation timed out - received only -1 responses".
+So far so good, but it also set the consistency field in the error response to 8, corresponding to SERIAL in v2 of the binary protocol, even if the communication with the client was over v1 of the protocol. Since my driver doesn't yet support v2 it doesn't think that 8 is a valid consistency, and fails to parse the frame.
+Is this the intended behaviour of C*, or an oversight in how that error is formulated? I could easily add SERIAL and accept it even if the communication is over v1 of the protocol, but the bigger issue is how C* handles drivers that do not speak the latest version of the protocol. People should be able to use a driver that worked correctly with C* X with C* X+1, right?
+Do drivers have to be accepting in what they receive from C* because they might get consistencies, data types, etc. that are from future versions of the protocol, or does C* guarantee that frames will conform to the protocol that the driver says it understands?
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.3
+Component:
+None
+Label:
+LWT
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Theo Hultberg
+Create date:
+30/Oct/13 06:47
+Update date:
+16/Apr/19 09:32
+Resolved date:
+30/Oct/13 16:24

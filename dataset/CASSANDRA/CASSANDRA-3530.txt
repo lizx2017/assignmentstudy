@@ -1,0 +1,48 @@
+Summary:
+Header class not thread safe, but mutated by multiple threads
+Description:
+With Cassandra 1.0.3 we are getting exceptions like,
+Fatal exception in thread Thread[WRITE-/xx.xx.xx.xx,5,main]java.util.ConcurrentModificationException
+at java.util.Hashtable$Enumerator.next(Unknown Source)
+at org.apache.cassandra.net.Header.serializedSize(Header.java:97)
+at org.apache.cassandra.net.OutboundTcpConnection.messageLength(OutboundTcpConnection.java:164)
+at org.apache.cassandra.net.OutboundTcpConnection.write(OutboundTcpConnection.java:154)
+at org.apache.cassandra.net.OutboundTcpConnection.writeConnected(OutboundTcpConnection.java:115)
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:94)
+and,
+ERROR [WRITE-/xx.xx.xx.xx] 2011-11-24 22:08:28,981 AbstractCassandraDaemon.java (line 133) Fatal exception in thread Thread[WRITE-/10.30.12.79,5,main]java.lang.NullPointerException
+at org.apache.cassandra.net.Header.serializedSize(Header.java:101)
+at org.apache.cassandra.net.OutboundTcpConnection.messageLength(OutboundTcpConnection.java:164)
+at org.apache.cassandra.net.OutboundTcpConnection.write(OutboundTcpConnection.java:154)
+at org.apache.cassandra.net.OutboundTcpConnection.writeConnected(OutboundTcpConnection.java:115)
+at org.apache.cassandra.net.OutboundTcpConnection.run(OutboundTcpConnection.java:94)
+It looks like Header is not thread safe, but the same header instance is modified concurrently while being sent to several threads in StorageProxy.sendMessages.
+This bug eventually causes the node to OOM, as it kills the OutboundTcpConnection thread, which means nothing is dequeing from queue.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.4
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Sean Bridges
+Create date:
+25/Nov/11 00:11
+Update date:
+16/Apr/19 09:32
+Resolved date:
+25/Nov/11 09:55

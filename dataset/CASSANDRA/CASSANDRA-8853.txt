@@ -1,0 +1,61 @@
+Summary:
+adding existing table at node startup
+Description:
+I get intermittent failures running putget_test.TestPutGet on trunk. The core of the failure is
+Cannot add already existing table "resource_role_permissons_index" to keyspace "system_auth"
+I'll put in some time today seeing if it fails on previous versions.
+Here are two gists with the stdout and stderr from failing runs:
+https://gist.github.com/mambocab/b724a2c697416f21a621
+https://gist.github.com/mambocab/adb5cb90c14cda5f87c8
+Each of those were in an Ubuntu VM running under VirtualBox with 2 GB memory. Here's a third that reproduced with 4GB:
+https://gist.github.com/mambocab/02ffa977eae2b5c3432b
+and here are the same for a successful run:
+https://gist.github.com/mambocab/de2a089e93bc4dff61cc
+There's some noise about reading JMX metrics in the Java stack traces that can be ignored for this issue. This is in the traces for both failing runs, and not in the trace for the successful one:
+java.lang.AssertionError: org.apache.cassandra.exceptions.AlreadyExistsException: Cannot add already existing table "resource_role_permissons_index" to keyspace "system_auth"
+    at org.apache.cassandra.service.StorageService.doAuthSetup(StorageService.java:897)
+    at org.apache.cassandra.service.StorageService.joinTokenRing(StorageService.java:832)
+    at org.apache.cassandra.service.StorageService.initServer(StorageService.java:579)
+    at org.apache.cassandra.service.StorageService.initServer(StorageService.java:469)
+    at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:357)
+    at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:492)
+    at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:599)
+Caused by: org.apache.cassandra.exceptions.AlreadyExistsException: Cannot add already existing table "resource_role_permissons_index" to keyspace "system_auth"
+    at org.apache.cassandra.service.MigrationManager.announceNewColumnFamily(MigrationManager.java:286)
+    at org.apache.cassandra.service.MigrationManager.announceNewColumnFamily(MigrationManager.java:275)
+    at org.apache.cassandra.service.StorageService.doAuthSetup(StorageService.java:891)
+    ... 6 more
+The test command is
+CASSANDRA_DIR=~/cstar_src/cassandra PRINT_DEBUG=true nosetests -x -s -v putget_test:TestPutGet >~/putget_test.stdout 2>~/putget_test.stderr
+I'm running in Ubuntu under VirtualBox, which may be the problem:
+$ uname -a
+Linux dtest-VirtualBox 3.13.0-45-generic #74-Ubuntu SMP Tue Jan 13 19:36:28 UTC 2015 x86_64 x86_64 x86_64 GNU/Linux
+dtest discussion here.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/Distributed Metadata, (1)
+Label:
+None
+Environment:
+ubuntu, virtualbox
+Attachment number:
+0
+Assignee:
+Sam Tunnicliffe
+Reporter:
+Jim Witschey
+Create date:
+23/Feb/15 18:50
+Update date:
+16/Apr/19 09:31
+Resolved date:
+12/Mar/15 00:22

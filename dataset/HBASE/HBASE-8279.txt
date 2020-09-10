@@ -1,0 +1,51 @@
+Summary:
+Performance Evaluation does not consider the args passed in case of more than one client
+Description:
+Performance evaluation gives a provision to pass the table name.
+The table name is considered when we first initialize the table - like the disabling and creation of tables happens with the name that we pass.
+But the write and read test again uses only the default table and so the perf evaluation fails.
+I think the problem is like this
+ ./hbase org.apache.hadoop.hbase.PerformanceEvaluation --nomapred --table=MyTable2  --presplit=70 randomRead 2
+13/04/04 21:42:07 DEBUG hbase.HRegionInfo: Current INFO from scan results = {NAME => 'MyTable2,00000000000000000002067171,1365126124904.bc9e936f4f8ca8ee55eb90091d4a13b6.', STARTKEY => '00000000000000000002067171', ENDKEY => '', ENCODED => bc9e936f4f8ca8ee55eb90091d4a13b6,}
+13/04/04 21:42:07 INFO hbase.PerformanceEvaluation: Table created with 70 splits
+You can see that the specified table is created with the splits.
+But when the read starts
+Caused by: org.apache.hadoop.hbase.exceptions.TableNotFoundException: TestTable
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegionInMeta(HConnectionManager.java:1157)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:1034)
+        at org.apache.hadoop.hbase.client.HConnectionManager$HConnectionImplementation.locateRegion(HConnectionManager.java:984)
+        at org.apache.hadoop.hbase.client.HTable.finishSetup(HTable.java:246)
+        at org.apache.hadoop.hbase.client.HTable.<init>(HTable.java:187)
+        at org.apache.hadoop.hbase.PerformanceEvaluation$Test.testSetup(PerformanceEvaluation.java:851)
+        at org.apache.hadoop.hbase.PerformanceEvaluation$Test.test(PerformanceEvaluation.java:869)
+        at org.apache.hadoop.hbase.PerformanceEvaluation.runOneClient(PerformanceEvaluation.java:1495)
+        at org.apache.hadoop.hbase.PerformanceEvaluation$1.run(PerformanceEvaluation.java:590)
+It says TestTable not found which is the default table.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudevan
+Reporter:
+ramkrishna.s.vasudevan
+Create date:
+05/Apr/13 10:06
+Update date:
+23/Sep/13 19:08
+Resolved date:
+19/Apr/13 18:28

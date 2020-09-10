@@ -1,0 +1,49 @@
+Summary:
+zookeeper.KeeperException$NodeExistsException if HMaster restarts while table is being disabled
+Description:
+There seems to be more than just one issue regarding the following scenario. I would provide a fix later just for this exception.
+1. A table is being disabled.
+2. HMaster restarted.
+3. At HMaster startup, it tries to transition from disabling to disabled state. It got the following exception.
+org.apache.zookeeper.KeeperException$NodeExistsException: KeeperErrorCode = NodeExists for /hbase/unassigned/419b902243c836c285108ba555b712fa
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:110)
+at org.apache.zookeeper.KeeperException.create(KeeperException.java:42)
+at org.apache.zookeeper.ZooKeeper.create(ZooKeeper.java:637)
+at org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper.createNonSequential(RecoverableZooKeeper.java:475)
+at org.apache.hadoop.hbase.zookeeper.RecoverableZooKeeper.create(RecoverableZooKeeper.java:457)
+at org.apache.hadoop.hbase.zookeeper.ZKUtil.createAndWatch(ZKUtil.java:742)
+at org.apache.hadoop.hbase.zookeeper.ZKAssign.createNodeClosing(ZKAssign.java:461)
+at org.apache.hadoop.hbase.master.AssignmentManager.unassign(AssignmentManager.java:1440)
+at org.apache.hadoop.hbase.master.AssignmentManager.unassign(AssignmentManager.java:1406)
+at org.apache.hadoop.hbase.master.handler.DisableTableHandler$BulkDisabler$1.run(DisableTableHandler.java:141)
+at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+This issue is this specific region is in a special state before HMaster restarts; it has been closed by RS properly thus the zk state is RS_ZK_REGION_CLOSED. However, HMaster hasn't got a chance to process ClosedRegionHandler yet and thus the node remains at zk. After RS restarts, this node is added to online region list first in AssignmentManager.rebuildUserRegions and tries to unassign it later.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.92.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Ming Ma
+Reporter:
+Ming Ma
+Create date:
+28/Aug/11 17:53
+Update date:
+20/Nov/15 11:53
+Resolved date:
+03/Sep/11 10:06

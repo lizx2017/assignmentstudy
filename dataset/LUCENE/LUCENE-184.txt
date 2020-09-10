@@ -1,0 +1,123 @@
+Summary:
+NullPointerException calling IndexSearcher.search().
+Description:
+IndexSearher.search() gets a NullPointerException. The demo SearchFiles.java
+gets this error, as does my own simple Search test problem (included below). I
+added a stack trace, which gets...
+$ java Search
+Query: foo
+Searching for: foo
+caught a class java.lang.NullPointerException
+with message: null
+java.lang.NullPointerException
+at org.apache.lucene.search.IndexSearcher.explain
+(IndexSearcher.java:196)
+at org.apache.lucene.search.Hits.getMoreDocs(Hits.java:93)
+at org.apache.lucene.search.Hits.<init>(Hits.java:80)
+at org.apache.lucene.search.Searcher.search(Searcher.java:71)
+at org.apache.lucene.search.Searcher.search(Searcher.java:65)
+at Search.main(Search.java:35)
+The source for Search.java...
+import java.io.*;
+import java.util.*;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.search.Searcher;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Hits;
+import org.apache.lucene.queryParser.QueryParser;
+class Search {
+public static void main(String[] args) {
+try {
+Searcher searcher = new IndexSearcher("psr_index");
+Analyzer analyzer = new StandardAnalyzer();
+BufferedReader in = new BufferedReader(new
+InputStreamReader(System.in));
+while (true) {
+System.out.print("Query: ");
+String line = in.readLine();
+if (line.length() == -1)
+break;
+Date startT = new Date();
+Query query = QueryParser.parse
+(line, "description", analyzer);
+System.out.println("Searching for: " +
+query.toString("description"));
+Hits hits = searcher.search(query);
+Date endT = new Date();
+System.out.print("...found " + hits.length()
++ " total matching listings; ");
+System.out.print(endT.getTime() - startT.getTime
+());
+System.out.println(" milliseconds\n");
+final int HITS_PER_PAGE = 10;
+for (int start = 0; start < hits.length();
+start += HITS_PER_PAGE) {
+int end = Math.min(hits.length(), start
++ HITS_PER_PAGE);
+for (int i = start; i < end; i++) {
+Document doc = hits.doc;
+String title = doc.get("title");
+String description = doc.get
+("description");
+Hits hits = searcher.search(query);
+Date endT = new Date();
+System.out.print("...found " + hits.length()
++ " total matching listings; ");
+System.out.print(endT.getTime() - startT.getTime
+());
+System.out.println(" milliseconds\n");
+final int HITS_PER_PAGE = 10;
+for (int start = 0; start < hits.length();
+start += HITS_PER_PAGE) {
+int end = Math.min(hits.length(), start
++ HITS_PER_PAGE);
+for (int i = start; i < end; i++)
+{ Document doc = hits.doc(i); String title = doc.get("title"); String description = doc.get ("description"); System.out.println(i + ". " + title); System.out.println(" - " + description); }
+Date displayT = new Date();
+System.out.print("\n...results
+displayed in ");
+System.out.print(displayT.getTime() -
+endT.getTime());
+System.out.println(" milliseconds\n");
+if (hits.length() > end)
+{ System.out.print("more (y/n) ? "); line = in.readLine(); if (line.length() == 0 || line.charAt(0) == 'n') break; }
+System.out.println("\n");
+endT = new Date();
+}
+}
+searcher.close();
+} catch (Exception e)
+{ System.out.println(" caught a " + e.getClass() + "\n with message: " + e.getMessage()); e.printStackTrace(); }
+}
+}
+Status:
+CLOSED
+Priority:
+Blocker
+Resolution:
+Won't Fix
+Affects_version:
+None
+Fix_version:
+None
+Component:
+core/search
+Label:
+None
+Environment:
+solaris
+Attachment number:
+0
+Assignee:
+Lucene Developers
+Reporter:
+Michael Schoen
+Create date:
+24/Feb/04 02:47
+Update date:
+02/Jun/11 22:04
+Resolved date:
+27/May/06 01:37

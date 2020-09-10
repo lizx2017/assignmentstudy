@@ -1,0 +1,113 @@
+Summary:
+PDFParser: AccessControlException
+Description:
+[imported from SourceForge]
+http://sourceforge.net/tracker/index.php?group_id=78314&atid=552832&aid=1505750
+Originally submitted by braine on 2006-06-13 18:29.
+I'm getting minor variations on the following error
+when I try to create a PDDocument in an Applet from a URL.
+>> java.security.AccessControlException: access denied
+(java.util.PropertyPermission java.io.tmpdir read)
+>> at
+java.security.AccessControlContext.checkPermission(Unknown
+Source)
+>> at
+java.security.AccessController.checkPermission(Unknown
+Source)
+>> at
+java.lang.SecurityManager.checkPermission(Unknown Source)
+>> at
+java.lang.SecurityManager.checkPropertyAccess(Unknown
+Source)
+>> at java.lang.System.getProperty(Unknown Source)
+>> at
+org.pdfbox.pdfparser.PDFParser.<init>(PDFParser.java:72)
+>> at
+org.pdfbox.pdfparser.PDFParser.<init>(PDFParser.java:85)
+>> at
+org.pdfbox.pdmodel.PDDocument.load(PDDocument.java:577)
+>> at BTpdf.initialize(BTpdf.java:41)
+:
+:
+:
+-----------------------------------------------------
+I've tried:
+1) "PDDocument.load( InputStream input)"
+2) "PDDocument.load( File file)"
+3) "PDDocument.load( String filename)"
+All methods give me the AccessControlException, but
+with one subtle difference:
+A) Using the InputStream method via:
+> URL url = new URL(
+"http://localhost/Images/btP72.pdf");
+> PDDocument doc = "PDDocument.load( url.openStream() );
+or:
+> byte data[] = new byte[ (new URL(
+"http://localhost/Images/btP72.pdf")).openConnection().urlConn.getContentLength()
+];
+> int dRead = fileLoc.openStream().read( data);
+> doc = PDDocument.load( new
+ByteArrayInputStream( data) );
+I get:
+>> java.security.AccessControlException: access denied
+>>+ (java.util.PropertyPermission java.io.tmpdir read)
+B) Using the File and String methods via:
+> File f = new File(
+"http://localhost/Images/btP72.pdf");
+> PDDocument doc = PDDocument.load( f);
+or:
+> PDDocument doc = "PDDocument.load(
+"http://localhost/Images/btP72.pdf");
+I get:
+>> java.security.AccessControlException: access denied
+>>+ (java.io.FilePermission
+http:\localhost\Images\btP72.pdf read)
+-----------------------------------------------------
+I'm speculating at the moment, but it looks as though
+PDFParser is attempting to look at the PDF file as
+though it existed on my disk and not from the web.
+I'm using
+PDFBox version: PDFBox-0.7.2
+Windows XP SP2
+[comment on SourceForge]
+Originally sent by braine.
+Logged In: YES
+user_id=1091957
+I found that I can bypass this problem by placing my code in
+a JAR file and signing it (I also signed the PDFBox.jar
+file, although I'm not sure that is necessary).
+Even with this bypass, I think it would be better if I
+didn't need to sign the code. I also feel that printing PDF
+files is important enough for web applications, that it
+would be worth while to create a subset of PDFBox that only
+creates images for printing. This should have two advantages:
+1) Smaller JAR files will be travelling around the web.
+2) There should be no need to create temporary disk files.
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Duplicate
+Affects_version:
+None
+Fix_version:
+None
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Anonymous
+Create date:
+14/Jun/06 01:29
+Update date:
+08/Jun/14 23:19
+Resolved date:
+08/Jun/14 23:19

@@ -1,0 +1,53 @@
+Summary:
+TestZooKeeper#testLogSplittingAfterMasterRecoveryDueToZKExpiry failed intermittently
+Description:
+Basically we tried to recover lease of a wal file while the file doesn't exist anymore. We keep retrying recover the file(it always fails for sure because the file is gone). Then the test case failed with time out
+Here is a recent run failure log:
+https://builds.apache.org/job/HBase-0.95/204/testReport/junit/org.apache.hadoop.hbase/TestZooKeeper/testLogSplittingAfterMasterRecoveryDueToZKExpiry/
+Related exception:
+2013-05-18 05:53:03,918 ERROR [IPC Server handler 2 on 36965] security.UserGroupInformation(1152): PriviledgedActionException as:jenkins.hfs.2 cause:java.io.FileNotFoundException: File not found /user/jenkins/hbase/.logs/hemera.apache.org,42628,1368856131392-splitting/hemera.apache.org,42628,1368856131392
+2013-05-18 05:53:03,918 WARN  [SplitLogWorker-hemera.apache.org,47651,1368856143179] util.FSHDFSUtils(80): Got IOException on attempt 241 to recover lease for file hdfs://localhost:36965/user/jenkins/hbase/.logs/hemera.apache.org,42628,1368856131392-splitting/hemera.apache.org,42628,1368856131392, retrying.
+java.io.FileNotFoundException: java.io.FileNotFoundException: File not found /user/jenkins/hbase/.logs/hemera.apache.org,42628,1368856131392-splitting/hemera.apache.org,42628,1368856131392
+ at sun.reflect.GeneratedConstructorAccessor21.newInstance(Unknown Source)
+ at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+ at java.lang.reflect.Constructor.newInstance(Constructor.java:525)
+ at org.apache.hadoop.ipc.RemoteException.instantiateException(RemoteException.java:95)
+ at org.apache.hadoop.ipc.RemoteException.unwrapRemoteException(RemoteException.java:57)
+ at org.apache.hadoop.hdfs.DFSClient.recoverLease(DFSClient.java:885)
+ at org.apache.hadoop.hdfs.DistributedFileSystem.recoverLease(DistributedFileSystem.java:177)
+ at org.apache.hadoop.hbase.util.FSHDFSUtils.recoverFileLease(FSHDFSUtils.java:71)
+ at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.getReader(HLogSplitter.java:821)
+ at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.splitLogFile(HLogSplitter.java:504)
+ at org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.splitLogFile(HLogSplitter.java:455)
+ at org.apache.hadoop.hbase.regionserver.SplitLogWorker$1.exec(SplitLogWorker.java:132)
+ at org.apache.hadoop.hbase.regionserver.SplitLogWorker.grabTask(SplitLogWorker.java:337)
+ at org.apache.hadoop.hbase.regionserver.SplitLogWorker.taskLoop(SplitLogWorker.java:225)
+ at org.apache.hadoop.hbase.regionserver.SplitLogWorker.run(SplitLogWorker.java:192)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+0.98.0, 0.95.1
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jeffrey Zhong
+Reporter:
+Jeffrey Zhong
+Create date:
+18/May/13 19:01
+Update date:
+23/Sep/13 19:08
+Resolved date:
+19/May/13 21:29

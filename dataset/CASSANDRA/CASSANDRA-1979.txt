@@ -1,0 +1,47 @@
+Summary:
+CassandraServiceDataCleaner.prepare() fails with IOException.
+Description:
+CassandraServiceDataCleaner.prepare() fails with an IOException if run in isolation. It seems that initializing the DataDescriptor creates a new CommitLog file, and then the cleaner tries to delete this file and fails.
+16:06:07.204 [main] INFO o.a.c.config.DatabaseDescriptor - Loading settings from file:/C:/workspace/sandbox/target/classes/cassandra.yaml
+16:06:07.282 [main] DEBUG o.a.c.config.DatabaseDescriptor - Syncing log with a period of 10000
+16:06:07.282 [main] INFO o.a.c.config.DatabaseDescriptor - DiskAccessMode 'auto' determined to be standard, indexAccessMode is standard
+16:06:07.797 [main] DEBUG o.a.c.config.DatabaseDescriptor - setting auto_bootstrap to false
+16:06:07.797 [main] INFO o.a.c.db.commitlog.CommitLogSegment - Creating new commitlog segment target/var/lib/cassandra/commitlog\CommitLog-1294934767797.log
+16:06:07.813 [main] DEBUG o.apache.cassandra.io.util.FileUtils - Deleting CommitLog-1294934767797.log
+Exception in thread "main" java.io.IOException: Failed to delete C:\workspace\sandbox\target\var\lib\cassandra\commitlog\CommitLog-1294934767797.log
+at org.apache.cassandra.io.util.FileUtils.deleteWithConfirm(FileUtils.java:54)
+at org.apache.cassandra.io.util.FileUtils.deleteRecursive(FileUtils.java:201)
+at org.apache.cassandra.contrib.utils.service.CassandraServiceDataCleaner.cleanDir(CassandraServiceDataCleaner.java:99)
+at org.apache.cassandra.contrib.utils.service.CassandraServiceDataCleaner.cleanupDataDirectories(CassandraServiceDataCleaner.java:53)
+at org.apache.cassandra.contrib.utils.service.CassandraServiceDataCleaner.prepare(CassandraServiceDataCleaner.java:44)
+at cng.sandbox.App.main(App.java:15)
+This also seems to leave a bunch of threads running in the background, so the process has to be manually killed.
+This was tested with the javautils in the 0.7.0 branch.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.1
+Component:
+None
+Label:
+None
+Environment:
+windows xp
+Attachment number:
+0
+Assignee:
+Nate McCall
+Reporter:
+Chris Ng
+Create date:
+13/Jan/11 16:09
+Update date:
+16/Apr/19 09:33
+Resolved date:
+17/Jan/11 17:07

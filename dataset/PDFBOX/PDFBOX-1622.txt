@@ -1,0 +1,42 @@
+Summary:
+TextNormalize init not thread-safe, may lead to infinite loop
+Description:
+TextNormalize fills a static HashMap (DIACHASH) from a method (populateDiacHash) called by the TextNormalize constructor.
+If the constructor is called from two different threads at the same time, then the HashMap may be written by two concurrent threads which may and will cause infinite loops.
+We see the CPU at 100% and jstack shows 4 threads all stuck at:
+"Thread-2" prio=10 tid=0x00007f6e94499000 nid=0x347 runnable [0x00007f6e925d6000]
+java.lang.Thread.State: RUNNABLE
+at java.util.HashMap.put(HashMap.java:391)
+at org.apache.pdfbox.util.TextNormalize.populateDiacHash(TextNormalize.java:82)
+at org.apache.pdfbox.util.TextNormalize.<init>(TextNormalize.java:41)
+at org.apache.pdfbox.util.PDFTextStripper.<init>(PDFTextStripper.java:193)
+A patch to fix this is attached, it just moves the initialization to a static block.
+Please apply to the 1.8.3 and 2.0.0 branches.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+1.0.0
+Fix_version:
+1.8.3, 2.0.0
+Component:
+Utilities
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Florent Guillaume
+Create date:
+04/Jun/13 17:12
+Update date:
+30/Nov/13 17:02
+Resolved date:
+09/Aug/13 18:27

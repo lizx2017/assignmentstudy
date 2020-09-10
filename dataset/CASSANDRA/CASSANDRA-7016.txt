@@ -1,0 +1,37 @@
+Summary:
+Allow mixing token and partition key restrictions
+Description:
+select ... where token(k) < x and token(k) >= y and k in (a,b) allow filtering;
+This fails on 2.0.6: can't restrict k by more than one relation.
+In the context of map/reduce (hence the token range) I want to map over only a subset of the keys (hence the 'in'). Pushing the 'in' filter down to cql is substantially cheaper than pulling all rows to the client and then discarding most of them.
+Currently this is possible only if the hadoop integration code is altered to apply the AND on the client side and use cql that contains only the resulting filtered 'in' set. The problem is not hadoop specific though, so IMO it should really be solved in cql not the hadoop integration code.
+Most restrictions on cql syntax seem to exist to prevent unduly expensive queries. This one seems to be doing the opposite.
+Edit: on further thought and with reference to the code in SelectStatement$RawStatement, it seems to me that token(k) and k should be considered distinct entities for the purposes of processing restrictions. That is, no restriction on the token should conflict with a restriction on the raw key. That way any monolithic query in terms of k and be decomposed into parallel chunks over the token range for the purposes of map/reduce processing simply by appending a 'and where token(k)...' clause to the exiting 'where k ...'.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.2.0 beta 1
+Component:
+Legacy/CQL
+Label:
+cql docs
+Environment:
+
+Attachment number:
+0
+Assignee:
+Benjamin Lerer
+Reporter:
+Jonathan Halliday
+Create date:
+09/Apr/14 12:43
+Update date:
+16/Apr/19 09:31
+Resolved date:
+07/Jan/15 20:09

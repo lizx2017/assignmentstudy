@@ -1,0 +1,169 @@
+Summary:
+LOCAL_QUORUM writes returns wrong message
+Description:
+We have two DC3, each with 7 nodes.
+Here is the keyspace setup:
+create keyspace test
+with placement_strategy = 'NetworkTopologyStrategy'
+and strategy_options =
+{DC2 : 3, DC1 : 3}
+and durable_writes = true;
+We brought down two nodes in DC2 for maintenance. We only write to DC1 using local_quroum (using datastax JavaClient)
+But we see this errors in the log:
+Cassandra timeout during write query at consistency LOCAL_QUORUM (4 replica were required but only 3 acknowledged the write
+why does it say 4 replica were required? and Why would it give error back to client since local_quorum should succeed.
+Here are the output from nodetool status
+Note: Ownership information does not include topology; for complete information, specify a keyspace
+Datacenter: DC2
+===============
+Status=Up/Down
+/ State=Normal/Leaving/Joining/Moving
+– Address Load Tokens Owns Host ID Rack
+UN 10.2.0.1 10.92 GB 256 7.9% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC206
+UN 10.2.0.2 6.17 GB 256 8.0% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC106
+UN 10.2.0.3 6.63 GB 256 7.3% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC107
+DL 10.2.0.4 1.54 GB 256 7.7% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC107
+UN 10.2.0.5 6.02 GB 256 6.6% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC106
+UJ 10.2.0.6 3.68 GB 256 ? XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC205
+UN 10.2.0.7 7.22 GB 256 7.7% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC205
+Datacenter: DC1
+===============
+Status=Up/Down
+/ State=Normal/Leaving/Joining/Moving
+– Address Load Tokens Owns Host ID Rack
+UN 10.1.0.1 6.04 GB 256 8.6% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC10
+UN 10.1.0.2 7.55 GB 256 7.4% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC8
+UN 10.1.0.3 5.83 GB 256 7.0% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC9
+UN 10.1.0.4 7.34 GB 256 7.9% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC6
+UN 10.1.0.5 7.57 GB 256 8.0% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC7
+UN 10.1.0.6 5.31 GB 256 7.3% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC10
+UN 10.1.0.7 5.47 GB 256 8.6% XXXXXXXXXXXXXXXXXXXXXXXXXXXX RAC9
+I did a cql trace on the query and here is the trace, and it does say
+Write timeout; received 3 of 4 required replies | 17:27:52,831 | 10.1.0.1 | 2002873
+at the end. I guess that is where the client gets the error from. But the rows was inserted to Cassandra correctly. And I traced read with local_quorum and it behaves correctly and the reads don't go to DC2. The problem is only with writes on local_quorum.
+Tracing session: 5a789fb0-b70d-11e4-8fca-99bff9c19890
+
+ activity                                                                                                                                    | timestamp    | source      | source_elapsed
+---------------------------------------------------------------------------------------------------------------------------------------------+--------------+-------------+----------------
+                                                                                                                          execute_cql3_query | 17:27:50,828 |  10.1.0.1 |              0
+ Parsing insert into test (user_id, created, event_data, event_id)values ( 123456789 , 9eab8950-b70c-11e4-8fca-99bff9c19891, 'test', '16'); | 17:27:50,828 |  10.1.0.1 |             39
+                                                                                                                         Preparing statement | 17:27:50,828 |  10.1.0.1 |            135
+                                                                                                           Message received from /10.1.0.1 | 17:27:50,829 |  10.1.0.5 |             25
+                                                                                                              Sending message to /10.1.0.5 | 17:27:50,829 |  10.1.0.1 |            421
+                                                                                                   Executing single-partition query on users | 17:27:50,829 |  10.1.0.5 |            177
+                                                                                                                Acquiring sstable references | 17:27:50,829 |  10.1.0.5 |            191
+                                                                                                                 Merging memtable tombstones | 17:27:50,830 |  10.1.0.5 |            208
+                                                                                                           Message received from /10.1.0.5 | 17:27:50,830 |  10.1.0.1 |           1461
+                                                                                                           Message received from /10.1.0.1 | 17:27:50,830 |  10.1.0.2 |             14
+                                                                                                                 Key cache hit for sstable 1 | 17:27:50,830 |  10.1.0.5 |            254
+                                                                                                        Processing response from /10.1.0.5 | 17:27:50,830 |  10.1.0.1 |           1514
+                                                                                                   Executing single-partition query on users | 17:27:50,830 |  10.1.0.2 |             78
+                                                                                                 Seeking to partition beginning in data file | 17:27:50,830 |  10.1.0.5 |            264
+                                                                                                              Sending message to /10.1.0.2 | 17:27:50,830 |  10.1.0.1 |           1517
+                                                                                                                Acquiring sstable references | 17:27:50,830 |  10.1.0.2 |             85
+                                                                   Skipped 0/1 non-slice-intersecting sstables, included 0 due to tombstones | 17:27:50,830 |  10.1.0.5 |            453
+                                                                                                           Determining replicas for mutation | 17:27:50,830 |  10.1.0.1 |           1746
+                                                                                                                 Merging memtable tombstones | 17:27:50,830 |  10.1.0.2 |             97
+                                                                                                  Merging data from memtables and 1 sstables | 17:27:50,830 |  10.1.0.5 |            476
+                                                                                                           Message received from /10.1.0.2 | 17:27:50,830 |  10.1.0.1 |           2369
+                                                                                                                 Key cache hit for sstable 2 | 17:27:50,830 |  10.1.0.2 |            120
+                                                                                                          Read 1 live and 0 tombstoned cells | 17:27:50,830 |  10.1.0.5 |            506
+                                                                                                 Seeking to partition beginning in data file | 17:27:50,830 |  10.1.0.2 |            123
+                                                                                                           Enqueuing response to /10.1.0.1 | 17:27:50,830 |  10.1.0.5 |            570
+                                                                   Skipped 0/1 non-slice-intersecting sstables, included 0 due to tombstones | 17:27:50,830 |  10.1.0.2 |            288
+                                                                                                              Sending message to /10.1.0.1 | 17:27:50,830 |  10.1.0.5 |            617
+                                                                                                  Merging data from memtables and 1 sstables | 17:27:50,830 |  10.1.0.2 |            297
+                                                                                                          Read 1 live and 0 tombstoned cells | 17:27:50,830 |  10.1.0.2 |            319
+                                                                                                           Enqueuing response to /10.1.0.1 | 17:27:50,830 |  10.1.0.2 |            362
+                                                                                                              Sending message to /10.1.0.1 | 17:27:50,830 |  10.1.0.2 |            420
+                                                                                                           Message received from /10.1.0.1 | 17:27:50,831 |   10.1.0.4 |             17
+                                                                                                              Sending message to /10.1.0.2 | 17:27:50,831 |  10.1.0.1 |           2435
+                                                                                                           Message received from /10.1.0.1 | 17:27:50,831 |  10.1.0.2 |              8
+                                                                                                              Acquiring switchLock read lock | 17:27:50,831 |   10.1.0.4 |             61
+                                                                                                        Processing response from /10.1.0.2 | 17:27:50,831 |  10.1.0.1 |           2488
+                                                                                                              Acquiring switchLock read lock | 17:27:50,831 |  10.1.0.2 |             44
+                                                                                                                      Appending to commitlog | 17:27:50,831 |   10.1.0.4 |             78
+                                                                                    Not hinting /10.2.0.4 which has been down 364809650ms | 17:27:50,831 |  10.1.0.1 |           2503
+                                                                                                                      Appending to commitlog | 17:27:50,831 |  10.1.0.2 |             62
+                                                                                                                    Adding to event memtable | 17:27:50,831 |   10.1.0.4 |             96
+                                                                                                               Sending message to /10.1.0.4 | 17:27:50,831 |  10.1.0.1 |           2557
+                                                                                                                    Adding to event memtable | 17:27:50,831 |  10.1.0.2 |             80
+                                                                                                           Enqueuing response to /10.1.0.1 | 17:27:50,831 |   10.1.0.4 |            177
+                                                                                                              Acquiring switchLock read lock | 17:27:50,831 |  10.1.0.1 |           2669
+                                                                                                           Enqueuing response to /10.1.0.1 | 17:27:50,831 |  10.1.0.2 |            160
+                                                                                                              Sending message to /10.1.0.1 | 17:27:50,831 |   10.1.0.4 |            333
+                                                                                                                      Appending to commitlog | 17:27:50,831 |  10.1.0.1 |           2682
+                                                                                                              Sending message to /10.1.0.1 | 17:27:50,831 |  10.1.0.2 |            266
+                                                                                                                    Adding to event memtable | 17:27:50,831 |  10.1.0.1 |           2720
+                                                                                                             Sending message to /10.2.0.5 | 17:27:50,831 |  10.1.0.1 |           2758
+                                                                                                           Message received from /10.1.0.2 | 17:27:50,831 |  10.1.0.1 |           2989
+                                                                                                        Processing response from /10.1.0.2 | 17:27:50,831 |  10.1.0.1 |           3024
+                                                                                                            Message received from /10.1.0.4 | 17:27:50,832 |  10.1.0.1 |           3764
+                                                                                                         Processing response from /10.1.0.4 | 17:27:50,832 |  10.1.0.1 |           3805
+                                                                                                           Message received from /10.1.0.1 | 17:27:50,841 | 10.2.0.5 |             24
+                                                                                                   Enqueuing forwarded write to /10.2.0.7 | 17:27:50,841 | 10.2.0.5 |            255
+                                                                                                   Enqueuing forwarded write to /10.2.0.3 | 17:27:50,841 | 10.2.0.5 |            283
+                                                                                                    Enqueuing forwarded write to /10.2.0.6 | 17:27:50,841 | 10.2.0.5 |            307
+                                                                                                              Acquiring switchLock read lock | 17:27:50,841 | 10.2.0.5 |            362
+                                                                                                                      Appending to commitlog | 17:27:50,841 | 10.2.0.5 |            380
+                                                                                                             Sending message to /10.2.0.7 | 17:27:50,841 | 10.2.0.5 |            382
+                                                                                                                    Adding to event memtable | 17:27:50,841 | 10.2.0.5 |            411
+                                                                                                              Sending message to /10.2.0.6 | 17:27:50,841 | 10.2.0.5 |            429
+                                                                                                           Enqueuing response to /10.1.0.1 | 17:27:50,841 | 10.2.0.5 |            484
+                                                                                                             Sending message to /10.2.0.3 | 17:27:50,841 | 10.2.0.5 |            561
+                                                                                                              Sending message to /10.1.0.1 | 17:27:50,841 | 10.2.0.5 |            625
+                                                                                                              Acquiring switchLock read lock | 17:27:50,842 |  10.2.0.6 |           1031
+                                                                                                              Acquiring switchLock read lock | 17:27:50,842 | 10.2.0.7 |            178
+                                                                                                                      Appending to commitlog | 17:27:50,842 |  10.2.0.6 |           1066
+                                                                                                                      Appending to commitlog | 17:27:50,842 | 10.2.0.7 |            196
+                                                                                                                    Adding to event memtable | 17:27:50,842 |  10.2.0.6 |           1118
+                                                                                                                    Adding to event memtable | 17:27:50,842 | 10.2.0.7 |            231
+                                                                                                           Enqueuing response to /10.1.0.1 | 17:27:50,842 |  10.2.0.6 |           1181
+                                                                                                           Enqueuing response to /10.1.0.1 | 17:27:50,842 | 10.2.0.7 |            286
+                                                                                                              Sending message to /10.1.0.1 | 17:27:50,842 | 10.2.0.7 |            421
+                                                                                                              Acquiring switchLock read lock | 17:27:50,843 | 10.2.0.3 |           1216
+                                                                                                              Sending message to /10.1.0.1 | 17:27:50,843 |  10.2.0.6 |           1382
+                                                                                                                      Appending to commitlog | 17:27:50,843 | 10.2.0.3 |           1239
+                                                                                                                    Adding to event memtable | 17:27:50,843 | 10.2.0.3 |           1313
+                                                                                                           Enqueuing response to /10.1.0.1 | 17:27:50,843 | 10.2.0.3 |           1407
+                                                                                                              Sending message to /10.1.0.1 | 17:27:50,843 | 10.2.0.3 |           1631
+                                                                                                          Message received from /10.2.0.5 | 17:27:50,851 |  10.1.0.1 |          23333
+                                                                                                       Processing response from /10.2.0.5 | 17:27:50,851 |  10.1.0.1 |          23380
+                                                                                                          Message received from /10.2.0.7 | 17:27:50,852 |  10.1.0.1 |          23908
+                                                                                                       Processing response from /10.2.0.7 | 17:27:50,852 |  10.1.0.1 |          23953
+                                                                                                           Message received from /10.2.0.6 | 17:27:50,853 |  10.1.0.1 |          25143
+                                                                                                        Processing response from /10.2.0.6 | 17:27:50,853 |  10.1.0.1 |          25178
+                                                                                                          Message received from /10.2.0.3 | 17:27:50,854 |  10.1.0.1 |          25478
+                                                                                                       Processing response from /10.2.0.3 | 17:27:50,854 |  10.1.0.1 |          25516
+                                                                                             Write timeout; received 3 of 4 required replies | 17:27:52,831 |  10.1.0.1 |        2002873
+                                                                                                                            Request complete | 17:27:52,833 |  10.1.0.1 |        2005989
+cqlsh:XXXX> CONSISTENCY
+Current consistency level is LOCAL_QUORUM.
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Duplicate
+Affects_version:
+
+Fix_version:
+2.0.13
+Component:
+None
+Label:
+qa-resolved
+Environment:
+centos
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Wei Zhu
+Create date:
+18/Feb/15 02:05
+Update date:
+16/Apr/19 09:31
+Resolved date:
+03/Mar/15 08:42

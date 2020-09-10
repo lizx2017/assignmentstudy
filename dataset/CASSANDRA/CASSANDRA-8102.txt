@@ -1,0 +1,60 @@
+Summary:
+cassandra-cli and cqlsh report two different values for a setting, partially update it and partially report it
+Description:
+cassandra-cli updates and prints out a min_compaction_threshold that is not shown by cqlsh (it shows a different min_threshold attribute)
+cqlsh updates "both" values but only shows one of them
+cassandra-cli:
+UPDATE COLUMN FAMILY foo WITH min_compaction_threshold = 8;
+
+$ echo "describe foo;" | cassandra-cli -h `hostname` -k bar
+      Compaction min/max thresholds: 8/32
+
+$ echo "describe table foo;" | cqlsh -k bar `hostname`
+  compaction={'class': 'SizeTieredCompactionStrategy'} AND
+cqlsh:
+ALTER TABLE foo WITH compaction = {'class' : 'SizeTieredCompactionStrategy', 'min_threshold' : 16};
+
+cassandra-cli:
+      Compaction min/max thresholds: 16/32
+      Compaction Strategy Options:
+        min_threshold: 16
+cqlsh:
+  compaction={'min_threshold': '16', 'class': 'SizeTieredCompactionStrategy'} AND
+cassandra-cli:
+UPDATE COLUMN FAMILY foo WITH min_compaction_threshold = 8;
+
+cassandra-cli:
+      Compaction min/max thresholds: 8/32
+      Compaction Strategy Options:
+        min_threshold: 16
+
+cqlsh:
+  compaction={'min_threshold': '16', 'class': 'SizeTieredCompactionStrategy'} AND
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+2.0.15
+Component:
+Legacy/Tools
+Label:
+cli cqlsh
+Environment:
+
+Attachment number:
+0
+Assignee:
+Stefania
+Reporter:
+Peter Haggerty
+Create date:
+10/Oct/14 17:11
+Update date:
+16/Apr/19 09:31
+Resolved date:
+08/Apr/15 18:14

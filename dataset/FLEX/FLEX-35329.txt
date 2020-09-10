@@ -1,0 +1,89 @@
+Summary:
+Initializing member variable/constant that is [Deprecated] incorrectly throws extra warning
+Description:
+Consider the following class:
+Deprecated.as
+package
+{
+ import flash.display.Sprite;
+
+ public class Deprecated extends Sprite
+ {
+  [Deprecated]
+  public static var STATIC_DEPRECATED:String = "static";
+
+  [Deprecated]
+  public static var STATIC_DEPRECATED2:String;
+
+  [Deprecated]
+  public var memberDeprecated:String = "member";
+
+  [Deprecated]
+  public var memberDeprecated2:String;
+
+  public function Deprecated()
+  {
+   STATIC_DEPRECATED = "new value";
+   Deprecated.STATIC_DEPRECATED = "new value";
+   memberDeprecated = "new value";
+   this.memberDeprecated = "new value";
+   STATIC_DEPRECATED2 = "new value";
+   Deprecated.STATIC_DEPRECATED2 = "new value";
+   memberDeprecated2 = "new value";
+   this.memberDeprecated2 = "new value";
+  }
+ } 
+}
+The compiler should give eight warnings for each of the lines in the constructor. However, it actually gives 10 warnings. Here are the two extra warnings:
+/Users/joshtynjala/Desktop/Deprecated/src/Deprecated.as(8): col: 21 Warning: 'STATIC_DEPRECATED' has been deprecated.
+
+  public static var STATIC_DEPRECATED:String = "static";
+                    ^
+
+/Users/joshtynjala/Desktop/Deprecated/src/Deprecated.as(14): col: 14 Warning: 'memberDeprecated' has been deprecated.
+
+  public var memberDeprecated:String = "member";
+             ^
+Notice that there are no warnings for STATIC_DEPRECATED2 and memberDeprecated2 because they are not initialized. It's only when a member or static variable is initialized that the warnings are shown. It appears that when the compiler checks for usage of deprecated variables is a little too aggressive.
+The Falcon compiler and Adobe's ASC 2.0 compiler do not give these same extra warnings. They only give a warning on actual usage.
+These warnings make it difficult to deprecate a constant or another variable in an open source library. It makes compile-time noisy with a lot of warnings that need to be ignored.
+Note: When compiling with a library in SWC form, the compiler does not show these warnings. I suspect that this is why this was never really encountered with the Flex framework, since the SWCs are pre-compiled. However, for many open source libraries, developers often simply use the source code with the -source-path compiler option instead of a pre-compiled SWC. That's when these warnings can be seen. As a long-time library developer, I never used [Deprecated] metadata because of this bug.
+Solution, which I will implement:
+In LintEvaluator, modify evaluate( Context cx, SetExpressionNode node ).
+if (slot != null && !(node.expr instanceof QualifiedIdentifierNode))
+{
+ //if it's a qualified identifier node, then it's a member/static
+ //variable on a class that is being initialized, like this:
+ //public var memberVar:String = "hi";
+ //this case should not have a warning!
+ checkDeprecatedSlot(cx, node.expr, node.ref, slot);
+}
+The declaration of a member/static variable is a QualifiedIdentifierNode (qualified meaning that it may have modifiers like public/private, static, etc.), but actual usage will be an IdentifierNode instead. So, if it's a QualifiedIdentifierNode, we know that we don't need to check if the variable is deprecated or not.
+Status:
+RESOLVED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+Apache Flex 4.16.0
+Fix_version:
+Apache Flex 4.16.1
+Component:
+.Unspecified - Compiler
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Josh Tynjala
+Reporter:
+Josh Tynjala
+Create date:
+22/Jun/17 17:18
+Update date:
+25/Nov/17 19:06
+Resolved date:
+28/Jun/17 22:14

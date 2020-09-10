@@ -1,0 +1,69 @@
+Summary:
+example AddValidationInformation fails with scratchfile error
+Description:
+The example signature.validation.AddValidationInformation fails with exception "Scratch file already closed" when we try to add the info to our certified file (enclosed).
+The error occurs in AddValidationInformation.writeDataToStream(), line 421:
+    OutputStream os = stream.createOutputStream(filters);
+Reading discussion in PDFBOX-3984, we tried to use a new COSStream() instead of scratch file, ie changed line 417 to
+     COSStream stream = new COSStream(); //document.getDocument().createCOSStream();
+Then the example gets much further, but fails with same error in the final document.saveIncremental() call in AddValidationInformation.doValidation  (line 141).
+  The same error occurs if we try the file multiSignatureBase.pdf from the PDFBOX-3984 issue ([^multi-Signature_Base.pdf)] 
+so it doesn't seem to be a problem with our specific file.
+Our calling code:
+String rootFolder = "/home/papasmurf/Documents/pdf-examples/";
+File inFile = new File(rootFolder + "ebox_certified_eutl.pdf");
+File outFile = new File(rootFolder + "ebox_validationinfo_test.pdf");
+AddValidationInformation validator = new AddValidationInformation();
+validator.validateSignature(inFile, outFile);
+  Eclipse output running the example:
+Get Certificate from: http://q.ica.cz/2qca16_rsa.cer
+Get Certificate from: http://r.ica.cz/rca15_rsa.cer
+Get Certificate from: http://r.ica.cz/rca15_rsa.cer
+Nonce: 04120410DD140ECDE05357A0A2F6E5001EDD9A7D
+Exception in thread "main" java.io.IOException: java.io.IOException: Scratch file already closed
+at org.apache.pdfbox.examples.signature.validation.AddValidationInformation.fetchCrlData(AddValidationInformation.java:330)
+at org.apache.pdfbox.examples.signature.validation.AddValidationInformation.addRevocationDataRecursive(AddValidationInformation.java:248)
+at org.apache.pdfbox.examples.signature.validation.AddValidationInformation.addRevocationData(AddValidationInformation.java:205)
+at org.apache.pdfbox.examples.signature.validation.AddValidationInformation.doValidation(AddValidationInformation.java:136)
+at org.apache.pdfbox.examples.signature.validation.AddValidationInformation.validateSignature(AddValidationInformation.java:88)
+at com.tellustalk.javaworker.dss.SignPDF.main(SignPDF.java:233)
+Caused by: java.io.IOException: Scratch file already closed
+at org.apache.pdfbox.io.ScratchFile.checkClosed(ScratchFile.java:390)
+at org.apache.pdfbox.io.ScratchFileBuffer.<init>(ScratchFileBuffer.java:78)
+at org.apache.pdfbox.io.ScratchFile.createBuffer(ScratchFile.java:403)
+at org.apache.pdfbox.cos.COSStream.createOutputStream(COSStream.java:221)
+at org.apache.pdfbox.examples.signature.validation.AddValidationInformation.writeDataToStream(AddValidationInformation.java:421)
+at org.apache.pdfbox.examples.signature.validation.AddValidationInformation.addCrlRevocationInfo(AddValidationInformation.java:377)
+at org.apache.pdfbox.examples.signature.validation.AddValidationInformation.fetchCrlData(AddValidationInformation.java:315)
+... 5 more
+  Grateful for any insights,
+    /rasmus ekman
+ 
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.11, 2.0.12
+Fix_version:
+2.0.13
+Component:
+Signing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+rasmus
+Create date:
+29/Oct/18 18:11
+Update date:
+02/Dec/18 17:06
+Resolved date:
+30/Oct/18 18:29

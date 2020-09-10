@@ -1,0 +1,40 @@
+Summary:
+Put/Delete values cannot be tested with MRUnit
+Description:
+When using the IdentityTableReducer, which expects input values of either a Put or Delete object, testing with MRUnit the Mapper with MRUnit is not possible because neither Put nor Delete implement equals().
+We should implement equals() on both such that equality means:
+Both objects are of the same class (in this case, Put or Delete)
+Both objects are for the same key.
+Both objects contain an equal set of KeyValues (applicable only to Put)
+KeyValue.equals() appears to already be implemented, but only checks for equality of row key, column family and column qualifier - two KeyValues can be considered "equal" if they contain different values. This won't work for testing.
+Instead, the Put.equals() and Delete.equals() implementations should do a "deep" equality check on their KeyValues, like this:
+myKv.equals(theirKv) && Bytes.equals(myKv.getValue(), theirKv.getValue());
+NOTE: This would impact any code that relies on the existing "identity" implementation of Put.equals() and Delete.equals(), therefore cannot be guaranteed to be backwards-compatible.
+Status:
+OPEN
+Priority:
+Critical
+Resolution:
+Unresolved
+Affects_version:
+2.0.0
+Fix_version:
+None
+Component:
+Client, (1)
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Nicholas Telford
+Reporter:
+Nicholas Telford
+Create date:
+06/Dec/11 18:33
+Update date:
+16/Nov/16 21:05
+Resolved date:
+

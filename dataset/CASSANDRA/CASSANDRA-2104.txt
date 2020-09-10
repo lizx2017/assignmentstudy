@@ -1,0 +1,78 @@
+Summary:
+IndexOutOfBoundsException during lazy row compaction of supercolumns
+Description:
+I ran into an exception when lazily compacting wide rows of TimeUUID columns.
+It seems to trigger when a row is larger than in_memory_compaction_limit_in_mb.
+Traceback:
+ INFO [CompactionExecutor:1] 2011-02-03 10:59:59,262 CompactionIterator.java (line 135) Compacting large row XXXXXXXXXXXXX (76999384 bytes) incrementally
+ ERROR [CompactionExecutor:1] 2011-02-03 10:59:59,266 AbstractCassandraDaemon.java (line 114) Fatal exception in thread T
+ hread[CompactionExecutor:1,1,main]
+ java.lang.IndexOutOfBoundsException
+         at java.nio.Buffer.checkIndex(Buffer.java:514)
+         at java.nio.HeapByteBuffer.get(HeapByteBuffer.java:121)
+         at org.apache.cassandra.db.marshal.TimeUUIDType.compareTimestampBytes(TimeUUIDType.java:56)
+         at org.apache.cassandra.db.marshal.TimeUUIDType.compare(TimeUUIDType.java:45)
+         at org.apache.cassandra.db.marshal.TimeUUIDType.compare(TimeUUIDType.java:29)
+         at java.util.concurrent.ConcurrentSkipListMap$ComparableUsingComparator.compareTo(ConcurrentSkipListMap.java:606
+ )
+         at java.util.concurrent.ConcurrentSkipListMap.findPredecessor(ConcurrentSkipListMap.java:685)
+         at java.util.concurrent.ConcurrentSkipListMap.doPut(ConcurrentSkipListMap.java:864)
+         at java.util.concurrent.ConcurrentSkipListMap.putIfAbsent(ConcurrentSkipListMap.java:1893)
+         at org.apache.cassandra.db.SuperColumn.addColumn(SuperColumn.java:170)
+         at org.apache.cassandra.db.SuperColumn.putColumn(SuperColumn.java:195)
+         at org.apache.cassandra.db.ColumnFamily.addColumn(ColumnFamily.java:221)
+         at org.apache.cassandra.io.LazilyCompactedRow$LazyColumnIterator.reduce(LazilyCompactedRow.java:204)
+         at org.apache.cassandra.io.LazilyCompactedRow$LazyColumnIterator.reduce(LazilyCompactedRow.java:185)
+         at org.apache.cassandra.utils.ReducingIterator.computeNext(ReducingIterator.java:62)
+         at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:136)
+         at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:131)
+         at com.google.common.collect.Iterators$7.computeNext(Iterators.java:604)
+         at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:136)
+         at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:131)
+         at org.apache.cassandra.db.ColumnIndexer.serializeInternal(ColumnIndexer.java:76)
+         at org.apache.cassandra.db.ColumnIndexer.serialize(ColumnIndexer.java:50)
+         at org.apache.cassandra.io.LazilyCompactedRow.<init>(LazilyCompactedRow.java:88)
+         at org.apache.cassandra.io.CompactionIterator.getCompactedRow(CompactionIterator.java:137)
+         at org.apache.cassandra.io.CompactionIterator.getReduced(CompactionIterator.java:108)
+         at org.apache.cassandra.io.CompactionIterator.getReduced(CompactionIterator.java:43)
+         at org.apache.cassandra.utils.ReducingIterator.computeNext(ReducingIterator.java:73)
+         at com.google.common.collect.AbstractIterator.tryToComputeNext(AbstractIterator.java:136)
+         at com.google.common.collect.AbstractIterator.hasNext(AbstractIterator.java:131)
+         at org.apache.commons.collections.iterators.FilterIterator.setNextObject(FilterIterator.java:183)
+         at org.apache.commons.collections.iterators.FilterIterator.hasNext(FilterIterator.java:94)
+         at org.apache.cassandra.db.CompactionManager.doCompaction(CompactionManager.java:426)
+         at org.apache.cassandra.db.CompactionManager$1.call(CompactionManager.java:122)
+         at org.apache.cassandra.db.CompactionManager$1.call(CompactionManager.java:92)
+         at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+         at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+         at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+         at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+         at java.lang.Thread.run(Thread.java:662)
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+0.7.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Sylvain Lebresne
+Reporter:
+Daniel Lundin
+Create date:
+03/Feb/11 10:08
+Update date:
+16/Apr/19 09:33
+Resolved date:
+24/Feb/11 19:09

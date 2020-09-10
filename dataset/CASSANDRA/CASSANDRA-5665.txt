@@ -1,0 +1,34 @@
+Summary:
+Gossiper.handleMajorStateChange can lose existing node ApplicationState
+Description:
+Dovetailing on CASSANDRA-5660, I discovered that further along during an upgrade, when more nodes are on the new major version, a node the previous version can get passed some incomplete Gossip info about another, already upgraded node, and the older node drops AppStat info about that node.
+I think what happens is that a 1.1 node (older rev) gets gossip info from a 1.2 node (A), which includes incomplete (lacking some AppState data) gossip info about another 1.2 node (B). The 1.1 node, which has marked incorrectly kicked node B out of gossip due to the bug described in #5660, then takes that incomplete node B info and wholesale replaces any previous known state about node B in Gossiper.handleMajorStateChanged. Thus, if we previously had DC/RACK info, it'll get dropped as part of the endpointStateMap.put(endpointstate). When the data being pased is incomplete, 1.1 will start referencing node B and gets into the NPE situation in #5498.
+Anecdotally, this bad state is short-lived, less than a few minutes, even as short as ten seconds, until gossip catches up and properly propagates the AppState data. Furthermore, when upgrading a two datacenter, 48 node cluster, it only occurred on two nodes for less than a minute each. Thus, the scope seems limited but can occur.
+Status:
+RESOLVED
+Priority:
+Low
+Resolution:
+Won't Fix
+Affects_version:
+
+Fix_version:
+None
+Component:
+None
+Label:
+gossip upgrade
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jason Brown
+Reporter:
+Jason Brown
+Create date:
+19/Jun/13 17:56
+Update date:
+16/Apr/19 09:32
+Resolved date:
+22/Jun/15 12:19

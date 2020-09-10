@@ -1,0 +1,41 @@
+Summary:
+Flushing memstore again after last failure could cause data loss
+Description:
+See the following logs first:
+2013-01-23 18:58:38,801 INFO org.apache.hadoop.hbase.regionserver.Store: Flushed , sequenceid=9746535080, memsize=101.8m, into tmp file hdfs://dw77.kgb.sqa.cm4:9900/hbase-test3/writetest1/8dc14e35b4d7c0e481e0bb30849cff7d/.tmp/bebeeecc56364b6c8126cf1dc6782a25
+
+2013-01-23 18:58:41,982 WARN org.apache.hadoop.hbase.regionserver.MemStore: Snapshot called again without clearing previous. Doing nothing. Another ongoing flush or did we fail last attempt?
+
+
+2013-01-23 18:58:43,274 INFO org.apache.hadoop.hbase.regionserver.Store: Flushed , sequenceid=9746599334, memsize=101.8m, into tmp file hdfs://dw77.kgb.sqa.cm4:9900/hbase-test3/writetest1/8dc14e35b4d7c0e481e0bb30849cff7d/.tmp/4eede32dc469480bb3d469aaff332313
+The first time memstore flush is failed when commitFile()(Logged the first edit above), then trigger server abort, but another flush is coming immediately(could caused by move/split,Logged the third edit above) and successful.
+For the same memstore's snapshot, we get different sequenceid, it causes data loss when replaying log edits
+See details from the unit test case in the patch
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.94.6, 0.95.0
+Fix_version:
+0.94.6, 0.95.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+chunhui shen
+Reporter:
+chunhui shen
+Create date:
+25/Jan/13 08:12
+Update date:
+29/Jul/13 04:23
+Resolved date:
+26/Feb/13 02:39

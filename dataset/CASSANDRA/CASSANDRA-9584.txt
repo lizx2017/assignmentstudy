@@ -1,0 +1,83 @@
+Summary:
+Decommissioning a node on Windows sends the wrong schema change event
+Description:
+Decommissioning a node on Windows sends the wrong schema change event:
+cassandra.connection: DEBUG: Message pushed from server: <EventMessage(event_type=u'STATUS_CHANGE', trace_id=None, event
+_args={'change_type': u'DOWN', 'address': ('127.0.0.2', 9042)}, stream_id=-1)>
+On Linux I get the correct event:
+cassandra.connection: DEBUG: Message pushed from server: <EventMessage(event_type=u'TOPOLOGY_CHANGE', trace_id=None, event_args={'change_type': u'REMOVED_NODE', 'address': ('127.0.0.2', 9042)}, stream_id=-1)>
+We are using ccmlib node.py.decommission() which calls nodetool decommission:
+    def decommission(self):
+        self.nodetool("decommission")
+        self.status = Status.DECOMMISIONNED
+        self._update_config()
+Interestingly, it does seem to work (correctly?) on CCM CLI:
+PS C:\Users\Administrator> ccm status
+Cluster: '2.2'
+--------------
+node1: UP
+node3: UP
+node2: UP
+
+PS C:\Users\Administrator> ccm node1 ring
+
+Starting NodeTool
+
+Datacenter: datacenter1
+==========
+Address    Rack        Status State   Load            Owns                Token
+                                                                                                3074457345618258602
+127.0.0.1  rack1       Up     Normal  62.43 KB        ?                   -9223372036854775808
+127.0.0.2  rack1       Up     Normal  104.87 KB       ?                   -3074457345618258603
+127.0.0.3  rack1       Up     Normal  83.67 KB        ?                   3074457345618258602
+
+
+  Note: Non-system keyspaces don't have the same replication settings, effective ownership information is meaningless
+
+PS C:\Users\Administrator> ccm node2 decommission
+
+PS C:\Users\Administrator> ccm status
+Cluster: '2.2'
+--------------
+node1: UP
+node3: UP
+node2: DECOMMISIONNED
+
+PS C:\Users\Administrator> ccm node1 ring
+
+Starting NodeTool
+
+Datacenter: datacenter1
+==========
+Address    Rack        Status State   Load            Owns                Token
+                                                                                                3074457345618258602
+127.0.0.1  rack1       Up     Normal  67.11 KB        ?                   -9223372036854775808
+127.0.0.3  rack1       Up     Normal  88.35 KB        ?                   3074457345618258602
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Not A Problem
+Affects_version:
+
+Fix_version:
+None
+Component:
+Legacy/Distributed Metadata
+Label:
+None
+Environment:
+c*, python, windows
+Attachment number:
+0
+Assignee:
+Joshua McKenzie
+Reporter:
+Kishan Karunaratne
+Create date:
+11/Jun/15 17:23
+Update date:
+16/Apr/19 09:31
+Resolved date:
+16/Jun/15 15:59

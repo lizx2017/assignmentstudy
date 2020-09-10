@@ -1,0 +1,67 @@
+Summary:
+NPE if RAFDataStream.getCurrentPosition() when TrueTypeFont created from file is reused
+Description:
+java.lang.NullPointerException: null
+ at org.apache.fontbox.ttf.RAFDataStream.getCurrentPosition(RAFDataStream.java:88)
+ at org.apache.fontbox.ttf.TrueTypeFont.getTableBytes(TrueTypeFont.java:121)
+ at org.apache.fontbox.ttf.TTFSubsetter.writeToStream(TTFSubsetter.java:1012)
+ at org.apache.pdfbox.pdmodel.font.TrueTypeEmbedder.subset(TrueTypeEmbedder.java:329)
+ at org.apache.pdfbox.pdmodel.font.PDType0Font.subset(PDType0Font.java:162)
+ at org.apache.pdfbox.pdmodel.PDDocument.save(PDDocument.java:1275)
+ at org.apache.pdfbox.pdmodel.font.PDFontTest.testMultipleFontFileReuse(PDFontTest.java:160)
+    @Test
+    public void testMultipleFontFileReuse() throws IOException, URISyntaxException
+    {
+        URL url = PDFontTest.class.getClassLoader().getResource(
+                "org/apache/pdfbox/ttf/LiberationSans-Regular.ttf");
+        File file = new File(url.toURI());
+
+        TrueTypeFont ttf = new TTFParser().parse(file);
+
+        for (int i = 0; i < 32; ++i)
+        {
+            try (PDDocument doc = new PDDocument())
+            {
+                PDPage page = new PDPage();
+                doc.addPage(page);
+                PDFont font = PDType0Font.load(doc, ttf, true);
+                try (PDPageContentStream cs = new PDPageContentStream(doc, page))
+                {
+                    cs.beginText();
+                    cs.setFont(font, 10);
+                    cs.showText("testMultipleFontFileReuse");
+                    cs.endText();
+                }
+                doc.save(new ByteArrayOutputStream());
+            }
+        }
+    }
+This happens only if the TrueTypeFont is created from a file, not when it is created from a stream (PDFBOX-3337). It worked in 2.0.0 but no longer since 2.0.1.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.6
+Fix_version:
+2.0.7, 3.0.0 PDFBox
+Component:
+FontBox
+Label:
+regression
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Tilman Hausherr
+Create date:
+11/Jun/17 13:38
+Update date:
+21/Jul/17 04:40
+Resolved date:
+17/Jul/17 10:02

@@ -1,0 +1,49 @@
+Summary:
+OOM error in merge causes deadlock
+Description:
+Using the ConcurrentMergeScheduler, when merging catches an OutOfMemoryError and tries to rollback, the merge thread ends up calling Thread.join on itself, which will never complete.
+Stack trace (line numbers are for Lucene 5.2.1):
+"Lucene Merge Thread #1" #356502 daemon prio=5 os_prio=0 tid=0x00007f3f78622000 nid=0x11b5 in Object.wait() [0x00007f3e90528000]
+   java.lang.Thread.State: WAITING (on object monitor)
+        at java.lang.Object.wait(Native Method)
+        at java.lang.Thread.join(Thread.java:1245)
+        - locked <0x00000001965aff78> (a org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread)
+        at java.lang.Thread.join(Thread.java:1319)
+        at org.apache.lucene.index.ConcurrentMergeScheduler.sync(ConcurrentMergeScheduler.java:420)
+        at org.apache.lucene.index.ConcurrentMergeScheduler.close(ConcurrentMergeScheduler.java:401)
+        at org.apache.lucene.index.IndexWriter.rollbackInternal(IndexWriter.java:1948)
+        at org.apache.lucene.index.IndexWriter.rollback(IndexWriter.java:1921)
+        - locked <0x00000001965b0100> (a java.lang.Object)
+        at org.apache.lucene.index.IndexWriter.tragicEvent(IndexWriter.java:4439)
+        - locked <0x00000001965b0100> (a java.lang.Object)
+        at org.apache.lucene.index.IndexWriter.merge(IndexWriter.java:3571)
+        at org.apache.lucene.index.ConcurrentMergeScheduler.doMerge(ConcurrentMergeScheduler.java:581)
+        at org.apache.lucene.index.ConcurrentMergeScheduler$MergeThread.run(ConcurrentMergeScheduler.java:619)
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+5.2.1
+Fix_version:
+5.3, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Jeffrey Morlan
+Create date:
+09/Jul/15 17:42
+Update date:
+09/May/16 18:37
+Resolved date:
+14/Jul/15 09:44

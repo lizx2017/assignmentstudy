@@ -1,0 +1,49 @@
+Summary:
+NPE in RowRepairResolver
+Description:
+On a 3 node brisk cluster (running against C* 1.0 branch), I was running the java stress tool and the terasort concurrently in two sessions. Eventually both jobs failed with TimedOutException.
+From this point forward most additional activity will fail with a TimedOutException.
+Java Stress Tool - 5 rows / 10 columns - Operation [0] retried 10 times - error inserting key 0 ((TimedOutException))
+Hive - show tables: FAILED: Error in metadata: com.datastax.bdp.hadoop.hive.metastore.CassandraHiveMetaStoreException: There was a problem with the Cassandra Hive MetaStore: Could not connect to Cassandra. Reason: Error connecting to node localhost
+However, the Cassandra CLI appears to be happy
+Cassandra CLI: you can successfully insert and read using consistencylevel as ONE or ALL
+The seed node has the following error repeatedly occurring in the logs. The other two nodes have no errors.
+ERROR [ReadRepairStage:15] 2011-09-13 00:44:25,971 AbstractCassandraDaemon.java (line 133) Fatal exception in thread Thread[ReadRepairStage:15,5,main]
+java.lang.RuntimeException: java.lang.NullPointerException
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:34)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+ at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+ at java.lang.Thread.run(Thread.java:662)
+Caused by: java.lang.NullPointerException
+ at org.apache.cassandra.service.RowRepairResolver.resolve(RowRepairResolver.java:82)
+ at org.apache.cassandra.service.AsyncRepairCallback$1.runMayThrow(AsyncRepairCallback.java:54)
+ at org.apache.cassandra.utils.WrappedRunnable.run(WrappedRunnable.java:30)
+ ... 3 more
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.0.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jonathan Ellis
+Reporter:
+Cathy Daw
+Create date:
+13/Sep/11 01:07
+Update date:
+16/Apr/19 09:32
+Resolved date:
+13/Sep/11 12:57

@@ -1,0 +1,72 @@
+Summary:
+Long overflow in LuceneXXSkipWriter can corrupt skip data
+Description:
+I've been iterating with Tom on this corruption that CheckIndex detects in his rather large index (720 GB in a single segment):
+ java -Xmx16G -Xms16G -cp $JAR -ea:org.apache.lucene... org.apache.lucene.index.CheckIndex /XXXX/shards/4/core-1/data/test_index -verbose 2>&1 |tee -a shard4_reoptimizedNewJava
+
+
+Opening index @ /htsolr/lss-reindex/shards/4/core-1/data/test_index
+
+Segments file=segments_e numSegments=1 version=4.10.2 format= userData={commitTimeMSec=1421479358825}
+  1 of 1: name=_8m8 docCount=1130856
+    version=4.10.2
+    codec=Lucene410
+    compound=false
+    numFiles=10
+    size (MB)=719,967.32
+    diagnostics = {timestamp=1421437320935, os=Linux, os.version=2.6.18-400.1.1.el5, mergeFactor=2, source=merge, lucene.version=4.10.2, os.arch=amd64, mergeMaxNumSegments=1, java.version=1.7.0_71, java.vendor=Oracle Corporation}
+    no deletions
+    test: open reader.........OK
+    test: check integrity.....OK
+    test: check live docs.....OK
+    test: fields..............OK [80 fields]
+    test: field norms.........OK [23 fields]
+    test: terms, freq, prox...ERROR: java.lang.AssertionError: -96
+java.lang.AssertionError: -96
+        at org.apache.lucene.codecs.lucene41.ForUtil.skipBlock(ForUtil.java:228)
+        at org.apache.lucene.codecs.lucene41.Lucene41PostingsReader$BlockDocsAndPositionsEnum.skipPositions(Lucene41PostingsReader.java:925)
+        at org.apache.lucene.codecs.lucene41.Lucene41PostingsReader$BlockDocsAndPositionsEnum.nextPosition(Lucene41PostingsReader.java:955)
+        at org.apache.lucene.index.CheckIndex.checkFields(CheckIndex.java:1100)
+        at org.apache.lucene.index.CheckIndex.testPostings(CheckIndex.java:1357)
+        at org.apache.lucene.index.CheckIndex.checkIndex(CheckIndex.java:655)
+        at org.apache.lucene.index.CheckIndex.main(CheckIndex.java:2096)
+    test: stored fields.......OK [67472796 total field count; avg 59.665 fields per doc]
+    test: term vectors........OK [0 total vector count; avg 0 term/freq vector fields per doc]
+    test: docvalues...........OK [0 docvalues fields; 0 BINARY; 0 NUMERIC; 0 SORTED; 0 SORTED_NUMERIC; 0 SORTED_SET]
+FAILED
+    WARNING: fixIndex() would remove reference to this segment; full exception:
+java.lang.RuntimeException: Term Index test failed
+        at org.apache.lucene.index.CheckIndex.checkIndex(CheckIndex.java:670)
+        at org.apache.lucene.index.CheckIndex.main(CheckIndex.java:2096)
+
+WARNING: 1 broken segments (containing 1130856 documents) detected
+WARNING: would write new segments file, and 1130856 documents would be lost, if -fix were specified
+And Rob spotted long -> int casts in our skip list writers that look like they could cause such corruption if a single high-freq term with many positions required > 2.1 GB to write its positions into .pos.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+4.10.5, 5.0, 6.0
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Michael McCandless
+Reporter:
+Michael McCandless
+Create date:
+20/Jan/15 21:28
+Update date:
+09/May/16 18:34
+Resolved date:
+21/Jan/15 16:53

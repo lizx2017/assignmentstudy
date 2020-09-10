@@ -1,0 +1,68 @@
+Summary:
+Need the root clause in FBUtilities.classForName when there is exception loading class
+Description:
+We have a custom snitch that works in 1.1, but the same does not work in 1.2 . It throws a ConfigurationException:
+ERROR 11:39:37,936 Fatal configuration error
+org.apache.cassandra.exceptions.ConfigurationException: Unable to find snitch class 'com.apigee.cassandra.OldEC2Snitch'
+at org.apache.cassandra.utils.FBUtilities.classForName(FBUtilities.java:432)
+at org.apache.cassandra.utils.FBUtilities.construct(FBUtilities.java:444)
+at org.apache.cassandra.config.DatabaseDescriptor.createEndpointSnitch(DatabaseDescriptor.java:530)
+at org.apache.cassandra.config.DatabaseDescriptor.loadYaml(DatabaseDescriptor.java:350)
+at org.apache.cassandra.config.DatabaseDescriptor.<clinit>(DatabaseDescriptor.java:126)
+at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:216)
+at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:447)
+at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:490)
+Unable to find snitch class 'com.apigee.cassandra.OldEC2Snitch'
+However the above exception does not help us understand what's wrong (jar is in the classpath and readable). I've to add the root clause to the ConfigurationException to see the real problem:
+ERROR 11:42:20,020 Fatal configuration error
+org.apache.cassandra.exceptions.ConfigurationException: Unable to find snitch class 'com.apigee.cassandra.OldEC2Snitch'
+at org.apache.cassandra.utils.FBUtilities.classForName(FBUtilities.java:432)
+at org.apache.cassandra.utils.FBUtilities.construct(FBUtilities.java:444)
+at org.apache.cassandra.config.DatabaseDescriptor.createEndpointSnitch(DatabaseDescriptor.java:530)
+at org.apache.cassandra.config.DatabaseDescriptor.loadYaml(DatabaseDescriptor.java:350)
+at org.apache.cassandra.config.DatabaseDescriptor.<clinit>(DatabaseDescriptor.java:126)
+at org.apache.cassandra.service.CassandraDaemon.setup(CassandraDaemon.java:216)
+at org.apache.cassandra.service.CassandraDaemon.activate(CassandraDaemon.java:447)
+at org.apache.cassandra.service.CassandraDaemon.main(CassandraDaemon.java:490)
+Caused by: java.lang.NoClassDefFoundError: org/apache/cassandra/config/ConfigurationException
+at java.lang.Class.forName0(Native Method)
+at java.lang.Class.forName(Class.java:169)
+at org.apache.cassandra.utils.FBUtilities.classForName(FBUtilities.java:424)
+... 7 more
+Caused by: java.lang.ClassNotFoundException: org.apache.cassandra.config.ConfigurationException
+at java.net.URLClassLoader$1.run(URLClassLoader.java:202)
+at java.security.AccessController.doPrivileged(Native Method)
+at java.net.URLClassLoader.findClass(URLClassLoader.java:190)
+at java.lang.ClassLoader.loadClass(ClassLoader.java:306)
+at sun.misc.Launcher$AppClassLoader.loadClass(Launcher.java:301)
+at java.lang.ClassLoader.loadClass(ClassLoader.java:247)
+... 10 more
+Unable to find snitch class 'com.apigee.cassandra.OldEC2Snitch'
+Status:
+RESOLVED
+Priority:
+Normal
+Resolution:
+Fixed
+Affects_version:
+
+Fix_version:
+1.2.12, 2.0.3
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Jackson Chung
+Reporter:
+Jackson Chung
+Create date:
+28/Oct/13 19:01
+Update date:
+16/Apr/19 09:32
+Resolved date:
+28/Oct/13 19:39

@@ -1,0 +1,126 @@
+Summary:
+[iOS] Packager compiles boolean condition incorrectly after loop break
+Description:
+ActionScript codes executes unexpectedly when compiled with Ad-Hoc packaging type, using the Flex Packager for iOS.
+The attached sample program contains a for each loop within another for each loop, that is used to compare two lists of integers. At the start of the outer loop, a variable named "matched" is set to false.
+When a match is found in the inner loop, matched is assigned the value true, and the inner loop issues a break command to early-exit the loop.
+Following the inner loop, an if statement checks the value of the boolean variable, like so:
+if (matched == false)
+{
+...
+}
+When the code is execute as an adhoc iOS release build on an iPad 3, the code within the if statement is executed even when matched == true.
+Changing the code to the following, works as expected:
+if (!matched)
+{
+...
+}
+Steps to reproduce:
+1) Run the attached BasicMobile project in the AIR simulator on your desktop
+2) The expected result is:
+1. Using matched == false
+---------------------------
+Loop
+UNMATCHED: 0
+Loop
+UNMATCHED: 1
+Loop
+MATCHED: 2, 2
+Loop
+MATCHED: 3, 3
+Loop
+UNMATCHED: 4
+2. Using !matched
+---------------------------
+Loop
+UNMATCHED: 0
+Loop
+UNMATCHED: 1
+Loop
+MATCHED: 2, 2
+Loop
+MATCHED: 3, 3
+Loop
+UNMATCHED: 4
+3. Using no break
+---------------------------
+Loop
+UNMATCHED: 0
+Loop
+UNMATCHED: 1
+Loop
+MATCHED: 2, 2
+Loop
+MATCHED: 3, 3
+Loop
+UNMATCHED: 4
+3) Now export a release build for the same project to Apple iOS, using Ad Hoc packaging type.
+4) Install the app on an iPad or iPhone
+5) Run the app. The result is:
+1. Using matched == false
+---------------------------
+Loop
+UNMATCHED: 0
+Loop
+UNMATCHED: 1
+Loop
+MATCHED: 2, 2
+UNMATCHED: 2
+Loop
+MATCHED: 3, 3
+UNMATCHED: 3
+Loop
+UNMATCHED: 4
+2. Using !matched
+---------------------------
+Loop
+UNMATCHED: 0
+Loop
+UNMATCHED: 1
+Loop
+MATCHED: 2, 2
+Loop
+MATCHED: 3, 3
+Loop
+UNMATCHED: 4
+3. Using !matched
+---------------------------
+Loop
+UNMATCHED: 0
+Loop
+UNMATCHED: 1
+Loop
+MATCHED: 2, 2
+Loop
+MATCHED: 3, 3
+Loop
+UNMATCHED: 4
+Notice how in the Adhoc release version, the first case "1. Using matched == false" reports MATCHED and UNMATCHED for items 2 and 3. This indicates that the boolean variable "matched" is passing the test == false, even when its value has been set to true.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Invalid
+Affects_version:
+Adobe Flex SDK 4.6 (
+Fix_version:
+None
+Component:
+.Unspecified - Compiler, (1)
+Label:
+ios packaging
+Environment:
+Windows 7 Ultimate
+Attachment number:
+0
+Assignee:
+Alex Harui
+Reporter:
+Ben Crowl
+Create date:
+28/Nov/12 01:35
+Update date:
+28/Nov/12 05:27
+Resolved date:
+28/Nov/12 05:27

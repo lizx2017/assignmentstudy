@@ -1,0 +1,52 @@
+Summary:
+Intermittent test failure because of missing config parameter in new HTable(tablename)
+Description:
+As per the description in HBASE-4138 this issue is raised to fix the random testcase failure.
+Consider the log in the failed build #2132 for the testcase TestScannerTimeOut
+2011-08-23 04:30:11,195 INFO [main] zookeeper.MiniZooKeeperCluster(141): Failed binding ZK Server to client port: 21818
+2011-08-23 04:30:11,226 INFO [main] zookeeper.MiniZooKeeperCluster(164): Started MiniZK Cluster and connect 1 ZK server on client port: 21819
+By default we try connecting to 21818 but as it was not bindable we connect to 21819. (may be the port was busy).
+After starting the miniZkCluster
+this.conf.set("hbase.zookeeper.property.clientPort",
+Integer.toString(clientPort));
+we set this port in the config object.
+So for RS and Master the zookeeper client port will be 21819.
+Now when the testcase starts running there is no testcase till TestScannerTimeout#test3686a where we need a new client connection.
+Now as part of test3686a we create new HTable() which calls
+this(HBaseConfiguration.create(), tableName);
+Here we create a new configuration object. Hence the zookeeper client port is taken to be 21818.
+Ideally due to improper shutdown of some prev zk cluster that was running in 21818 the test case was able to connect to this but the port being different it could not find the /hbase node.
+Hence the failure has happened.
+The remaining two testcases in TestHTablePool that failed also has the similar problem. Even the failure in build #2119 is exactly the same.
+There should be a mechanism from the test for the client code to know to which zk he should connect to.
+Another intersting thing
+All testcases are using new HTable(conf, tablename).
+Only these 3 test cases are using it like new HTable(tablename). Hence the problem.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+0.90.4
+Fix_version:
+0.90.5
+Component:
+None
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+ramkrishna.s.vasudev
+Reporter:
+ramkrishna.s.vasudev
+Create date:
+25/Aug/11 09:21
+Update date:
+20/Nov/15 11:55
+Resolved date:
+25/Aug/11 14:34

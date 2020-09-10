@@ -1,0 +1,52 @@
+Summary:
+PDPageTree.indexOf doesn't find page numbers
+Description:
+I know PDFBOX-2423 is not closed yet so I'm not sure if the issues I'm having are a cause of that.
+I'm using the latest trunk and I have issues with the PDPageTree.indexOf method. The javadoc reads Returns the index of the given page, or -1 if it does not exist. which I understand it means in returns -1 if the given page is not found in the page tree correct? If so, the following unit test fails:
+ @Test
+    public void indexOfNotFoundPage() throws IOException {
+        PDDocument doc1 = PDDocument.load(getClass().getClassLoader()
+                .getResourceAsStream("pdf/bigger_outline_test.pdf"));
+        assertEquals(-1, doc1.getPages().indexOf(new PDPage()));
+    }
+Another similar issue I have is that PDPageTree.indexOf doesn't find the correct index for a PDPage returned by the PDOutlineItem.findDestinationPage:
+@Test
+    public void indexOfPageFromOutlineDestination() throws IOException {
+        PDDocument doc = PDDocument
+                .load(getClass().getClassLoader().getResourceAsStream("pdf/bigger_outline_test.pdf"));
+        PDDocumentOutline outline = doc.getDocumentCatalog().getDocumentOutline();
+        for (PDOutlineItem current : outline.children()) {
+            if (current.getTitle().contains("Second")) {
+                assertEquals(3, doc.getPages().indexOf(current.findDestinationPage(doc)));
+            }
+        }
+    }
+Also note that indexOf is used by PDPageDestination.findPageNumber which also returns a wrong result.
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Fixed
+Affects_version:
+2.0.0
+Fix_version:
+2.0.0
+Component:
+PDModel
+Label:
+PDPageTree
+Environment:
+
+Attachment number:
+0
+Assignee:
+Tilman Hausherr
+Reporter:
+Andrea Vacondio
+Create date:
+10/Mar/15 18:11
+Update date:
+17/Mar/16 19:08
+Resolved date:
+23/Apr/15 18:20

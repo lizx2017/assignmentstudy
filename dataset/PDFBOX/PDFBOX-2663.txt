@@ -1,0 +1,56 @@
+Summary:
+CMap handling bug
+Description:
+Some CMap includes another CMap using the "usecmap" command in the CMap resource file. For example, "ETenms-B5-H" includes "ETen-B5-H" CMap. The command in resource file is "/ETen-B5-H usecmap"
+The CMapParser does handle this case. Please find the coding below:
+if (op.op.equals(USECMAP))
+{
+    LiteralName useCmapName = (LiteralName) previousToken;
+    InputStream useStream = ResourceLoader.loadResource(resourceRoot + useCmapName.name);
+    if (useStream == null)
+    {
+        throw new IOException("Error: Could not find referenced cmap stream " + useCmapName.name);
+    }
+    CMap useCMap = parse(resourceRoot, useStream);
+    result.useCmap(useCMap);
+}
+
+But the useCmap method of CMap class doesn't copy the cidRanges list from the child CMap. Please find the coding below:
+
+    public void useCmap( CMap cmap )
+    {
+        this.codeSpaceRanges.addAll( cmap.codeSpaceRanges );
+        this.singleByteMappings.putAll( cmap.singleByteMappings );
+        this.doubleByteMappings.putAll( cmap.doubleByteMappings );
+    }
+Without the cidRanges from the included CMap, PDFBox doesn't know a text can be solved by the CMap and return "?" finally.
+Suggest to add the following coding to useCmap method of CMap class to solve the problem.
+this.cidRanges.addAll( cmap.cidRanges);
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Won't Fix
+Affects_version:
+1.8.8
+Fix_version:
+None
+Component:
+FontBox
+Label:
+None
+Environment:
+windows 7
+Attachment number:
+0
+Assignee:
+John Hewson
+Reporter:
+Matthew GAO
+Create date:
+04/Feb/15 11:07
+Update date:
+05/Feb/15 21:00
+Resolved date:
+05/Feb/15 21:00

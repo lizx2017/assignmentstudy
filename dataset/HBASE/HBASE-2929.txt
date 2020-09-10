@@ -1,0 +1,55 @@
+Summary:
+HBaseAdmin.disableTable() took too long to run
+Description:
+When HBaseAdmin.disableTable() was called for the following table, it seemed to hang:
+NIGHTLYSTAGINGGRID-PACKAGESUMMARY-1282074317479
+This is jstack for client:
+"main" prio=10 tid=0x000000005c4ac800 nid=0x3ce9 in Object.wait() [0x0000000041060000]
+java.lang.Thread.State: WAITING (on object monitor)
+at java.lang.Object.wait(Native Method)
+at java.lang.Object.wait(Object.java:485)
+at org.apache.hadoop.hbase.ipc.HBaseClient.call(HBaseClient.java:721)
+locked <0x00002aaabc6433a0> (a org.apache.hadoop.hbase.ipc.HBaseClient$Call)
+at org.apache.hadoop.hbase.ipc.HBaseRPC$Invoker.invoke(HBaseRPC.java:333)
+at $Proxy10.disableTable(Unknown Source)
+at org.apache.hadoop.hbase.client.HBaseAdmin.disableTable(HBaseAdmin.java:467)
+at org.apache.hadoop.hbase.client.HBaseAdmin.disableTable(HBaseAdmin.java:446)
+Here is snippet from the region server log where the region is located:
+http://pastebin.com/S1fHN7cM
+Here is snippet from master log:
+http://pastebin.com/8ZL7qihk
+I found that only one region from NIGHTLYSTAGINGGRID-PACKAGESUMMARY-1282074317479 (currently disabled) remained in the table as of now.
+In master server log, I can see 3 actions on any of the other regions in the table:
+2010-08-18 06:41:55,345 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_CLOSE: NIGHTLYSTAGINGGRID-PACKAGESUMMARY-1282074317479,D68741A06F0EB8AF4D8579BF17864031,1282075349107 from us01-ciqps1-grid06.carrieriq.com,60020,1282088004819; 1 of 15
+2010-08-18 06:41:55,345 DEBUG org.apache.hadoop.hbase.master.HMaster: Processing todo: ProcessRegionClose of NIGHTLYSTAGINGGRID-PACKAGESUMMARY-1282074317479,D68741A06F0EB8AF4D8579BF17864031,1282075349107, true, reassign: false
+2010-08-18 06:41:55,365 INFO org.apache.hadoop.hbase.master.ProcessRegionClose$1: region closed: NIGHTLYSTAGINGGRID-PACKAGESUMMARY-1282074317479,D68741A06F0EB8AF4D8579BF17864031,1282075349107
+But for NIGHTLYSTAGINGGRID-PACKAGESUMMARY-1282074317479,74A6A44B129151AD71C061D100F5CFA3,1282075834828 I only see one action:
+2010-08-18 06:41:56,105 INFO org.apache.hadoop.hbase.master.ServerManager: Processing MSG_REPORT_CLOSE: NIGHTLYSTAGINGGRID-PACKAGESUMMARY-1282074317479,74A6A44B129151AD71C061D100F5CFA3,1282075834828 from us01-ciqps1-grid04.carrieriq.com,60020,1282087981085; 1 of 5
+Status:
+RESOLVED
+Priority:
+Major
+Resolution:
+Cannot Reproduce
+Affects_version:
+0.20.6
+Fix_version:
+None
+Component:
+master
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Ted Yu
+Create date:
+18/Aug/10 21:39
+Update date:
+16/Jul/14 23:05
+Resolved date:
+16/Jul/14 23:05

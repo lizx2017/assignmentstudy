@@ -1,0 +1,61 @@
+Summary:
+Null pointer Exception with org.apache.fontbox.cff.CFFParser$DictData.getEntry(CFFParser.java:626)
+Description:
+The code doesn't crash, however there are a lot of stack dumps in the log file.
+The 4 entry in the array below has a null for an operator
+org.apache.fontbox.cff.CFFParser$DictData$Entry[operands=[-18, 18, 608, 18, -248, 16, 262, 10], operator=BlueValues],
+org.apache.fontbox.cff.CFFParser$DictData$Entry[operands=[240, 2, 114, 0, -576, 0], operator=OtherBlues],
+org.apache.fontbox.cff.CFFParser$DictData$Entry[operands=[0.0479583], operator=BlueScale],
+org.apache.fontbox.cff.CFFParser$DictData$Entry[operands=[0.06], operator=null],
+org.apache.fontbox.cff.CFFParser$DictData$Entry[operands=[278], operator=defaultWidthX],
+org.apache.fontbox.cff.CFFParser$DictData$Entry[operands=[551], operator=nominalWidthX], null, null, null, null
+In the file org.apache.fontbox.cff.CFFParser.java:626 it fails to test for a null operator.
+I am not sure if the data is incorrect or if the code should just test for a null pointer exception.
+Failed to create Type1C font. Falling back to Type1 font
+java.lang.NullPointerException
+at org.apache.fontbox.cff.CFFParser$DictData.getEntry(CFFParser.java:626)
+at org.apache.fontbox.cff.CFFParser$DictData.getEntry(CFFParser.java:619)
+at org.apache.fontbox.cff.CFFParser.getDelta(CFFParser.java:414)
+at org.apache.fontbox.cff.CFFParser.parseFont(CFFParser.java:358)
+at org.apache.fontbox.cff.CFFParser.parse(CFFParser.java:66)
+Proposed fix would be to test for a null operator and stop the crash.
+private Entry getEntry(CFFOperator operator)
+{
+for (Entry entry : entries)
+{
+// Check for null entry before comparing the Font
+//
+if (entry != null && entry.operator != null &&
+entry.operator.equals(operator))
+{ return entry; }
+}
+return null;
+}
+Status:
+CLOSED
+Priority:
+Minor
+Resolution:
+Fixed
+Affects_version:
+None
+Fix_version:
+1.2.0
+Component:
+FontBox
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Unassigned
+Reporter:
+Peter_Lenahan@ibi.co
+Create date:
+28/Apr/10 02:08
+Update date:
+01/Jul/10 07:27
+Resolved date:
+06/May/10 18:13

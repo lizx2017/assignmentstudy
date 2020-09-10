@@ -1,0 +1,49 @@
+Summary:
+Unused XRef object streams cause parser to fail + FIX
+Description:
+I have a PDF document with 3 XRef streams (no xref table; PDF version 1.6). Currently PDFBOX reads and parses all 3 streams in the order the appear and combines the data in a dictionary (thus attributes specified in a later XRef stream overwrite attributes in earlier streams). The problem with my document is that the first 2 XRef streams declare document encryption while the last one does not. Furthermore the last one uses another document id thus trying to decrypt the document would fail because of the different IDs (however already the parsing of the stream in the first XRef object already fails.
+The solution I came up with is to first get all XRef streams, start looking from last one if it contains a 'Prev' key and go up the list as long as we have this 'Prev' key. This should work in most cases assuming that multiple active XRef sections appear in order without an unused XRef section in between. A really correct solution would have to test for object byte positions (therefore it would be necessary to store byte positions for each object).
+The fix in COSDocument.parseXrefStreams():
+public void parseXrefStreams() throws IOException
+{
+COSDictionary trailerDict = new COSDictionary();
+// use only last XRef and XRef which are referenced by a used XRef via 'Prev'
+// we assume that 'Prev' will reference next preceding xref object
+// (otherwise we would have to use object byte positions)
+List<COSObject> xrefStreams = getObjectsByType( "XRef" );
+int firstXRefIdx = xrefStreams.size() - 1;
+while ( firstXRefIdx > 0 )
+{ COSStream stream = (COSStream)xrefStreams.get( firstXRefIdx ).getObject(); if ( stream.getInt( COSName.PREV, -1 ) == -1 ) // no 'Prev' key; current xref object will be first one we use break; }
+// for( COSObject xrefStream : getObjectsByType( "XRef" ) )
+for ( int xrefIdx = firstXRefIdx, len = xrefStreams.size(); xrefIdx < len; xrefIdx++ )
+{ COSStream stream = (COSStream)xrefStreams.get( xrefIdx ).getObject(); trailerDict.addAll(stream); PDFXrefStreamParser parser = new PDFXrefStreamParser(stream, this, forceParsing); parser.parse(); }
+setTrailer( trailerDict );
+}
+Status:
+CLOSED
+Priority:
+Major
+Resolution:
+Duplicate
+Affects_version:
+1.6.0
+Fix_version:
+None
+Component:
+Parsing
+Label:
+None
+Environment:
+
+Attachment number:
+0
+Assignee:
+Andreas Lehmkühler
+Reporter:
+Timo Boehme
+Create date:
+18/May/11 13:45
+Update date:
+09/Feb/13 11:19
+Resolved date:
+19/May/11 14:22
