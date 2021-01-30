@@ -1,4 +1,5 @@
-# The Myth of Text and What Matters in Bug Triage
+# What are the key features of prior bug assignment approaches?
+# A reflection study
 ***
 ### Project summary
 ***
